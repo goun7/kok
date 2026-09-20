@@ -126,3 +126,21 @@ doğru kullanıyor.**
 | Test bütünlüğü | 33/33 tam |
 
 **Denetim öncesi puan: 77 → sonra: 79** (aşağıdaki kapatmalarla).
+
+---
+
+## C2) BIBLIOGRAPHY TEKRAR DOGRULAMA — 2026-09-21 (ePrint calisti)
+
+ePrint HTML sayfalari (HTTP 200) ile 4 kritik girisi **birebir** teyit ettim:
+
+| ePrint ID | Baslik (dogrulandi) | Yazarlar (dogrulandi) | Spec ile |
+|---|---|---|---|
+| 2025/685 | Proofs of Useful Work from Arbitrary Matrix Multiplication | **Ilan Komargodski, Omri Weinstein** (2 yazar) | UYUMLU (Schen duzeltmesi dogru) |
+| 2018/104 | PHANTOM and GHOSTDAG: A Scalable Generalization of Nakamoto Consensus | **Yonatan Sompolinsky, Shai Wyborski, Aviv Zohar** | UYUMLU |
+| 2017/203 | Proofs of Useful Work | **Marshall Ball, Alon Rosen, Manuel Sabin, Prashant Nalini Vasudevan** | UYUMLU (spec "Ball, Rosen, Sabin, Vasudevan" diyor, tamami teyit) |
+| 2026/1492 | Proof of Demand Is Not Proof of Work: On the Limits of Demand-Weighted Consensus under Free Pseudonyms | **Omer Demirel, Snowfall Finance LLC** | UYUMLU (baslik tam; "Demirel Thm 2" referansi dogru) |
+
+**SONUC C2: 4/4 kritik cryptography bibliography girisi 2026-09-21'de TEKRAR
+DOGRULANDI. Kalan risk: sadece arXiv ID'leri (2504.09971, 2606.06700,
+2606.04819) bu oturumda arXiv API bos dondugu icin teyit edilemedi —
+daha onceki oturumlarda dogrulanmisti.**
