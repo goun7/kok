@@ -1,32 +1,32 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-KOK v2 — G-KATMAN TESTLERI + DIFFICULTY RETARGET TESTLERI
-=========================================================
-TV-1  Replay reddi              (ayni sertifika, farkli ctx -> REJECT)
-TV-2  Prescribed hardness       (sparse/perm/sifir girdi maliyeti = dense ile ±%2)
-TV-3  Easy-instance basarisiz   (permutation matrix: gecerli sertifika, maliyet ayni)
-TV-4  Rastgele-matris faydasi   (U gorevi yok -> phi=0; blok yine gecerli)
-V1X   v1 Freivalds saldirisi    (v1'de saldirgan avantaji; KW'de yok)
-RT-1  Retarget yakinsama        (sabit hashrate -> D -> Lambda*T_b)
-RT-2  Retarget clip sinirlari   (ani 10x hashrate -> pencere basina max 4x)
-RT-3  Medyan filtre             (gurultulu hashrate -> D yumusak)
+KOK v2 - G-LAYER TESTS + DIFFICULTY RETARGET TESTS
+==================================================
+TV-1  Replay rejection           (same certificate, different ctx -> REJECT)
+TV-2  Prescribed hardness        (sparse/perm/zero-input cost = dense +/- 2%)
+TV-3  Easy-instance fails        (permutation matrix: valid certificate, same cost)
+TV-4  Random-matrix benefit      (no U-task -> phi=0; block still valid)
+V1X   v1 Freivalds attack        (adversary advantage in v1; none in KW)
+RT-1  Retarget convergence       (constant hashrate -> D -> Lambda*T_b)
+RT-2  Retarget clip bounds       (a sudden 10x hashrate -> max 4x per window)
+RT-3  Median filter              (noisy hashrate -> D stays smooth)
 
-Gereksinim: u_layer_prototype.py ayni dizinde.
-Calistirma: python3 g_layer_tests.py
+Requires: u_layer_prototype.py in the same directory.
+Run:      python3 g_layer_tests_en.py
 """
 import math
 from u_layer_prototype import (Chain, KWKernel, H, S, EPOCH_LOOKBACK,
                                DEADLINE_H, rng)
 
-# ----------------------------------------------------------- yardimci: girdi siniflari
+# ----------------------------------------------------------- yardimci: input siniflari
 def dense(n, q=97, seed=7):
     r = __import__("random").Random(seed)
     return [[r.randrange(q) for _ in range(n)] for _ in range(n)]
 
 
 def sparse_zero_rows(n, q=97):
-    """Yari sutunlari sifir: v1'de A(Br) icin O(n^2) kisayol."""
+    """Yari sutunlari zero: v1'de A(Br) icin O(n^2) kisayol."""
     A = [[0] * n for _ in range(n)]
     for i in range(n):
         for j in range(n // 2, n):
@@ -35,7 +35,7 @@ def sparse_zero_rows(n, q=97):
 
 
 def permutation(n):
-    """Permutation matrix: v1'de A(Br) = Br'nin satir permute hali = O(n)."""
+    """Permutation matrix: in v1, A(Br) = a row-permuted Br = O(n)."""
     A = [[0] * n for _ in range(n)]
     for i in range(n):
         A[(i * 5) % n][i] = 1
@@ -46,10 +46,10 @@ zeros = lambda n, q=97: [[0] * n for _ in range(n)]
 ident = lambda n: [[1 if i == j else 0 for j in range(n)] for i in range(n)]
 
 
-# --------------------------------------------------- maliyet olcumu (islem sayisi)
+# --------------------------------------------------- cost measurement (op count)
 def cost_of_prove(A, B, ctx, D):
-    """Bir prove cagrisinin yaptigi aritmetik islem sayisi (honest kernel icin
-    girdiden bagimsizdir — prescribed hardness'in olculen karsiligi)."""
+    """Bir prove cagrisinin yaptigi aritmetik op sayisi (honest kernel icin
+    inputden independentdir — prescribed hardness'in olculen karsiligi)."""
     k = KWKernel()
     n, r, m = k.n, k.r, len(A) // k.r
     # kernel her zaman: 2 adet n^2 gurultu + m^3 tile carpimi + hashing
@@ -82,13 +82,13 @@ def tv1():
     b2 = ch.mine_block("m1", [], A, B)
     same = ch.kernel.verify(b1["cert"], A, B, b1["ctx"], b1["nonce"], ch.D)
     other = ch.kernel.verify(b1["cert"], A, B, b2["ctx"], b1["nonce"], ch.D)
-    assert same and not other, "replay reddi basarisiz"
-    return "PASS", "cert kendi ctx'inde gecerli, baska parent'ta REJECT"
+    assert same and not other, "replay reddi fails"
+    return "PASS", "cert kendi ctx'inde valid, baska parent'ta REJECT"
 
 
 # ---------------------------------------------------------------------- TV-2
 def tv2():
-    """Prescribed hardness: tum girdi siniflari icin per-attempt maliyet ayni."""
+    """Prescribed hardness: per-attempt cost is the same for all input classes."""
     ctx = H("ctx", "tip", "m1", "stark-circle-1")
     classes = {
         "dense-random": dense(8),
@@ -101,10 +101,10 @@ def tv2():
     costs = {name: cost_of_prove(A, dense(8, seed=9), ctx, D) for name, A in classes.items()}
     base = costs["dense-random"]
     devs = {n: 100.0 * (c - base) / base for n, c in costs.items()}
-    # per-attempt maliyet girdiden TAMAMEN bagimsiz (kernel her zaman m^3 is yapar)
+    # per-attempt cost is COMPLETELY input-independent (the kernel always does m^3 ops)
     assert max(abs(d) for d in devs.values()) < 1e-9, devs
-    # istatistiksel: basariya kadar deneme sayisi geometrik; ROM'da beklenti
-    # siniftan bagimsizdir (her (nonce,i,j) bagimsiz duz hash). 800 trial ile
+    # statistical: the number of attempts until success is geometric; in ROM the expectation
+    # siniftan independentdir (her (nonce,i,j) independent duz hash). 800 trial ile
     # 5 mean'in max-min yayilmasi ~%7 beklenir; %15 guvenli esik.
     stats = {}
     for name, A in classes.items():
@@ -118,7 +118,7 @@ def tv2():
 
 # ---------------------------------------------------------------------- TV-3
 def tv3():
-    """Easy-instance: permutation A gecerli sertifika verir ama maliyet dense ile ayni."""
+    """Easy-instance: permutation A gives a valid certificate but the cost is the same as dense."""
     ctx = H("ctx", "t3", "m1", "stark-circle-1")
     D = 1 << 6
     k = KWKernel()
@@ -129,7 +129,7 @@ def tv3():
         nonce += 1
         cert = k.prove(A_perm, B, ctx, nonce, D)
     assert k.verify(cert, A_perm, B, ctx, nonce, D), "permutation cert verify"
-    # maliyet kontrolu: dense ile ayni (attempts dagilimi ayni populasyon)
+    # cost check: same as dense (attempt distribution is the same population)
     c_perm = attempts_to_success(A_perm, B, ctx, D, 800)
     c_dense = attempts_to_success(dense(8, seed=3), B, ctx, D, 800)
     m1, m2 = sum(c_perm) / 800, sum(c_dense) / 800
@@ -148,7 +148,7 @@ def tv4():
     blk = ch.mine_block("m1", [], A, B)
     assert blk["phi"] == 0.0, blk["phi"]
     assert ch.validate_block(blk, A, B) == "ACCEPT"
-    # karsilastirma: 1 gorevli blok phi > 0
+    # comparison: one-task block phi > 0
     from u_layer_prototype import TaskSpec
     t = ch.submit_task("c1", TaskSpec("mm", (A, B), 64, DEADLINE_H), 100, 0.1)
     list(ch.assign_tasks("m1", [t], prob=1.0))
@@ -161,14 +161,14 @@ def tv4():
 # ---------------------------------------------------------------------- V1X
 def v1_contrast():
     """v1 (plain Freivalds A(Br)==Cr) vs KW: the attacker's advantage ratio.
-    v1'de saldirgan structured A secer -> A(Br) O(n^2)/O(n); KW'de girdiden
-    bagimsiz. Olcum: honest O(n^3), saldirgan O(n^2) (sparse) veya O(n) (perm)."""
+    in v1 the adversary picks a structured A -> A(Br) is O(n^2)/O(n); in KW it is input-
+    independent. Measurement: honest O(n^3), adversary O(n^2) (sparse) or O(n) (perm)."""
     n = 8
     honest_v1 = n ** 3                     # A*B tam carpim
     attack_sparse = (n // 2) * n * n       # yari-bos A: ~n^3/2
     attack_perm = n * n                    # perm: sadece satir secimi
-    attack_zero = n                        # A=0: sonuc sifir, carpim yok
-    kw_all = cost_of_prove(dense(n), dense(n, seed=2), 0, 1 << 6)   # girdiden bagimsiz
+    attack_zero = n                        # A=0: sonuc zero, carpim yok
+    kw_all = cost_of_prove(dense(n), dense(n, seed=2), 0, 1 << 6)   # inputden independent
     return {
         "v1_honest": honest_v1,
         "v1_attack_sparse_advantage": honest_v1 / attack_sparse,
@@ -188,15 +188,15 @@ def v1_contrast():
 #
 # Bilincli sapmalar (toy olcek icin; PEARL_DOCS_ANALIZ.md 11.1'de doc):
 #   * gurultu iid (rank-r DEGIL). 5.1'in 1./2./4. kontrolu per-entry/per-row
-#     istatistikleridir; rank-r yalnizca 4'un *saldiri versiyonunu* etkiler
+#     istatistikleridir; rank-r yalnizca 4'un *attack versiyonunu* etkiler
 #     (toy'da peaked-rows ile tetiklenir).
 #   * sigma_i = DELTA * RMS(row) — per-entry noise std (Pearl'in C.4/C.5
-#     normalizasyonunun tam karsiligi degil; Pearl'in sigma_i'nin per-entry mi
+#     not the exact counterpart of the normalization; whether Pearl's sigma_i is per-entry
 #     row-level mi oldugu metinden net cikmadi, bu toy secim "noise-to-signal
 #     her satirda ayni" sozuyle tutarlidir).
 #   * tamed/unpredictable esikleri toy olcege (K=64, GRID=16) kalibre edildi;
 #     Pearl'in uretim degerleri (tau_tame=256 vs.) k~4096-16384 icin.
-#   * unpredictable: toy v_iu < ulp(M_ij) karsilastirmasi kullanir (Pearl
+#   * unpredictable: toy v_iu < ulp(M_ij) comparisonsi kullanir (Pearl
 #     v_iu < ulp(M_ij)^2 + 2^21 boleni kullanir — FP8 bit butcesinden gelir).
 #     Toy'da esik 2^21 olcegi anlamsiz; yapi (summand spread vs accumulation
 #     grid) korunur.
@@ -231,7 +231,7 @@ class JackpotToy:
     @classmethod
     def entry_liveness(cls, A):
         """Idle entry: |A_iu| >= tau_idle * sigma_i  -> quantized degeri noise
-        tarafindan neredeyse hareket ettirilemiyor ('no-noise entries' saldirisi)."""
+        tarafindan neredeyse hareket ettirilemiyor ('no-noise entries' attacksi)."""
         fr = []
         for row in A:
             s = cls.noise_std_row(row)
@@ -248,7 +248,7 @@ class JackpotToy:
     def noise_floor(cls, A):
         """Her acilan satir en az SIGMA_MIN quantized grid unit gurultu tasinmak
         zorunda. Peaked row -> per-tensor scale peak'e ayarlanir, geri kalanin
-        (gurultu dahil) grid'e sikismasi ('low local entropy' saldirisi)."""
+        (gurultu dahil) grid'e sikismasi ('low local entropy' attacksi)."""
         g = cls.gamma(A)
         worst = float("inf")
         for row in A:
@@ -300,7 +300,7 @@ class JackpotToy:
     # ---------------- 5.1.4 unpredictable summands ---------------------------
     # Toy'da IKI gurultu rejimi vardir (Pearl'in TEK sigma_i'sinden bilincli
     # sapma): toy'un 16-seviye LINEER grid'i, Pearl'in non-uniform FP8 grid'i
-    # + FP32 accumulator'unun olcek ayrimini ifade edemedi.
+    # + and cannot express the scale separation of the FP32 accumulator.
     #   * TV-11/12 (input-side)  : sigma_i = DELTA * RMS(row)   [Pearl 5.1.1/2]
     #   * TV-14  (accumulation)  : ACC_NOISE grid unit = sub-quantization olcegi.
     #     Gerekce: Pearl'de FP8 subnormal sikismasi arka plan entry'sini ~2^-17'e
@@ -352,9 +352,9 @@ class JackpotToy:
         }
 
 
-# --------------------- test girdi siniflari (Pearl 5.2 saldiri vektorleri) ----
+# --------------------- test input siniflari (Pearl 5.2 attack vektorleri) ----
 def _uniform_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """Saglikli 'typical workload' arka plan: uniform [-c, c] girdiler.
+    """Saglikli 'typical workload' arka plan: uniform [-c, c] inputler.
     (Gaussian yerine uniform: max/RMS orani ~sqrt(3) sabit -> noise-floor ve idle
     marjlari temiz; Gaussian'da max~4sigma marj kirilgan.)"""
     return [[r.uniform(-c, c) for _ in range(k)] for _ in range(n)]
@@ -371,7 +371,7 @@ def peaked_rows(r, m=2, v=40.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 
 def common_peaked_rows(r, v=64.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """'Precision shortcut' (Pearl 5.2 + 7): A ve B'nin her satiri AYNI pozisyonda
+    """'Precision shortcut' (Pearl 5.2 + 7): every row of A and B is at the SAME position
     buyuk entry tasiyor -> her hucre tek buyuk summand ile domine edilir, geri
     kalan summand'lar accumulator grid'inin altinda kaliyor.
     (v, peak'in domine ettigi RMS ile ACC_BITS'e gore kalibre: ulp ~ v^2/2^ACC
@@ -384,8 +384,8 @@ def common_peaked_rows(r, v=64.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 
 def identical_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """Tum satirlar ayni (rank-1 tile): 'coherent dot products' (Pearl 5.2) +
-    'input crafting' (Pearl 7) — hucrenin tamaminda uyum."""
+    """All rows identical (rank-1 tile): 'coherent dot products' (Pearl 5.2)
+    + 'input crafting' (Pearl 7): agreement across the whole cell."""
     u = [r.uniform(-c, c) for _ in range(k)]
     return [list(u) for _ in range(n)]
 
@@ -436,8 +436,7 @@ def tv13():
 
 # ---------------------------------------------------------------------- TV-14
 def tv14():
-    """Unpredictable summands: common-peaked (her hucre tek buyuk summand) RED;
-    healthy ACCEPT."""
+    """Unpredictable summands: common-peaked (one large summand per cell) RED; healthy ACCEPT."""
     r = _r2.Random(404)
     Ab, Bb = common_peaked_rows(r, v=64.0)
     f_bad, ok_bad = JackpotToy.unpredictable_summands(Ab, Bb)
@@ -449,16 +448,16 @@ def tv14():
 
 # --------------------------------------------------------------- RT-1..RT-3
 def rt_tests(window=100, t_b=0.1):
-    """Retarget matematigi (zaman modeli, PoW dongusu olmadan)."""
+    """Retarget math (a time model, without a PoW loop)."""
     ch = Chain()
     ch.retarget_window, ch.target_block_time = window, t_b
-    ch.D = 100                          # bilerek dengeden uzak (10x dusuk)
-    lam = 10000.0                       # deneme/s -> denge D = lam*T_b = 1000
-    # RT-1: sabit hashrate -> D yakinsar lam*T_b'ye
+    ch.D = 100                          # deliberately 10x below equilibrium
+    lam = 10000.0                       # attempts/s -> equilibrium D = lam*T_b = 1000
+    # RT-1: constant hashrate -> D converges to lam*T_b
     for _ in range(window * 6):
         ch.sim_block(lam)
     converged = ch.D
-    # RT-2: ani 10x hashrate atlama -> pencere basina max 4x (clip)
+    # RT-2: a sudden 10x hashrate jump -> max 4x per window (clip)
     lam2 = lam * 10
     ratios = []
     for _ in range(window * 4):
@@ -466,7 +465,7 @@ def rt_tests(window=100, t_b=0.1):
         if r:
             ratios.append(r["ratio"])
     max_jump = max(ratios) if ratios else 0.0
-    # RT-3: gurultulu hashrate -> medyan filtre D'yi yumusatir
+    # RT-3: noisy hashrate -> the median filter smooths D
     ch2 = Chain()
     ch2.retarget_window, ch2.target_block_time = window, t_b
     ch2.D = 1000
@@ -487,25 +486,25 @@ def rt_tests(window=100, t_b=0.1):
 
 # ---------------------------------------------------------------------- main
 # ============================================================================
-# TV-21: LOW-ENTROPY DONANIM SALDIRISI — TV-12'NIN SINIRI (Polymath 6)
+# TV-21: LOW-ENTROPY HARDWARE ATTACK — the bound on TV-12 (Polymath 6)
 # ============================================================================
 # Pearl Polymath Problem 6: "Is 1-bit hardware enough to implement
 # Pearl-GEMM(A=0,B=0)?" — bu, KOK icin de ORTAK ACIK (V2 12.1).
-# Saldiran, noise floor'u kirmak icin peak'i kademeli artirir.
-# TV-21 OLCER: esik nerede? Kac madde geciliyor, kaci kiriliyor?
+# The attacker raises the peak gradually to try to break the noise floor.
+# TV-21 MEASURES: where is the threshold? How many entries pass, how many break?
 #
-# Toy modelleme: gurultu DELTA*RMS(row). Peak v arttikca RMS de artar
-# (RMS ~ sqrt((k-1)*c2 + v2)), yani noise/g orani v ile buyuyor —
-# AMA buyume sqrt donusu ile yavaslar (v'ye dogrusal degil).
-# Saldiranin amaci: noise/g >= SIGMA_MIN (=1) saglamak; basarirsan
-# "dusuk-entropili" (grid'e sikismis) cikti uretip kapisan donanimi
-# kullanabilir. TV-21 su soruyu cevaplar: KOK'un kontrolu NE KADAR
-# dayanikli?
+# Toy model: the noise is DELTA*RMS(row). As the peak v grows so does the RMS
+# (RMS ~ sqrt((k-1)*c2 + v2)), i.e. the noise/g ratio grows with v -
+# but the growth slows with the sqrt turn (not linear in v).
+# The attacker's goal: make noise/g >= SIGMA_MIN (=1); if it succeeds it can
+# produce a "low-entropy" (pinned to the grid) output and use colluding hardware.
+# TV-21 answers this question: HOW ROBUST is the KOK control?
 
 def low_entropy_sweep(v_list, m=2, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """Her v icin peaked_rows(m=2, v) ile noise-floor olcusu dondur.
-    Not: peaked_rows'un 'r' parametresi RANDOM OBJESI (rank degil);
-    bu fonksiyon JackpotToy.N x K toy grid icin _r2 kullanir."""
+    """For each v, return the noise-floor measure with peaked_rows(m=2, v).
+
+    Note: the 'r' parameter of peaked_rows is a RANDOM OBJECT (not the rank);
+    this function uses _r2 for the JackpotToy N x K toy grid."""
     out = []
     for v in v_list:
         A = peaked_rows(_r2, m=m, v=float(v), n=n, k=k, c=c)
@@ -515,15 +514,13 @@ def low_entropy_sweep(v_list, m=2, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 
 def tv21():
-    """TV-21: low-entropy (Polymath 6: '1-bit hardware enough?') saldirisina
-    karsi TV-12 noise-floor'unun DAYANIKLILIK egrisi.
-
-    *** HONEST RESULT — the opposite of what was expected ***
-    Saldiran peak v'yi artirip noise floor'u kirmaya calisir. Olcum:
-    noise/g orani v ile ARTMAZ, DUSUSUR ve asimptotik ~0.707'ye sabitlenir
-    (gmax = v/(GRID/2) ile noise = DELTA*RMS ~ v*sqrt(m/k) ayni hizda buyur).
-    So in the toy model the peaked attack passes at NO v (all RED).
-    Bu 'guzel' sonucun altinda bir toy-model yanilgisi yatar (asagida)."""
+    '''TV-21: the robustness curve of the TV-12 noise floor against low-entropy
+    attacks (Polymath 6: 1-bit hardware). HONEST RESULT, opposite of the
+    expectation: the attacker raises the peak v to break the noise floor, but
+    the noise/g ratio does not grow with v, it falls and pins asymptotically to
+    ~0.707 (gmax = v/(GRID/2) while noise = DELTA*RMS ~ v*sqrt(m/k) grow at the
+    same rate). So in the toy model the peaked attack passes at no v (all RED).
+    This nice result hides a toy-model delusion (below).'''
     _r2.seed(2121)
     vs = [10, 20, 30, 40, 60, 80, 100, 150, 200, 400]
     sweep = low_entropy_sweep(vs)
@@ -533,7 +530,7 @@ def tv21():
         print(f"  {v:>8} {nf:>9.3f} {'ACCEPT' if ok else 'RED':>8}")
         if ok:
             n_pass += 1
-    # Gercek davranis: hicbir v gecemez; oran v ile monotone duser
+    # real behavior: no v can pass; the ratio decreases monotonically with v
     assert n_pass == 0, "TV-21: a v passed - inconsistent with the toy model"
     ratios = [nf for _, nf, _ in sweep]
     assert abs(ratios[-1] - 0.707) < 0.02, ratios[-1]
@@ -548,12 +545,12 @@ def tv21():
     print("  So in FP8 the direction of the attack is the REVERSE of the toy's:")
     print("    - toy:  v artinca noise/g ~ sabit (0.707) -> her zaman RED")
     print("    - FP8:  as v grows the noise pins to the grid -> ACCEPT risk (attack)")
-    print("  => TV-12'nin toy'daki 'tum v RED' sonucu, FP8 icin KANIT DEGILDIR;")
+    print("  => the toy's 'all v RED' result for TV-12 is NOT a proof for FP8;")
     print("     that the control is discriminative only in the INT/fixed-point toy")
     print("     gosterir. FP8 icin noise modelinin QUANTIZATION-WARE (RMS degil,")
     print("     per-tensor scale + subnormal sikisma) yeniden yazilmasi gerekir")
-    print("     - bu, Faz 3'teki Hawkeye (Yol A) baglaminda yapilmali.")
-    print("     (TV-14'de ACC_NOISE enjekte etmemizin sebebi tam olarak buydu.)")
+    print("     - this must be done in the Phase 3 Hawkeye (Path A) context.")
+    print("     (that is exactly why we injected ACC_NOISE in TV-14.)")
     print()
     print("  TV-21 low-entropy: discriminative in the toy (0/10 passed) + FP8 bound  ACCEPT")
     return True, sweep
@@ -589,7 +586,7 @@ if __name__ == "__main__":
     print(f"       v1 honest n^3 = {v['v1_honest']}")
     print(f"       sparse A: {v['v1_attack_sparse_advantage']:.0f}x | perm A: "
           f"{v['v1_attack_perm_advantage']:.0f}x | A=0: {v['v1_attack_zero_advantage']:.0f}x")
-    print(f"       KW same cost for every input ({v['kw_cost_any_input']} islem) -> 1.0x")
+    print(f"       KW same cost for every input ({v['kw_cost_any_input']} op) -> 1.0x")
 
     r = rt_tests()
     print("[RT-1] start 10x away from equilibrium -> D -> Lambda*T_b:",

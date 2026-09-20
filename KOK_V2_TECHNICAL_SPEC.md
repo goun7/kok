@@ -226,7 +226,7 @@ it. **KÖK solution:**
 
 ```
 submit → bond → (epoch seed commit) → VRF ataması → proof (S2) / cert (S1)
-   → block inclusion → W_s blok fraud penceresi → settle (fee + reward)
+   → block inclusion → W_s-block fraud window → settle (fee + reward)
    → hile kanıtı: slash + itirazcıya reward
 ```
 
@@ -332,12 +332,12 @@ def epoch_seed(height):
 
 def assign_tasks(height, tasks):
     seed = epoch_seed(height)
-    for t in tasks:                                  # her görev için bağımsız atama
+    for t in tasks:                                  # independent assignment per task
         vrf_out, vrf_proof = vrf.prove(miner_vrf_key, seed ‖ t.tid)
         w = as_int(vrf_out) / 2**256                  # [0,1)
         if w < t.assignment_probability(height):      # stake/compute-ağırlıklı kapı
             assigned[miner].append((t, vrf_out, vrf_proof))
-    # Madenci kendi atadığı görevi SEÇEMEZ; sadece atananı kabul eder veya FORFEIT (bond kesintisi)
+    # The miner cannot CHOOSE its assigned task; it only accepts it or FORFEITS (bond slash)
 ```
 
 ### A.10.4 Miner: proof production + block solution
@@ -353,7 +353,7 @@ def mine_block(miner, assigned_tasks, ctx):
         if int(H(digest ‖ nonce), 16) < target:
             break                                     # blok kazıldı
 
-    # U katmanı (aynı bloğun içinde, opsiyonel, boost ama ZORUNLU DEĞİL):
+    # U layer (inside the same block, optional, a boost but NOT MANDATORY):
     proofs = []
     for t in assigned_tasks:
         harness = load_harness(t.spec.harness_id)
@@ -548,7 +548,7 @@ Let `T_act` be the elapsed time over a window of `W` blocks; the target block ti
 
 ```
 Lambda_hat = D · W / T_act                       // D'den bagimsiz hashrate tahmini
-Lambda_smooth = median( son <=3 pencerenin Lambda_hat )   // medyan filtre
+Lambda_smooth = median( Lambda_hat of the last <=3 windows )   // median filter
 D <- clip( Lambda_smooth · T_b ,  D/4,  4·D )    // Bitcoin'in 4x sinirlari
 ```
 

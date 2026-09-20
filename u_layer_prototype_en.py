@@ -7,7 +7,7 @@ Akis:  submit_task (escrow + bond + burn)
     -> VRF atamasi  (epoch seed, lookback=64)
     -> mine_block   (G katmani KW sertifika + U katmani STARK-benzeri ispat)
     -> validate_block (G + VRF + proof + C_FEE anti-aggregation + PQ schema)
-    -> challenge / slash / settle  (W_s = 100 blok fraud penceresi)
+    -> challenge / slash / settle  (W_s = 100 block fraud window)
 
 G katmani (KW/cuPOW) BU dosyada sadelestirilmis bir kernel ile temsil edilir:
 gerceklestirilebilir bir MatMul-transkript PoW (kucuk boyut, per-tile hash).
@@ -22,12 +22,12 @@ from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------- constants
 SEED = 20260919
-W_s = 100                 # fraud penceresi (blok)
+W_s = 100                 # fraud window (blocks)
 EPOCH_LOOKBACK = 64       # VRF seed lookback (grinding karsiti)
-BOND_RATIO = 1.0          # miner bond = fee * BOND_RATIO  (sybil maliyeti)
+BOND_RATIO = 1.0          # miner bond = fee * BOND_RATIO  (sybil cost)
 C_FEE = 500               # blok basina toplam U fee cap'i (anti-aggregation)
 FRAUD_REWARD = 50         # basarili itiraz odulu
-DEADLINE_H = 200          # gorev son kullanma suresi (blok)
+DEADLINE_H = 200          # task expiry (blocks)
 PQ_SET = {"stark-circle-1", "stark-pq-1"}    # izin verilen proof_system_id'ler
 DEFAULT_PS = "stark-circle-1"
 RETARGET_WINDOW = 1000     # W (spec B.3; testlerde kucultilir)
@@ -168,7 +168,7 @@ class Chain:
     def tip(self):
         return self.blocks[-1]
 
-    # ---------------- A.10.2 gorev gonderimi
+    # ---------------- A.10.2 task submission
     def submit_task(self, client, spec, fee, burn_rate, gas=0):
         assert fee > 0 and 0.0 < burn_rate <= 0.5, "burn_rate (0.0, 0.5]"
         bond = int(fee * BOND_RATIO)
@@ -190,7 +190,7 @@ class Chain:
         return H("seed", self.blocks[h])
 
     def assign_tasks(self, miner, tasks, prob=0.5):
-        """Madenci kendi gorevini secemez: VRF cikisina gore atanir."""
+        """The miner cannot choose its own task: it is assigned by the VRF output."""
         seed = self.epoch_seed(self.height())
         vrf = VRF("sk-" + miner)
         pk = "sk-" + miner
@@ -220,7 +220,7 @@ class Chain:
             cert = self.kernel.prove(A, B, ctx, nonce, self.D)
             if cert is not None:
                 break
-        # --- U katmani: atanmis gorevlerin ispati (opsiyonel ama atandiysa zorunlu)
+        # --- U layer: proof of the assigned tasks (optional but mandatory once assigned)
         u_proofs = []
         for t in assigned_tasks:
             harness_A, harness_B = t.spec.program
@@ -261,10 +261,10 @@ class Chain:
 
     def retarget(self):
         """Her W blokta hashrate tahmini yap ve D'yi yeniden kur.
-        Onemli: pencere icinde olculen T_act, o pencerenin D'siyle uretilmistir;
+        Important: the T_act measured inside a window was produced by that window's D;
         bu yuzden carpansal (stale) oran degil, D'den bagimsiz hashrate tahmini
             Lambda_hat = D * W / T_act        (cunku blok hizi = Lambda/D)
-        kullanilir. Medyan filtre son 3 pencerenin Lambda_hat'sini yumusatir
+        is used. The median filter smooths the Lambda_hat of the last 3 windows
         (ani dalgalanmalari ezer). Sonra D <- Lambda_hat_smooth * T_b, 4x ile
         sinirli (Bitcoin'in siniri)."""
         W = self.retarget_window
@@ -276,7 +276,7 @@ class Chain:
         lam_hat = self.D * W / T_act                     # D'den bagimsiz tahmin
         self.window_history.append((T_act, self.D, lam_hat))
         est = sorted(h[2] for h in self.window_history[-3:])
-        lam_smooth = est[len(est) // 2]                  # medyan (son <=3 pencere)
+        lam_smooth = est[len(est) // 2]                  # median (last <=3 windows)
         D_new = int(lam_smooth * t_b)
         D_old = self.D
         D_new = max(D_old // 4, min(D_old * 4, D_new))   # 4x clip
@@ -284,7 +284,7 @@ class Chain:
         return {"T_act": T_act, "lam_hat": lam_hat, "lam_smooth": lam_smooth,
                 "ratio": self.D / D_old, "D": self.D}
 
-    # ---------------- A.10.5 dogrulama
+    # ---------------- A.10.5 verification
     def validate_block(self, blk, A, B):
         ctx = blk["ctx"]
         if not self.kernel.verify(blk["cert"], A, B, ctx, blk["nonce"], self.D):
@@ -301,10 +301,10 @@ class Chain:
             return "REJECT:anti-aggregation"
         return "ACCEPT"
 
-    # ---------------- A.10.6 fraud penceresi + slash
+    # ---------------- A.10.6 fraud window + slash
     def challenge(self, challenger, tid, ledger_block_height):
         t = self.tasks[tid]
-        assert ledger_block_height <= t.proof_height + W_s, "fraud penceresi kapandi"
+        assert ledger_block_height <= t.proof_height + W_s, "fraud window closed"
         # independent backend: ciktiyi bastan hesapla (farkli yol, ayni sonuc)
         harness_A, harness_B = t.spec.program
         C = [[sum(harness_A[i][k] * harness_B[k][j] for k in range(len(harness_B)))
@@ -364,7 +364,7 @@ def tv5():
     t = ch.submit_task("client-1", spec, fee=100, burn_rate=0.3)
     assert t.burned == 30 and t.escrow == 70 and t.bond == 100, (t.burned, t.escrow, t.bond)
     assert ch.burn_address_balance == 30
-    # sybil: ayni isi 1000 kez gondermek (0,0]-burn olmadan bedava olurdu
+    # sybil: sending the same work 1000 times would be free without the burn
     cost = 1000 * 30
     assert cost > 0
     return t.burned, t.escrow, cost
@@ -400,7 +400,7 @@ def tv7():
     t = ch.submit_task("c1", TaskSpec("mm", (A, A), 64, DEADLINE_H), 100, 0.2)
     list(ch.assign_tasks("m1", [t], prob=1.0))
     blk = ch.mine_block("m1", [t], A, A, wrong_result=True)
-    assert ch.validate_block(blk, A, A) == "ACCEPT"     # dogrulama zayif: on-chain goremeyiz
+    assert ch.validate_block(blk, A, A) == "ACCEPT"     # weak verification: we cannot see it on-chain
     verdict, rew = ch.challenge("v1", t.tid, ch.height())
     assert verdict == "SLASHED" and rew == FRAUD_REWARD
     assert ch.miners["m1"]["slashed"] >= 100
@@ -409,7 +409,7 @@ def tv7():
 
 
 def tv8():
-    """Zero-demand liveness: 1000 blok boyunca hic U gorevi yok -> tum bloklar gecerli."""
+    """Zero-demand liveness: no U-task for 1000 blocks -> all blocks valid."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
     ok = 0
