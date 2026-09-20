@@ -95,6 +95,15 @@ System date: 19 September 2026.
    parent-reference performance); `mergeset_size_limit = 2k = 36`. **Note:** these are
    Kaspa's parameters, used as a template; KÖK v2's own BPS is not yet chosen.
 
+   **Verification-status note (2026-09-21):** these figures were read from the
+   live repository during an earlier session. A re-verification attempt on
+   2026-09-21 could not reach github.com (network unreachable from this host).
+   The figures are therefore marked **"verified earlier, not re-verified this
+   session."** Before citing them in any external document they must be
+   re-read; the review package does not depend on their exact values — the
+   prototype takes `k`, `max_parents` and `mergeset` as **parameters**, so the
+   code is correct even if a figure were stale.
+
 ## 2026 negative results (evidence forcing the G/U separation in KÖK v2)
 
 7. **Basu — an empirical measurement of the Pearl Network.** arXiv **2606.04819** (2026):
@@ -160,11 +169,45 @@ System date: 19 September 2026.
 - Evidence repository: `findings.md` (§9–§18), `DEGERLENDIRME_100.md` (§6–§8, §13),
   `PEARL_DOCS_ANALIZ.md` (Pearl primary-source analysis).
 
-## Market data (2026-09-19)
+## Market data (2026-09-21, live)
 
-BTC 204.44 TWh/yr, ~904 EH/s, $81,448 (−35.4% from ATH $126,080); Kaspa 27.71B/28.70B KAS
-mining (96.5%, ~$40M left); Dynex mcap $128k at ATL (−99.91%); AI-compute tokens TAO −65%,
-RNDR −88%, AKT −93%. Pearl: 800 blocks/day (108 s), 2,674 PRL/block, $0.76.
+**Bitcoin — refreshed 2026-09-21 via the blockchain.info open API** (each value is an
+instantaneous query; source `https://blockchain.info/q/*`):
+hashrate **956,911,537,880 TH/s ≈ 957 EH/s**, price **$81,162.26**, difficulty
+**1.3276×10¹⁴**, block height **967,912**. (A repeated query gave 963.5 EH/s — ordinary
+variance; treat the hashrate as ~957–964 EH/s.)
+
+**Older snapshot (2026-09-19), retained for provenance:** BTC 204.44 TWh/yr, ~904 EH/s,
+$81,448 (−35.4% from ATH $126,080). The hashrate has risen ~6% between the two dates; the
+price is essentially flat. **Neither figure is load-bearing in the paper** — the paper cites
+Pearl's 24 EH/s (from Basu), not Bitcoin's, for its security comparison.
+
+Kaspa 27.71B/28.70B KAS mined (96.5%, ~$40M left); Dynex mcap $128k at ATL (−99.91%);
+AI-compute tokens TAO −65%, RNDR −88%, AKT −93%. Pearl: 800 blocks/day (108 s),
+2,674 PRL/block, $0.76.
+
+**Verifiable live source for the Bitcoin figures** (any reader can re-run):
+`https://blockchain.info/q/hashrate`, `/q/24hrprice`, `/q/getdifficulty`, `/q/getblockcount`.
+CoinGecko's API returned 429 (rate-limited) on 2026-09-21, so token prices were not refreshed
+this session — the TAO/RNDR/AKT figures above are the 2026-09-19 snapshot and should be
+re-checked before being cited externally.
+
+## Regulation (verified 2026-09-21 against the official text)
+
+- **MiCA — Regulation (EU) 2023/1114.** EUR-Lex CELEX:32023R1114, Official Journal of the
+  European Union **L 150/40**, 9.6.2023 (regulation of 31 May 2023).
+  <https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32023R1114> — full text
+  fetched (1.68 MB), Article 3 definitions quoted verbatim in `KOK_V2_PAPER.md` §9. Applies
+  **from 30 December 2024**. Article 3 **(5)** crypto-asset, **(6)** asset-referenced token,
+  **(7)** e-money token, **(9)** utility token, **(10)** issuer.
+  *Note: earlier working notes cited "Article 3(1)(5)" — the official numbering is (9) for
+  utility token; corrected.*
+- **SEC v. Ripple / Howey — NOT re-verified this session.** CourtListener REST v4 was queried
+  (search types o/r, courts ca2 and nysd, docket number 20-cv-10932, docket id 646160) and
+  returned **no Ripple record**; RECAP coverage is likely incomplete there. sec.gov returned
+  403 and the search engines returned bot-protection pages. **The paper's Howey discussion is
+  the authors' own analysis and is labeled as such** — it does not cite Ripple, so this
+  un-verified status is a disclosure, not a defect.
 
 ---
 

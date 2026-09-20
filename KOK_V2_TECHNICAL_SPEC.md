@@ -278,7 +278,34 @@ lines are intentionally merged, (iii) Pearl's jackpot policy (TV-11..TV-14) is b
 A. **Path B is kept as "the path of the future" on the §7 crypto-agility plane** (it overcomes the
 whitelist lock-in; it brings native privacy). **Honest risk:** Path A ties KÖK v2 to specific GPU
 generations — this makes the ASIC-centralization concern of §11 **manageable but real**; extending
-the whitelist requires a Hawthorne-style governance process (to be defined in Phase 2).
+the whitelist requires a governance process. That process is **defined now** (it was previously
+deferred to Phase 2 without a design — an unacceptable open item):
+
+**§A.11 GPU whitelist governance (defined, not deferred)**
+
+The whitelist is a list of `(GPU model, driver, accumulation order)` triples for which the G kernel
+is bit-exact. Adding an entry is a **protocol change**, not an operator choice, because it changes
+the set of hardware that can mine.
+
+1. **Proposal.** Anyone submits a candidate triple plus a **bit-exactness dossier**: a reference
+   device, a pinned driver, and the full set of test vectors (§A.10.7) reproduced on that device.
+2. **Verification period — 2 epochs.** Any node may run the dossier on independent hardware of the
+   same model. A disagreement is a contested proposal. This is the only part of the process that is
+   empirical: bit-exactness cannot be argued, only reproduced.
+3. **No false-accept tolerance.** A proposal that fails on **any** reporting device of the same
+   model is rejected. The burden is on the proposer, because a false accept lets one hardware
+   class produce proofs that the rest of the network cannot verify — the exact failure Path A exists
+   to prevent.
+4. **Activation via the versioned-schema path** (§A.9): the new triple enters with a schema version;
+   blocks citing it before activation are invalid. No flag day.
+5. **Removal is symmetric.** A whitelisted triple that stops being bit-exact (driver change,
+   microcode) is removed by the same path, with the same 2-epoch window. Mining on a removed
+   triple produces unverifiable blocks and is slashed as an invalid proof.
+
+**What this does NOT solve (honest):** the process is only as honest as the hardware population
+reporting. A GPU model with few independent operators is verified by few parties. This is the
+centralization risk Path A inherits, and the reason Path B (zkVM) remains the long-term answer —
+a circuit verifies on any hardware, a whitelist does not.
 
 **Structural difference of Pearl's FP scheme from KW (affects KÖK):** in Pearl, entrywise
 quantization is nonlinear — `Q(A+N) ≠ Q(A)+Q(N)` — which breaks the low-rank shortcut; **thus the

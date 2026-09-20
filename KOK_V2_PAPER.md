@@ -349,6 +349,26 @@ with pinned test vectors.
   (a change is the strongest broken trust signal; please remove v1's laxness of "to be
   finalized before launch").
 
+### 8.1 ★ The market size — what is measured, what is a guess (2026-09-21)
+
+A design paper that claims a market usually cites a forecast. **KÖK v2 deliberately does not
+publish a TAM number**, and the reason is stated as a finding rather than as a gap:
+
+- **What is measured (cited, verifiable):** Pearl's live network is **24 EH/s, ~320,000 GPUs,
+  ~112 MW** (Basu 2606.04819) — and it produces **zero** useful AI compute. That is the only
+  hard datapoint on what a PoUW chain actually attracts at scale, and it is a datapoint about
+  **mining supply**, not demand. Bitcoin's live hashrate is **~957 EH/s** at **$81,162**
+  (blockchain.info, 2026-09-21) — the security benchmark a PoW chain must stand against.
+- **What is NOT measured (and is not claimed):** the paying demand for verifiable compute on a
+  permissionless chain. **No source in this paper estimates it.** The honest position: the
+  existence of a GPU-rental market proves that compute is bought and sold, but **nothing in that
+  market is priced in a permissionless settlement token today**, and the size of the subset that
+  would be is **unknown**. F3a (§10.1) exists precisely to measure it.
+- **Why no TAM is published:** a market-size forecast in a pre-testnet paper would be either
+  a vendor's promotional figure (not citable in an academic document) or a guess dressed as
+  analysis. **The paper's discipline is to claim only what it can source** (§11). This costs
+  points with readers who expect a TAM; it buys credibility with the readers who check footnotes.
+
 ---
 
 ## 9. Law and Compliance
@@ -386,6 +406,36 @@ with pinned test vectors.
   does not, **utility demand is optional** (the G layer stands regardless). **This allows KÖK
   v2 to position regulation not as a risk but as an option** — the worst case is "just an
   honest GHOSTDAG PoW" (§11 item 3).
+- **★ 2026-09-21: the MiCA classification, verified against the official text.** The utility-token
+  route was checked against Regulation (EU) 2023/1114 (MiCA) as published in the Official Journal
+  (EUR-Lex, CELEX:32023R1114, L 150/40, 9.6.2023; in force 30 December 2024). The relevant
+  definitions, quoted verbatim from Article 3:
+  - **(5)** "‘crypto-asset’ means a digital representation of a value or of a right that is able
+    to be **transferred** and stored electronically using distributed ledger technology or
+    similar technology;"
+  - **(9)** "‘utility token’ means a type of crypto-asset that is **only intended to provide
+    access to a good or a service supplied by its issuer**;"
+  - **(6)** "‘asset-referenced token’ means a type of crypto-asset that is not an electronic
+    money token and that **purports to maintain a stable value** by referencing another value
+    or right or a combination thereof…"
+
+  **Honest consequence:** KÖK v2's token is **not** a utility token under (9). It grants access
+  to verifiable compute, but it is also **mined for a block reward** — a value and a right under
+  (5) that is not "only" access. The honest classification is therefore **"crypto-asset, other
+  than an asset-referenced or e-money token"** — MiCA's third category — with the white-paper
+  disclosure duties that follow, including the verbatim requirement that the paper state:
+  "the crypto-asset may lose its value in part or in full; (b) the crypto-asset may not always
+  be transferable; (c) the crypto-asset may not be liquid; (d) where the offer to the public
+  concerns a utility token, that utility token may not be exchangeable against the good or
+  service…"
+
+  **What this changes in the design:** nothing structural, and that is the point. MiCA imposes
+  **disclosure duties on the offer**, not a prohibition on mining-based distribution. The
+  fair-launch, no-premine, no-investor structure of KÖK v2 is what keeps the disclosure surface
+  small. **What it does not solve (open):** the jurisdiction question — MiCA binds the EU offer,
+  not the anonymous issuer; and the **US Howey analysis remains an internal analysis**, not a
+  verified one (see the research log `arastirma/hukuk_howey_mica.md`: Ripple's 2026 status could
+  not be re-verified this session; the paper does not cite it, and says so).
 
 ---
 
@@ -444,6 +494,32 @@ Therefore a **censorship-resistance criterion** is added to F3a: when the sequen
 deliberately rejects task X, it is shown that the (task owner → alternative sequencer →
 refund) path works. This is a **temporary** centrality that will be replaced by GHOSTDAG in
 F3b, and it is written explicitly in the document as a "test limitation."
+
+### 10.2 ★ Budget — the honest constraint (2026-09-21)
+
+Every roadmap above names durations but no cost. The constraint is not modesty — it
+is **structural**, and it shapes the design:
+
+| Item | Cost | Constraint |
+|---|---|---|
+| **F1/F1b/F4b (spec, prototypes, analysis)** | ~0 (compute time) | **Already done.** The paper, spec and 7 runnable prototypes are the entire output of this phase. |
+| **F3a (economy testnet)** | 1 VPS + ~200 dev-hours | Can be done **by one person** in 3–4 months. This is the cheapest decision point in the entire plan, and it is deliberately first. |
+| **Cryptographer review** | $0 — **deferred payment** | The reviewers are external academics; while the project is anonymous **compensation is hard or impossible** (no bank account, no legal entity). Payment is deferred to post-funding, which means **the review timing is not ours to control** — it is the single largest schedule risk. |
+| **F3b (consensus devnet)** | 2–3 engineers × 6 months + test GPUs | **Not fundable today.** Requires either funding (breaks anonymity) or a grant program (requires a legal entity). This is the hard gate. |
+| **F5/F6 (testnet, audits)** | 2 security audits ≈ market rate; 1000+ miners implies ecosystem traction | **Not fundable today.** Audits before mainnet are non-negotiable; an unaudited mainnet with a bond market would be reckless. |
+
+**What this budget says, plainly:** KÖK v2 can reach **F3a and a review** without money. It
+**cannot** reach F3b without either funding or a grant. The design consequence — already present,
+now stated as a budget consequence rather than a preference: **F3a exists to fail cheaply.** If
+F3a shows nobody pays for tasks, the project stops having spent one person's time; if it shows
+real demand, that evidence is the only thing that could justify the F3b raise. **No promise is
+made here about reaching mainnet.** The honest statement of intent is: reach the measurement,
+publish the result either way.
+
+**Anonymity is a means, not a value:** it exists because the project is pre-testnet with no
+users or funds to protect. The moment a legal entity exists (for audits, exchanges, or
+compensating reviewers), the cost of anonymity exceeds its benefit and it should be dropped.
+This is a decision deferred to the funding event, not a commitment to permanent anonymity.
 
 ---
 
@@ -591,6 +667,31 @@ Demirel Thm 2 at the construction level), **(ii) defining utility only via fee-p
 **(iv) a formally verified PQ agility plane** (Lean + ZEBRA + emergency fallback), **(v) a
 published tail-emission economy with the Pass model.** All antecedents are attributed;
 **Pearl's collapse proves that this differentiation is necessary.**
+
+### 12.2 The name, and what it does and does not claim (2026-09-21)
+
+The name is stated once, plainly, and with its etymology **used correctly** — an earlier draft
+mixed two homographs and an academic reader would have noticed:
+
+- **"KÖK"** is the Turkish word for **root**, in the sense of *root of a tree* and, by the
+  standard mathematical extension, *root node* / *roots of unity* — the senses relevant to a
+  consensus layer (the genesis block, the root of the DAG, the primitive root of a finite field).
+  It is a common Turkish noun, not a mythological proper noun.
+- **What it is not:** it is **not** "Kök Tengri." In Old Turkic, *Kök Tengri* is the
+  **Blue/Sky God** — there *kök* is a **color word** (blue/sky), a different homograph from the
+  modern *kök* = root/origin. An earlier draft conflated the two; that conflation was a real
+  etymological error and it has been removed. The name carries **no religious or geopolitical
+  claim**, only the tree/root image that a blockDAG naturally invites.
+- **Opsec — stated as a fact, not as a promise:** the project is anonymous because it is
+  pre-testnet with **no users, no funds, and no investors to protect**. That is a *present
+  condition*, not a guarantee that no analyst could ever link the identity. **No unproveable
+  claim is made here** ("nobody can deanonymize us" would be exactly the kind of statement this
+  paper refuses to make in §11). Anonymity is a cost/benefit choice: it is dropped the moment a
+  legal entity becomes necessary for audits or reviewer compensation (§10.2).
+- **Geographic scope:** the name is Turkish; the protocol is not. Nothing in the design is
+  jurisdiction-specific, and the paper's jurisdictional analysis (§9) is deliberately framed
+  around EU MiCA and US Howey as the two regimes that matter for an offer — not around any
+  national claim. A Turkish word for a universal image is a naming choice, not a positioning.
 
 ---
 
