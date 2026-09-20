@@ -201,8 +201,8 @@ def v1_contrast():
 #     Toy'da esik 2^21 olcegi anlamsiz; yapi (summand spread vs accumulation
 #     grid) korunur.
 #
-# Amac: dort kontrolun de DEGENERATE girisleri REDDETTIGINI, saglikli girisleri
-# KABUL ETTIGINI dogrulamak — KOK v2 G katmanina alinmalarinin gerekcelendirilmesi.
+# Goal: verify all four controls REJECT DEGENERATE inputs and ACCEPT healthy ones
+# verify that they ACCEPT — KOK v2 G katmanina alinmalarinin gerekcelendirilmesi.
 # ---------------------------------------------------------------------------
 import random as _r2
 
@@ -392,7 +392,7 @@ def identical_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 # ---------------------------------------------------------------------- TV-11
 def tv11():
-    """Entry liveness: peaked rows RED, saglikli KABUL."""
+    """Entry liveness: peaked rows RED, healthy ACCEPT."""
     r = _r2.Random(101)
     bad = peaked_rows(r, m=2, v=40.0)
     f_bad, ok_bad = JackpotToy.entry_liveness(bad)
@@ -409,7 +409,7 @@ def tv11():
 
 # ---------------------------------------------------------------------- TV-12
 def tv12():
-    """Noise floor: peaked row RED (grid'e sikisma), saglikli KABUL."""
+    """Noise floor: peaked row RED (pinned to the grid), healthy ACCEPT."""
     r = _r2.Random(202)
     bad = peaked_rows(r, m=1, v=40.0)
     g_bad, ok_bad = JackpotToy.noise_floor(bad)
@@ -422,7 +422,7 @@ def tv12():
 # ---------------------------------------------------------------------- TV-13
 def tv13():
     """Tamed products: tum satirlar ayni (rank-1/coherent) RED; B=A (diagonal
-    uyum) loose-net olarak KABUL; saglikli KABUL."""
+    agreement) ACCEPTED as loose-net; healthy ACCEPT."""
     r = _r2.Random(303)
     bad = identical_rows(r)
     f_bad, ok_bad = JackpotToy.tamed_products(bad, bad)
@@ -437,7 +437,7 @@ def tv13():
 # ---------------------------------------------------------------------- TV-14
 def tv14():
     """Unpredictable summands: common-peaked (her hucre tek buyuk summand) RED;
-    saglikli KABUL."""
+    healthy ACCEPT."""
     r = _r2.Random(404)
     Ab, Bb = common_peaked_rows(r, v=64.0)
     f_bad, ok_bad = JackpotToy.unpredictable_summands(Ab, Bb)
@@ -518,11 +518,11 @@ def tv21():
     """TV-21: low-entropy (Polymath 6: '1-bit hardware enough?') saldirisina
     karsi TV-12 noise-floor'unun DAYANIKLILIK egrisi.
 
-    *** DURUST SONUC — beklenenin TERSI cikti ***
+    *** HONEST RESULT — the opposite of what was expected ***
     Saldiran peak v'yi artirip noise floor'u kirmaya calisir. Olcum:
     noise/g orani v ile ARTMAZ, DUSUSUR ve asimptotik ~0.707'ye sabitlenir
     (gmax = v/(GRID/2) ile noise = DELTA*RMS ~ v*sqrt(m/k) ayni hizda buyur).
-    Yani toy modelde peaked saldirisi HICBIR v'de gecemez (hepsi RED).
+    So in the toy model the peaked attack passes at NO v (all RED).
     Bu 'guzel' sonucun altinda bir toy-model yanilgisi yatar (asagida)."""
     _r2.seed(2121)
     vs = [10, 20, 30, 40, 60, 80, 100, 150, 200, 400]
@@ -530,14 +530,14 @@ def tv21():
     print(f"  {'peak v':>8} {'noise/g':>9} {'TV-12':>8}")
     n_pass = 0
     for v, nf, ok in sweep:
-        print(f"  {v:>8} {nf:>9.3f} {'KABUL' if ok else 'RED':>8}")
+        print(f"  {v:>8} {nf:>9.3f} {'ACCEPT' if ok else 'RED':>8}")
         if ok:
             n_pass += 1
     # Gercek davranis: hicbir v gecemez; oran v ile monotone duser
-    assert n_pass == 0, "TV-21: bir v gecti - toy modellemeyle celisir"
+    assert n_pass == 0, "TV-21: a v passed - inconsistent with the toy model"
     ratios = [nf for _, nf, _ in sweep]
     assert abs(ratios[-1] - 0.707) < 0.02, ratios[-1]
-    print(f"\n  {n_pass}/{len(sweep)} v degeri KABUL - saldiri HICBIR v'de gecemedi")
+    print(f"\n  {n_pass}/{len(sweep)} v values ACCEPTED - the attack passed at NO v")
     print(f"  noise/g asimptotu ~0.707 < SIGMA_MIN=1 (DELTA*sqrt(m/k)*GRID/2)")
     print()
     print("  *** TOY MODELLEMENIN ITIRAFI (neden bu sonuc 'cok iyi' degil) ***")
@@ -545,17 +545,17 @@ def tv21():
     print("  yani noise/g orani SABIT kalir. OTE YANDAN Pearl'in FP8 gerceginde")
     print("  (whitepaper 5.1.2) peak, PER-TENSOR SCALE UP zorlar ve gurultuyu")
     print("  SIFIRA DOGRU SIKISTIRIR (reduced-alphabet donanim avantaji).")
-    print("  Yani FP8'de saldirinin yonu toy'unkinin TERSIDIR:")
+    print("  So in FP8 the direction of the attack is the REVERSE of the toy's:")
     print("    - toy:  v artinca noise/g ~ sabit (0.707) -> her zaman RED")
-    print("    - FP8:  v artinca noise grid'e sikisir   -> KABUL riski (saldiri)")
+    print("    - FP8:  as v grows the noise pins to the grid -> ACCEPT risk (attack)")
     print("  => TV-12'nin toy'daki 'tum v RED' sonucu, FP8 icin KANIT DEGILDIR;")
-    print("     yalnizca INT/fixed-point toy'da kontrolun DISKRIMINATIF oldugunu")
+    print("     that the control is discriminative only in the INT/fixed-point toy")
     print("     gosterir. FP8 icin noise modelinin QUANTIZATION-WARE (RMS degil,")
     print("     per-tensor scale + subnormal sikisma) yeniden yazilmasi gerekir")
     print("     - bu, Faz 3'teki Hawkeye (Yol A) baglaminda yapilmali.")
     print("     (TV-14'de ACC_NOISE enjekte etmemizin sebebi tam olarak buydu.)")
     print()
-    print("  TV-21 low-entropy: toy'da DISKRIMINATIF (0/10 gecti) + FP8 siniri  KABUL")
+    print("  TV-21 low-entropy: discriminative in the toy (0/10 passed) + FP8 bound  ACCEPT")
     return True, sweep
 
 
@@ -568,7 +568,7 @@ if __name__ == "__main__":
     print(f"[TV-1] {s}: {d}")
 
     costs, devs, stats, spread = tv2()
-    print("[TV-2] prescribed hardness — per-attempt maliyet (islem):")
+    print("[TV-2] prescribed hardness — per-attempt cost (ops):")
     for n in costs:
         print(f"       {n:20s} {costs[n]:6d}  sapma %{devs[n]:+.6f}")
     print(f"       basariya kadar deneme (200 trial, mean/min/max):")
@@ -581,22 +581,22 @@ if __name__ == "__main__":
           f"(sapma %{dev:.1f}) -> easy-instance avantaji YOK")
 
     p0, p1 = tv4()
-    print(f"[TV-4] phi: U gorevi yokken {p0:.3f} (=0), 1 gorevli blok {p1:.3f} (>0); "
+    print(f"[TV-4] phi: no U-task {p0:.3f} (=0), one-task block {p1:.3f} (>0); "
           f"her ikisi de ACCEPT")
 
     v = v1_contrast()
-    print("[V1X] v1 saldirgan avantaji (honest/saldirgan maliyet orani):")
+    print("[V1X] v1 adversary advantage (honest/adversary cost ratio):")
     print(f"       v1 honest n^3 = {v['v1_honest']}")
     print(f"       sparse A: {v['v1_attack_sparse_advantage']:.0f}x | perm A: "
           f"{v['v1_attack_perm_advantage']:.0f}x | A=0: {v['v1_attack_zero_advantage']:.0f}x")
-    print(f"       KW her girdi icin ayni maliyet ({v['kw_cost_any_input']} islem) -> 1.0x")
+    print(f"       KW same cost for every input ({v['kw_cost_any_input']} islem) -> 1.0x")
 
     r = rt_tests()
-    print("[RT-1] dengeden 10x uzak baslatma -> D -> Lambda*T_b:",
-          f"{r['RT1_converged_D']} (beklenen ~{r['RT1_expected']})")
+    print("[RT-1] start 10x away from equilibrium -> D -> Lambda*T_b:",
+          f"{r['RT1_converged_D']} (expected ~{r['RT1_expected']})")
     assert 0.7 < r["RT1_converged_D"] / r["RT1_expected"] < 1.4
-    print(f"[RT-2] 10x hashrate sonrasi D: {r['RT2_D_after_10x']} "
-          f"(max pencere orani {r['RT2_max_window_ratio']:.2f} <= 4.0)")
+    print(f"[RT-2] D after 10x hashrate: {r['RT2_D_after_10x']} "
+          f"(max window ratio {r['RT2_max_window_ratio']:.2f} <= 4.0)")
     assert r["RT2_max_window_ratio"] <= 4.0 + 1e-9
     print(f"[RT-3] gurultulu hashrate: D={r['RT3_noisy_D_final']} "
           f"[{r['RT3_bound_low']}..{r['RT3_bound_high']}] arasinda")
@@ -608,41 +608,41 @@ if __name__ == "__main__":
     t11 = tv11()
     print(f"       2-peak rows : idle %{100*t11['bad_2peak'][0]:.2f} "
           f"(esik %{100*JackpotToy.EPS_IDLE:.2f}) -> "
-          f"{'RED' if not t11['bad_2peak'][1] else 'KABUL'}")
-    print(f"       saglikli    : idle %{100*t11['good'][0]:.2f} -> "
-          f"{'KABUL' if t11['good'][1] else 'RED'}")
-    print(f"       tek-peak    : idle %{100*t11['single_peak'][0]:.2f} -> "
-          f"{'KABUL (loose net; TV-12 yakalar)' if t11['single_peak'][1] else 'RED'}")
+          f"{'RED' if not t11['bad_2peak'][1] else 'ACCEPT'}")
+    print(f"       healthy    : idle %{100*t11['good'][0]:.2f} -> "
+          f"{'ACCEPT' if t11['good'][1] else 'RED'}")
+    print(f"       single-peak: idle %{100*t11['single_peak'][0]:.2f} -> "
+          f"{'ACCEPT (loose net; TV-12 catches it)' if t11['single_peak'][1] else 'RED'}")
 
     print("[TV-12] noise floor (Pearl 5.1.2):")
     t12 = tv12()
     print(f"       tek-peak row: noise {t12['bad_single_peak'][0]:.2f} grid unit "
           f"< {JackpotToy.SIGMA_MIN:.0f} -> "
-          f"{'RED' if not t12['bad_single_peak'][1] else 'KABUL'}")
-    print(f"       saglikli    : noise {t12['good'][0]:.2f} grid unit -> "
-          f"{'KABUL' if t12['good'][1] else 'RED'}")
+          f"{'RED' if not t12['bad_single_peak'][1] else 'ACCEPT'}")
+    print(f"       healthy    : noise {t12['good'][0]:.2f} grid unit -> "
+          f"{'ACCEPT' if t12['good'][1] else 'RED'}")
 
     print("[TV-13] tamed products (Pearl 5.1.3):")
     t13 = tv13()
-    print(f"       ayni satir (rank-1): tamed %{100*t13['bad_identical'][0]:.1f} "
+    print(f"       same row (rank-1): tamed %{100*t13['bad_identical'][0]:.1f} "
           f"(esik %{100*JackpotToy.EPS_TAME:.1f}) -> "
-          f"{'RED' if not t13['bad_identical'][1] else 'KABUL'}")
-    print(f"       saglikli random     : tamed %{100*t13['good_random'][0]:.1f} -> "
-          f"{'KABUL' if t13['good_random'][1] else 'RED'}")
+          f"{'RED' if not t13['bad_identical'][1] else 'ACCEPT'}")
+    print(f"       healthy random      : tamed %{100*t13['good_random'][0]:.1f} -> "
+          f"{'ACCEPT' if t13['good_random'][1] else 'RED'}")
     d = t13["intermediate_B=A"]
-    print(f"       B=A (diagonal uyum) : tamed %{100*d[0]:.1f} -> "
-          f"{'KABUL (loose net; tipik is yuku)' if d[1] else 'RED'}")
+    print(f"       B=A (diagonal agreement) : tamed %{100*d[0]:.1f} -> "
+          f"{'ACCEPT (loose net; typical workload)' if d[1] else 'RED'}")
 
     print("[TV-14] unpredictable summands (Pearl 5.1.4):")
     t14 = tv14()
     print(f"       common-peak : predictable %{100*t14['bad_common_peak'][0]:.1f} "
           f"(esik %{100*JackpotToy.EPS_PRED:.1f}) -> "
-          f"{'RED' if not t14['bad_common_peak'][1] else 'KABUL'}")
-    print(f"       saglikli    : predictable %{100*t14['good_random'][0]:.1f} -> "
-          f"{'KABUL' if t14['good_random'][1] else 'RED'}")
+          f"{'RED' if not t14['bad_common_peak'][1] else 'ACCEPT'}")
+    print(f"       healthy    : predictable %{100*t14['good_random'][0]:.1f} -> "
+          f"{'ACCEPT' if t14['good_random'][1] else 'RED'}")
 
     print("[TV-21] low-entropy (Polymath 6) dayaniklilik egrisi:")
     t21, _sweep = tv21()
 
     print("-" * 72)
-    print("TV-1..TV-4 + TV-11..TV-14 + TV-21 + V1X + RT-1..RT-3: HEPSI GECTI")
+    print("TV-1..TV-4 + TV-11..TV-14 + TV-21 + V1X + RT-1..RT-3: ALL PASSED")

@@ -21,7 +21,7 @@ TEST VEKTORLERI:
   TV-17  odeme-bascagina:  siralamaci sansur YAPAMAZ (ucrumu kontrol)
   TV-18  dilemmasiz:     verifier's-dilemma tetiklenmiyor (spec A.5.2)
 
-DURUST TOY SINIRLAR (spec A.10.7 tarzi):
+HONEST TOY LIMITS (spec A.10.7 style):
   - sequencer su an tek bir nesne (in production network separate nodes)
   - W_r = 3 blok (uretimde degisken)
   - fee/burn degerleri sembolik (toy para birimi)
@@ -230,7 +230,7 @@ def tv15():
     t = net.sequencers["A"].tasks["t1"]
     assert t.state == "REFUNDED" and net.refunds == 70, (t.state, net.refunds)
     assert t.escrow == 0 and net.burn_address == 0
-    print("  TV-15 iade-garantisi:  REDDETME-YOK -> otomatik iade (escrow=70)  KABUL")
+    print("  TV-15 refund-guarantee:  NO-REJECTION -> automatic refund (escrow=70)  ACCEPT")
     return True
 
 
@@ -256,7 +256,7 @@ def tv16():
     assert net.solve_task("B", "t2", "result-hash")
     assert net.settle_task("B", "t2")
     assert net.burn_address == 30  # 100*0.3 burn gerceklesti
-    print(f"  TV-16 gorev-gocu:     REDDETME -> goc (kesinti 100, bond {bond_before}'de uste tulendi) + B'de settle  KABUL")
+    print(f"  TV-16 task-migration:  REJECTION -> migrate (slash 100, bond topped up to {bond_before}) + settles in B  ACCEPT")
     return True
 
 
@@ -296,8 +296,8 @@ def tv17():
     assert net.sequencers["A"].slashed == 150, "kumulatif kesinti 50+100=150 olmali"
     # iade toplami = 3 * 70 = 210
     assert net.refunds == 210, net.refunds
-    print(f"  TV-17 sansur-ucretsiz: kazanc=0 (iade {net.refunds}), kesinti 50+100=150")
-    print("                        (bond0=50<fee=100 -> refill bond'u fee seviyesine cikardi)  KABUL")
+    print(f"  TV-17 censorship-free: gain=0 (refund {net.refunds}), slash 50+100=150")
+    print("                        (bond0=50<fee=100 -> refill raised the bond to the fee level)  ACCEPT")
     return True
 
 
@@ -317,7 +317,7 @@ def tv18():
     assert net.settle_task("A", "t9", verify_ok=True)
     assert net.dilemma_triggers == 1  # hala 1 (geri sayilmiyor)
     assert net.burn_address == 30
-    print(f"  TV-18 dilemma-yok:    zorunlu dogrulama; hatali->CHALLENGED, dogru->SETTLED  KABUL")
+    print(f"  TV-18 no-dilemma:     mandatory verification; wrong->CHALLENGED, correct->SETTLED  ACCEPT")
     return True
 
 
@@ -332,7 +332,7 @@ def tv19():
     t = net.sequencers["A"].tasks["tA"]
     assert t.state == "SETTLED" and net.burn_address == 30
     assert net.refunds == 0 and net.slash_events == 0 and net.migrations == 0
-    print("  TV-19 honest-dongu:   submit->assign->solve->settle; burn=30, iade=0  KABUL")
+    print("  TV-19 honest-loop:    submit->assign->solve->settle; burn=30, refund=0  ACCEPT")
     return True
 
 
@@ -383,9 +383,9 @@ def tv20():
     # ILK olayda bond tukendi, sonraki IKISI BEDAVA (100, 300 degil)
     assert net2.sequencers["A"].slashed == 100, net2.sequencers["A"].slashed
     assert net2.sequencers["A"].bond == 0, "bond tukenecekti"
-    print(f"  TV-20 bond-refill:   3 sansur; refill -> 300 kesinti (bond {bond0}->100);")
-    print("                        refill-YOK -> 100 kesinti (bond 100->0, 2 olay BEDAVA)")
-    print("                        KABUL (acik bulundu ve kapatildi)")
+    print(f"  TV-20 bond-refill:   3 censorship events; refill -> 300 slashed (bond {bond0}->100);")
+    print("                        refill-NO -> 100 slashed (bond 100->0, 2 events FREE)")
+    print("                        ACCEPT (the gap was found and closed)")
     return True
 
 
@@ -403,21 +403,21 @@ if __name__ == "__main__":
             print(f"  {name}: BASARISIZ -> {e}")
     print("-" * 72)
     if all(results.values()):
-        print("TV-15..TV-20: HEPSI GECTI — F3a sansur-direnci prototipi calisiyor.")
+        print("TV-15..TV-20: ALL PASSED — the F3a censorship-resistance prototype works.")
     else:
         print("BASARISIZ TESTLER:", [k for k, v in results.items() if not v])
         raise SystemExit(1)
     print()
-    print("DURUST TOY SINIRLAR:")
-    print("  - tek sequencer nesnesi (in production network nodesi)")
-    print("  - W_r = 3 blok (uretimde degisken), bond=50, fee=100 sembolik")
-    print("  - GHOSTDAG YOK (F3a'nin tanimi; F3b'de gelir)")
-    print("  - VRF HMAC-stub, proof'lar DUMMY (kripto F3b'de)")
-    print("  - sansur 'evil' flag ile; uretimde GHOSTDAG parent-set + rekabet")
-    print("  - TV-17'nin iddiasi: sansurun KAZANCI sifir, ZARARI var (bond)")
-    print("    (bond kesintisinin ekonomik agirligi pass_sim 10'da hesaplandi:")
-    print("     geri-ekleme YOKSA deterrent TEK-SEFERLIKTIR — TV-20 buldu)")
-    print("  - TV-20: refill YOKSA ilk olay bond'u tukerir, sonrasi BEDAVA;")
-    print("    refill VARSA her olay fee kadar keser (bond uste tutulur)")
-    print("  - alt-bond sorunu: bond0 < fee ise refill bond'u FEE SEVIYESINE")
-    print("    cikarir (TV-17'de 50->100) — uretimde bond = fee + margin")
+    print("HONEST TOY LIMITS:")
+    print("  - a single sequencer object (network nodes in production)")
+    print("  - W_r = 3 blocks (variable in production), bond=50, fee=100 symbolic")
+    print("  - NO GHOSTDAG (by the definition of F3a; arrives in F3b — see ghostdag_proto_en.py)")
+    print("  - VRF is an HMAC stub, proofs are DUMMY (real crypto in F3b)")
+    print("  - censorship via an 'evil' flag; in production GHOSTDAG parent-set diversity + competition")
+    print("  - TV-17's claim: censorship GAIN is zero, LOSS is real (bond)")
+    print("    (the economic weight of the bond slash was computed in pass_sim section 10:")
+    print("     WITHOUT refill the deterrent is ONE-SHOT — found by TV-20)")
+    print("  - TV-20: WITHOUT refill the first event depletes the bond, the rest are FREE;")
+    print("    WITH refill every event slashes the fee amount (bond held up)")
+    print("  - sub-bond trap: if bond0 < fee, refill RAISES the bond to the FEE LEVEL")
+    print("    raises it (TV-17: 50->100) — in production bond = fee + margin")

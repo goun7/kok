@@ -11,7 +11,7 @@ Akis:  submit_task (escrow + bond + burn)
 
 G katmani (KW/cuPOW) BU dosyada sadelestirilmis bir kernel ile temsil edilir:
 gerceklestirilebilir bir MatMul-transkript PoW (kucuk boyut, per-tile hash).
-Amac U-katmani ekonomi/ceza makinesini gercek kodla test etmektir; KW kernel
+Goal: test the U-layer economics/penalty machine with real code; the KW kernel
 prototip seviyesindedir ve cuPOW ile degistirilecek nokta acca isaretlenmistir.
 
 Bagimlilik: yok (standart kutuphane). Determinist: SEED sabit.
@@ -54,7 +54,7 @@ def S(*parts) -> str:
 # ------------------------------------------------------- G katmani: sade KW
 # Not: bu, KW'nin per-tile varyantinin (Remark 2.1) minyatur bir taklididir.
 # Transcript: (n/r)^3 adet ara r x r blok; PoW: bir tile hash'i target'in altinda.
-# cuPOW kernel ile degistirilecek: burn-instub gerceklesince ayni arayuzu korur.
+# to be replaced by the cuPOW kernel: keeps the same interface once the burn stub is real.
 class KWKernel:
     def __init__(self, q=97, n=8, r=2):
         self.q, self.n, self.r = q, n, r
@@ -357,7 +357,7 @@ def tv9_kurtosis_trap():
 
 # -------------------------------------------------------------- test vector
 def tv5():
-    """Fee escrow + burn: fee 100, burn_rate 0.3 -> 30 burn, 70 escrow; sybil maliyeti > 0."""
+    """Fee escrow + burn: fee 100, burn_rate 0.3 -> 30 burn, 70 escrow; sybil cost > 0."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
     spec = TaskSpec("mm-2x2", (A, A), 64, DEADLINE_H)
@@ -394,7 +394,7 @@ def tv7():
     """Fraud slash: hatali ispat + kanit -> madenci bond kesilir, itirazci odul alir."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
-    # lookback'i asmak icin 64+ blok uret (bos bloklar = sifir-talep canliligi da burada)
+    # produce 64+ blocks to exceed the lookback (empty blocks = zero-demand liveness too)
     for _ in range(EPOCH_LOOKBACK + 5):
         ch.blocks.append(S("empty", len(ch.blocks)))
     t = ch.submit_task("c1", TaskSpec("mm", (A, A), 64, DEADLINE_H), 100, 0.2)
@@ -409,7 +409,7 @@ def tv7():
 
 
 def tv8():
-    """Sifir-talep canliligi: 1000 blok boyunca hic U gorevi yok -> tum bloklar gecerli."""
+    """Zero-demand liveness: 1000 blok boyunca hic U gorevi yok -> tum bloklar gecerli."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
     ok = 0
@@ -451,7 +451,7 @@ def tv123_stub():
     same = ch.kernel.verify(b1["cert"], A, B, b1["ctx"], b1["nonce"], ch.D)
     other = ch.kernel.verify(b1["cert"], A, B, b2["ctx"], b1["nonce"], ch.D)
     assert same and not other
-    return "replay-reddi: PASS"
+    return "replay-rejection: PASS"
 
 
 # --------------------------------------------------------------------- main
@@ -462,21 +462,21 @@ if __name__ == "__main__":
 
     b, e, sybil = tv5()
     print(f"[TV-5] escrow+burn : burned={b} escrow={e} (fee=100, burn_rate=0.3)")
-    print(f"       sybil maliyeti (1000 islem) = {sybil}  > 0  OK")
+    print(f"       sybil cost (1000 tasks) = {sybil}  > 0  OK")
 
     caught, nblk = tv6()
-    print(f"[TV-6] anti-aggregation: REJECT yakalandi={caught}; parcalanmis blok sayisi={nblk}")
+    print(f"[TV-6] anti-aggregation: REJECT yakalandi={caught}; fragmented block count={nblk}")
 
     verdict, sl, rew = tv7()
     print(f"[TV-7] fraud slash : verdict={verdict} slash={sl} reward={rew}")
 
     ok = tv8()
-    print(f"[TV-8] sifir-talep canliligi: {ok}/1000 blok ACCEPT")
+    print(f"[TV-8] zero-demand liveness: {ok}/1000 blocks ACCEPT")
 
     k = tv9_kurtosis_trap()
     print(f"[TV-9] kurtosis : uniform={k['uniform']:.2f} nn={k['nn']:.2f} "
           f"adversarial={k['adversarial']:.2f}")
-    print(f"       adversarial naive kontrolden GECTI mi? "
+    print(f"       did the adversarial input PASS the naive check? "
           f"{k['adversarial_passes_naive_check']}  => kontrol guvenlik degil (Basu)")
 
     print(f"[TV-10] PQ downgrade: legacy schema REJECT={tv10()}")
@@ -484,8 +484,8 @@ if __name__ == "__main__":
     print(f"[G]    {tv123_stub()}")
 
     print("-" * 72)
-    print("TUM TEST VEKTORLERI GECTI — U-katmani durum makinesi + ceza ekonomisi calisiyor.")
-    print("Bilinen prototip kisitlari: (1) G kernel cuPOW yerini tutan sadelestirme;")
+    print("ALL TEST VECTORS PASSED — U-layer state machine + penalty economics working.")
+    print("Known prototype limits: (1) G kernel cuPOW yerini tutan sadelestirme;")
     print("(2) VRF HMAC-stub; (3) 'STARK-benzeri' iz gercek AIR degil; (4) retarget")
     print("testleri g_layer_tests.py'de (zaman modeli); (5) GHOSTDAG parent-set")
-    print("secimi yok (tek parent). Hepsi spec A.10/B.3 ile ayni arayuz.")
+    print("selection missing (single parent). All share the interface of spec A.10/B.3.")
