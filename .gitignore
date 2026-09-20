@@ -23,3 +23,7 @@ pass_sim.py
 ghostdag_proto.py
 fp8_noise_proto.py
 bond_margin_proto.py
+findings.md
+sim_out.txt
+task_plan.md
+*.txt
