@@ -2,3 +2,24 @@ __pycache__/
 *.pyc
 .DS_Store
 *.tmp
+
+# IC BELGELER - public repo'ya giremez
+EPOSTA_*.md
+KRIPTOGRAF_BRIEF.md
+KOK_V2_CRYPTO_BRIEF_INTERNAL.md
+KOK_V2_TEKNIK_SPEC.md
+KOK_V2_TEKNIK_SPEC.md
+PROJE_KAGIDI*.md
+KAYNAKLAR.md
+DEGERLENDIRME_100.md
+KW_ANALIZ.md
+PEARL_DOCS_ANALIZ.md
+progress.md
+extracted/
+g_layer_tests.py
+u_layer_prototype.py
+f3a_sequencer_proto.py
+pass_sim.py
+ghostdag_proto.py
+fp8_noise_proto.py
+bond_margin_proto.py
