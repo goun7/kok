@@ -512,15 +512,26 @@ class DemandMeter:
         for sq in testnet.sequencers.values():
             for tid in list(sq.tasks):
                 t = sq.tasks[tid]
-                if t.state == "SETTLED" and tid not in self._seen:
+                # every terminal state is counted once: a task that stays on
+                # the sequencer's list after settling, refunding or being
+                # slashed must not be recounted in every later block. Phi
+                # itself only depends on SETTLED, but the reported counts of
+                # refunded, migrated and slashed tasks are arithmetic too, and
+                # recounting them would inflate the refund and slash rates.
+                if tid in self._seen:
+                    continue
+                if t.state == "SETTLED":
                     self._seen.add(tid)
                     paid_here += 1
                     self.paid_tasks += 1
                 elif t.state == "REFUNDED":
+                    self._seen.add(tid)
                     self.refunded_tasks += 1
                 elif t.state == "MIGRATED":
+                    self._seen.add(tid)
                     self.migrated_tasks += 1
                 elif t.state == "SLASHED":
+                    self._seen.add(tid)
                     self.slashed_tasks += 1
         if paid_here > 0:
             self.blocks_with_paid_task += 1
@@ -1152,3 +1163,64 @@ if __name__ == "__main__":
   unpredictability here is unpredictability for a buyer who does not know that
   key, which is much weaker than unpredictability for an adversary who has read
   the source. The real VRF, with its proof, belongs to F3b.""")
+
+
+def tv26_terminal_states_counted_once():
+    """TV-26: terminal tasks are counted once, not once per later block.
+
+    The demand meter's _seen set originally guarded only SETTLED tasks, because
+    phi depends on them alone. But REFUNDED, MIGRATED and SLASHED tasks stay on
+    the sequencer's list after they finish, and the meter recounted them in
+    every block that followed, which inflated the reported refund and slash
+    rates by a factor of however long the task lingered.
+
+    The financial books were never affected: they read net.refunds and
+    net.burn_address, which are counted at the event, not by observation. This
+    bug was in the reporting counters only. It is fixed by extending _seen to
+    every terminal state, and this test is the regression guard.
+    """
+    rnd = random.Random(2626)
+    net = F3aTestnet([Sequencer("A", evil=True, censor_client="kobi"),
+                      Sequencer("B", evil=False)])
+    # one censored task -> REFUNDED after the window
+    net.submit_task("A", "c1", "kobi", spec("llama-70b"))
+    for _ in range(W_R + 2):
+        net.next_block()
+    state_refunded = net.sequencers["A"].tasks["c1"].state
+    # one slashed task: two consecutive verification failures
+    net.submit_task("B", "s1", "ali", spec("llama-70b"))
+    net.solve_task("B", "s1", "res")
+    net.settle_task("B", "s1", verify_ok=False)
+    net.settle_task("B", "s1", verify_ok=False)
+    state_slashed = net.sequencers["B"].tasks["s1"].state
+
+    meter = DemandMeter()
+    # observe 30 more blocks while both terminal tasks sit on the lists
+    for _ in range(30):
+        net.next_block()
+        meter.record_block(net)
+
+    ok_state = (state_refunded == "REFUNDED" and state_slashed == "SLASHED")
+    ok_refund = (meter.refunded_tasks == 1)
+    ok_slash = (meter.slashed_tasks == 1)
+    ok_paid = (meter.paid_tasks == 0 and meter.phi() == 0.0)
+    print("  TV-26 once-only:     refunded %d (exp 1), slashed %d (exp 1), "
+          "paid %d, phi %.3f  %s" %
+          (meter.refunded_tasks, meter.slashed_tasks, meter.paid_tasks,
+           meter.phi(), "ACCEPT" if (ok_state and ok_refund and ok_slash
+                                    and ok_paid) else "RED"))
+    return ok_state and ok_refund and ok_slash and ok_paid
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F3a: terminal tasks counted once (TV-26, regression guard)")
+    print("=" * 76)
+    print("The meter's _seen set guarded SETTLED tasks only, so REFUNDED,")
+    print("MIGRATED and SLASHED tasks were recounted in every block they spent")
+    print("on the sequencer's list. Phi was unaffected, but the reported refund")
+    print("and slash rates were inflated by the lingering time.\n")
+    ok = tv26_terminal_states_counted_once()
+    assert ok, "TV-26 FAILED: terminal tasks are being recounted"
+    print("\n  -> the reporting counters are arithmetic, not impressions.")
