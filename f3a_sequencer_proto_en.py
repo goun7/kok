@@ -456,13 +456,22 @@ class DemandMeter:
         self.slashed_tasks = 0
 
     def record_block(self, testnet):
-        """Observe one produced block and update the counters."""
+        """Observe one produced block and update the counters.
+
+        Phi counts blocks in which a task settles, so a settled task must be
+        counted in the block it settles and not in every block afterwards. A
+        task that stays on the sequencer's list after settling would otherwise
+        inflate phi toward 1.0 forever.
+        """
         self.total_blocks += 1
         paid_here = 0
         for sq in testnet.sequencers.values():
-            for t in sq.tasks.values():
-                if t.state == "SETTLED":
+            for tid in list(sq.tasks):
+                t = sq.tasks[tid]
+                if t.state == "SETTLED" and tid not in self._seen:
+                    self._seen.add(tid)
                     paid_here += 1
+                    self.paid_tasks += 1
                 elif t.state == "REFUNDED":
                     self.refunded_tasks += 1
                 elif t.state == "MIGRATED":
@@ -471,12 +480,6 @@ class DemandMeter:
                     self.slashed_tasks += 1
         if paid_here > 0:
             self.blocks_with_paid_task += 1
-            # count each settled task only once, the first block it is seen in
-            for sq in testnet.sequencers.values():
-                for tid, t in sq.tasks.items():
-                    if t.state == "SETTLED" and tid not in self._seen:
-                        self._seen.add(tid)
-                        self.paid_tasks += 1
 
     def phi(self):
         """The utilization ratio. Pearl's measured value is 0."""
@@ -689,3 +692,174 @@ if __name__ == "__main__":
   than the currency. No prototype can manufacture that. What TV-22 proves is
   that nothing in the mechanism itself is broken - if a buyer ever does arrive,
   the road is open and the meter is honest.""")
+
+
+# ---------------------------------------------------------------------------
+# TV-23  A realistic demand simulation, run both ways
+#
+# TV-22 walked one task down the road by hand. Real demand does not arrive
+# neatly: buyers show up at random times, with different fees, and some never
+# come at all. This models that properly - arrivals drawn from a Poisson
+# process, a population of buyers with different willingness to pay, and the
+# network run for long enough that phi settles into a rate rather than a fluke.
+#
+# The point of running it both ways is that a single number means nothing
+# without its zero. Phi's behaviour under no demand is the Pearl baseline; only
+# against that does a positive number say anything.
+# ---------------------------------------------------------------------------
+
+
+class BuyerPopulation:
+    """A population of buyers, some of whom submit tasks and some of whom do not.
+
+    Each buyer has a task arrival rate (Poisson) and a fee they will pay. A
+    buyer with rate 0 never arrives - that is the demandless population, and it
+    is not a bug in the model.
+    """
+
+    def __init__(self, rng, buyers):
+        """buyers = [(client_id, rate_per_block, fee, burn_rate)]"""
+        self.rng = rng
+        self.buyers = buyers
+
+    def arrivals_at(self, height):
+        """Which buyers submit a task in this block, as a Poisson draw."""
+        out = []
+        for client, rate, fee, burn in self.buyers:
+            if self.rng.random() < rate:
+                out.append((client, fee, burn))
+        return out
+
+
+def run_demand_scenario(rng, buyers, n_blocks, n_sequencers=3):
+    """Run F3a for n_blocks with a buyer population and report the trajectory.
+
+    Arrivals are Poisson per buyer per block; each task is assigned to a
+    sequencer by round-robin, solved, and settled with an honest verifier.
+    """
+    seqs = [Sequencer("sq%d" % i) for i in range(n_sequencers)]
+    net = F3aTestnet(seqs)
+    meter = DemandMeter()
+    pop = BuyerPopulation(rng, buyers)
+
+    phi_path = []
+    n_arrivals = 0
+    n_settled = 0
+    fees_paid = 0
+
+    for blk in range(n_blocks):
+        net.next_block()
+        # buyers arrive
+        for client, fee, burn in pop.arrivals_at(blk):
+            tid = "t-%d-%s" % (blk, client)
+            s = spec(H("h", blk, client), fee=fee, burn_rate=burn)
+            sid = seqs[blk % n_sequencers].sid
+            net.submit_task(sid, tid, client, s)
+            n_arrivals += 1
+        # sequencers process their assigned load
+        for sq in seqs:
+            for tid, t in list(sq.tasks.items()):
+                if t.state == "ASSIGNED":
+                    net.solve_task(sq.sid, tid, result={"blk": blk})
+                    if net.settle_task(sq.sid, tid, verify_ok=True):
+                        n_settled += 1
+                        fees_paid += t.spec.fee
+        meter.record_block(net)
+        phi_path.append(meter.phi())
+
+    return {
+        "blocks": n_blocks,
+        "arrivals": n_arrivals,
+        "settled": n_settled,
+        "fees_paid": fees_paid,
+        "phi_final": meter.phi(),
+        "phi_path": phi_path,
+        "paid_tasks": meter.paid_tasks,
+    }
+
+
+def tv23_realistic_demand_both_ways():
+    """TV-23: the same simulation under no demand and under real demand.
+
+    The demandless population is the Pearl baseline: it must produce phi = 0
+    exactly, and settle no tasks. The demanding population must produce
+    phi > 0 with arrivals matching settlements. The comparison is the finding.
+    """
+    rng = random.Random(31415)
+    n_blocks = 400
+
+    # demandless: nobody arrives, ever
+    nobody = [("ghost-%d" % i, 0.0, 100, 0.3) for i in range(5)]
+    r0 = run_demand_scenario(rng, nobody, n_blocks)
+
+    # real demand: four buyers with different rates and fees
+    # rates are chosen low enough that phi lands in a realistic band rather
+    # than saturating at 1.0, so the number is a rate and not a ceiling
+    some = [("lab-1", 0.11, 100, 0.3),
+            ("lab-2", 0.06, 250, 0.3),
+            ("lab-3", 0.02, 400, 0.3),
+            ("solo-4", 0.005, 60, 0.3)]
+    r1 = run_demand_scenario(rng, some, n_blocks)
+
+    # sparse demand: a single buyer arriving rarely, so phi lands mid-band and
+    # shows that the meter tracks rate rather than snapping to 0 or 1
+    sparse = [("occasional", 0.05, 150, 0.3)]
+    r2 = run_demand_scenario(rng, sparse, n_blocks)
+
+    zero_is_zero = (r0["phi_final"] == 0.0 and r0["settled"] == 0)
+    demand_positive = (r1["phi_final"] > 0.0 and r1["settled"] > 0)
+    all_arrivals_settled = (r1["settled"] == r1["arrivals"])
+    # phi tracks the arrival rate: dense demand above sparse demand above zero
+    phi_orders = (r1["phi_final"] > r2["phi_final"] > r0["phi_final"])
+
+    return zero_is_zero, demand_positive, all_arrivals_settled, phi_orders, r0, r1, r2
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F3a: realistic demand, run both ways (TV-23)")
+    print("=" * 76)
+    print("TV-22 walked one task by hand. Real demand arrives at random, with")
+    print("different fees, and sometimes never at all. Phi means nothing")
+    print("without its zero, so this runs both populations.\n")
+
+    z, d, allset, ordered, r0, r1, r2 = tv23_realistic_demand_both_ways()
+    print("  NO DEMAND (the Pearl baseline)")
+    print("    blocks=%d  arrivals=%d  settled=%d" %
+          (r0["blocks"], r0["arrivals"], r0["settled"]))
+    print("    phi = %.4f   <- must be exactly 0" % r0["phi_final"])
+    print()
+    print("  SPARSE DEMAND (one rare buyer)")
+    print("    blocks=%d  arrivals=%d  settled=%d  fees=%d" %
+          (r2["blocks"], r2["arrivals"], r2["settled"], r2["fees_paid"]))
+    print("    phi = %.4f" % r2["phi_final"])
+    print()
+    print("  DENSE DEMAND (four buyers, Poisson arrivals)")
+    print("    blocks=%d  arrivals=%d  settled=%d  fees=%d" %
+          (r1["blocks"], r1["arrivals"], r1["settled"], r1["fees_paid"]))
+    print("    phi = %.4f   settled/arrivals = %.3f" %
+          (r1["phi_final"], r1["settled"] / max(1, r1["arrivals"])))
+    print()
+    print("  zero stays exactly zero          : %s" % z)
+    print("  demand produces phi > 0          : %s" % d)
+    print("  every arrival settles            : %s" % allset)
+    print("  phi tracks the arrival rate      : %s  (dense > sparse > zero)" % ordered)
+    assert z and d and allset and ordered
+    print("\n  -> phi is a rate, not a fluke, and its zero is the Pearl baseline.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-23 ESTABLISHES, AND WHAT IT STILL DOES NOT")
+    print("-" * 76)
+    print("""  Phi behaves as a rate over a long run rather than an artifact of a single
+  lucky task, and the demandless population reproduces Pearl's zero exactly.
+  Every arriving task settles, so the mechanism does not leak work under load.
+
+  What this still does not establish: the arrival rates are chosen by the
+  simulation, not earned. Setting a buyer's rate to 0.30 per block is the act of
+  writing demand into the model, and no parameter can make that a measurement.
+  The Poisson shape is also an assumption; real buyers arrive in bursts, react
+  to price, and leave when a competitor is cheaper.
+
+  The honest use of TV-23 is as a calibration: it shows what phi looks like at
+  various arrival rates, so that when the real testnet reports a number it can
+  be read against a known scale instead of interpreted freely.""")
