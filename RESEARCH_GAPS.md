@@ -377,6 +377,61 @@ what KOK would sell, and it is still not an excuse to announce anything.
 **Status: supply constraint corroborated from a second Akash source. Still not
 independently verified against NVIDIA or cloud-provider primary data.**
 
+## Source 13 — Fresh arXiv work in KOK's exact area (18 Sep 2026)
+
+A check of the current cs.CR listing turned up two papers from the last week that
+sit directly on KOK's design surface. Both are newer than anything else in this
+log.
+
+### arXiv 2609.21728 — Verifiable Computation with TEEs and On-Chain Digital Rights Tokens
+
+Kruger and Georg, submitted 18 Sep 2026 (cs.CR, cs.DC).
+
+The architecture: data owners combine private data into pools inside Trusted
+Execution Environments and manage them by issuing **narrowly scoped computational
+rights encoded as Digital Rights Tokens (DRTs)**. Each DRT binds specific
+open-source code to a pool and is **issued and redeemed on a distributed ledger**.
+An analyst gets the right to run that code on the sealed data inside the TEE and
+receives the *result*, not the data. A reference implementation runs WASM/Python
+jobs over sealed datasets and records redemptions **on Solana**.
+
+This is close enough to KOK's U layer to be worth stating precisely how it
+differs, rather than noting it vaguely:
+
+- **KOK's U layer sells verifiable compute with a zkVM proof.** This paper sells
+  *permission to execute* on sealed data, with the TEE as the enforcement
+  boundary and no SNARK in the path.
+- **Their primitive is a rights token, not an escrowed fee.** KOK's task market
+  escrows a fee and burns part of it irrecoverably; here the ledger records
+  issuance and redemption of a scoped right.
+- **They have a running reference implementation on Solana.** KOK has F3a, which
+  is off-protocol and deliberately not a chain. This is a real deployment
+  advantage for them, on a chain that already exists.
+- **Their trust assumption is a TEE.** KOK's is a cryptographic proof plus a fraud
+  window. The paper's own abstract says it illustrates "the feasibility and
+  limitations" of the approach, so the limitations are acknowledged rather than
+  hidden.
+
+**What this means for KOK, stated honestly.** It does not compete on consensus —
+there is no PoW, no prescribed-hardness layer, the ledger is Solana. It competes
+on the *utility* side: someone else has now built and published a working
+verifiable-compute-on-a-ledger market, three days ago, with a different trust
+root. The "market for computation settled on a chain" is no longer an untested
+idea, and the design choice KOK must be able to defend is why a zkVM proof plus
+escrow-and-burn beats a TEE plus rights token. That is a real question with a real
+answer (TEE attestation is hardware-trusted, KOK's proof is not), but it is now a
+question rather than an assumption.
+
+### arXiv 2609.22076 — APort Vault: AI Agent Payment Authorization
+
+Uchi Uchibeke, submitted 21 Sep 2026. Benchmarking AI agent payment authorization
+with an "Open Agent Passport." Not yet read in detail. It is listed here because it
+sits at the intersection the earlier AI-agent research flagged, and because
+*payment authorization for agents* is closer to a real primitive than the
+phishing-and-deepfake material that caused that direction to be rejected.
+
+**Status: abstracts read. Neither paper's full text has been examined.**
+
 ## Source 9 — IEA "Energy and AI" (primary source on the energy constraint)
 
 Fetched from iea.org/reports/energy-and-ai. Published **10 April 2025**, CC BY 4.0.

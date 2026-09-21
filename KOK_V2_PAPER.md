@@ -1214,6 +1214,25 @@ discipline. The survey supports the claim that the chosen problem is real and th
 fits two documented failures. It does not create a buyer, and it does not license an announcement
 beyond the one already sent.
 
+**One correction the survey forces, dated 21 September 2026.** The "unoccupied cell" claim above
+was written from a landscape survey a week old. A check of current arXiv submissions found work
+three days old that changes it: **arXiv 2609.21728, "Verifiable Computation with Trusted Execution
+Environments and On-Chain Digital Rights Tokens"** (Kruger and Georg, submitted 18 September 2026).
+It builds a market where data owners pool private data inside TEEs and issue **narrowly scoped
+computational rights as on-chain tokens**; an analyst redeems a right to run specific open-source
+code on sealed data and receives the result, not the data. A **reference implementation runs
+WASM/Python jobs and records redemptions on Solana.**
+
+So the "computation market settled on a ledger" is no longer an untested idea — someone has
+published a working one, on an existing chain, with a different trust root. The cell KÖK targets
+is still unoccupied **at the intersection with PoUW consensus**, which this paper does not touch
+at all (no prescribed hardness, no leader election from the work, Solana underneath). But the
+utility half is no longer novel by itself, and the design choice KÖK must now be able to defend
+explicitly is: **why an escrowed fee with irrecoverable burn and a zkVM proof, rather than a
+rights token with a TEE as the enforcement boundary.** That has a real answer — TEE attestation is
+hardware-trusted and side-channel-exposed, KÖK's proof is cryptographic and the fraud window is
+economic — but it is now a question to be argued, not an assumption to stand on.
+
 ### 12.2 The name, and what it does and does not claim (2026-09-21)
 
 The name is stated once, plainly, and with its etymology **used correctly** — an earlier draft
@@ -1268,4 +1287,6 @@ akash.network/blog/akash-network-q1-2026-report (BME, $5M all-time spend, the AE
 admission) · bittensor.com ("the chain pays contributors in TAO") · gensyn.ai (open-1b,
 Delphi, Credibly Neutral AI Oracles) · iea.org/reports/energy-and-ai (April 2025, primary
 energy source) · lordofpearls.xyz/blog/top-pouw-chains-2026 (taxonomy used; Pearl-affiliated,
-ranking not used)
+ranking not used) · **arXiv 2609.21728** (Kruger & Georg, TEE + on-chain digital rights tokens,
+reference impl on Solana — the working verifiable-compute market; forces the zkVM-vs-TEE
+defence) · arXiv 2609.22076 (APort Vault, AI agent payment authorization)
