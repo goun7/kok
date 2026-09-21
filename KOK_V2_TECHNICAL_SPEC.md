@@ -260,11 +260,28 @@ submit → bond → (epoch seed commit) → VRF assignment → proof (S2) / cert
 > Θ(n³/r) output-length lower bound) **is not necessary**: real security rests on (a) the
 > unpredictability of σ in the ROM + (b) the **marginal uniformity** proof of Lemma 6.5 + Merkle
 > one-wayness — all of these standard. Moreover, all structural attacks (sparse/permutation input,
-> A=B=0, precompute, correlation shortcut) were refuted, and the **trapdoor-matrix** literature
+> precompute, correlation shortcut) were refuted, and the **trapdoor-matrix** literature
 > (VZ25 arXiv 2502.13065, BN25 arXiv 2502.13060) poses no threat (E,F are derived from σ; the
 > attacker cannot plant a trapdoor). **Risk was revised from "high" to "low-medium."** The
 > remaining principal risk is **the demand for utility (E-gap)**, not cryptography. Nevertheless the
 > fallback is retained: it is no longer the #1 probable scenario, but it is not zero either.
+
+> **★ 2026-09-21 correction — "A=B=0" was listed as refuted, but that is only true for *security*.**
+> Choosing A=B=0 makes `A' = E` and `B' = F`, so every leaf becomes a direct product of ROM
+> outputs. This **does not break the PoW** (the prescribed hardness still holds; KW's utility is
+> defined by the honest algorithm, not by the attacker's input), so the old text was right about
+> security. But the old text was **wrong to imply the utility claim survives**: with A=B=0 the
+> computation carries **zero useful work**, and in **S1 mode the miner chooses its own input for
+> free** (§A.1), so nothing in the G layer alone stops a miner from mining empty work while
+> appearing to run the protocol.
+>
+> **The actual defense is the U layer, and it is architectural, not cryptographic:** a miner earns
+> nothing from S1 work that nobody paid for, because the block's economic value comes from the
+> fee-paying tasks it includes, and a block carrying no U task has `phi = 0` — still a valid block
+> (the E-gap acceptance, TV-4) but earning only the baseline subsidy, not utility revenue. So the
+> honest statement is: **S1 cannot be *forced* to be useful; it is *incentivized* to be.** This is
+> precisely why the E-gap is an economic argument (§11) and not a theorem. **Recorded as a
+> correction** — the word "refuted" for A=B=0 was overstated and is now scoped to security only.
 
 - **Conjecture collapse:** if the KW hardness is broken, a **backup work function**
   (protocol-generated dense random MatMul + hash binding = pure-PoW mode) is activated by an
@@ -833,3 +850,55 @@ theoretically (ε=2 → θ<1).
 
 **"Perfection on paper" criterion:** with every box above checked = **85/100** at the spec level
 (the remaining 15 = testnet + independent audit + real demand; it cannot be won on paper).
+
+---
+
+## F. The Pearl verification gap — why our kernel does not have it (2026-09-21, TV-38)
+
+Sources: `arastirma/pazar_ve_rekabet_2026.md`, `u_layer_prototype_en.py` TV-38.
+
+### F.1 What happened at Pearl (measured, not assumed)
+
+Pearl ran 24 EH/s on ~320,000 GPU-equivalents (~112 MW) and sold **zero** useful
+computation. The *mechanism*: the dominant mining software contained **no inference
+code**, and verification **accepted random matrices**. The protocol could not tell
+real work from theatre, so it got theatre. **This is a protocol design error, not a
+miner-honesty problem.**
+
+### F.2 Does our kernel have the same flaw? (tested: no)
+
+| Attack | Result of `verify()` |
+|---|---|
+| Fabricated certificate (no MatMul computed) | **REJECT** |
+| Forged tile value (correct coordinates, uncomputed value) | **REJECT** |
+| Wrong input matrices (real cert, A or B changed) | **REJECT** |
+| Honest certificate | ACCEPT |
+
+### F.3 The mechanism — structural, not accidental
+
+`verify()` recomputes the claimed tile from A, B and the ROM-derived noise:
+
+```
+acc = sum_l  (A[i*r][l*r] + E[i*r][l*r]) * (B[l*r][j*r] + F[l*r][j*r])  mod q
+return  acc == val  AND  H("tile", ctx, nonce, i, j, val) % target == 0
+```
+
+- **A and B are inputs to verify()**, so changing either breaks the equality.
+- **E, F come from the ROM seeded by ctx**, so the miner cannot choose the noise.
+- **The target hash is over the tile value**, so only the *correct* value counts.
+
+**Pearl's verifier did not bind the certificate to the computation; ours does.**
+
+### F.4 Remaining gaps (recorded, not closed)
+
+1. A tile is small (m = n/r): verify() recomputes one tile, not the whole MatMul.
+   **The "skip tiles" concern was analysed and dismissed**: H is one-way, so a miner
+   cannot predict which value hits the target and must compute a tile to see its
+   chance; skipping the rest only lowers its own odds. The true design point is the
+   opposite: each nonce grants m² chances, which multiplies expected work and is
+   already measured by TV-2 (geometric hardness 4.4/4.4/4.5).
+2. q = 97, n = 8, r = 2 are toy sizes; asymptotic security cannot be claimed.
+3. H is SHA-256-ish HMAC in the prototype; production needs a STARK-friendly hash.
+
+**Strategic weight: F.2-F.3 are the most defensible technical difference from Pearl,
+now a running test rather than a claim. F.4 is why F0b (a real AIR) is prioritised.**
