@@ -193,7 +193,7 @@ def v1_contrast():
 #   * sigma_i = DELTA * RMS(row) — per-entry noise std (Pearl'in C.4/C.5
 #     not the exact counterpart of the normalization; whether Pearl's sigma_i is per-entry
 #     row-level mi oldugu metinden net cikmadi, bu toy secim "noise-to-signal
-#     her satirda ayni" sozuyle tutarlidir).
+#     consistent with the statement "the same in every row").
 #   * tamed/unpredictable esikleri toy olcege (K=64, GRID=16) kalibre edildi;
 #     Pearl'in uretim degerleri (tau_tame=256 vs.) k~4096-16384 icin.
 #   * unpredictable: toy v_iu < ulp(M_ij) comparisonsi kullanir (Pearl
@@ -210,7 +210,7 @@ class JackpotToy:
     K, N = 64, 64                 # toy matris boyutu (uretim: k~4096-16384)
     GRID = 16                    # toy quantization seviyeleri (FP8 analogu, kaba)
     DELTA = 0.5                  # per-entry noise std = DELTA * RMS(row)
-    TAU_IDLE = 8.0;  EPS_IDLE = 1/64      # Pearl 5.1.1 (ayni)
+    TAU_IDLE = 8.0;  EPS_IDLE = 1/64      # Pearl 5.1.1 (same)
     SIGMA_MIN = 1.0                       # Pearl 5.1.2 (1 grid unit)
     TAU_TAME = 12.0; EPS_TAME = 1/8       # toy olcekli (Pearl 256, 1/64)
     EPS_PRED = 1/4                        # toy olcekli (Pearl 1/16)
@@ -304,7 +304,7 @@ class JackpotToy:
     #   * TV-11/12 (input-side)  : sigma_i = DELTA * RMS(row)   [Pearl 5.1.1/2]
     #   * TV-14  (accumulation)  : ACC_NOISE grid unit = sub-quantization olcegi.
     #     Gerekce: Pearl'de FP8 subnormal sikismasi arka plan entry'sini ~2^-17'e
-    #     kadar sikistirir; FP32 ulp(M) = M*2^-23 ile ayni rejime duser ->
+    #     it compresses enough; it falls into the same regime as FP32 ulp(M) = M*2^-23 ->
     #     summand truncate = 'precision shortcut'. Toy lineer grid 2^-17
     #     sikismayi gosteremedigi icin bu olcegi ACC_NOISE ile enjekte eder.
     ACC_NOISE = 1 / 16                    # grid unit (sub-quantization)
@@ -421,7 +421,7 @@ def tv12():
 
 # ---------------------------------------------------------------------- TV-13
 def tv13():
-    """Tamed products: tum satirlar ayni (rank-1/coherent) RED; B=A (diagonal
+    """Tamed products: all rows identical (rank-1/coherent) RED; B=A (diagonal
     agreement) ACCEPTED as loose-net; healthy ACCEPT."""
     r = _r2.Random(303)
     bad = identical_rows(r)

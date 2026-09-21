@@ -410,7 +410,7 @@ def validate_block(blk):
 ```python
 def challenge(challenger, tid, proof):
     assert height <= proof.height + W_s               # W_s = 100 blok
-    ok = recheck_with_independent_backend(proof)      # farklı proving backend
+    ok = recheck_with_independent_backend(proof)      # different proving backend
     if not ok:
         slash(proof.miner, proof.miner.bond)
         reward(challenger, FRAUD_REWARD)              # itirazı kazanır
@@ -700,7 +700,7 @@ against the regime classification of Theorem 1:
 ```
 R(t) = max( R_∞, R_0 · 2^(−⌊t/T_half⌋) )         T_half = 4 yıl
 hazineden: h(t) = τ · R(t), τ = 0.05              (escrow + milestone vesting)
-toplam arz: ∫R dt = sonlu üst sınır + sonsuz tail   (tail: R_∞ sonsuz, azalan toplam)
+total supply: ∫R dt = finite cap + infinite tail   (tail: R_∞ unbounded, decreasing total)
 ```
 
 **Design rule (honest):** Kaspa's curve running out in 2026 (96.5% of the max supply already

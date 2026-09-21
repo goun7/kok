@@ -26,7 +26,7 @@ HONEST TOY LIMITS (spec A.10.7 style):
   - W_r = 3 blocks (variable in production)
   - fee/burn degerleri sembolik (toy para birimi)
   - GHOSTDAG NONE: single parent, central block production (this is F3a's definition)
-  - VRF HMAC-stub (u_layer_prototype.py ile ayni)
+  - VRF HMAC-stub (same as u_layer_prototype.py)
   - censorship "evil sequencer" olarak is modelled; in production GHOSTDAG
     protected by parent-set diversity + miner competition (spec A.5.5)
 """
@@ -179,7 +179,7 @@ class F3aTestnet:
         self.migrations += 1
         return True
 
-    # --- cozum (madenci proof verir; F3a'da dummy, kripto yok) ---
+    # --- solution (miner provides a proof; in F3a it is a dummy, no cryptography) ---
     def solve_task(self, seq_id, tid, result):
         t = self.sequencers[seq_id].tasks.get(tid)
         if t is None or t.state != "ASSIGNED":
@@ -294,7 +294,7 @@ def tv17():
     assert held == 0, "sequencer escrow held escrow"
     assert net.sequencers["A"].bond == 100, "bond fee seviyesine cikmadi"
     assert net.sequencers["A"].slashed == 150, "kumulatif slash 50+100=150 olmali"
-    # refund toplami = 3 * 70 = 210
+    # refund total = 3 * 70 = 210
     assert net.refunds == 210, net.refunds
     print(f"  TV-17 censorship-free: gain=0 (refund {net.refunds}), slash 50+100=150")
     print("                        (bond0=50<fee=100 -> refill raised the bond to the fee level)  ACCEPT")

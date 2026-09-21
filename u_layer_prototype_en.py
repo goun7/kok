@@ -25,7 +25,7 @@ SEED = 20260919
 W_s = 100                 # fraud window (blocks)
 EPOCH_LOOKBACK = 64       # VRF seed lookback (grinding karsiti)
 BOND_RATIO = 1.0          # miner bond = fee * BOND_RATIO  (sybil cost)
-C_FEE = 500               # blok basina toplam U fee cap'i (anti-aggregation)
+C_FEE = 500               # total U fee cap per block (anti-aggregation)
 FRAUD_REWARD = 50         # basarili itiraz odulu
 DEADLINE_H = 200          # task expiry (blocks)
 PQ_SET = {"stark-circle-1", "stark-pq-1"}    # izin verilen proof_system_id'ler
@@ -173,7 +173,7 @@ class Chain:
         assert fee > 0 and 0.0 < burn_rate <= 0.5, "burn_rate (0.0, 0.5]"
         bond = int(fee * BOND_RATIO)
         burn = int(fee * burn_rate)                     # geri alinamaz
-        escrow_locked = fee + bond                      # kilitleme (toplam)
+        escrow_locked = fee + bond                      # locked total
         tid = S("task", client, spec.program_commit, fee, escrow_locked)
         t = Task(tid=tid, client=client, spec=spec, fee=fee, burn_rate=burn_rate)
         t.escrow = fee - burn                            # odenebilir escrow (70)
@@ -234,10 +234,10 @@ class Chain:
                              "ps": proof_system_id, "height": self.height(),
                              "flops": t.spec.max_flops})
             t.result, t.state, t.proof_height = C, "SOLVED", self.height()
-        # fee toplami anti-aggregation kontrolu (A.10.5)
+        # fee total: anti-aggregation check (A.10.5)
         fee_total = sum(self.tasks[p["tid"]].fee for p in u_proofs)
         assert fee_total <= C_FEE, f"anti-aggregation: {fee_total} > {C_FEE}"
-        # fayda yogunlugu phi (spec B.5): U-is FLOP / toplam blok FLOP
+        # utility density phi (spec B.5): U-task FLOP / total block FLOP
         u_flops = sum(p.get("flops", 0) for p in u_proofs)
         phi = u_flops / (u_flops + G_FLOPS * nonce) if (u_flops + G_FLOPS * nonce) else 0.0
         bh = S("blk", ctx, nonce, [p["root"] for p in u_proofs], fee_total)
@@ -305,7 +305,7 @@ class Chain:
     def challenge(self, challenger, tid, ledger_block_height):
         t = self.tasks[tid]
         assert ledger_block_height <= t.proof_height + W_s, "fraud window closed"
-        # independent backend: ciktiyi bastan hesapla (farkli yol, ayni sonuc)
+        # independent backend: recompute the output from scratch (different path, same result)
         harness_A, harness_B = t.spec.program
         C = [[sum(harness_A[i][k] * harness_B[k][j] for k in range(len(harness_B)))
               for j in range(len(harness_B[0]))] for i in range(len(harness_A))]
@@ -377,7 +377,7 @@ def tv6():
     for k in range(6):                            # 6 * 100 = 600 > C_FEE=500
         tasks.append(ch.submit_task(f"c{k}", TaskSpec("mm", (A, A), 64, DEADLINE_H),
                                     fee=100, burn_rate=0.1))
-    # madenci hepsini bir blokta toplamaya calisirsa assert patlar -> REJECT
+    # if the miner tries to aggregate everything into one block the assert trips -> REJECT
     caught = False
     try:
         ch.mine_block("m1", tasks, A, A)
@@ -447,7 +447,7 @@ def tv123_stub():
     b1 = ch.mine_block("m1", [], A, B)
     ctx1 = b1["ctx"]
     b2 = ch.mine_block("m1", [], A, B)
-    # ayni sertifika farkli ctx'te (farkli parent) -> verify False = REJECT
+    # the same certificate in a different ctx (different parent) -> verify False = REJECT
     same = ch.kernel.verify(b1["cert"], A, B, b1["ctx"], b1["nonce"], ch.D)
     other = ch.kernel.verify(b1["cert"], A, B, b2["ctx"], b1["nonce"], ch.D)
     assert same and not other

@@ -42,6 +42,19 @@ TR_WORDS = [
     "kazanc", "kazanci", "kazanclari",
     "sifir-talep",
     "saldiri", "saldirisi", "saldirgan", "saldiriya",
+    # --- 2026-09-21: koda gomulu diger Turkce kelimeler (yorum + assertion) ---
+    "etkili", "etkisi", "etkisi var",
+    "kritik",
+    "ayni", "ayni blok", "ayni sabit",
+    "hepsinde", "hepsi",
+    "toplam", "toplami",
+    "refill'siz", "refillsiz",
+    "duzeni", "duzen",
+    "yaklasim", "toy yaklasim",
+    "sorgular", "sorguluyor",
+    "verdi", "verir",
+    "farkli", "farkli blok",
+    "HATA",
     "penceresi", "pencereyi",
     "uretimde",
     "iadesi", "iade edil",
@@ -74,14 +87,18 @@ TR_WORDS = [
 WORD_RE = re.compile(r"[A-Za-zÇĞİıÖŞÜâîû-]+")
 
 def tr_hits(text):
-    """Metindeki yasakli kelime ISABETLERI -> dict kelime:sayi."""
+    """Metindeki yasakli kelime ISABETLERI -> dict kelime:sayi.
+
+    2026-09-21: KELIME ESLESMESI (substring degil) — 'verdict' icinde 'verdi'
+    false positive'i bu yuzden cikiyor."""
     low = text.lower()
     low = low.replace("ı", "i").replace("ğ", "g").replace("ş", "s") \
              .replace("ö", "o").replace("ü", "u").replace("ç", "c").replace("â", "a")
     out = {}
-    for w in TR_WORDS:
-        if w in low:
-            out[w] = low.count(w)
+    trset = set(TR_WORDS)
+    for tok in WORD_RE.findall(low):
+        if tok in trset:
+            out[tok] = out.get(tok, 0) + 1
     return out
 
 def audit_file_source(path):

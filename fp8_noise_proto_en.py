@@ -90,7 +90,7 @@ def entropy_bits(vals):
 # ============================================================
 # NOISE MODELS
 # ============================================================
-DELTA = 0.5  # TV-12'den ayni sabit (TV-30 bunu sorgular)
+DELTA = 0.5  # same constant as TV-12 (TV-30 questions it)
 
 
 def noise_int_model(row, delta=DELTA):
@@ -115,7 +115,7 @@ def noise_fp8_aware(row, sigma_min, fmt="E4M3"):
 
 
 # ============================================================
-# OUTPUT-TILE ATTACK (dogru model: saldiri cikista)
+# OUTPUT-TILE ATTACK (correct model: the attack is at the output)
 # ============================================================
 def attack_rows(rng, n, k, c, jitter):
     """
@@ -170,7 +170,7 @@ def tv28_low_entropy_attack_succeeds():
     tiles = output_tiles(noisy, B)
     Qtiles = quantize_vec(tiles, "E4M3")
     uniq = len(set(Qtiles))
-    # saldiri basarili: cikis tile'lari 2'den az farkli deger (sabitlendiler)
+    # attack succeeded: the output tiles take fewer than 2 distinct values (they were pinned)
     attack_succeeds = uniq <= 2
     if not attack_succeeds:
         return "SKIP", f"{uniq} distinct values; the attack did not materialize at these parameters"
@@ -193,7 +193,7 @@ def tv29_noise_floor_closes_attack():
     tiles = output_tiles(noisy, B)
     Qtiles = quantize_vec(tiles, "E4M3")
     uniq = len(set(Qtiles))
-    # floor ile cikis tile'lari yayilmali (>=8 farkli deger)
+    # with the floor, the output tiles must spread (>=8 distinct values)
     assert uniq >= 8, f"TV-29: noise floor ile hala low entropy: {uniq} deger"
     return "PASS", f"with the noise floor (8 units), {uniq} distinct output values - attack closed"
 

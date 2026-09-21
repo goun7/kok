@@ -180,15 +180,15 @@ class GHOSTDAG:
 
     def order(self, bid: str) -> list:
         """
-        GHOSTDAG toplam duzeni (toy yaklasim).
+        The overall GHOSTDAG ordering (toy approach).
 
-        Gercek GHOSTDAG duzeni: mergeset'teki MAVI bloklardan olusan zinciri
+        The true GHOSTDAG order: the chain formed by the BLUE blocks in the mergeset
         takip eder (selected_parent zinciri), kirmizi bloklari eklemek icin
         "red" bloklarin mavi-blok-sonrasina yerlestirilmesi gerekir.
 
         Buradaki toy versiyon: bid'den baslayip selected_parent zincirini
         izler VE mergeset'teki mavi bloklari derinlige gore ekler. Amaclar:
-        (1) duzen hicbir blokta bos degil (liveness),
+        (1) no block has an empty mergeset (liveness),
         (2) mavi bloklar once gelir.
         """
         if bid not in self.blocks:
@@ -316,7 +316,7 @@ def tv25_ctx_rejects_changed_parentset():
     ps1, ps2 = parent_set_hash(b1.parents), parent_set_hash(b2.parents)
     ctx1 = kok_ctx("p1", "A", "t1", 5, "kw-v1", 0, ps1)
     ctx2 = kok_ctx("p1", "A", "t1", 5, "kw-v1", 0, ps2)
-    assert ctx1 != ctx2, "TV-25: ayni blok farkli parent-set ayni ctx verdi (HATA)"
+    assert ctx1 != ctx2, "TV-25: same block, different parent-set gave the same ctx (BUG)"
     return "PASS", "different parent-set -> different ctx (T-A2 replay closed)"
 
 
@@ -342,7 +342,7 @@ def tv26_splitter_attack():
         f"TV-26: guncel blok ortalamasi {avg_recent:.1f} < %40*{len(g.blocks)}"
     # no block should have an empty order (at least itself)
     empty = [b for b in g.blocks if len(g.order(b)) == 0]
-    assert not empty, f"TV-26: {len(empty)} blokun duzeni bos"
+    assert not empty, f"TV-26: the ordering of {len(empty)} blocks is empty"
     sp = sum(1 for b in g.blocks if g.selected.get(b) is not None)
     return "PASS", f"{len(g.blocks)} blocks, recent-mean={avg_recent:.0f}, with selected={sp}"
 

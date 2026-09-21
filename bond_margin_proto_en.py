@@ -101,12 +101,12 @@ def tv31_capped_deterrent_bounded_by_fee():
     net_bond_100 = censor_net(fee, 100.0, b_out, 1, refill=True, slash_mode="capped")
     net_bond_500 = censor_net(fee, 500.0, b_out, 1, refill=True, slash_mode="capped")
     net_bond_2000 = censor_net(fee, 2000.0, b_out, 1, refill=True, slash_mode="capped")
-    # hepsinde kesinti = min(bond, fee) = fee = 100 -> ayni net
-    assert abs(net_bond_100 - net_bond_500) < 1e-9, "TV-31: bond 100->500 etkili"
-    assert abs(net_bond_500 - net_bond_2000) < 1e-9, "TV-31: bond 500->2000 etkili"
-    # kritik fee = B_out
+    # in all of them the slash = min(bond, fee) = fee = 100 -> the same net
+    assert abs(net_bond_100 - net_bond_500) < 1e-9, "TV-31: bond 100->500 effective"
+    assert abs(net_bond_500 - net_bond_2000) < 1e-9, "TV-31: bond 500->2000 effective"
+    # critical fee = B_out
     cf = critical_fee_capped(b_out)
-    assert abs(cf - b_out) < 1.0, f"TV-31: kritik fee {cf:.1f} != B_out {b_out}"
+    assert abs(cf - b_out) < 1.0, f"TV-31: critical fee {cf:.1f} != B_out {b_out}"
     return "PASS", (f"capped: bond 100/500/2000 give the same net ({net_bond_100:.0f}) - the slash "
                     f"saturates at fee={fee}; critical fee = B_out = {cf:.0f}. "
                     f"SPEC CORRECTION: 'bond=fee+margin' only holds in FULL slash mode")
@@ -138,8 +138,8 @@ def tv33_free_censorship_window():
     net_noref = censor_net(fee, bond, b_out, n, refill=False, slash_mode="capped")
     net_ref = censor_net(fee, bond, b_out, n, refill=True, slash_mode="capped")
     window = bond / fee
-    # refill'siz: toplam kesinti = bond (300); refill'da: n*fee (2000)
-    assert abs(net_noref - (b_out * n - bond)) < 1.0, f"TV-33: refill'siz net {net_noref}"
+    # without refill the total slash = bond (300); with refill: n*fee (2000)
+    assert abs(net_noref - (b_out * n - bond)) < 1.0, f"TV-33: net without refill {net_noref}"
     assert abs(net_ref - (b_out * n - n * fee)) < 1.0, f"TV-33: refill'li net {net_ref}"
     return "PASS", (f"bond={bond}, fee={fee}: free window = {window:.0f} events; "
                     f"N={n}: NO refill net={net_noref:.0f} (profitable!), WITH refill "
