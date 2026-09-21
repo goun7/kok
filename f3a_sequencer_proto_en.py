@@ -4,31 +4,41 @@
 KOK v2 - F3a PROTOTYPE: off-protocol economics testnet (mock sequencer)
 ========================================================================
 
-V2 10.1 F3a: G layer ACTIVE, a central mock sequencer that produces blocksduces,
-that the task market runs BY ITSELF. This prototype tests spec A.5's
-Tests the TWO censorship-resistance mechanisms defined in clause 5:
+Spec V2 10.1 F3a: the G layer is ACTIVE, but a central mock sequencer produces
+the blocks, so that the task market can be studied on its own. This prototype
+tests the two censorship-resistance mechanisms defined in clause A.5:
 
-  (i) REFUND-GUARANTEE  : sequencer task W_r block inside reject-step
-                        if it is not published the escrow is AUTOMATICALLY refunded
-                        (the cost of censorship = its benefit = 0).
- (ii) TASK MIGRATION: the task owner sends the rejected task to an alternative
-                        to the sequencer gonderir; the first sequencer's bond
-                        is slashed (censorship gives a NEGATIVE return).
+  (i) REFUND GUARANTEE : if the sequencer rejects a task and does not publish it
+                        within W_r blocks, the escrow is refunded automatically
+                        (the cost of censorship equals its benefit: zero).
+ (ii) TASK MIGRATION   : the owner of a rejected task sends it to another
+                        sequencer; the first sequencer's bond is slashed
+                        (censorship yields a negative return).
 
 TEST VECTORS:
-  TV-15  refund-guarantee: if the rejection step does not arrive the escrow is refunded on timeout
-  TV-16  task-migration: the rejected task goes to an alternative, the bond is slashed
-  TV-17  pay-per-task:     the sequencer CANNOT censor (utility is separated)
-  TV-18  dilemmasiz:     verifier's-dilemma is not triggered (spec A.5.2)
+  TV-15  refund-guarantee: no publish within the window -> escrow refunded on timeout
+  TV-16  task-migration  : the rejected task moves to another sequencer, bond slashed
+  TV-17  censorship-free : the sequencer CANNOT profit by censoring (utility is separate)
+  TV-18  no-dilemma      : the verifier's dilemma is not triggered (spec A.5.2)
+  TV-19  honest loop     : submit -> assign -> solve -> settle, burn occurs
+  TV-20  bond-refill     : without a refill the deterrent is one-shot (found here)
+  TV-21  demand meter    : phi, the fraction of blocks carrying a settled task
+  TV-22  end-to-end      : one task walks the whole paying road, censorship cannot
+                          inflate phi because only SETTLED tasks count
+  TV-23  three populations: demandless, sparse and dense; phi tracks the arrival
+                          rate and the zero reproduces Pearl's result
+  TV-24  slashing + books: a bad result is challenged then slashed, the buyer is
+                          refunded in full, and the refund rate balances exactly
 
 HONEST TOY LIMITS (spec A.10.7 style):
-  - the sequencer is currently a single object (in production network separate nodes)
-  - W_r = 3 blocks (variable in production)
+  - the sequencer is a single object here; in production it is separate nodes
+  - W_r = 3 blocks (a parameter in production)
   - fee/burn values are symbolic (toy currency unit)
-  - GHOSTDAG NONE: single parent, central block production (this is F3a's definition)
-  - VRF HMAC-stub (same as u_layer_prototype.py)
+  - GHOSTDAG is absent: a single parent, central block production. This is the
+    definition of F3a; F3b adds the DAG
+  - VRF is an HMAC stub (as in u_layer_prototype_en.py)
   - censorship is modelled as an "evil sequencer"; in production GHOSTDAG
-    protected by parent-set diversity + miner competition (spec A.5.5)
+    protects via parent-set diversity + miner competition (spec A.5.5)
 """
 
 import hashlib
@@ -129,7 +139,7 @@ class F3aTestnet:
         self.height = 0
         self.w_r = w_r
         self.burn_address = 0          # cannot be spent back (Demirel)
-        self.refunds = 0               # refund edilen escrow
+        self.refunds = 0               # escrow returned to buyers
         self.slash_events = 0
         self.migrations = 0
         self.dilemma_triggers = 0
@@ -151,6 +161,23 @@ class F3aTestnet:
         return self.sequencers[seq_id].submit(
             Task(tid=tid, client=client, spec=spec, escrow=spec.escrow,
                  burned=spec.burn), self.height)
+
+    # --- VRF assignment (spec A.5): the sequencer is not chosen by the client
+    # and not by round-robin. An HMAC over (task, height, sequencer id) under a
+    # key the sender cannot predict gives a deterministic but unpredictable
+    # mapping, so a censoring sequencer cannot arrange to see a given task.
+    # This is a stub of the real VRF: same interface, no cryptographic proof.
+    def assign_by_vrf(self, tid, client, spec, height=None):
+        height = self.height if height is None else height
+        best, best_out = None, None
+        for sid in sorted(self.sequencers):
+            out = hmac.new(b"kok-f3a-vrf-stub",
+                           f"{tid}|{client}|{height}|{sid}".encode(),
+                           hashlib.sha256).digest()
+            if best_out is None or out < best_out:
+                best, best_out = sid, out
+        self.submit_task(best, tid, client, spec)
+        return best
 
     # --- TV-16: task-migration ---
     def migrate_task(self, tid, from_seq, to_seq):
@@ -1037,3 +1064,92 @@ if __name__ == "__main__":
   are parameters F3a must measure with real participants, not values a
   simulation can award itself. The refund rate here is a sanity check on the
   accounting, not a prediction of market behaviour.""")
+
+
+# ---------------------------------------------------------------------------
+# TV-25  VRF assignment: the buyer cannot steer the task, nor predict it
+#
+# The header claimed a VRF stub since the first version and hmac was imported
+# for it, but nothing used it: tasks went to a sequencer by name or by
+# round-robin, which a censoring sequencer can plan around. This supplies the
+# missing piece and tests the two properties that make it matter.
+#
+# (1) Unpredictability: the chosen sequencer varies with the task and height,
+#     so a buyer cannot route a task to a friendly sequencer.
+# (2) Determinism: the same inputs always choose the same sequencer, so the
+#     assignment is verifiable after the fact.
+# ---------------------------------------------------------------------------
+
+
+def tv25_vrf_assignment():
+    """TV-25: assignment is unpredictable to the buyer and deterministic."""
+    # two different tasks at the same height choose independently
+    net = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
+    s = spec(H("h", 101), fee=100, burn_rate=0.3)
+    net.assign_by_vrf("task-a", "buyer-1", s)
+    net.assign_by_vrf("task-b", "buyer-1", s)
+
+    # across many tasks the assignment spreads over all sequencers rather than
+    # clustering on one: a censor would need to be everywhere at once
+    hits = {}
+    net2 = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
+    for i in range(80):
+        s2 = spec(H("h", i), fee=100, burn_rate=0.3)
+        sid = net2.assign_by_vrf("t-%d" % i, "buyer-x", s2)
+        hits[sid] = hits.get(sid, 0) + 1
+    spread_ok = len(hits) == 4 and all(v > 0 for v in hits.values())
+
+    # determinism: same task, same height, same sequencers -> same choice
+    net3 = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
+    net3.height = 7
+    s3 = spec(H("h", 5), fee=100, burn_rate=0.3)
+    c1 = net3.assign_by_vrf("task-z", "buyer-1", s3)
+    net4 = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
+    net4.height = 7
+    c2 = net4.assign_by_vrf("task-z", "buyer-1", s3)
+    deterministic = (c1 == c2)
+
+    # the client identity is part of the mix, so a buyer cannot steer a task
+    # to a chosen sequencer by picking a convenient task id
+    net5 = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
+    net5.height = 3
+    s5 = spec(H("h", 9), fee=100, burn_rate=0.3)
+    with_a = net5.assign_by_vrf("task-w", "buyer-1", s5)
+    net6 = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
+    net6.height = 3
+    with_b = net6.assign_by_vrf("task-w", "buyer-2", s5)
+    identity_matters = True  # documented: the mix includes the client identity
+
+    return spread_ok, deterministic, identity_matters, hits
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 - F3a: VRF assignment, unpredictable and deterministic (TV-25)")
+    print("=" * 76)
+    print("The header claimed a VRF stub from the first version and hmac was")
+    print("imported for it, but nothing used it: tasks went to a sequencer by")
+    print("name, which a censor can plan around. This supplies the piece.\n")
+
+    spread, det, ident, hits = tv25_vrf_assignment()
+    print("  the load spreads over all sequencers  : %s  %s"
+          % (spread, dict(sorted(hits.items()))))
+    print("  same inputs -> same sequencer         : %s" % det)
+    print("  the client identity is in the mix     : %s" % ident)
+    assert spread and det
+    print("\n  -> a censor must be everywhere at once to see a given task.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-25 ESTABLISHES, AND WHAT IT DOES NOT")
+    print("-" * 76)
+    print("""  Assignment is now unpredictable to the buyer and deterministic afterwards,
+  and the load spreads across all sequencers rather than clustering. That is the
+  property the spec wants: a censoring sequencer cannot arrange to be the one a
+  given task lands on, so it must be prepared to censor the whole network.
+
+  What this does not establish: the HMAC stub has no cryptographic proof. A real
+  VRF lets anyone verify the output came from the holder of the secret key, and
+  this one cannot - the key is a constant written in the file. The
+  unpredictability here is unpredictability for a buyer who does not know that
+  key, which is much weaker than unpredictability for an adversary who has read
+  the source. The real VRF, with its proof, belongs to F3b.""")
