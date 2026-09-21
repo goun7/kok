@@ -454,6 +454,47 @@ def tv123_stub():
     return "replay-rejection: PASS"
 
 
+# =============================================================================
+# TV-34  Empty-input attack (S1): A=B=0 still mines, but phi=0  (2026-09-21)
+#
+# Adversarial self-review finding. The spec used to list "A=B=0" as a refuted
+# attack. That is true for SECURITY (prescribed hardness still holds: with
+# A=B=0 the noise dominates and every leaf is a product of ROM outputs, so the
+# work is unchanged). It is FALSE for UTILITY: the computation carries zero
+# useful work. In S1 mode the miner picks its own input for free, so nothing in
+# the G layer alone stops empty mining. The real defense is economic: a block
+# with no U task earns the baseline subsidy only, never utility revenue.
+#
+# This test makes the claim runnable instead of asserted.
+# =============================================================================
+def tv34_empty_input():
+    def _dense(n, seed):
+        import hashlib
+        return [[int.from_bytes(hashlib.sha256(f"{seed}|{i}|{j}".encode()).digest()[:2], "big") % 97
+                 for j in range(n)] for i in range(n)]
+
+    ch = Chain()
+    n = 8
+    zero = [[0] * n for _ in range(n)]
+    A, B = _dense(n, 7), _dense(n, 13)
+    for _ in range(EPOCH_LOOKBACK + 1):
+        ch.blocks.append(S("empty", len(ch.blocks)))
+
+    # (1) empty mining: A=B=0 still produces a valid G certificate
+    blk0 = ch.mine_block("m1", [], zero, zero)
+    ok_g = ch.validate_block(blk0, zero, zero) == "ACCEPT"
+    phi0 = blk0["phi"]
+
+    # (2) useful mining: a real input with one assigned task
+    t = ch.submit_task("c1", TaskSpec("mm", (A, B), 64, DEADLINE_H), 100, 0.1)
+    list(ch.assign_tasks("m1", [t], prob=1.0))
+    blk1 = ch.mine_block("m1", [t], A, B)
+    ok_u = ch.validate_block(blk1, A, B) == "ACCEPT"
+    phi1 = blk1["phi"]
+
+    return ok_g, phi0, ok_u, phi1
+
+
 # --------------------------------------------------------------------- main
 if __name__ == "__main__":
     print("=" * 72)
@@ -484,8 +525,19 @@ if __name__ == "__main__":
     print(f"[G]    {tv123_stub()}")
 
     print("-" * 72)
+    ok_g, phi0, ok_u, phi1 = tv34_empty_input()
+    print("[TV-34] empty input A=B=0: G-cert ACCEPT=%s, phi=%.3f" % (ok_g, phi0))
+    print("        useful input     : ACCEPT=%s, phi=%.3f" % (ok_u, phi1))
+    assert ok_g, "empty mining must still produce a valid G certificate"
+    assert phi0 == 0.0, "an empty block must have phi = 0 (no useful work)"
+    assert ok_u and phi1 > 0.0, "a useful block must carry phi > 0"
+    print("        -> S1 cannot be FORCED to be useful; it is INCENTIVIZED to be.")
+    print("        -> the old spec calling A=B=0 'refuted' was overstated;")
+    print("           now scoped to security only. Recorded as a correction.")
+
+    print("-" * 72)
     print("ALL TEST VECTORS PASSED — U-layer state machine + penalty economics working.")
-    print("Known prototype limits: (1) G kernel cuPOW yerini tutan sadelestirme;")
-    print("(2) VRF HMAC-stub; (3) 'STARK-benzeri' iz gercek AIR degil; (4) retarget")
+    print("Known prototype limits: (1) the G kernel is a plain stand-in for cuPOW;")
+    print("(2) the VRF is an HMAC stub; (3) the 'STARK-like' trace is not a real AIR; (4)")
     print("tests are in g_layer_tests.py (time model); (5) GHOSTDAG parent-set")
     print("selection missing (single parent). All share the interface of spec A.10/B.3.")
