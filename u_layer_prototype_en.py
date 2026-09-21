@@ -12,7 +12,7 @@ Akis:  submit_task (escrow + bond + burn)
 The G layer (KW/cuPOW) is represented in this file by a simplified kernel:
 a feasible MatMul-transcript PoW (small size, per-tile hash).
 Goal: test the U-layer economics/penalty machine with real code; the KW kernel
-prototip is at the level ve cuPOW ile will be changed nokta acca is marked.
+prototype is at the level and will be changed with cuPOW where acca is marked.
 
 Dependencies: none (standard library). Deterministic: the SEED is fixed.
 Calistirma: python3 u_layer_prototype.py
@@ -52,7 +52,7 @@ def S(*parts) -> str:
 
 
 # ------------------------------------------------------- G layer: plain KW
-# Not: bu, KW'nin per-tile of the variant (Remark 2.1) minyatur bir is an imitation of.
+# Note: this is KW's per-tile variant (Remark 2.1) - a miniature imitation of it.
 # Transcript: (n/r)^3 intermediate r x r blocks; PoW: a tile hash is below the target.
 # to be replaced by the cuPOW kernel: keeps the same interface once the burn stub is real.
 class KWKernel:
@@ -89,8 +89,8 @@ class KWKernel:
         n = len(A)
         E = [[(H("E", ctx, a, b) % q) for b in range(n)] for a in range(n)]
         F = [[(H("F", ctx, a, b) % q) for b in range(n)] for a in range(n)]
-        # the miner iddia that it did tile'i kesinlikle computed should be; biz de
-        # o tile'i (kucuk oldugu icin) again hesaplariz = verification.
+        # the miner claims it computed the tile; since the tile is small we simply
+        # recompute it ourselves = verification.
         acc = 0
         for l in range(n // r):
             acc = (acc + (A[i * r][l * r] + E[i * r][l * r]) *
@@ -118,7 +118,7 @@ class VRF:
 @dataclass
 class TaskSpec:
     harness_id: str
-    program: object            # (A, B) the matrices — bu prototipte "useful is"
+    program: object            # (A, B) the matrices — in this prototype "useful is"
     max_flops: int
     deadline: int
     program_commit: str = ""
@@ -172,7 +172,7 @@ class Chain:
     def submit_task(self, client, spec, fee, burn_rate, gas=0):
         assert fee > 0 and 0.0 < burn_rate <= 0.5, "burn_rate (0.0, 0.5]"
         bond = int(fee * BOND_RATIO)
-        burn = int(fee * burn_rate)                     # geri cannot be taken
+        burn = int(fee * burn_rate)                     # cannot be taken back
         escrow_locked = fee + bond                      # locked total
         tid = S("task", client, spec.program_commit, fee, escrow_locked)
         t = Task(tid=tid, client=client, spec=spec, fee=fee, burn_rate=burn_rate)
@@ -252,7 +252,7 @@ class Chain:
         self.times.append(self.times[-1] + t_delta)
 
     def sim_block(self, lam):
-        """Simule was done varis its duration ile blok: Δt ~ Exp(λ/D) (E[T] = D/Λ, spec B.2).
+        """The simulation goes from arrival to its duration per block: Δt ~ Exp(λ/D) (E[T] = D/Λ, spec B.2).
         Gercek PoW dongusunu without running retarget its mathematics test eder."""
         delta = -math.log(rng.random()) / (lam / self.D)
         self.record_time(delta)
@@ -263,9 +263,9 @@ class Chain:
         """Her W blokta hashrate estimated yap ve D'yi again kur.
         Important: the T_act measured inside a window was produced by that window's D;
         therefore it is a multiplicative (stale) rate, a hash-rate estimate independent of D
-            Lambda_hat = D * W / T_act        (cunku blok hizi = Lambda/D)
+            Lambda_hat = D * W / T_act        (because block rate = Lambda/D)
         is used. The median filter smooths the Lambda_hat of the last 3 windows
-        (ani its fluctuations ezer). Sonra D <- Lambda_hat_smooth * T_b, 4x ile
+        (it also smooths its fluctuations). Then D <- Lambda_hat_smooth * T_b, 4x ile
         bounded (as Bitcoin's is)."""
         W = self.retarget_window
         t_b = self.target_block_time
@@ -324,7 +324,7 @@ class Chain:
         t = self.tasks[tid]
         if t.state == "SOLVED":
             t.state = "SETTLED"
-            pay = t.fee - t.burned             # escrow'dan madenciye, burn zaten gitti
+            pay = t.fee - t.burned             # to the miner from escrow; the burn has already gone
             t.escrow -= (t.burned + pay)
             return pay
         return 0
@@ -342,7 +342,7 @@ def kurtosis(mat):
 
 
 def tv9_kurtosis_trap():
-    """Basu 2606.04819: uniform-random matrices NN'den ayrint edilebilir AMA
+    """Basu 2606.04819: uniform-random matrices can be decomposed from NN's, BUT
     the adversarial N(0,18) passes the kurtosis check. => the check is NOT security."""
     r2 = random.Random(1)
     uniform = [[r2.randint(-64, 64) for _ in range(64)] for _ in range(64)]
@@ -439,7 +439,7 @@ def tv10():
 
 def tv123_stub():
     """TV-1..TV-4 G-layer tests are outside this prototype's scope (KW_ANALIZ.md
-    ve G-katmani kernel test in the file). Burada only replay reddi dogrulanir."""
+    and the G-layer kernel test in the file). Here only replay rejection dogrulanir."""
     ch = Chain()
     A, B = [[1, 2], [3, 4]], [[5, 6], [7, 8]]
     for _ in range(EPOCH_LOOKBACK + 1):
@@ -498,7 +498,7 @@ def tv34_empty_input():
 # --------------------------------------------------------------------- main
 if __name__ == "__main__":
     print("=" * 72)
-    print("KOK v2 — U-Katmani Prototip  (seed %d)" % SEED)
+    print("KOK v2 — U-LAYER PROTOTYPE  (seed %d)" % SEED)
     print("=" * 72)
 
     b, e, sybil = tv5()
@@ -546,7 +546,7 @@ if __name__ == "__main__":
 # =============================================================================
 # TV-38  The Pearl verification gap, tested on our own kernel (2026-09-21)
 #
-# The market research (ARASTIRMA_SONUCLARI.md) records the single most damaging
+# The market research (ARASTIRMA_RESULTS.md) records the single most damaging
 # finding about Pearl: its verification ACCEPTED RANDOM MATRICES. A "useful"
 # miner could submit a certificate without ever doing the useful work, and the
 # network accepted it. That is how a chain runs 24 EH/s and sells zero useful

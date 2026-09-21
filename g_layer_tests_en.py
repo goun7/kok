@@ -386,7 +386,7 @@ def v1_contrast():
     n = 8
     honest_v1 = n ** 3                     # A*B tam product
     attack_sparse = (n // 2) * n * n       # yari-bos A: ~n^3/2
-    attack_perm = n * n                    # perm: only satir the choice
+    attack_perm = n * n                    # perm: only the choice of rows
     attack_zero = n                        # A=0: the result is zero, no product
     kw_all = cost_of_prove(dense(n), dense(n, seed=2), 0, 1 << 6)   # from the input independent
     return {
@@ -402,8 +402,8 @@ def v1_contrast():
 # TV-11..TV-14 — PEARL JACKPOT POLICY (toy INT adaptasyonu)
 #
 # Kaynak: "Pearl Floating Point Scheme Specification" (Eylul 2026) 5.1, 5.2, 7.
-# Pearl FP8 giris + FP32 magnitude-grid accumulator + rank-r gurultu + per-tensor
-# scale kullanir. Bu toy adaptasyon: kaba INT-grid quantization + toy magnitude-
+# Pearl FP8 inputs + FP32 magnitude-grid accumulator + rank-r noise + per-tensor
+# scale. This toy adaptation: coarse INT-grid quantization + toy magnitude-
 # a grid accumulator + per-row constant noise-to-signal iid noise.
 #
 # Conscious deviations (for the toy scale; documented in PEARL_DOCS_ANALIZ.md 11.1):
@@ -412,11 +412,11 @@ def v1_contrast():
 #     (in the toy this is triggered by peaked-rows).
 #   * sigma_i = DELTA * RMS(row) — per-entry noise std (Pearl'in C.4/C.5
 #     not the exact counterpart of the normalization; whether Pearl's sigma_i is per-entry
-#     row-level mi oldugu from the text net did not appear, bu toy secim "noise-to-signal
+#     row-level mi oldugu from the text net did not appear; this toy choice "noise-to-signal
 #     consistent with the statement "the same in every row").
 #   * tamed/unpredictable thresholds toy olcege (K=64, GRID=16) kalibre was done;
 #     Pearl's production values (tau_tame=256 etc.) are for k~4096-16384.
-#   * unpredictable: toy v_iu < ulp(M_ij) comparison kullanir (Pearl
+#   * unpredictable: the toy uses the v_iu < ulp(M_ij) comparison (Pearl
 #     uses the divisor v_iu < ulp(M_ij)^2 + 2^21 — it comes from the FP8 bit budget).
 #     Toy'da esik 2^21 its scale anlamsiz; yapi (summand spread vs accumulation
 #     grid) korunur.
@@ -466,9 +466,9 @@ class JackpotToy:
     # ---------------- 5.1.2 noise floor -------------------------------------
     @classmethod
     def noise_floor(cls, A):
-        """Her acilan satir en az SIGMA_MIN quantized grid unit gurultu tasinmak
-        obliged. Peaked row -> per-tensor scale peak'e ayarlanir, geri of the remainder
-        (gurultu dahil) grid'e its congestion ('low local entropy' attack)."""
+        """Every opened row must carry at least SIGMA_MIN quantized grid units of noise.
+        A peaked row sets the per-tensor scale to the peak, and the remainder
+        (noise included) congests the grid ('low local entropy' attack)."""
         g = cls.gamma(A)
         worst = float("inf")
         for row in A:
@@ -478,8 +478,8 @@ class JackpotToy:
     # ---------------- 5.1.3 tamed products ----------------------------------
     @classmethod
     def product_with_magnitude(cls, A, B):
-        """C = A B^T + her hucre icin replay magnitude M_ij = max(summand,
-        partial accumulator) — Pearl'in M_ij of its definition toy equivalent."""
+        """C = A B^T, and for every cell the replay magnitude M_ij = max(summand,
+        partial accumulator) - the toy equivalent of Pearl's M_ij definition."""
         n = len(A); m = len(B); k = len(A[0])
         C = [[0.0] * m for _ in range(n)]
         M = [[0.0] * m for _ in range(n)]
@@ -501,7 +501,7 @@ class JackpotToy:
     @classmethod
     def tamed_products(cls, A, B):
         """Tamed cell: |C_ij| > tau_tame * sqrt(k) * sigma_i * sigma_j
-        (dogal olcekte cok buyuk -> uyumlu/coherent satir the pairs)."""
+        (very large at the natural scale -> coherent rows)."""
         C, _ = cls.product_with_magnitude(A, B)
         k = len(A[0])
         sA = [cls.noise_std_row(r) for r in A]
@@ -523,7 +523,7 @@ class JackpotToy:
     # + and cannot express the scale separation of the FP32 accumulator.
     #   * TV-11/12 (input-side)  : sigma_i = DELTA * RMS(row)   [Pearl 5.1.1/2]
     #   * TV-14  (accumulation)  : ACC_NOISE grid unit = sub-quantization its scale.
-    #     Gerekce: Pearl'de FP8 subnormal its congestion arka plan entry'sini ~2^-17'e
+    #     Rationale: at Pearl FP8 subnormal its congestion arka plan entry'sini ~2^-17'e
     #     it compresses enough; it falls into the same regime as FP32 ulp(M) = M*2^-23 ->
     #     summand truncate = 'precision shortcut'. Toy lineer grid 2^-17
     #     since it cannot show the compression, it injects this scale via ACC_NOISE.
@@ -533,10 +533,10 @@ class JackpotToy:
     def unpredictable_summands(cls, A, B):
         """Predictable summand: the spread range v_iu of the summand, the accumulator
         grid'ine (ulp(M_ij)) does not fit -> the miner o summand'i atlayip MAC
-        tasarrufu yapabilir ('precision shortcut', FP'ye ozgu). Hesap
+        can save ('precision shortcut', specific to FP). The
         quantization grid in its units (entry/gamma); v_iu = Pearl (13)'un
         ikinci-moment its product (2^21 the divisor FP8 bit from its budget gelir; toy'da
-        ACC_NOISE ile enjekte edilen sub-quantization its scale ile)."""
+        sub-quantization injected via ACC_NOISE)."""
         g = cls.gamma(A)
         denom = float(1 << cls.ACC_BITS)
         _, M = cls.product_with_magnitude(A, B)
@@ -574,7 +574,7 @@ class JackpotToy:
 
 # --------------------- test input the classes (Pearl 5.2 attack the vectors) ----
 def _uniform_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """Saglikli 'typical workload' arka plan: uniform [-c, c] inputs.
+    """A healthy 'typical workload' arka plan: uniform [-c, c] inputs.
     (uniform instead of Gaussian: the max/RMS ratio ~sqrt(3) is constant -> the noise floor and idle
     its margins temiz; Gaussian'da max~4sigma marj kirilgan.)"""
     return [[r.uniform(-c, c) for _ in range(k)] for _ in range(n)]
@@ -582,7 +582,7 @@ def _uniform_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 def peaked_rows(r, m=2, v=40.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
     """'No-noise entries' + 'low local entropy' (Pearl 5.2): her in the line m adet
-    gurultuyu cok asan buyuk entry, geri kalan kucuk."""
+    a large entry far exceeding the noise, the remainder small."""
     A = _uniform_rows(r, n, k, c)
     for i in range(n):
         for pos in r.sample(range(k), m):
@@ -592,9 +592,9 @@ def peaked_rows(r, m=2, v=40.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 def common_peaked_rows(r, v=64.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
     """'Precision shortcut' (Pearl 5.2 + 7): every row of A and B is at the SAME position
-    buyuk entry carries -> her hucre tek buyuk summand ile domine edilir, geri
+    a large entry carries -> every cell is dominated by a single large summand, the rest
     kalan summand'lar accumulator grid'inin under remains.
-    (v, peak'in domine that it did RMS ile ACC_BITS'e gore kalibre: ulp ~ v^2/2^ACC
+    (v, dominated by the peak; calibrate RMS to ACC_BITS: ulp ~ v^2/2^ACC
     > the background spread (c^2/3 + (DELTA*v/sqrt(k))^2).)"""
     p = k // 2
     A = _uniform_rows(r, n, k, c); B = _uniform_rows(r, n, k, c)
@@ -648,7 +648,7 @@ def tv13():
     f_bad, ok_bad = JackpotToy.tamed_products(bad, bad)
     A = _uniform_rows(r); B = _uniform_rows(r)
     f_ok, ok_ok = JackpotToy.tamed_products(A, B)
-    diag = JackpotToy.tamed_products(A, A)      # B=A: only diagonal uyumlu
+    diag = JackpotToy.tamed_products(A, A)      # B=A: only the diagonal is coherent
     assert not ok_bad and ok_ok, (f_bad, f_ok)
     return {"bad_identical": (f_bad, ok_bad), "good_random": (f_ok, ok_ok),
             "intermediate_B=A": diag}
@@ -778,7 +778,7 @@ def tv21():
 
 if __name__ == "__main__":
     print("=" * 72)
-    print("KOK v2 — G-KATMAN + RETARGET TESTLERI")
+    print("KOK v2 — G-LAYER + RETARGET TESTS")
     print("=" * 72)
 
     s, d = tv1()

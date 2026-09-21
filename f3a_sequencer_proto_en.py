@@ -4,7 +4,7 @@
 KOK v2 - F3a PROTOTYPE: off-protocol economics testnet (mock sequencer)
 ========================================================================
 
-V2 10.1 F3a: G layer ACTIVE, central bir mock sequencer block produces,
+V2 10.1 F3a: G layer ACTIVE, a central mock sequencer that produces blocksduces,
 that the task market runs BY ITSELF. This prototype tests spec A.5's
 Tests the TWO censorship-resistance mechanisms defined in clause 5:
 
@@ -22,12 +22,12 @@ TEST VECTORS:
   TV-18  dilemmasiz:     verifier's-dilemma is not triggered (spec A.5.2)
 
 HONEST TOY LIMITS (spec A.10.7 style):
-  - sequencer su an tek bir nesne (in production network separate nodes)
+  - the sequencer is currently a single object (in production network separate nodes)
   - W_r = 3 blocks (variable in production)
-  - fee/burn the values sembolik (toy para the unit)
+  - fee/burn values are symbolic (toy currency unit)
   - GHOSTDAG NONE: single parent, central block production (this is F3a's definition)
   - VRF HMAC-stub (same as u_layer_prototype.py)
-  - censorship "evil sequencer" olarak is modelled; in production GHOSTDAG
+  - censorship is modelled as an "evil sequencer"; in production GHOSTDAG
     protected by parent-set diversity + miner competition (spec A.5.5)
 """
 
@@ -90,7 +90,7 @@ class Sequencer:
         self.sid = sid
         self.bond = bond
         self.evil = evil                    # censorship modu
-        self.censor_client = censor_client  # bu client'in its tasks censorshiple
+        self.censor_client = censor_client  # this client's tasks are censoredorshiple
         self.slashed = 0
         self.tasks = {}                     # tid -> Task
 
@@ -128,7 +128,7 @@ class F3aTestnet:
         self.sequencers = {sq.sid: sq for sq in sequencers}
         self.height = 0
         self.w_r = w_r
-        self.burn_address = 0          # geri cannot be spent (Demirel)
+        self.burn_address = 0          # cannot be spent back (Demirel)
         self.refunds = 0               # refund edilen escrow
         self.slash_events = 0
         self.migrations = 0
@@ -165,9 +165,9 @@ class F3aTestnet:
         self.sequencers[from_seq].bond -= slash
         self.sequencers[from_seq].slashed += slash
         self.slash_events += 1
-        # POLICY (pass_sim 10): bond GERI-EKLENIR — aksi halde deterrent
+        # POLICY (pass_sim 10): the bond is REFILLED — otherwise the deterrent
         # is one-shot (at the first event is depleted, the rest free).
-        # Governance by fee seviyesine otomatik tamamlama.
+        # Governance: automatic top-up to the fee level.
         self.sequencers[from_seq].refill(t.spec.fee)
         # taski to an alternative migrate, close the old one
         t.state = "MIGRATED"
@@ -214,7 +214,7 @@ def spec(harness, fee=100, burn_rate=0.3, program=None):
 
 def tv15():
     """TV-15: REFUND-GUARANTEE. Evil sequencer reject-step does not publish
-    escrow W_r blok at the end of OTOMATIK refund edilir; of censorship its benefit yoktur."""
+    escrow W_r blok at the end an AUTOMATIC refund is issued; of censorship its benefit yoktur."""
     random.seed(1515)
     net = F3aTestnet([Sequencer("A", evil=True, censor_client="kobi")])
     ok = net.submit_task("A", "t1", "kobi", spec("llama-70b"))
@@ -225,7 +225,7 @@ def tv15():
         net.next_block()
         assert net.sequencers["A"].tasks["t1"].state == "CENSORED", \
             "refund-guarantee erken was triggered"
-    # W_r'yi gecti -> otomatik refund
+    # exceeded W_r -> automatic refund
     net.next_block()
     t = net.sequencers["A"].tasks["t1"]
     assert t.state == "REFUNDED" and net.refunds == 70, (t.state, net.refunds)
@@ -246,7 +246,7 @@ def tv16():
     bond_before = net.sequencers["A"].bond
     migrated = net.migrate_task("t2", "A", "B")
     assert migrated
-    # slash min(bond, fee) = 100; bond GERI-EKLENIR (TV-20 policy'su)
+    # slash min(bond, fee) = 100; the bond is REFILLED (TV-20's policy)
     assert net.sequencers["A"].slashed == 100, "bond was not cut"
     assert net.sequencers["A"].bond == bond_before, "bond uste was not formatted (refill)"
     assert net.slash_events == 1 and net.migrations == 1
@@ -262,7 +262,7 @@ def tv16():
 
 def tv17():
     """TV-17: CENSORSHIP-IS-FREE-FAILS. An evil sequencer's 'petty' censorship also
-    the system task either refund eder either migrates; sequencer NO zaman
+    the system task either refunds or migrates; the sequencer has NO time
     it cannot hold the escrow (gain zero) and its bond shrinks (a real loss)."""
     random.seed(1717)
     net = F3aTestnet([Sequencer("A", evil=True, censor_client="kobi"),
@@ -315,14 +315,14 @@ def tv18():
     assert net.sequencers["A"].tasks["t9"].state == "CHALLENGED"
     # a correct verification -> SETTLED, the dilemma was not triggered
     assert net.settle_task("A", "t9", verify_ok=True)
-    assert net.dilemma_triggers == 1  # hala 1 (geri is not counted)
+    assert net.dilemma_triggers == 1  # still 1 (refunds are not counted)
     assert net.burn_address == 30
     print(f"  TV-18 no-dilemma:     mandatory verification; wrong->CHALLENGED, correct->SETTLED  ACCEPT")
     return True
 
 
 def tv19():
-    """TV-19: HONEST SIRA. Honest tek sequencer ile tum eithersam dongusu:
+    """TV-19: HONEST ORDER. A single honest sequencer runs the whole loop:
     submit -> assign -> solve -> settle; burn gerceklesir, escrow tuketilir."""
     random.seed(1919)
     net = F3aTestnet([Sequencer("A", evil=False)])
@@ -337,10 +337,10 @@ def tv19():
 
 
 def tv20():
-    """TV-20: BOND GERI-EKLEME (pass_sim 10 tablo B'nin buldugu acik).
-    Geri-ekleme YOKSA deterrent is one-shot: ilk censorship bond'u exhausts,
-    subsequent events FREE. Refill if present her event fee kadar keser.
-    *** Bu test, the economy of the model bir BUG'I found the prototype that it FIXED
+    """TV-20: BOND REFILL (pass_sim 10 tablo B'nin buldugu acik).
+    Grefill is absent, the deterrent is one-shot: the first censorship exhauststs,
+    subsequent events FREE. Refill, if present, cuts up to the fee per event.
+    *** This test, the economy of the model bir BUG'I found the prototype that it FIXED
     proves. ***"""
     random.seed(2020)
     # (a) refill VAR (production policy'su): her event keser
@@ -380,7 +380,7 @@ def tv20():
         net2.submit_task("A", f"h{i}", "kobi", spec("llama-70b", fee=100))
         net2.migrate_task(f"h{i}", "A", "B")
     assert net2.slash_events == 3
-    # ILK event bond was exhausted, subsequent IKISI FREE (100, 300 degil)
+    # the FIRST event's bond was exhausted, subsequent IKISI FREE (100, 300 degil)
     assert net2.sequencers["A"].slashed == 100, net2.sequencers["A"].slashed
     assert net2.sequencers["A"].bond == 0, "bond would have been exhausted"
     print(f"  TV-20 bond-refill:   3 censorship events; refill -> 300 slashed (bond {bond0}->100);")
