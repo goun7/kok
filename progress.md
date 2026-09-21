@@ -1979,3 +1979,41 @@ kendi sinirlarini tasiyor.
 
 **8 ek commit toplam.** Agac temiz. Ana yol hala iki cevabi bekliyor (Alon Burg,
 Demirel). F3b YOK, mail YOK, duyuru YOK.
+
+
+## Oturum 8 eki 2 — adversarial probe ile 3. GERCEK muhasebe hatasi (22 Eylul)
+
+Onceki iki hatayi (TV-34 recount, migrated_tasks dead counter) inspeksiyonla
+degil **calistirarak** bulmustum. Ayni yontemi sistematiklestirdim: 6 adversarial
+kenar-durum probe'u yazdim (challenged-then-repaired, partial slash,
+censorship-without-migration, double-settle, migrate-non-censored,
+phi-settling-block). 5/6 gecti; 1 tanesi **gercek hatayi aciga cikardi**.
+
+**TV-35: zaman-asimi iadesinde burn limbo'da kaliyordu.**
+- CENSORED gorev W_r sonrasi REFUNDED oluyor ama sadece **escrow (70)** iade
+  ediliyordu; **burn (30)** ne aliciya donuyor ne de burn_address'e gidiyordu.
+- Invariant kirik: fees_in=100 karsi refunded+burned+paid=70. **30 limbo'da.**
+  Yani sansurcu sequencer **hic is yapmadan fee'nin 30'unu elde tutuyordu.**
+- **Duzeltme:** hicbir sey teslim edilmedigi icin hicbir sey yakilmamali; alici
+  **tum fee** uzerinden tamamen tazmin edilir (escrow + burn). Bu SLASHED
+  yolinin zaten yaptigi sey — tasarimda tutarsizlik vardi.
+- **TV-15 ve TV-17 duzeltildi** (eski limbo davranisini assert ediyorlardi),
+  **spec duzeltildi** ("escrow iade edilir" -> "tum fee iade edilir"), test
+  tablosuna TV-35 satiri eklendi.
+- **Makaledeki kendi celiskimi duzelttim:** TV-34 notu "finansal defterler hic
+  dokunulmadi" diyordu ama TV-35 tam olarak defterlerde hata buldu. Not yeniden
+  yazildi: hem raporlama sayaclari hem de settlement aritmetiginde bosluklar
+  vardi, ikisi de **probe ile** (inspeksiyonla degil) bulundu, ikisi de regresyon
+  testiyle korumali.
+
+**Ek bulgu:** harness'lerde hala 2 Turkce string vardi (BASARISIZ, "erken was
+triggered") — onceki temizlik kacirmisti. Duzeltildi. Tum 8 _en.py dosyasi artik
+**0 karakter, 0 morfoloji** Turkce.
+
+**Metodoloji dersi (3. kez):** "temiz/iddia" yerine **calistir ve say**. TV-34,
+migrated_tasks ve TV-35'in hepsi kod okuyarak degil, **state machine'i
+provoke ederek** bulundu. Adversarial probe seti artik bu tur bulgularin
+sistematik hali.
+
+**Durum:** 6/6 suite yesil (f3a 8 ACCEPT). 0 Turkce. Audit temiz. Ana yol hala
+iki cevabi bekliyor (Alon Burg, Demirel). F3b YOK, mail YOK.
