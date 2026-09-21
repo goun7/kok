@@ -424,13 +424,54 @@ question rather than an assumption.
 
 ### arXiv 2609.22076 — APort Vault: AI Agent Payment Authorization
 
-Uchi Uchibeke, submitted 21 Sep 2026. Benchmarking AI agent payment authorization
-with an "Open Agent Passport." Not yet read in detail. It is listed here because it
-sits at the intersection the earlier AI-agent research flagged, and because
-*payment authorization for agents* is closer to a real primitive than the
-phishing-and-deepfake material that caused that direction to be rejected.
+Uchi Uchibeke, submitted 18 Sep 2026. This one caused the earlier rejected direction
+to be re-examined, and the re-examination found something real.
 
-**Status: abstracts read. Neither paper's full text has been examined.**
+The benchmark: 4,371 human-written attacks against a live payment agent, collected
+during a public capture-the-flag event, replayed across **14 models from 8 labs**,
+five policy configurations, two replay tracks, with and without a deterministic
+pre-action check implementing the **Open Agent Passport (OAP)** specification.
+**225,964 evaluations completed.** The paper reports five distinct events per
+evaluation, because "collapsing them is how an agent benchmark produces a number
+that does not survive review."
+
+The headline result: at Levels 2 to 4, transfers to recipients the passport did not
+permit numbered **140 of 76,842 with the model alone, and 0 of 69,297 behind the
+layer**. On matched model/prompt/track triples, 105 against 0. The zero spans 790
+source sessions, giving a per-session upper bound of 0.38%. At Level 4, request
+rates run 71.2% to 84.3% across the fourteen models, and 809 of 1,293 prompts (62.6%)
+elicited a request from all fourteen, each ending in a successful payment to the
+level's allowlisted recipient.
+
+**The crucial detail is what the zero did not cost:** it was not obtained by
+refusing payments. **25,370 payments executed behind the layer**, while the policy
+denied only 187 of the 25,640 transfer calls it evaluated, 148 of them for a
+forbidden recipient. The boundary stops unauthorized transfers while letting
+legitimate ones through.
+
+### Why this reopens the direction the log rejected
+
+The AI-agent security gap was rejected on the grounds that CertiK's losses traced to
+phishing, deepfakes, and social engineering, a people problem rather than a protocol
+gap. **That reasoning still holds for the losses CertiK measured.** But this paper is
+evidence of a different thing: a **deterministic protocol-level boundary that makes
+agent payment authorization provably contained**, benchmarked against 4,371 real
+attacks, with the usability cost measured and near zero.
+
+The distinction is stated carefully: the missing primitive is not "users must be
+more careful." It is **a pre-action authorization layer that agents cannot talk
+their way past**, with an open specification and a public dataset. That is a
+protocol-shaped gap, and someone just benchmarked it.
+
+**What this does not do:** it is not a blockchain. There is no consensus, no ledger,
+no token. It is a boundary layer for agents that already have payment access. So it
+does not compete with KOK, and it does not by itself justify building a chain. What
+it does establish is that **agent payment authorization is a real, measured problem
+with a measured solution shape** — directly relevant to the U layer's buyer side,
+since the buyers F3a targets are increasingly agents rather than humans, and an agent
+that cannot be authorized to pay safely cannot be a customer at all.
+
+**Status: abstract read in full. The OAP specification itself has not been fetched.**
 
 ## Source 9 — IEA "Energy and AI" (primary source on the energy constraint)
 

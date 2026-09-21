@@ -1233,6 +1233,37 @@ rights token with a TEE as the enforcement boundary.** That has a real answer �
 hardware-trusted and side-channel-exposed, KÖK's proof is cryptographic and the fraud window is
 economic — but it is now a question to be argued, not an assumption to stand on.
 
+**A second finding, same day, that partly reinstates a direction this project had ruled out.**
+The AI-agent security gap was rejected during the same research pass on the strength of the
+CertiK data: 2026 losses traced to North Korean actors, cross-chain failures, phishing and
+deepfakes, and the recommended defences were user-side. **That conclusion stands, because it is
+correct for the losses CertiK measured.** But **arXiv 2609.22076, "APort Vault"** (Uchibeke,
+18 September 2026) measures something else, and conflating the two would be the exact error the
+research discipline exists to prevent.
+
+APort Vault benchmarked **payment authorization in tool-using agents**: 4,371 human-written
+attacks from a public capture-the-flag event, replayed against 14 models from 8 labs, five policy
+configurations, two tracks, **225,964 evaluations**. Transfers to recipients the passport did not
+permit numbered **140 of 76,842 with the model alone, and 0 of 69,297 behind a deterministic
+pre-action layer** implementing the Open Agent Passport specification — a per-session upper bound
+of 0.38% across 790 sessions. Critically, the zero was not bought by refusing payments: **25,370
+legitimate payments still executed** behind the layer, while the policy denied 187 of 25,640
+transfer calls, 148 for a forbidden recipient.
+
+So the gap is not "users are careless." It is that **agents can be talked into paying the wrong
+recipient, and a protocol-level boundary stops it without breaking legitimate payments.** That is
+a measured problem with a measured answer.
+
+**Stated narrowly, this does not change what KÖK builds.** It is not a blockchain, there is no
+consensus or ledger, and it does not justify an AI-agent-security chain. What it does is
+identify the shape of KÖK's future customer. **The buyer of inference is increasingly an agent
+rather than a human, and an agent that cannot be safely authorized to pay cannot become a
+customer at all.** KÖK's escrow-and-burn task market already separates what an agent may *do*
+from what it may *take*: the fee is escrowed before assignment, payout occurs only on verified
+settlement, and a slashed provider refunds the buyer in full. That is an authorization boundary of
+the same shape as the one this paper benchmarked, reached from the opposite direction. Worth
+knowing. Not worth building on.
+
 ### 12.2 The name, and what it does and does not claim (2026-09-21)
 
 The name is stated once, plainly, and with its etymology **used correctly** — an earlier draft
