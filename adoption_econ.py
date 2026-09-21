@@ -348,7 +348,7 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
         if seed is None:
             print(f"      {label:46s} -> NEVER ESCAPES")
         else:
-            print(f"      {label:46s} -> escapes at seed D0 >= {seed:.3f}"
+            print(f"      {label:46s} -> escapes at seed D0 >= {seed:.4f}"
                   f"  (reaches {res['final_demand']*100:.1f}% of market)")
     print(f"\n      Reading: the seed is the fraction of the network's compute that")
     print(f"      must be REAL, paying demand from day one. A chain that launches")
