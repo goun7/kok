@@ -101,7 +101,7 @@ def noise_int_model(row, delta=DELTA):
 
 def noise_fp8_aware(row, sigma_min, fmt="E4M3"):
     """
-    FP8-aware: INT modeli + ABSOLUTE sigma_min floor.
+    FP8-aware: INT the model + ABSOLUTE sigma_min floor.
 
     Pearl SS5 noise floor: every entry must CARRY at least
     sigma_min * subnormal_min of noise. This is independent of magnitude -
@@ -143,7 +143,7 @@ def tv27_subnormal_compression():
     Q = [quantize_vec(row, "E4M3") for row in A]
     z = sum(1 for row in Q for x in row if x == 0.0)
     frac = z / (n * k)
-    assert frac > 0.5, f"TV-27: subnormal compression beklenmedi: {frac:.2f}"
+    assert frac > 0.5, f"TV-27: subnormal compression was not expected: {frac:.2f}"
     return "PASS", f"{frac*100:.0f}% of E4M3 subnormal (<2^-9) entries flushed to 0 (FP8 nonlinear)"
 
 

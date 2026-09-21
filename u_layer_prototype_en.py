@@ -12,7 +12,7 @@ Akis:  submit_task (escrow + bond + burn)
 The G layer (KW/cuPOW) is represented in this file by a simplified kernel:
 a feasible MatMul-transcript PoW (small size, per-tile hash).
 Goal: test the U-layer economics/penalty machine with real code; the KW kernel
-prototip seviyesindedir ve cuPOW ile degistirilecek nokta acca isaretlenmistir.
+prototip is at the level ve cuPOW ile will be changed nokta acca is marked.
 
 Dependencies: none (standard library). Deterministic: the SEED is fixed.
 Calistirma: python3 u_layer_prototype.py
@@ -52,7 +52,7 @@ def S(*parts) -> str:
 
 
 # ------------------------------------------------------- G layer: plain KW
-# Not: bu, KW'nin per-tile varyantinin (Remark 2.1) minyatur bir taklididir.
+# Not: bu, KW'nin per-tile of the variant (Remark 2.1) minyatur bir is an imitation of.
 # Transcript: (n/r)^3 intermediate r x r blocks; PoW: a tile hash is below the target.
 # to be replaced by the cuPOW kernel: keeps the same interface once the burn stub is real.
 class KWKernel:
@@ -89,8 +89,8 @@ class KWKernel:
         n = len(A)
         E = [[(H("E", ctx, a, b) % q) for b in range(n)] for a in range(n)]
         F = [[(H("F", ctx, a, b) % q) for b in range(n)] for a in range(n)]
-        # madenci iddia ettigi tile'i kesinlikle hesaplamis olmali; biz de
-        # o tile'i (kucuk oldugu icin) yeniden hesaplariz = verification.
+        # the miner iddia that it did tile'i kesinlikle computed should be; biz de
+        # o tile'i (kucuk oldugu icin) again hesaplariz = verification.
         acc = 0
         for l in range(n // r):
             acc = (acc + (A[i * r][l * r] + E[i * r][l * r]) *
@@ -118,7 +118,7 @@ class VRF:
 @dataclass
 class TaskSpec:
     harness_id: str
-    program: object            # (A, B) matrisleri — bu prototipte "faydali is"
+    program: object            # (A, B) the matrices — bu prototipte "useful is"
     max_flops: int
     deadline: int
     program_commit: str = ""
@@ -138,7 +138,7 @@ class Task:
     burn_rate: float
     state: str = "COMMITTED"     # COMMITTED -> ASSIGNED -> SOLVED -> SETTLED/SLASHED/EXPIRED
     escrow: int = 0          # fee'den kalan odenebilir escrow (TV-5: 70)
-    bond: int = 0            # ayri teminat (TV-7 slash kaynagi)
+    bond: int = 0            # ayri teminat (TV-7 slash the source)
     burned: int = 0
     assignee: str = ""
     vrf_out: int = 0
@@ -172,7 +172,7 @@ class Chain:
     def submit_task(self, client, spec, fee, burn_rate, gas=0):
         assert fee > 0 and 0.0 < burn_rate <= 0.5, "burn_rate (0.0, 0.5]"
         bond = int(fee * BOND_RATIO)
-        burn = int(fee * burn_rate)                     # geri alinamaz
+        burn = int(fee * burn_rate)                     # geri cannot be taken
         escrow_locked = fee + bond                      # locked total
         tid = S("task", client, spec.program_commit, fee, escrow_locked)
         t = Task(tid=tid, client=client, spec=spec, fee=fee, burn_rate=burn_rate)
@@ -252,24 +252,24 @@ class Chain:
         self.times.append(self.times[-1] + t_delta)
 
     def sim_block(self, lam):
-        """Simule edilmis varis suresi ile blok: Δt ~ Exp(λ/D) (E[T] = D/Λ, spec B.2).
-        Gercek PoW dongusunu calistirmadan retarget matematigini test eder."""
+        """Simule was done varis its duration ile blok: Δt ~ Exp(λ/D) (E[T] = D/Λ, spec B.2).
+        Gercek PoW dongusunu without running retarget its mathematics test eder."""
         delta = -math.log(rng.random()) / (lam / self.D)
         self.record_time(delta)
         self.blocks.append(S("sim", len(self.blocks)))
         return self.retarget()
 
     def retarget(self):
-        """Her W blokta hashrate tahmini yap ve D'yi yeniden kur.
+        """Her W blokta hashrate estimated yap ve D'yi again kur.
         Important: the T_act measured inside a window was produced by that window's D;
         therefore it is a multiplicative (stale) rate, a hash-rate estimate independent of D
             Lambda_hat = D * W / T_act        (cunku blok hizi = Lambda/D)
         is used. The median filter smooths the Lambda_hat of the last 3 windows
-        (ani dalgalanmalari ezer). Sonra D <- Lambda_hat_smooth * T_b, 4x ile
-        sinirli (Bitcoin'in siniri)."""
+        (ani its fluctuations ezer). Sonra D <- Lambda_hat_smooth * T_b, 4x ile
+        bounded (as Bitcoin's is)."""
         W = self.retarget_window
         t_b = self.target_block_time
-        n = len(self.times) - 1          # blok sayisi
+        n = len(self.times) - 1          # blok the count
         if n == 0 or n % W != 0:
             return None
         T_act = self.times[-1] - self.times[-1 - W]
@@ -309,7 +309,7 @@ class Chain:
         harness_A, harness_B = t.spec.program
         C = [[sum(harness_A[i][k] * harness_B[k][j] for k in range(len(harness_B)))
               for j in range(len(harness_B[0]))] for i in range(len(harness_A))]
-        if t.result != C:                                        # FRAUD kanitlandi
+        if t.result != C:                                        # FRAUD was proven
             bond = max(t.fee * BOND_RATIO, 1)
             self.miners[t.assignee]["slashed"] += bond
             self.slashed_total += bond
@@ -342,7 +342,7 @@ def kurtosis(mat):
 
 
 def tv9_kurtosis_trap():
-    """Basu 2606.04819: uniform-random matrisler NN'den ayrint edilebilir AMA
+    """Basu 2606.04819: uniform-random matrices NN'den ayrint edilebilir AMA
     the adversarial N(0,18) passes the kurtosis check. => the check is NOT security."""
     r2 = random.Random(1)
     uniform = [[r2.randint(-64, 64) for _ in range(64)] for _ in range(64)]
@@ -423,7 +423,7 @@ def tv8():
 
 
 def tv10():
-    """PQ downgrade: non-PQ schema ile imzali blok -> REJECT."""
+    """PQ downgrade: non-PQ schema ile signed blok -> REJECT."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
     caught = False
@@ -439,7 +439,7 @@ def tv10():
 
 def tv123_stub():
     """TV-1..TV-4 G-layer tests are outside this prototype's scope (KW_ANALIZ.md
-    ve G-katmani kernel test dosyasinda). Burada yalnizca replay reddi dogrulanir."""
+    ve G-katmani kernel test in the file). Burada only replay reddi dogrulanir."""
     ch = Chain()
     A, B = [[1, 2], [3, 4]], [[5, 6], [7, 8]]
     for _ in range(EPOCH_LOOKBACK + 1):
@@ -506,7 +506,7 @@ if __name__ == "__main__":
     print(f"       sybil cost (1000 tasks) = {sybil}  > 0  OK")
 
     caught, nblk = tv6()
-    print(f"[TV-6] anti-aggregation: REJECT yakalandi={caught}; fragmented block count={nblk}")
+    print(f"[TV-6] anti-aggregation: REJECT was caught={caught}; fragmented block count={nblk}")
 
     verdict, sl, rew = tv7()
     print(f"[TV-7] fraud slash : verdict={verdict} slash={sl} reward={rew}")

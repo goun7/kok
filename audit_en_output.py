@@ -109,6 +109,15 @@ TR_WORDS = [
 # sayilar/semboller icermeyen kelimelere ayir
 WORD_RE = re.compile(r"[A-Za-zÇĞİıÖŞÜâîû-]+")
 
+# Turkish suffixes that are unambiguous evidence of Turkish prose even when the
+# word itself carries no Turkish letter (the word-list cannot catch these).
+TR_SUFFIXES = ("lar", "ler", "lari", "leri", "dan", "den", "tan", "ten",
+               "nin", "nin", "un", "un", "umuz", "unuz", "imiz", "iniz",
+               "dir", "dir", "tir", "tir", "ecek", "acak", "iyor", "di",
+               "ti", "mis", "mis", "maz", "mez", "madan", "meden",
+               "yle", "yla", "ce", "ca", "in", "in", "im", "im",
+               "de", "da", "ki", "si", "si", "i")
+
 def tr_hits(text):
     """Metindeki yasakli kelime ISABETLERI -> dict kelime:sayi.
 
@@ -122,6 +131,9 @@ def tr_hits(text):
     for tok in WORD_RE.findall(low):
         if tok in trset:
             out[tok] = out.get(tok, 0) + 1
+        elif len(tok) > 5 and any(tok.endswith(s) for s in TR_SUFFIXES):
+            # a Turkish suffix is evidence even for words not on the list
+            out[tok + ":suffix"] = out.get(tok + ":suffix", 0) + 1
     return out
 
 def audit_file_source(path):

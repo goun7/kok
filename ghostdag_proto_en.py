@@ -12,7 +12,7 @@ hides that it is a small toy; the parameters are Kaspa mainnet's REAL values.
 
 Sources (verified 2026-09-20):
 - ePrint 2018/104 "PHANTOM and GHOSTDAG" (Sompolinsky, Wyborski, Zohar)
-  k parametresi = anticone toleransi; PHANTOM NP-hard, GHOSTDAG greedy approx.
+  k the parameter = anticone tolerance; PHANTOM NP-hard, GHOSTDAG greedy approx.
 - Kaspa rusty-kaspa consensus/core/src/config/bps.rs (production):
     BPS=1 -> ghostdag_k = 18, max_block_parents = 10 (floor 10, cap 16)
     mergeset_size_limit = 2*k = 36
@@ -68,7 +68,7 @@ def h(*parts) -> str:
 class Block:
     """"A blockDAG block. parent_set = direct parents (max 10)."""
     miner: str
-    parents: list          # dogrudan parent ID'leri (<= MAX_BLOCK_PARENTS)
+    parents: list          # directly parent ID'leri (<= MAX_BLOCK_PARENTS)
     timestamp: int
     tasks: list = field(default_factory=list)
     bid: str = ""
@@ -85,7 +85,7 @@ class GHOSTDAG:
                    ∩ mergeset(B)) -- expands greedily.
     A block is "blue" if its anticone in selected_parent's mergeset is < k;
     otherwise "red".
-    blue_score(B) = |{mavi bloklar}|
+    blue_score(B) = |{mavi blocks}|
     selected_parent(B) = mergeset'teki en yuksek blue_score (ties: en dusuk hash).
     """
 
@@ -115,7 +115,7 @@ class GHOSTDAG:
         return seen
 
     def _future(self, bid: str) -> set:
-        """Bir blokun gelecegi (ondan dogrudan/indirect tureyenler)."""
+        """Bir of the block its future (ondan directly/indirect derived)."""
         fut = set()
         for other, blk in self.blocks.items():
             if bid in self._past(other):
@@ -123,7 +123,7 @@ class GHOSTDAG:
         return fut
 
     def _anticone(self, bid: str) -> set:
-        """Anticone: ne gecmiste ne gelecegte olanlar."""
+        """Anticone: ne gecmiste ne gelecegte those that are."""
         past = self._past(bid)
         fut = self._future(bid)
         return {b for b in self.blocks if b != bid and b not in past and b not in fut}
@@ -183,25 +183,25 @@ class GHOSTDAG:
         The overall GHOSTDAG ordering (toy approach).
 
         The true GHOSTDAG order: the chain formed by the BLUE blocks in the mergeset
-        takip eder (selected_parent zinciri), kirmizi bloklari eklemek icin
-        "red" bloklarin mavi-blok-sonrasina yerlestirilmesi gerekir.
+        takip eder (selected_parent the chain), red blocks eklemek icin
+        "red" of blocks mavi-blok-sonrasina its placement gerekir.
 
-        Buradaki toy versiyon: bid'den baslayip selected_parent zincirini
-        izler VE mergeset'teki mavi bloklari derinlige gore ekler. Amaclar:
+        Buradaki toy versiyon: bid'den baslayip selected_parent the chain
+        izler VE mergeset'teki mavi blocks derinlige gore ekler. Amaclar:
         (1) no block has an empty mergeset (liveness),
-        (2) mavi bloklar once gelir.
+        (2) mavi blocks once gelir.
         """
         if bid not in self.blocks:
             return []
         seen = set()
         out = []
-        # 1. selected_parent zinciri (mavi omurga)
+        # 1. selected_parent the chain (mavi omurga)
         cur = bid
         while cur is not None and cur not in seen and cur in self.blocks:
             seen.add(cur)
             out.append(cur)
             cur = self.selected.get(cur)
-        # 2. mergeset'teki diger mavi bloklar (derinlik sirasi)
+        # 2. mergeset'teki diger mavi blocks (derinlik its order)
         ms = self.mergesets.get(bid, set())
         for b in sorted(ms, key=lambda x: -self.blue_score.get(x, 0)):
             if b in self.blocks and b not in seen:
@@ -230,12 +230,12 @@ def parent_set_hash(parents: list) -> str:
 def mine_chain(g: GHOSTDAG, n: int, rng: random.Random, miners=("A", "B", "C"),
                fork_prob=0.0):
     """
-    Rastgele bir DAG uret; fork_prob ihtimaliyle paralel blok (fork).
+    Rastgele bir DAG uret; fork_prob probably paralel blok (fork).
 
-    Parent aday havuzu tum DAG'in son bloklari (tips) degil, gecmisten
-    rastgele secilmis bloklardir - boylece DAG gercekten DAG gibi buyur
-    (tek bir zincir yerine). Bu, anticone/fork testlerinin anlamli olmasi
-    icin gereklidir.
+    Parent aday havuzu tum DAG'in son blocks (tips) degil, from the past
+    rastgele selected are blocks - thus DAG really DAG gibi buyur
+    (tek bir zincir yerine). Bu, anticone/fork of its tests meaningful its being
+    icin is required.
     """
     all_bids = []
     for i in range(n):
@@ -304,7 +304,7 @@ def tv24_mergeset_limit():
     g = GHOSTDAG(k=GHOSTDAG_K)
     mine_chain(g, 80, rng, fork_prob=0.4)
     big = [b for b, ms in g.mergesets.items() if len(ms) > MERGESET_SIZE_LIMIT]
-    assert not big, f"TV-24: {len(big)} blok mergeset limitini asti"
+    assert not big, f"TV-24: {len(big)} blok mergeset its limit asti"
     return "PASS", f"max mergeset={max(len(m) for m in g.mergesets.values())} (limit {MERGESET_SIZE_LIMIT})"
 
 
@@ -339,7 +339,7 @@ def tv26_splitter_attack():
     # the mean order of recent blocks should be at least 40% of the DAG
     avg_recent = sum(lens) / len(lens)
     assert avg_recent >= len(g.blocks) * 0.4, \
-        f"TV-26: guncel blok ortalamasi {avg_recent:.1f} < %40*{len(g.blocks)}"
+        f"TV-26: guncel blok its average {avg_recent:.1f} < %40*{len(g.blocks)}"
     # no block should have an empty order (at least itself)
     empty = [b for b in g.blocks if len(g.order(b)) == 0]
     assert not empty, f"TV-26: the ordering of {len(empty)} blocks is empty"
