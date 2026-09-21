@@ -124,8 +124,14 @@ The remaining two gaps (economics, law) are addressed in §7 and §9.
   self-reporting; verifying the real GPU computation via a native BF16/FP32 precompile, on a ~36-month
   horizon); (b) **provable inference** (a 1.469% hidden surcharge in reasoning is undetectable,
   arXiv 2605.30040).
-- **Cornerstone:** the U layer **cannot determine leader election** — only a **bounded, unpriced
-  boost** (Demirel Corollary 4) and fee revenue. Security always comes from the G layer.
+- **Cornerstone:** the U layer **has zero consensus weight — it never participates in leader
+  election.** The block solution depends solely on the G-layer certificate; the target test reads
+  only `kw_cert`, and U proofs contribute fee revenue alone. Security always comes from the G layer.
+  *(Reviewer note, 2026-09-21: an earlier draft said "a bounded, unpriced boost", citing
+  Demirel Cor. 4. The specification's own pseudocode contradicted that wording — the U proofs
+  are appended to a block already won by the G layer and are never read by the target test.
+  The wording is corrected to match the code, and the citation is withdrawn because Cor. 4 was
+  never verified against the source.)*
 - **Anti-aggregation (arXiv 2505.21685):** a per-block useful-fee cap `C_fee` + tasks spilling over
   into later blocks (preventing miners from gathering every high-fee task into a single block).
 
@@ -738,6 +744,15 @@ different must be a **causal** answer to this number:
   workload are aligned, not merely both "computers."
 - Pearl had no priced market, so there was nothing to buy. **KÖK's answer:** the U layer is a
   *market* (escrow, fee, burn), not a charity — demand must arrive as a paying transaction.
+  *(Reviewer note, 2026-09-21 — the honest boundary on this claim: a paying transaction is
+  necessary but NOT sufficient evidence of demand. The token is protocol-issued and its price
+  derives partly from speculation, so a fee denominated in that token does not by itself prove a
+  buyer wanted compute for its own sake — it proves only that someone parted with some value.
+  Independent demand is measured, not asserted: by whether the buyer would have paid in a
+  currency they did not print. F3a's "one real paying task" criterion is therefore the honest
+  test, and a task paid in externally-acquired currency is stronger evidence than one paid in
+  mined tokens. Payment and burn are a security budget and a sybil filter; they are not a
+  proof of demand.)*
 - Pearl's miners had no reason to serve. **KÖK's answer:** the fee is the only way to earn
   beyond the tail subsidy, and the tail is deliberately small (2 KOK), so serving demand is
   where the money is.

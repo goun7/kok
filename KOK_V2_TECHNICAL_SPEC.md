@@ -90,7 +90,7 @@ properties:
 | **Certificate** | KW/cuPOW-style MatMul certificate (1+o(1)) | Full zkVM/STARK proof (Circle STARK + Jolt Atlas) |
 | **Utility claim** | **NONE** — prescribed hardness is provided, not utility | **YES** — demand is external, via the real fee in escrow (E ✓) |
 | **Source of difficulty** | KW prescribed hardness + `H(FS‖nonce) < target` | Circuit size (structural lower bound) |
-| **Role in leader election** | **THE BASE** (sole source) | **Only limited, unpriced boost** (Demirel Cor. 4) |
+| **Role in leader election** | **THE BASE** (sole source of the block solution) | **NONE — zero consensus weight.** The target test reads only `kw_cert`; U proofs carry fee revenue, never leader selection |
 | **Under zero demand** | Filler dense-random MatMul → liveness is preserved (Demirel Thm 2 ✓) | U is closed; the network continues to live as pure-PoW |
 
 **The essence of the design:** KW solves **W (work soundness)** but does not solve **E (demand
@@ -420,7 +420,7 @@ def mine_block(miner, assigned_tasks, ctx):
         if int(H(digest ‖ nonce), 16) < target:
             break                                     # block mined
 
-    # U layer (inside the same block, optional, a boost but NOT MANDATORY):
+    # U layer (inside the same block, optional; carries fees, NEVER any leader-election weight):
     proofs = []
     for t in assigned_tasks:
         harness = load_harness(t.spec.harness_id)
