@@ -1291,6 +1291,24 @@ So the gap is not "users are careless." It is that **agents can be talked into p
 recipient, and a protocol-level boundary stops it without breaking legitimate payments.** That is
 a measured problem with a measured answer.
 
+**Three bounds on that reading, all from the paper itself (full text fetched 2026-09-22), stated
+because the direction was once rejected and a reinstatement has to earn its place.** First, the
+authors scope their own result in §1.3: "It is scoped to payments, to one tool schema, in a
+simulated bank. It is not evidence about data exfiltration, code execution, or delegation between
+agents." Second, their strongest counter-argument, which they raise themselves in §6.1: **five of
+the fourteen models reached zero unpermitted transfers with no layer at all.** The boundary is
+therefore not the only thing that works; it is the thing that works *independently of which model
+is chosen*, which is the property a deployer needs but cannot get from a model ranking. Third, the
+zero is not a zero-width interval: 0/69,297 over 790 source sessions carries a session-clustered
+upper bound of 0.38%, and the authors quote the conservative bound rather than the exact per-
+evaluation one.
+
+What this does and does not do for KÖK's thesis. It does not establish demand for a compute
+market; it establishes that a **deterministic pre-action check at a tool boundary is a measurable
+security primitive**, and that is the same structural position KÖK's fraud window occupies for
+task settlement. The parallel is architectural, not commercial, and it is offered as one piece of
+evidence in a thesis that still rests on the demand question.
+
 **Stated narrowly, this does not change what KÖK builds.** It is not a blockchain, there is no
 consensus or ledger, and it does not justify an AI-agent-security chain. What it does is
 identify the shape of KÖK's future customer. **The buyer of inference is increasingly an agent
