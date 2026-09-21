@@ -36,6 +36,9 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 | `bond_margin_proto_en.py` | Censorship-economics measurement (TV-31..TV-33) |
 | `pass_sim_en.py` | Closed-form solver for the Pass (2026) economic model |
 | `adoption_econ.py` | **The adoption question**: cross-subsidy arithmetic (TV-35), two-sided cold-start model (TV-36), and the honest verdict (TV-37) |
+| `f0_demand_discovery.py` | **F0 as an instrument**: candidate scoring rubric, price test against the measured crossover, append-only interview log |
+| `f0_candidate_list.py` | Six named buyers from Akash's own case studies, scored by the F0 rubric |
+| `f0b_air_proto.py` | **F0b, the AIR chain (TV-40 to TV-43)**: constraints, Merkle commitment with sampled verification, low-degree testing, and zero-knowledge masking |
 
 All prototypes are **stdlib-only Python 3**: `python3 <file>`. No dependencies.
 
