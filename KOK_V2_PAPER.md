@@ -624,6 +624,19 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
    asks "Is this secure?"; the main body does not use it. All structural attacks and the
    trapdoor-matrix literature were refuted. **But this is an LLM reading — 2 independent human
    cryptographer reviews are still mandatory** (F2/F6).
+   **★ 2026-09-21 correction, found by self-review:** this paper used to list "A=B=0" among the
+   refuted structural attacks. That is correct **only for security** — with A=B=0 the noise
+   dominates and the prescribed hardness is unchanged. It is **wrong for the utility claim**: in
+   S1 mode the miner selects its own input freely, so nothing in the G layer prevents mining
+   empty work while appearing to run the protocol. The actual guarantee is **economic**, not
+   cryptographic: a block carrying no U task has `phi = 0`, still valid (the E-gap acceptance,
+   TV-4) but earning only the baseline subsidy. **S1 cannot be forced to be useful; it is
+   incentivized to be.** This is now a runnable test (TV-34) rather than an assertion, and the
+   word "refuted" is scoped to security only wherever it appears. The same self-review found
+   that the reference prototype modeled KW's rank-r noise with full-rank draws — a deviation in
+   the *safe* direction (stronger noise than required), meaning the toy witnesses the difficulty
+   argument but not the rank-r structure; the production kernel must use the `E_L·E_R`
+   factorization (spec §A.0).
 3. **U-layer demand risk:** governance-proof and provable-inference demand **depend on
    regulation and market trend**. If they do not materialize, the network becomes "just an
    honest GHOSTDAG PoW" — which is still a better position than Kaspa (emission exhausted)
