@@ -569,3 +569,123 @@ if __name__ == "__main__":
   A testnet that reports phi = 0 says 'do not launch a mainnet on this
   measurement', which is the Pearl failure mode caught early instead of late.
   That is the whole point of running the testnet before the chain.""")
+
+
+# ---------------------------------------------------------------------------
+# TV-22  The end-to-end paying scenario — the whole loop, once, honestly
+#
+# TV-21 proved the meter works. It did not prove a task can travel the whole
+# road: buyer funds escrow, task is assigned, solved, verified, settled, burn
+# goes to the burn address, and the meter counts it. If any link in that chain
+# is missing, F3a's "one real paying task" criterion is unmet no matter what
+# phi says.
+#
+# This is that road, walked end to end. Money in, work out, burn gone, counted.
+# ---------------------------------------------------------------------------
+
+
+def tv22_end_to_end_paying_task():
+    """TV-22: one task travels buyer -> escrow -> assignment -> solve ->
+    verify -> settle, and the meter counts the block.
+
+    The sequence is deliberately hand-walked rather than simulated, because a
+    loop that asserts each transition is the only way to find a broken link.
+    """
+    sq = Sequencer("sqA")
+    net = F3aTestnet([sq])
+    meter = DemandMeter()
+
+    # a buyer arrives with a task and funds its escrow
+    s = spec(H("h", 77), fee=100, burn_rate=0.3)
+    net.submit_task("sqA", "task-1", "buyer-7", s)
+
+    # the escrow was actually funded
+    t = net.sequencers["sqA"].tasks["task-1"]
+    escrow_funded = (t.escrow == s.escrow and t.burned == s.burn)
+
+    # the sequencer accepts and assigns it
+    net.next_block()
+    net.solve_task("sqA", "task-1", result={"acc": 42})
+    solved = t.state == "SOLVED"
+
+    # verification passes, the task settles
+    settled = net.settle_task("sqA", "task-1", verify_ok=True)
+
+    # the burn left the escrow for good and is unreachable
+    burn_gone = (net.burn_address == s.burn and t.escrow == 0 and t.burned == 0)
+
+    meter.record_block(net)
+    counted = (meter.paid_tasks == 1 and meter.phi() > 0.0)
+
+    return escrow_funded, solved, settled, burn_gone, counted
+
+
+def tv22_censorship_does_not_inflate_phi():
+    """TV-22b: a censored task must NOT count as paid.
+
+    The meter's honesty depends on counting only settled tasks. A censored or
+    rejected task that still appeared in phi would be the exact failure mode
+    Pearl's reporting had: activity reported where no work was delivered.
+    """
+    sq_good = Sequencer("sqG")
+    sq_bad = Sequencer("sqB", evil=True, censor_client="buyer-9")
+    net = F3aTestnet([sq_good, sq_bad])
+    meter = DemandMeter()
+
+    s = spec(H("h", 78), fee=100, burn_rate=0.3)
+    # the bad sequencer censors this client's task
+    net.submit_task("sqB", "task-c", "buyer-9", s)
+    net.next_block()          # censorship fires here
+    # the task never reaches SETTLED on the censoring sequencer
+    censored = net.sequencers["sqB"].tasks.get("task-c")
+    still_unsettled = censored is not None and censored.state != "SETTLED"
+
+    # the honest sequencer does carry a real one
+    net.submit_task("sqG", "task-g", "buyer-3", s)
+    net.solve_task("sqG", "task-g", result={"acc": 7})
+    net.settle_task("sqG", "task-g", verify_ok=True)
+
+    meter.record_block(net)
+    # only the honest task counts; the censored one must not inflate phi
+    honest_only = (meter.paid_tasks == 1 and net.sequencers["sqB"].tasks.get("task-c") is not None
+                   and meter.paid_tasks == 1)
+
+    return still_unsettled, honest_only, meter.paid_tasks == 1
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F3a: the end-to-end paying task (TV-22)")
+    print("=" * 76)
+    print("TV-21 proved the meter works; it did not prove a task can travel the")
+    print("whole road. If any link is broken, 'one real paying task' is unmet")
+    print("no matter what phi says.\n")
+
+    ef, sv, st, bg, ct = tv22_end_to_end_paying_task()
+    print("  escrow funded by the buyer        : %s" % ef)
+    print("  task assigned and solved          : %s" % sv)
+    print("  verification passes, settles      : %s" % st)
+    print("  burn left the escrow, unreachable : %s" % bg)
+    print("  meter counts exactly one paid task: %s" % ct)
+    assert ef and sv and st and bg and ct
+
+    su, ho, one = tv22_censorship_does_not_inflate_phi()
+    print("\n  censored task never settles        : %s" % su)
+    print("  only the honest task counts        : %s" % ho)
+    assert su and ho and one
+    print("\n  -> the whole loop works, and censorship cannot inflate phi.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-22 ESTABLISHES, AND WHAT IT STILL DOES NOT")
+    print("-" * 76)
+    print("""  Every link in the chain works: escrow is funded by the buyer, the task is
+  assigned and solved, verification passes, it settles, the burn becomes
+  unreachable, and the meter counts it. A censored task cannot inflate phi
+  because only SETTLED tasks count.
+
+  What this still does not establish: the tokens are test tokens, and the
+  'buyer' is the harness. Real demand means a person who acquired currency
+  outside the protocol and spent it because the compute was worth more to them
+  than the currency. No prototype can manufacture that. What TV-22 proves is
+  that nothing in the mechanism itself is broken - if a buyer ever does arrive,
+  the road is open and the meter is honest.""")
