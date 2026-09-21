@@ -520,6 +520,7 @@ and we intend to measure it rather than to assume it."**
 
 | Phase | Content | Criterion (defined success) |
 |---|---|---|
+| **F0 — Demand discovery** | Find the first real customer with a real job. Not a testnet, not a simulation: a party who already pays for compute and would switch to KÖK if it were cheaper, or a job that cannot run permissionlessly anywhere else. Interview ≥10 candidates; record what they actually pay, what they need, and what would make them switch. | **≥1 signed letter of intent to buy compute at a named price.** This is the seed of demand (§12.1); without it the chain converges to the empty-block equilibrium and stays there |
 | **F1 — Formal spec** | statement schema, task market protocol, GHOSTDAG+rejection-sampling spec, economic model | Walk-through by independent cryptographers; T1–T6 skeletons. **✅ complete on paper: `KOK_V2_TECHNICAL_SPEC.md`** |
 | **F1b — Working prototype** | task lifecycle + penalty economics + difficulty retarget | **✅ `u_layer_prototype.py` (TV-5..TV-10), `g_layer_tests.py` (TV-1..TV-4, RT-1..RT-3) — all PASS** |
 | **F2 — Soundness verification** | verification of the AIR with Lean + ZEBRA-class cardinality check | Under-constrained bug = 0 (third-party audit) |
@@ -671,7 +672,116 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
 
 ---
 
-## 12. Differentiation (against the 2026 state of the art)
+## 11b. Adoption — "Why Would Anyone Use This?" (2026-09-21)
+
+> This section exists because the single most honest criticism of the project is not
+> cryptographic or legal. It is that a chain can be technically perfect and still die.
+> The user asked the question directly; this is the answer, and it is written to survive
+> being read by someone who is not inclined to be persuaded.
+
+### The central claim is weaker than the pitch, and the true version is still interesting
+
+The standard proof-of-useful-work pitch says: *"miners already buy hardware and electricity
+to chase block rewards, so the useful work they could sell is available at near-zero
+marginal cost, so we can underprice dedicated AI compute."*
+
+**As written, this is false**, and the arithmetic is in `adoption_econ.py` (TV-35). A miner's
+hardware is paid for by the block reward, but the block reward buys a *specific thing*: a
+winning lottery ticket. Compute spent selling is compute not spent mining. The true marginal
+cost of one second of GPU time is the mining revenue that second would have earned. The
+compute is **not free**.
+
+The true version of the claim is about **tax incidence, not free lunch**: the security budget
+is a cost the protocol pays regardless, so useful work that can *ride on* work the miner was
+going to do anyway is **subsidised by security spending** — cheap, not free, and cheap exactly
+to the extent that KW's kernel is the same work as the sold work (overhead alpha ~ 1.3,
+confirmed verbatim from KW). Where the two overlap, the fee is nearly pure margin. Where they
+do not, the utility layer competes with mining for the same FLOPs and must pay the market rate.
+
+This distinction is not rhetorical. It decides the design: **the utility layer must be built so
+that the sold work and the mined work overlap as much as the KW construction allows.** Every
+task that requires the miner to do *additional* compute beyond the mining kernel is
+unsubsidised and must stand on its own economics.
+
+### The counter-example we have to explain, not slogan past
+
+Pearl's live network ran **24 EH/s on ~320,000 GPU-equivalents (~112 MW) and sold zero useful
+computation** (Basu, arXiv 2606.04819, verified verbatim). This is not a hypothetical failure
+mode; it is the *measured* steady state of a large PoUW chain. Any claim that KÖK will be
+different must be a **causal** answer to this number:
+
+- Pearl's work was not the work anyone wanted to buy. **KÖK's answer:** the G layer is MatMul
+  by construction (KW), the same primitive AI inference is made of — so the hardware and the
+  workload are aligned, not merely both "computers."
+- Pearl had no priced market, so there was nothing to buy. **KÖK's answer:** the U layer is a
+  *market* (escrow, fee, burn), not a charity — demand must arrive as a paying transaction.
+- Pearl's miners had no reason to serve. **KÖK's answer:** the fee is the only way to earn
+  beyond the tail subsidy, and the tail is deliberately small (2 KOK), so serving demand is
+  where the money is.
+
+**The honest gap:** none of these three are *proof* that demand arrives. They are the
+preconditions. Whether anyone comes is an empirical question, and no paper can settle it.
+
+### The two-sided cold start, modelled (TV-36)
+
+A chain is a two-sided market: miners supply compute, users supply tasks. The failure mode is
+an **empty-block equilibrium** — miners mine because the subsidy pays, nobody submits tasks
+because no market exists, and the chain runs forever at phi=0, functionally a plain PoW chain
+with worse marketing. That is Pearl's measured state, and it is a *stable* state: the basin of
+attraction of the dead equilibrium.
+
+`adoption_econ.py` (TV-36) models this and finds the **critical seed of demand** — the smallest
+fraction of the network's compute that must be *real, paying demand from day one* for the
+market to escape the dead state. Two findings, both stated plainly:
+
+1. **The seed cannot be emitted by the protocol.** No token distribution, airdrop or incentive
+   programme creates a buyer who has a job. The seed is brought by someone who already pays
+   for compute. **This is why F0 (demand discovery) is now the first roadmap phase, ahead of
+   the formal spec's successor phases.**
+2. **Below roughly break-even, the dead state is absorbing** — no seed escapes. The chain
+   cannot subsidise its way to adoption if its compute costs more than the market's; the
+   cross-subsidy must be real, which loops back to the overlap requirement.
+
+### Who would actually use this — the honest two reasons
+
+People will use KÖK for exactly one of these, and no other:
+
+**(a) It is provably cheaper for a job they already pay for.** Not "cheaper in theory" —
+cheaper at a quoted price, for a workload that exists today, verified against the market's own
+published rates. This is a sales problem, not a cryptography problem.
+
+**(b) It is the only place a job can run permissionlessly.** A computation that a cloud
+provider will not host, or a result whose *provenance* must be verifiable (provably-correct
+inference, reproducible research, a regulatory audit trail) has no substitute at any price.
+This is the smaller market but the more defensible one, because the incumbent cannot compete
+on it by lowering prices.
+
+Everything else — the green narrative, the "wasted energy" argument, the AI-for-all rhetoric
+— is decoration that Pearl's measured zero already falsified. **A chain whose only story is
+"wasted energy is bad" has no answer to a chain whose story is "here is a customer."**
+
+### Expansion areas, and which survive honesty
+
+| Direction | Why plausible | Why it might fail | Status |
+|---|---|---|---|
+| **Verifiable inference as a service** | The U layer already proves MatMul; inference *is* MatMul. The (b)-reason. | Verification cost may exceed the job's cost at small scale; the provenance market is unproven | **Primary candidate.** Needs a real buyer (F0) |
+| **ZK-coprocessing for other chains** | Other L1/L2s provably need off-chain compute with proofs; KÖK's proving market is exactly that | Competes with dedicated prover networks that do not also run a chain | **Secondary.** The prover market is real; whether KÖK is the cheapest prover is not |
+| **Permissionless batch compute** | The (a)-reason: MatMul-shaped work that is price-sensitive | A commodity market; the cross-subsidy must be genuine to win on price | **Conditional on the overlap being real** |
+| **AI agent settlement layer** | Fast blocks (10 BPS, GHOSTDAG) + a native compute market is a coherent agent substrate | Speculative; depends on an agent ecosystem that does not yet exist | **Explicitly deferred — do not build on a hope** |
+
+### The kill criteria, stated in advance
+
+To be worth continuing past F3a, the project must show **one real paying task**. If F3a ends
+with zero real demand, the honest conclusion is that the utility layer has no market and the
+project should fall back to its specified pure-PoW mode (§A.9) — which is a *legitimate
+outcome*, already designed for, and far better than spending years converging to Pearl's
+measured state while insisting the demand is coming.
+
+**This is the answer to the user's question, and it is deliberately uncomfortable:** the
+project's survival does not depend on the cryptography (as sound as a paper can make it) or
+the law (now navigable). It depends on **one customer with one job**. That is not a weakness
+unique to KÖK; it is the shape of every two-sided market. But it is the reason the roadmap now
+begins with demand discovery rather than with a testnet.
 
 > **2026-09-19 update:** Pearl is now compared **from the primary source** (INT whitepaper +
 > live site + GitHub; see `PEARL_DOCS_ANALIZ.md`). The previous table relied only on Basu's

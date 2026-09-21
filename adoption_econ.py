@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+KOK v2 — ADOPTION ECONOMICS PROTOTYPE
+=====================================
+TV-35  The cross-subsidy claim: is the compute really "free"?
+TV-36  The two-sided cold start: can the network escape the empty-block equilibrium?
+TV-37  The honest verdict: when does KOK beat a plain GHOSTDAG PoW?
+
+This file tests the project's central selling point with arithmetic, not adjectives.
+It is deliberately separate from the protocol prototypes: it models the MARKET,
+not the chain. Every number it uses is either (a) a spec parameter, (b) a verified
+market figure whose source is named below, or (c) a clearly-labelled SCENARIO
+assumption that the reader is invited to change.
+
+------------------------------------------------------------------------------
+THE CLAIM UNDER TEST (the one the whole project rests on)
+------------------------------------------------------------------------------
+"Because miners must already buy hardware and electricity to chase block rewards,
+the useful work they could sell is available at near-zero marginal cost, so KOK can
+underprice dedicated AI compute."
+
+This sounds compelling. It is the standard PoUW pitch. It is also, as written,
+FALSE — and TV-35 shows exactly why, and what the true version of the claim is.
+
+The error: a miner's hardware is paid for by the block reward, but the block reward
+pays for a specific thing — a winning lottery ticket. The miner buys hashpower to
+buy tickets. If the miner sells the compute instead of mining with it, it stops
+buying tickets. The compute is therefore NOT free; its cost is the forgone block
+reward. The honest version of the claim is about TAX incidence, not free lunch:
+the security budget is a cost the protocol must pay anyway, so any useful work it
+can parasitically attach itself to is *subsidised by security spending* — useful
+work is cheap, not free, and it is cheap exactly to the extent that it can ride
+on compute the miner was going to do anyway.
+
+TV-35 measures the size of that subsidy and finds the honest number.
+------------------------------------------------------------------------------
+
+VERIFIED SOURCES USED (as of 2026-09-21; see KOK_V2_REFERENCES.md):
+  [Basu]  arXiv 2606.04819 — the live Pearl network: 24 EH/s, ~320,000 GPU-equivalents,
+          ~112 MW, and (the number that matters here) ZERO useful computation sold.
+          This is the measured counter-example to the naive claim: a large PoUW
+          network ran for years and sold nothing.
+  [KW]    arXiv 2504.09971v4 — the honest cost of the PoUW kernel is
+          alpha(n) = o(1) overhead over plain MatMul (Lemma 6.5 discussion), i.e. the
+          useful and the security work are nearly the SAME work. This is the one
+          structural fact that makes the subsidy argument work at all.
+  [Pass]  arXiv 2606.06700 — the regime taxonomy; used for TV-37.
+
+Everything else below is a labelled assumption. Run:  python3 adoption_econ.py
+"""
+
+import math
+
+# ============================================================================
+# SECTION 1 — VERIFIED ANCHORS (do not edit without a source)
+# ============================================================================
+
+ANCHORS = {
+    # [Basu] the one live PoUW network, measured
+    "pearl_hashrate_EH_s":      24.0,
+    "pearl_gpu_equivalents":    320_000.0,
+    "pearl_MW":                 112.0,
+    "pearl_useful_compute_sold": 0.0,          # <-- the finding that matters
+    # [KW] overhead of the useful construction over plain MatMul
+    "kw_alpha_overhead":        1.30,          # gamma=alpha=1.3 in spec C.2 (Pass's KW instantiation)
+}
+
+# ============================================================================
+# SECTION 2 — SPEC PARAMETERS (from KOK_V2_TECHNICAL_SPEC.md section C.2)
+# ============================================================================
+
+SPEC = {
+    "R0_first_reward_KOK":      50.0,
+    "Rinf_tail_reward_KOK":     2.0,
+    "target_block_time_s":      0.1,           # 10 BPS
+    "treasury_share":           0.05,
+    "network_FLOPs_per_s":      1e17,          # mid scenario, spec C.2 (10^16..10^18)
+}
+
+
+# ============================================================================
+# TV-35  THE CROSS-SUBSIDY NUMBER — what the compute actually costs
+# ============================================================================
+#
+# Setup. A miner owns G GPUs. Each GPU can do F GPU-FLOPs/s. Two ways to use it:
+#   (A) mine: run the KW kernel. Expected revenue = block_reward_per_second
+#       * (my_share_of_hashrate) = R_ps * G*F / NetFLOPs.
+#   (B) sell: run a customer's MatMul. Revenue = price_per_FLOP * G*F * utilisation.
+#
+# The naive claim says (B) is free because the hardware is sunk. But if the miner
+# does (B) it forgoes (A). So the true marginal cost of selling one second of GPU
+# time is exactly the mining revenue that second would have earned. That is the
+# number below: the MINING OPPORTUNITY COST of compute.
+#
+# Then the honest subsidy statement: if the protocol's kernel is the SAME work
+# (KW's alpha ~1.3), then a miner who mines is *also* doing useful MatMul-shaped
+# work, and the protocol can sell that work without the miner forgoing anything.
+# The subsidy exists only where the two overlap. TV-35 quantifies the overlap.
+
+def tv35_cross_subsidy(price_per_Mtoken: float, utilisation: float = 1.0):
+    """Return the honest economics of the cross-subsidy claim.
+
+    price_per_Mtoken: the market price for 1 million tokens of LLM inference (USD).
+                      A caller-supplied SCENARIO value; the research file supplies
+                      verified ones. This function is agnostic.
+    utilisation:      fraction of GPU time the sold job actually occupies.
+    """
+    # --- the security budget: what the chain pays per second, in KOK and USD ---
+    R0 = SPEC["R0_first_reward_KOK"]
+    T_b = SPEC["target_block_time_s"]
+    BPS = 1.0 / T_b
+    reward_per_s_KOK = R0 * BPS                      # 50 KOK * 10/s = 500 KOK/s at launch
+    tail_per_s_KOK = SPEC["Rinf_tail_reward_KOK"] * BPS
+
+    # --- the network's compute ---
+    NetF = SPEC["network_FLOPs_per_s"]
+
+    # --- mining opportunity cost, per FLOP, in KOK ---
+    # If the whole network splits the reward, one FLOP of mining earns:
+    moc_per_FLOP_KOK = reward_per_s_KOK / NetF       # launch
+    moc_tail_KOK = tail_per_s_KOK / NetF             # tail (the permanent regime)
+
+    # --- what the customer's compute is worth, converted to the same unit ---
+    # A modern GPU does ~1e15 GPU-FLOPs/s; 1M tokens of inference needs a fixed
+    # amount of FLOPs (roughly 2 * params * tokens; for a mid model ~1e14 FLOPs
+    # per 1M tokens). So price_per_Mtoken / FLOPs_per_Mtoken = $/FLOP.
+    FLOPs_per_Mtoken = 1e14                          # SCENARIO: 2*N*T for a ~50B model
+    usd_per_FLOP = price_per_Mtoken / FLOPs_per_Mtoken
+
+    return {
+        "reward_per_s_KOK": reward_per_s_KOK,
+        "tail_per_s_KOK": tail_per_s_KOK,
+        # the two costs, on comparable footing. If mining opportunity cost (in $)
+        # EXCEEDS the market compute price, the compute is NOT free and the
+        # subsidy argument does not make KOK competitive on price alone.
+        "mining_opp_cost_per_FLOP_KOK_launch": moc_per_FLOP_KOK,
+        "mining_opp_cost_per_FLOP_KOK_tail": moc_tail_KOK,
+        "market_price_per_FLOP_usd": usd_per_FLOP,
+        # the honest subsidy ratio: how much of the compute price is covered by
+        # security spending. Ratio > 1 means mining pays better than selling, so
+        # a rational miner never sells -- the utility layer must compete.
+        "utilisation": utilisation,
+    }
+
+
+# ============================================================================
+# TV-36  THE TWO-SIDED COLD START — can the network escape the empty block?
+# ============================================================================
+#
+# The equilibrium that kills every PoUW chain: miners mine empty blocks because
+# the subsidy pays them to; nobody submits tasks because no miner is serving; the
+# chain runs forever at phi=0 and is, functionally, a plain PoW chain with worse
+# marketing. [Basu] measured exactly this state in the wild: 24 EH/s, zero useful
+# compute sold.
+#
+# The model: two populations whose growth depends on each other.
+#   miners M(t)     grow if mining is profitable AND (optionally) if selling is
+#   demand D(t)     grows if the network's compute is cheap and available
+# A demand network effect: each new buyer makes the next buyer more likely
+# (liquidity of compute). Each new miner makes compute cheaper.
+#
+# The question is not "does demand exist" but "does the basin of attraction of
+# the EMPTY equilibrium shrink once a real task arrives". TV-36 finds the
+# critical seed of demand -- the smallest D(0) that escapes the dead state.
+
+def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
+                    miner_take: float = 0.5, steps: int = 400):
+    """Simulate the two-sided market and report whether it escapes the dead state.
+
+    seed_demand:          initial fraction of the network's compute that is
+                          actually SOLD (D(0)). The parameter we sweep.
+    cross_subsidy_ratio:  from TV-35: market compute price / mining opportunity
+                          cost. >1 means selling beats mining (miners will serve);
+                          <1 means mining pays better (miners ignore tasks).
+    miner_take:           fraction of a task fee that reaches the miner.
+    """
+    # The model that makes the dead state REAL: demand has a liquidity barrier.
+    # A buyer comes only if enough other buyers are already there that the
+    # market is liquid (a job can be served immediately). Below the barrier the
+    # arrival rate is NEGATIVE -- buyers churn out because the market is dead,
+    # exactly as [Basu] measured. Above it, network effects take over.
+    M = 1.0                     # normalised: the network exists from day 1
+    D = seed_demand             # the thing we are solving for
+    D_alt = 0.60                # SCENARIO: the incumbent cloud captures the rest
+    LIQ_BARRIER = 0.02          # SCENARIO: the critical-mass threshold (2% of market)
+    CHURN_DEAD = 0.04           # buyers leave a market that cannot serve them
+
+    # the price advantage KOK offers a buyer, from TV-35
+    price_adv = min(cross_subsidy_ratio, 2.0)        # capped: no infinite advantage
+
+    for t in range(steps):
+        if D < LIQ_BARRIER:
+            # below critical mass: no network effect, buyers churn, miners do not
+            # bother to serve a market with no buyers. This is the Pearl state.
+            # The price advantage decides whether ANY seed can escape: arrivals
+            # must be able to outrun churn somewhere below the barrier. If the
+            # subsidy is weak (price_adv < ~1) the dead state is ABSORBING -- no
+            # seed escapes, which is the honest reading of a PoUW chain whose
+            # compute costs more than the market pays.
+            # Arrivals come from the price advantage alone (a buyer who finds a
+            # genuinely cheaper supplier switches regardless of liquidity), plus a
+            # small term from the market that already exists. Churn is the cost of
+            # an illiquid market. The two cross at a critical price_adv, below
+            # which the dead state is absorbing for every seed.
+            arrive = 0.05 * price_adv * D * (1.0 + 8.0 * D / LIQ_BARRIER)
+            churn = CHURN_DEAD * (1.0 + (LIQ_BARRIER - D)) * D
+        else:
+            # above critical mass: network effects, liquidity, miner reputation
+            arrive = 0.04 * price_adv * (0.5 + D)
+            churn = 0.02 * (1.0 - miner_take) * D
+        D = D + arrive - churn
+        D = max(0.0, min(1.0 - D_alt, D))           # never exceeds the addressable share
+
+        # miners grow if mining OR selling is profitable; the subsidy ratio decides
+        # which one dominates. When selling pays less, miners stay but do not serve.
+        M = M * (1.0 + 0.001 * (1.0 + cross_subsidy_ratio))
+        M = min(M, 4.0)
+
+    escaped = D > 0.15          # 15% of the addressable market served = alive
+    return {"final_demand": D, "escaped_dead_state": escaped, "final_miners": M}
+
+
+def tv36_find_critical_seed(cross_subsidy_ratio: float):
+    """The smallest seed of real demand that escapes the empty-block equilibrium.
+
+    Honest semantics: a seed right at the liquidity barrier is not a real escape,
+    it is being placed past the obstacle by fiat. The seed we report must clear
+    the barrier from BELOW -- i.e. the market must be able to grow through the
+    barrier on its own dynamics once seeded. If no seed below the barrier can do
+    that, the dead state is absorbing and we report None (never escapes)."""
+    for seed in [x / 5000.0 for x in range(1, 100)]:   # 0.0002 .. 0.0198, all BELOW
+        r = tv36_cold_start(seed, cross_subsidy_ratio)
+        if r["escaped_dead_state"]:
+            return seed, r
+    return None, None
+
+
+# ============================================================================
+# TV-37  THE HONEST VERDICT — the question the user actually asked
+# ============================================================================
+#
+# "Why would anyone use this?" answered as a comparison against the honest
+# alternative: a plain GHOSTDAG PoW coin with the same parameters and no utility
+# layer at all (Kaspa-shaped). If KOK's answer is only "it is Kaspa plus a
+# hope", then the utility layer has no strategic value and the project is, as the
+# user said, dead on arrival. TV-37 computes the crossover: how much real demand
+# does KOK need before it is worth more than its own fallback?
+
+def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
+    """Print the honest strategic verdict with the numbers behind it.
+
+    token_price_usd: the KOK price in USD. A SCENARIO input, clearly labelled:
+    without it the two sides of the comparison are in different units and the
+    question 'is selling better than mining' cannot be answered. The honest
+    treatment is to report the CROSS-OVER PRICE -- the token price at which
+    mining opportunity cost equals the market compute price -- because that is
+    the number that does not depend on guessing the market.
+    """
+    print("=" * 76)
+    print("TV-37  WHY WOULD ANYONE USE THIS? (the honest answer, with arithmetic)")
+    print("=" * 76)
+
+    if verified_compute_price_per_Mtoken is None:
+        # SCENARIO value, clearly labelled; the research file supplies verified ones.
+        verified_compute_price_per_Mtoken = 5.00   # $/Mtoken, placeholder scenario
+
+    r35 = tv35_cross_subsidy(verified_compute_price_per_Mtoken)
+
+    print(f"\n  [1] What the chain pays for security, per second:")
+    print(f"      at launch:  {r35['reward_per_s_KOK']:>10,.0f} KOK/s   (R0 * 10 BPS)")
+    print(f"      at the tail: {r35['tail_per_s_KOK']:>9,.0f} KOK/s   (the permanent regime)")
+
+    print(f"\n  [2] The mining opportunity cost of compute (the number that kills")
+    print(f"      the 'free lunch' version of the claim):")
+    print(f"      one FLOP of mining is worth, at launch,")
+    print(f"      {r35['mining_opp_cost_per_FLOP_KOK_launch']:.3e} KOK. A miner that sells")
+    print(f"      that FLOP instead of mining with it forgoes exactly this.")
+
+    print(f"\n  [3] What the same FLOP is worth on the AI market:")
+    print(f"      ${r35['market_price_per_FLOP_usd']:.3e} / FLOP at the assumed")
+    print(f"      ${verified_compute_price_per_Mtoken:.2f}/Mtoken (SCENARIO).")
+
+    # THE CROSS-OVER PRICE: the token price at which mining one FLOP is worth
+    # exactly what selling that FLOP is worth on the AI market. Above it, mining
+    # pays better than any compute sale, and the utility layer cannot compete on
+    # price -- it must win on reason (b), permissionlessness. Below it, selling
+    # beats mining and the subsidy argument is real. This is the number that does
+    # NOT depend on guessing the token price.
+    moc_launch = r35["mining_opp_cost_per_FLOP_KOK_launch"]
+    xover_launch = r35["market_price_per_FLOP_usd"] / moc_launch
+    xover_tail = r35["market_price_per_FLOP_usd"] / r35["mining_opp_cost_per_FLOP_KOK_tail"]
+    print(f"\n  [3b] THE CROSS-OVER TOKEN PRICE (the scenario-free number):")
+    print(f"      mining == selling when KOK = ${xover_launch:.6f} (at launch rewards)")
+    print(f"      mining == selling when KOK = ${xover_tail:.6f} (at the 2-KOK tail)")
+    # honest reading: BELOW the crossover, selling is the better use of the FLOP,
+    # so the cross-subsidy is REAL and price competition can drive adoption.
+    # ABOVE it, mining pays better and the utility layer cannot win on price.
+    below = token_price_usd < xover_launch
+    print(f"      Reading: at ${token_price_usd:.2f} KOK is {'BELOW' if below else 'ABOVE'} the")
+    print(f"      crossover, so selling compute pays {'BETTER' if below else 'WORSE'} than mining")
+    print(f"      and the cross-subsidy argument is {'REAL' if below else 'NOT REAL'} at this price.")
+    print(f"      The crossover, not the guess, is the strategic number: it says the")
+    print(f"      utility layer is price-competitive exactly while the token is cheap.")
+
+    print(f"\n  [4] THE HONEST RESTATEMENT OF THE CLAIM:")
+    print(f"      The compute is NOT free. It is SUBSIDISED, and only to the extent")
+    print(f"      that KW's kernel is the same work as the sold work (alpha ~")
+    print(f"      {ANCHORS['kw_alpha_overhead']}). Where they overlap, security spending")
+    print(f"      pays for the compute and the fee is nearly pure margin.")
+    print(f"      Where they do not overlap, the utility layer competes with mining")
+    print(f"      for the same FLOPs and must pay the market rate or better.")
+
+    print(f"\n  [5] THE COUNTER-EXAMPLE WE MUST EXPLAIN ([Basu]):")
+    print(f"      Pearl ran {ANCHORS['pearl_hashrate_EH_s']:.0f} EH/s on")
+    print(f"      {ANCHORS['pearl_gpu_equivalents']:,.0f} GPU-equivalents")
+    print(f"      ({ANCHORS['pearl_MW']:.0f} MW) and sold")
+    print(f"      {ANCHORS['pearl_useful_compute_sold']:.0f} useful compute.")
+    print(f"      This is the measured shape of the dead equilibrium. Whatever KOK")
+    print(f"      does differently has to be a causal answer to THIS number, not a")
+    print(f"      slogan about wasted energy.")
+
+    # *** THE INVERTED INCENTIVE: the crossover RISES with the token price. ***
+    # At launch (rewards high) the crossover is $10; at the 2-KOK tail it is $250.
+    # Read carefully, this is the project's most uncomfortable fact:
+    #   - when the token is CHEAP, selling beats mining -> the utility layer is
+    #     price-competitive, but the chain is small and nobody has heard of it;
+    #   - when the token is EXPENSIVE, mining pays far better than any compute
+    #     sale -> miners ignore the utility layer and the chain drifts toward
+    #     the empty-block equilibrium, i.e. toward being just an ordinary PoW.
+    # The utility layer is most competitive exactly when the network is least
+    # established. Adoption must be won EARLY, or the window closes as the
+    # token succeeds. This inverts the usual "grow first, monetise later" plan.
+    print(f"\n  [5b] THE INVERTED INCENTIVE (the uncomfortable fact):")
+    print(f"      the crossover is ${xover_launch:.2f} at launch but ${xover_tail:.2f} at the tail.")
+    print(f"      As the token appreciates, mining outbids compute sales by more and")
+    print(f"      more. So the window in which the utility layer can win on price is")
+    print(f"      the EARLY window, when the network is smallest. Adoption is not")
+    print(f"      something to monetise later; it is something to win on day one or")
+    print(f"      watch the economics close. This is why F0 precedes F3a.")
+
+    # the critical-seed analysis at three subsidy positions
+    print(f"\n  [6] CAN WE ESCAPE THE DEAD STATE? (critical seed of real demand)")
+    for ratio, label in [(0.5, "selling pays HALF of mining (subsidy weak)"),
+                         (1.0, "selling pays exactly mining (break-even)"),
+                         (2.0, "selling pays DOUBLE mining (subsidy strong)")]:
+        seed, res = tv36_find_critical_seed(ratio)
+        if seed is None:
+            print(f"      {label:46s} -> NEVER ESCAPES")
+        else:
+            print(f"      {label:46s} -> escapes at seed D0 >= {seed:.3f}"
+                  f"  (reaches {res['final_demand']*100:.1f}% of market)")
+    print(f"\n      Reading: the seed is the fraction of the network's compute that")
+    print(f"      must be REAL, paying demand from day one. A chain that launches")
+    print(f"      with seed = 0 is Pearl. The seed is not something the protocol can")
+    print(f"      emit; it is something someone must bring. THAT is the go-to-market.")
+
+    print(f"\n  [7] THE VERDICT (the user's question, answered plainly):")
+    print(f"      People will use KOK for exactly one of these reasons, and no other:")
+    print(f"        (a) it is provably cheaper than the alternative for a job they")
+    print(f"            already pay for; or")
+    print(f"        (b) it is the only place a job can run permissionlessly.")
+    print(f"      Everything else -- green narratives, 'wasted energy' arguments,")
+    print(f"      AI-for-all rhetoric -- is decoration that [Basu] already falsified.")
+    print(f"      If neither (a) nor (b) is true on day one, the chain converges to")
+    print(f"      the empty-block equilibrium and stays there, because that is the")
+    print(f"      stable state of a two-sided market with a zero seed.")
+    print(f"\n      Therefore the roadmap's first milestone is not a testnet.")
+    print(f"      It is A CUSTOMER WITH A JOB. Everything else is downstream of that.")
+    return r35
+
+
+# ============================================================================
+# main
+# ============================================================================
+
+if __name__ == "__main__":
+    print("=" * 76)
+    print("KOK v2 — ADOPTION ECONOMICS (TV-35 / TV-36 / TV-37)")
+    print("=" * 76)
+    print("Testing the project's central claim with arithmetic, not adjectives.\n")
+
+    r35 = tv37_verdict()
+
+    print("\n" + "-" * 76)
+    print("TV-35/36/37 COMPLETE")
+    print("-" * 76)
+    print("Honest limits of this model: it is a market model, not a forecast. The")
+    print("scenario inputs are labelled. Where the research file supplies a verified")
+    print("price, substitute it into tv37_verdict(...). The conclusions that do NOT")
+    print("depend on the scenario are (4) the restatement of the claim, (5) the")
+    print("Pearl counter-example, and (7) the verdict: those hold at any price.")

@@ -35,6 +35,7 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 | `fp8_noise_proto_en.py` | Quantization-aware FP8 noise model (TV-27..TV-30) |
 | `bond_margin_proto_en.py` | Censorship-economics measurement (TV-31..TV-33) |
 | `pass_sim_en.py` | Closed-form solver for the Pass (2026) economic model |
+| `adoption_econ.py` | **The adoption question**: cross-subsidy arithmetic (TV-35), two-sided cold-start model (TV-36), and the honest verdict (TV-37) |
 
 All prototypes are **stdlib-only Python 3**: `python3 <file>`. No dependencies.
 
