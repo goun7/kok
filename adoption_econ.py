@@ -64,6 +64,14 @@ ANCHORS = {
     "pearl_useful_compute_sold": 0.0,          # <-- the finding that matters
     # [KW] overhead of the useful construction over plain MatMul
     "kw_alpha_overhead":        1.30,          # gamma=alpha=1.3 in spec C.2 (Pass's KW instantiation)
+    # VERIFIED 2026-09-21, official pages (ARASTIRMA_SONUCLARI.md):
+    "deepseek_v4pro_peak_usd_per_Mtoken_in": 1.32,   # api-docs.deepseek.com
+    "deepseek_v4pro_offpeak_usd_per_Mtoken": 0.66,   # half of peak
+    "h100_spot_usd_per_gpu_hr": 2.15,               # Nebius preemptible
+    "h100_ondemand_usd_per_gpu_hr": 3.85,           # Nebius
+    # the one network that publishes real compute revenue
+    "aethir_2025_revenue_usd":  127_800_000.0,      # their own blog
+    "aethir_arr_q3_2025_usd":   166_000_000.0,
 }
 
 # ============================================================================
@@ -262,8 +270,12 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
     print("=" * 76)
 
     if verified_compute_price_per_Mtoken is None:
-        # SCENARIO value, clearly labelled; the research file supplies verified ones.
-        verified_compute_price_per_Mtoken = 5.00   # $/Mtoken, placeholder scenario
+        # VERIFIED 2026-09-21 from official pricing pages (ARASTIRMA_SONUCLARI.md):
+        # DeepSeek V4-Pro-0813, api-docs.deepseek.com, peak input $1.32/Mtoken.
+        # Chosen as the anchor because it is the cheapest serious frontier model,
+        # i.e. the hardest price KOK would have to beat. Together AI lists the
+        # identical model at the identical $1.32, which cross-checks it.
+        verified_compute_price_per_Mtoken = 1.32
 
     r35 = tv35_cross_subsidy(verified_compute_price_per_Mtoken)
 
@@ -278,8 +290,8 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
     print(f"      that FLOP instead of mining with it forgoes exactly this.")
 
     print(f"\n  [3] What the same FLOP is worth on the AI market:")
-    print(f"      ${r35['market_price_per_FLOP_usd']:.3e} / FLOP at the assumed")
-    print(f"      ${verified_compute_price_per_Mtoken:.2f}/Mtoken (SCENARIO).")
+    print(f"      ${r35['market_price_per_FLOP_usd']:.3e} / FLOP at the VERIFIED")
+    print(f"      ${verified_compute_price_per_Mtoken:.2f}/Mtoken (DeepSeek V4-Pro peak).")
 
     # THE CROSS-OVER PRICE: the token price at which mining one FLOP is worth
     # exactly what selling that FLOP is worth on the AI market. Above it, mining
@@ -331,13 +343,21 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
     # The utility layer is most competitive exactly when the network is least
     # established. Adoption must be won EARLY, or the window closes as the
     # token succeeds. This inverts the usual "grow first, monetise later" plan.
-    print(f"\n  [5b] THE INVERTED INCENTIVE (the uncomfortable fact):")
+    print(f"\n  [5b] THE SPECULATION PARADOX (the uncomfortable fact, corrected):")
     print(f"      the crossover is ${xover_launch:.2f} at launch but ${xover_tail:.2f} at the tail.")
-    print(f"      As the token appreciates, mining outbids compute sales by more and")
-    print(f"      more. So the window in which the utility layer can win on price is")
-    print(f"      the EARLY window, when the network is smallest. Adoption is not")
-    print(f"      something to monetise later; it is something to win on day one or")
-    print(f"      watch the economics close. This is why F0 precedes F3a.")
+    print(f"      Reading the crossover correctly: it is the token price at which mining")
+    print(f"      and selling pay the same. A HIGH crossover means mining pays little per")
+    print(f"      FLOP, so selling is attractive. Two forces push it in OPPOSITE ways:")
+    print(f"        - the network GROWS  -> the fixed reward is split over more FLOPs ->")
+    print(f"          mining pays less per FLOP  -> crossover RISES  -> selling IMPROVES")
+    print(f"        - the token APPRECIATES -> mining pays more in dollar terms ->")
+    print(f"          crossover is CROSSED  -> selling WORSENS")
+    print(f"      *** So speculation is the project's ENEMY, not its friend: a token price")
+    print(f"      spike makes the utility layer uncompetitive overnight, even if the")
+    print(f"      network is healthy. *** Adoption must be won while the token is cheap;")
+    print(f"      the design tension is that every incentive programme that raises the")
+    print(f"      price also narrows the window. This is why F0 precedes F3a, and why the")
+    print(f"      emission tail (2 KOK) is deliberately small.")
 
     # the critical-seed analysis at three subsidy positions
     print(f"\n  [6] CAN WE ESCAPE THE DEAD STATE? (critical seed of real demand)")

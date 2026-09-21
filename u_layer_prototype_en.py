@@ -541,3 +541,76 @@ if __name__ == "__main__":
     print("(2) the VRF is an HMAC stub; (3) the 'STARK-like' trace is not a real AIR; (4)")
     print("tests are in g_layer_tests.py (time model); (5) GHOSTDAG parent-set")
     print("selection missing (single parent). All share the interface of spec A.10/B.3.")
+
+
+# =============================================================================
+# TV-38  The Pearl verification gap, tested on our own kernel (2026-09-21)
+#
+# The market research (ARASTIRMA_SONUCLARI.md) records the single most damaging
+# finding about Pearl: its verification ACCEPTED RANDOM MATRICES. A "useful"
+# miner could submit a certificate without ever doing the useful work, and the
+# network accepted it. That is how a chain runs 24 EH/s and sells zero useful
+# compute -- not because miners were lazy, but because the protocol could not
+# tell real work from fake work.
+#
+# This test asks the same question of OUR kernel: does verify() distinguish
+# (a) a certificate produced by the real MatMul, from
+# (b) a certificate fabricated without doing the work, and
+# (c) a certificate produced with the WRONG input matrices?
+#
+# It does. The reason is structural, not accidental: verify() recomputes the
+# claimed tile from A, B and the ROM-derived noise. A fabricated value cannot
+# match, because the verifier recomputes the same deterministic function the
+# honest miner ran. Pearl's gap was that its verifier did not bind the
+# certificate to the claimed computation; ours does, by construction.
+# =============================================================================
+def tv38_pearl_gap():
+    import random as _r
+    _r.Random(77)
+    q, n = 97, 8
+    ch = Chain()
+    k = ch.kernel
+    A = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
+    B = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
+    ctx = 999
+
+    # a real certificate: the honest miner actually runs the kernel
+    cert, nonce = None, 0
+    for nonce in range(1, 300):
+        c = k.prove(A, B, ctx, nonce, ch.D)
+        if c is not None:
+            cert, good = c, nonce
+            break
+    assert cert is not None
+
+    v_real = k.verify(cert, A, B, ctx, good, ch.D)
+
+    # (c) wrong input: a miner claims the certificate but with different matrices
+    A_wrong = [[(A[i][j] + 1) % q for j in range(n)] for i in range(n)]
+    v_wrong_input = k.verify(cert, A_wrong, B, ctx, good, ch.D)
+
+    # (b) fabricated certificate: never ran anything, just picked a tile value
+    fake = {"tile": (0, 0, _r.randrange(q)), "m": n // 2}
+    v_fabricated = k.verify(fake, A, B, ctx, good, ch.D)
+
+    # (b2) correct tile COORDINATES but a value that was never computed
+    i, j, _ = cert["tile"]
+    forged = {"tile": (i, j, (cert["tile"][2] + 1) % q), "m": n // 2}
+    v_forged_value = k.verify(forged, A, B, ctx, good, ch.D)
+
+    return v_real, v_wrong_input, v_fabricated, v_forged_value
+
+
+if __name__ == "__main__":
+    _r, _wi, _fab, _fg = tv38_pearl_gap()
+    print("[TV-38] Pearl verification gap, tested on our own kernel:")
+    print("        real certificate accepted      : %s" % _r)
+    print("        wrong input matrices accepted  : %s   <- must be False" % _wi)
+    print("        fabricated certificate accepted : %s   <- must be False" % _fab)
+    print("        forged tile value accepted      : %s   <- must be False" % _fg)
+    assert _r, "a real certificate must verify"
+    assert not (_wi or _fab or _fg), "a fabricated or wrong-input certificate must NOT verify"
+    print("        -> our verifier BINDS the certificate to the computation.")
+    print("        -> Pearl's gap was that its verifier did not; this is the")
+    print("           causal difference between 24 EH/s of real work and")
+    print("           24 EH/s of theatre.")

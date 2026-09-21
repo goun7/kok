@@ -719,9 +719,41 @@ different must be a **causal** answer to this number:
 - Pearl's miners had no reason to serve. **KÖK's answer:** the fee is the only way to earn
   beyond the tail subsidy, and the tail is deliberately small (2 KOK), so serving demand is
   where the money is.
+- **Pearl's verification accepted random matrices** (the research file's most damaging detail:
+  the dominant mining software contained no inference code at all, and verification accepted
+  whatever was submitted). This is the *mechanism* of the zero: the protocol literally could
+  not distinguish real work from theatre, so it got theatre. **KÖK's answer, and it is
+  tested, not asserted (TV-38):** our verifier recomputes the claimed tile from A, B and the
+  ROM-derived noise, so a fabricated certificate, a forged tile value, or a certificate
+  presented against the wrong input matrices all fail. The test is in
+  `u_layer_prototype_en.py`. **This is the single most important structural difference from
+  Pearl, because it is the one that makes "24 EH/s of real work" possible rather than 24 EH/s
+  of theatre.**
 
 **The honest gap:** none of these three are *proof* that demand arrives. They are the
 preconditions. Whether anyone comes is an empirical question, and no paper can settle it.
+
+### The market exists, and one network proves compute revenue is real (2026-09-21, verified)
+
+The research file answers the question that determines whether this project is worth doing
+at all. Three findings, each from a live source:
+
+- **Aethir publishes $127.8M of compute revenue for 2025 and $166M ARR (Q3 2025)** — real
+  dollars from selling GPU compute, not token market capitalisation. This is the existence
+  proof that the market for decentralised compute is not hypothetical.
+- **No PoUW chain publishes compute revenue.** Qubic and Dynex — the two existing
+  proof-of-useful-work chains — publish none; Dynex is winding its token down (Feb 2026).
+  Bittensor's 30-day revenue of $9.85M against $76.8M paid out means **~88% of its "revenue"
+  is emission**, not sales. **So the exact combination KÖK proposes — PoW security plus
+  compute sales — has no proven predecessor.** That is simultaneously the opportunity and
+  the warning.
+- **Verified prices set the bar.** H100 spot is $2.15/GPU-hr (Nebius preemptible) and
+  DeepSeek V4-Pro is $1.32/M-token at peak. KÖK's compute must beat *these* numbers, and
+  TV-35's crossover ($2.64 at launch rewards) says it can — while the token stays cheap.
+
+**The strategic consequence:** the market is real (Aethir), the specific combination is
+unproven (Qubic/Dynex/Bittensor), and the price bar is measurable (not a guess). That is
+enough to justify F0 — and enough to define its failure honestly.
 
 ### The two-sided cold start, modelled (TV-36)
 
@@ -742,6 +774,16 @@ market to escape the dead state. Two findings, both stated plainly:
 2. **Below roughly break-even, the dead state is absorbing** — no seed escapes. The chain
    cannot subsidise its way to adoption if its compute costs more than the market's; the
    cross-subsidy must be real, which loops back to the overlap requirement.
+3. **The speculation paradox.** The crossover token price (where mining and selling pay the
+   same) is pushed in *opposite* directions by the two kinds of success. A **larger network**
+   splits the fixed reward over more FLOPs, so mining pays less per FLOP, the crossover
+   *rises*, and selling improves. A **higher token price** does the reverse: it crosses the
+   crossover and makes utility uncompetitive. **So a speculative spike is the project's enemy,
+   not its friend** — the utility window is open while the token is cheap, and a price rally
+   can close it even on a healthy network. This is a genuine design tension, not a marketing
+   problem: every incentive that raises the token price also narrows the adoption window. It
+   is why the emission tail is deliberately small (2 KOK) and why F0 is time-critical rather
+   than merely important.
 
 ### Who would actually use this — the honest two reasons
 
