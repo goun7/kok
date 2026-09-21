@@ -288,20 +288,24 @@ primary source before it is relied on.
 
 ## Where the research stands
 
-Three candidate directions have now been tested:
+Four candidate directions have now been tested:
 
-- **AI agent security gap** — rejected. Losses trace to social engineering and
-  cross-chain failures, not a missing protocol primitive.
+- **AI agent security gap** — rejected for the losses CertiK measured, then partly
+  reinstated by APort Vault, which measures a protocol-level boundary rather than
+  user carelessness. Not a chain, but relevant to who the buyer is.
 - **Decentralized compute demand** — confirmed real but small. Akash at $5M
-  all-time spend, with physical constraints now limiting centralized supply.
+  all-time spend against Aethir's $127.8M for 2025, with physical constraints now
+  limiting centralized supply on two independent axes.
 - **PoUW with paying customers** — empty. Nobody in the true-PoUW bucket has one,
   and the marketplaces that do are PoS.
+- **Computation market settled on a ledger** — **no longer empty.** arXiv 2609.21728
+  ships a reference implementation on Solana. The unoccupied cell is the PoUW half,
+  not the market half.
 
 The synthesis so far: KOK's design is aligned with the two failures that have
 actually been measured (optional usefulness gets skipped; decoupling token from
-usage erodes the token), and it targets the one empty cell in the table — true
-PoUW with a paying customer. Whether that cell can be filled is still exactly what
-phi measures.
+usage erodes the token), and it targets a narrower gap than this log first claimed.
+Whether that gap can be filled is still exactly what phi measures.
 
 ## Source 8 — Gensyn has moved, and the training thesis needs updating
 
@@ -508,7 +512,7 @@ rule out external buyers entirely. But the network's stated mechanism is
 inflation-funded subsidies to subnet contributors, which is a different thing from
 a buyer paying for compute.
 
-## Synthesis — what the ten sources say together
+## Synthesis — what the thirteen sources say together
 
 The picture that emerges is narrower and more useful than "what is not built."
 
@@ -528,25 +532,51 @@ buyers appear — it says what happens *if* the ratio is high enough. The ratio 
 external demand, and external demand is what phi measures. KOK's measurement is
 therefore not a side experiment; it is the variable the theory is parameterised on.
 
-**Nobody occupies the empty cell.** True PoUW systems (Pearl, Bittensor) have no
-paying customer; the chain pays miners or contributors. Systems with paying
-customers (Akash, Render, io.net) are marketplaces on PoS, where useful work is
-not tied to consensus. Gensyn was the strongest training-verification candidate and
-has repositioned toward verifiable inference, oracles, and prediction markets. The
-specific gap is **PoUW consensus where useful output is bought by an external
-party**, and it is unoccupied on every side.
+**The empty cell is narrower than it first looked, and this log corrected itself.**
+The first pass at the landscape claimed nobody had built a computation market
+settled on a ledger. That was wrong by three days: **arXiv 2609.21728** (Kruger and
+Georg, 18 Sep 2026) has a working reference implementation on Solana, using TEEs
+and on-chain digital rights tokens. What remains unoccupied is specifically **PoUW
+consensus where useful output is bought by an external party** — the PoUW half,
+not the market half. Bittensor pays from inflation, confirmed from its own front
+page; the other live PoUW chains publish no revenue and one of them, Dynex, is
+cancelling its utility token. The correction is kept in the log rather than edited
+away.
 
-**One external force could create the missing demand.** Physical constraints on
-centralised AI are the only demand signal found that requires no ideology: planned
-data centers delayed or canceled, a state moratorium, community refusals of
-eight-figure land offers, and multi-year lead times on turbines. If buyers cannot
-get centralised capacity, permissionless supply becomes an alternative rather than
-a belief. This is the strongest argument found for why the empty cell might be
-fillable now rather than in some abstract future — and its primary source remains
+**The demand side has one structural signal and one new customer shape.** The
+structural signal is physical: centralised AI capacity constrained on two
+independent axes — hardware allocation, with H100s allocation-only and 6-12 month
+waits, and physical infrastructure, with planned data centers delayed, a state
+moratorium, and multi-year turbine lead times. If buyers cannot get centralised
+capacity, permissionless supply becomes an alternative rather than a belief. This
+is the only ideology-free demand force found, and its primary sources remain
 unverified, which is recorded.
+
+The new customer shape is that **the buyer is increasingly an agent.** APort Vault
+establishes that agent payment authorization is a real, measured problem — 140 of
+76,842 unauthorized transfers without a boundary, 0 of 69,297 with one, while
+25,370 legitimate payments still executed. This is not a chain and does not compete
+with KOK, but it says the U layer's eventual customer will need safe authorization
+to pay at all. KOK's escrow-then-settle structure is already that shape.
 
 **What this changes for KOK, and what it does not.** It strengthens the case that
 the problem KOK chose is real and that the design fits the measured failures. It
-does not create demand. The F3a testnet still measures phi with a real buyer, the
-Astria invitation is still the only one sent, and the decision to wait for Demirel
-stands. The research supports the path; it does not shorten it.
+also removes one claim that was too strong: the market half is no longer novel, and
+the design must be defended on the zkVM-versus-TEE question. It does not create
+demand. The F3a testnet still measures phi with a real buyer, the Astria invitation
+is still the only one sent, and the decision to wait for Demirel stands. The
+research supports the path; it does not shorten it.
+
+**What remains genuinely open, and is not papered over:**
+
+1. The "nearly half of data centers delayed" figure is still unfetched at its
+   primary source. It is cited from a self-interested blog.
+2. Pass's model assumes an elastic inference market. In a supply-constrained world
+   that assumption may not hold, and if it fails, subsidising inference may not
+   expand output the way Duplexia predicts. Nobody has tested this.
+3. The TEE-versus-zkVM comparison has not been written from KOK's side. The
+   counter-position exists (2609.21728) and KOK's answer to it is currently an
+   assertion, not an argument.
+4. Whether agents can be real buyers of inference at all — not merely authorized to
+   pay, but carrying demand a human did not initiate — is an open empirical
+   question that no source here answers.
