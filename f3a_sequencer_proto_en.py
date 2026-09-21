@@ -194,9 +194,27 @@ class F3aTestnet:
         # a CHALLENGED task can SETTLE if the challenge is resolved (closing the fraud window)
         if t is None or t.state not in ("SOLVED", "CHALLENGED"):
             return False
-        # spec A.5.2: verification is MANDATORY; the verifier cannot skip it (no dilemma)
+        # spec A.5.2: verification is MANDATORY; the verifier cannot skip it.
+        # A first failure challenges the task and gives the sequencer one
+        # chance to repair it. A SECOND failure on an already-challenged task
+        # is the slashing case: the bond is cut, the escrow returns to the
+        # buyer, nothing is burned, and the task is marked SLASHED.
         if not verify_ok:
             self.dilemma_triggers += 1
+            if t.state == "CHALLENGED":
+                slash = min(self.sequencers[seq_id].bond, t.spec.fee)
+                self.sequencers[seq_id].bond -= slash
+                self.sequencers[seq_id].slashed += slash
+                self.slash_events += 1
+                # the buyer is made whole: the full fee returns, escrow and
+                # the earmarked burn alike. Nothing was delivered, so nothing
+                # is burned - burning the buyer's money for a provider's
+                # misbehaviour would punish the wrong party.
+                self.refunds += t.escrow + t.burned
+                t.escrow = 0
+                t.burned = 0
+                t.state = "SLASHED"
+                return False
             t.state = "CHALLENGED"
             return False
         t.state = "SETTLED"
@@ -293,7 +311,7 @@ def tv17():
     held = sum(t.escrow for t in net.sequencers["A"].tasks.values())
     assert held == 0, "sequencer escrow held escrow"
     assert net.sequencers["A"].bond == 100, "bond fee seviyesine did not appear"
-    assert net.sequencers["A"].slashed == 150, "kumulatif slash 50+100=150 should be"
+    assert net.sequencers["A"].slashed == 150, "cumulative slash 50+100=150 should be"
     # refund total = 3 * 70 = 210
     assert net.refunds == 210, net.refunds
     print(f"  TV-17 censorship-free: gain=0 (refund {net.refunds}), slash 50+100=150")
@@ -863,3 +881,159 @@ if __name__ == "__main__":
   The honest use of TV-23 is as a calibration: it shows what phi looks like at
   various arrival rates, so that when the real testnet reports a number it can
   be read against a known scale instead of interpreted freely.""")
+
+
+# ---------------------------------------------------------------------------
+# TV-24  A slashing attack case, and the escrow refund rate measured
+#
+# The roadmap asks for two things the prototype had not supplied: a case where
+# a sequencer is actually slashed for a bad result, and the escrow refund rate
+# measured rather than assumed.
+#
+# The attack: a sequencer solves a task with a wrong result, verification
+# fails, the bond is slashed, the escrow returns to the buyer, and the task is
+# marked SLASHED - never SETTLED. The honest case settles and burns. The
+# difference between the two is the whole point of the penalty economy.
+# ---------------------------------------------------------------------------
+
+
+def tv24_slashing_attack_case():
+    """TV-24: a bad result is caught, the bond is slashed, the buyer is refunded.
+
+    The sequencer submits a wrong solution, verification fails, and the penalty
+    economy must do four things at once: slash the bond, refund the escrow to
+    the buyer, burn nothing, and leave the task unmistakably not-settled.
+    """
+    sq = Sequencer("sqX")
+    net = F3aTestnet([sq])
+
+    s = spec(H("h", 99), fee=100, burn_rate=0.3)
+    net.submit_task("sqX", "task-f", "buyer-f", s)
+    net.next_block()
+    net.solve_task("sqX", "task-f", result={"acc": "WRONG"})
+    t = net.sequencers["sqX"].tasks["task-f"]
+
+    bond_before = sq.bond
+    burn_before = net.burn_address
+
+    # verification FAILS twice - the first challenge is a warning, the second
+    # is the slash. This matches spec A.5.2: a challenged task gets one repair.
+    first_fail = not net.settle_task("sqX", "task-f", verify_ok=False)
+    challenged = t.state == "CHALLENGED"
+    # nothing is actually burned yet: the burn_address has not moved. The
+    # task's burned field is the amount earmarked at submission, which is
+    # released only at settlement or refunded at slashing.
+    nothing_burned_yet = (net.burn_address == burn_before)
+
+    slashed = not net.settle_task("sqX", "task-f", verify_ok=False)
+
+    slash_happened = (sq.bond < bond_before and sq.slashed > 0
+                      and net.slash_events == 1)
+    buyer_refunded = (net.refunds == s.fee and t.escrow == 0 and t.burned == 0)
+    nothing_burned = (net.burn_address == burn_before and t.burned == 0)
+    not_settled = t.state == "SLASHED"
+
+    return (first_fail, challenged, nothing_burned_yet, slash_happened,
+            buyer_refunded, nothing_burned, not_settled)
+
+
+def tv24_refund_rate_measured():
+    """TV-24b: the escrow refund rate, measured across a mixed load.
+
+    The refund rate is the fraction of arriving fees that return to buyers
+    rather than reaching the sequencer. A healthy market runs near zero; a
+    market where providers misbehave runs high. This runs a mixed load - one
+    honest sequencer, one that fails verification sometimes - and reports the
+    number instead of asserting it.
+    """
+    sq_good = Sequencer("sqG")
+    sq_bad = Sequencer("sqB")
+    net = F3aTestnet([sq_good, sq_bad])
+
+    fees_in = 0
+    n = 0
+
+    for blk in range(300):
+        net.next_block()
+        sid = "sqG" if blk % 2 == 0 else "sqB"
+        s = spec(H("h", blk), fee=100, burn_rate=0.3)
+        tid = "t-%d" % blk
+        net.submit_task(sid, tid, "buyer-%d" % blk, s)
+        fees_in += s.fee
+        net.solve_task(sid, tid, result={"blk": blk})
+        if sid == "sqB" and blk % 2 == 1:
+            # the bad sequencer fails twice: the first failure challenges,
+            # the second slashes and refunds the buyer in full
+            net.settle_task(sid, tid, verify_ok=False)
+            net.settle_task(sid, tid, verify_ok=False)
+        else:
+            net.settle_task(sid, tid, verify_ok=True)
+        n += 1
+
+    # the numbers are read from the network itself rather than accumulated by
+    # hand, so the books cannot help but balance if the mechanism is sound
+    fees_refunded = net.refunds
+    fees_burned = net.burn_address
+    fees_paid = sum((t.spec.fee - t.spec.burn) for sq in net.sequencers.values()
+                    for t in sq.tasks.values() if t.state == "SETTLED")
+    # the slashed bond is a penalty, not a payment; tracked apart
+    slashed_bonds = sum(sq.slashed for sq in net.sequencers.values())
+
+    refund_rate = fees_refunded / fees_in if fees_in else 0.0
+    return {
+        "tasks": n,
+        "fees_in": fees_in,
+        "fees_refunded": fees_refunded,
+        "fees_burned": fees_burned,
+        "fees_paid": fees_paid,
+        "slashed_bonds": slashed_bonds,
+        "refund_rate": refund_rate,
+        "books_balance": (fees_refunded + fees_burned + fees_paid) == fees_in,
+    }
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F3a: the slashing attack case, and the refund rate (TV-24)")
+    print("=" * 76)
+    print("The roadmap asks for a slashing case and a measured refund rate.")
+    print("Neither existed. A penalty economy that is never triggered is a")
+    print("claim, not a mechanism.\n")
+
+    f1, ch, nby, sh, br, nb, ns = tv24_slashing_attack_case()
+    print("  first failure challenges the task  : %s" % f1)
+    print("  ...and burns nothing for now       : %s" % nby)
+    print("  a second failure slashes the bond  : %s" % sh)
+    print("  the buyer's escrow is refunded     : %s" % br)
+    print("  nothing is burned for a bad result : %s" % nb)
+    print("  the task is SLASHED, not SETTLED   : %s" % ns)
+    assert f1 and ch and nby and sh and br and nb and ns
+
+    r = tv24_refund_rate_measured()
+    print()
+    print("  REFUND RATE, MEASURED (300 tasks, one honest + one failing sequencer)")
+    print("    fees in            : %d" % r["fees_in"])
+    print("    refunded to buyers : %d" % r["fees_refunded"])
+    print("    burned             : %d" % r["fees_burned"])
+    print("    paid to sequencers : %d" % r["fees_paid"])
+    print("    refund rate        : %.4f" % r["refund_rate"])
+    print("    books balance      : %s" % r["books_balance"])
+    assert r["books_balance"]
+    assert 0.0 < r["refund_rate"] < 1.0
+    print("\n  -> a misbehaving provider loses money, and the number is measured.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-24 ESTABLISHES, AND WHAT IT DOES NOT")
+    print("-" * 76)
+    print("""  The penalty economy is real rather than asserted: a bad result costs the
+  sequencer its bond, returns the escrow to the buyer, burns nothing, and leaves
+  a mark that cannot be mistaken for delivery. The books balance exactly, which
+  is the arithmetic check that no fee was created or lost.
+
+  What this does not establish: the failing sequencer fails by construction,
+  because the test passes verify_ok=False on its tasks. Whether a real provider
+  finds misbehavior profitable depends on the ratio of slash to gain, on the
+  probability of being caught, and on the challenger's own cost - all of which
+  are parameters F3a must measure with real participants, not values a
+  simulation can award itself. The refund rate here is a sanity check on the
+  accounting, not a prediction of market behaviour.""")
