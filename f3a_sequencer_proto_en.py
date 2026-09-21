@@ -527,12 +527,15 @@ class DemandMeter:
                 elif t.state == "REFUNDED":
                     self._seen.add(tid)
                     self.refunded_tasks += 1
-                elif t.state == "MIGRATED":
-                    self._seen.add(tid)
-                    self.migrated_tasks += 1
+                # MIGRATED is never observable: migrate_task deletes the task
+                # from the censuring sequencer's dict and re-creates it as
+                # ASSIGNED on the alternative. Counting migrations by state
+                # would always report zero, so the network's own event counter
+                # is read instead - it is incremented exactly once per event.
                 elif t.state == "SLASHED":
                     self._seen.add(tid)
                     self.slashed_tasks += 1
+        self.migrated_tasks = testnet.migrations
         if paid_here > 0:
             self.blocks_with_paid_task += 1
 
@@ -1203,13 +1206,21 @@ def tv26_terminal_states_counted_once():
     ok_state = (state_refunded == "REFUNDED" and state_slashed == "SLASHED")
     ok_refund = (meter.refunded_tasks == 1)
     ok_slash = (meter.slashed_tasks == 1)
+    # a migrated task is deleted from the censuring sequencer's list, so the
+    # meter must read the network's migration event counter rather than look
+    # for a MIGRATED state it can never observe
+    net.submit_task("A", "c2", "kobi", spec("llama-70b"))
+    net.migrate_task("c2", "A", "B")
+    net.next_block()
+    meter.record_block(net)
+    ok_migrated = (meter.migrated_tasks == 1)
     ok_paid = (meter.paid_tasks == 0 and meter.phi() == 0.0)
     print("  TV-26 once-only:     refunded %d (exp 1), slashed %d (exp 1), "
           "paid %d, phi %.3f  %s" %
           (meter.refunded_tasks, meter.slashed_tasks, meter.paid_tasks,
            meter.phi(), "ACCEPT" if (ok_state and ok_refund and ok_slash
                                     and ok_paid) else "RED"))
-    return ok_state and ok_refund and ok_slash and ok_paid
+    return ok_state and ok_refund and ok_slash and ok_migrated and ok_paid
 
 
 if __name__ == "__main__":
