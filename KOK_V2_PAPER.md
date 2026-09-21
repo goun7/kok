@@ -1152,18 +1152,34 @@ the one Pearl fails, and it is the one φ measures.
 | Project | Useful work | Consensus | Paying customer? |
 |---|---|---|---|
 | **Pearl** | LLM inference (NoisyGEMM) | PoUW | **no** — measured zero |
-| **Bittensor** | subnet ML tasks | incentive chain | **no** — "the chain pays contributors in TAO" |
+| **Bittensor** | subnet ML tasks | incentive chain | **no** — "the chain pays contributors in TAO"; ~88% of revenue is emission |
+| **Qubic** | PoUW | PoUW | **no revenue published** |
+| **Dynex** | neuromorphic PoUW | PoUW | **no revenue published; cancelling its utility token (Feb 2026)** |
 | **Gensyn** | training → now verifiable inference, oracles | not PoUW | not yet; repositioned to prediction markets |
 | **Akash** | generic GPU/CPU compute | **PoS marketplace** | **yes** — $5M all-time spend |
 | **Render** | GPU rendering | **PoS marketplace** | yes, production |
 | **io.net** | GPU aggregation | **DePIN** | some |
 | **Golem** | generic compute | marketplace | low usage |
+| **Aethir** | GPU cloud | DePIN | **yes** — $127.8M/2025, $166M ARR (the exception) |
 
 The pattern is the finding. **Useful work with paying customers exists — in marketplaces on PoS,
 where it is not tied to block production. True PoUW exists — with no paying customer.** The two
-halves have not met in one system. Pearl and Bittensor pay from inflation; Akash and Render sell
-real compute but secure nothing by it. KÖK's target is specifically the unoccupied cell: useful
-work that is both consensus-relevant and externally purchased.
+halves have not met in one system. Pearl and Bittensor pay from inflation, confirmed from
+Bittensor's own front page. Akash and Render sell real compute but secure nothing by it. KÖK's
+target is specifically the unoccupied cell: useful work that is both consensus-relevant and
+externally purchased.
+
+The scale question is where this gets uncomfortable, and it was answered in an earlier research
+pass (`arastirma/pazar_ve_rekabet_2026.md`). **Almost nobody in this field publishes real USD
+revenue.** Aethir is the exception at $127.8M for 2025 and $166M ARR. Akash's $5M is all-time,
+cumulative, small against that, and small against the $2/GPU-hr floor the pricing survey found —
+H100 on-demand runs $2.89–6.16, spot $2.15–2.46, and Akash itself lists $1.33. The two other live
+PoUW chains, Qubic and Dynex, publish no compute revenue at all, and **Dynex is cancelling its
+utility token (February 2026)**. Bittensor's revenue is roughly 88% emission. So the honest
+statement is not "demand exists" but "demand is mostly either undisclosed, inflation-funded, or
+smaller than the subsidy that creates it." **No revenue-proven predecessor exists for the
+combination KÖK is building**, which is the same conclusion the earlier pass reached and which
+F3a exists to test.
 
 Two external observations sharpen this. First, **Akash's own Q1 2026 report describes the failure
 mode KÖK's U layer is built against**, in Akash's words: under their earlier AEP-23 scheme "when

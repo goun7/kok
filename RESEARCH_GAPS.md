@@ -7,6 +7,39 @@ intuition. KÖK stays on path A; this is separate and does not commit to anythin
 Method carried over from F0: every claim sourced, intent marked UNKNOWN where not
 stated, and nothing presented as a measurement that was not measured.
 
+**Pre-existing work — read this first.** An earlier session already ran the core
+market research and it is in `arastirma/pazar_ve_rekabet_2026.md` (397 lines,
+Turkish report, all prices live-fetched 2026-09-21). Its five headline findings:
+
+1. **GPU pricing floor.** H100 on-demand $2.89-6.16/GPU-hr, spot/preemptible
+   $2.15-2.46; Akash $1.33, io.net $2.20. KOK must sell below ~$2/GPU-hr to
+   compete, which is hard without block-reward subsidy.
+2. **"Free compute" is the wrong frame.** Pass's model shows useful compute is an
+   inference rebate paid for by token emission, not a free byproduct.
+3. **PoUW produced no useful work empirically.** Pearl: 24 EH/s, 320K GPUs,
+   112 MW, zero useful computation; budget GPU rental +38%, utilisation 57→94%,
+   research workloads displaced.
+4. **Almost nobody publishes real USD revenue.** Aethir is the exception
+   ($127.8M/2025, $166M ARR). The two other live PoUW chains (Qubic, Dynex) publish
+   no compute revenue, and Dynex is cancelling its utility token (Feb 2026).
+   Bittensor's revenue is ~88% emission. No revenue-proven predecessor exists for
+   the "PoW security + compute sale" combination.
+5. **Verifiable-compute demand is crypto-internal.** Axiom proves Ethereum blocks
+   (EthProofs) and Lighter EVM; =nil; became an L2; N1 became a financial L1. None
+   publish revenue, and no evidence was found of enterprise "prove this
+   computation" demand. KOK's U layer may find its realistic customers in other
+   chains, not enterprises.
+
+Sources for those: arXiv 2606.06700 (Pass), 2606.04819 (Basu), 2209.03865
+(Hoffmann), 2510.09729 (SNARKChain), 2405.19027, 2512.13666, 2102.08107 (Ciaian et
+al., mining cost/reward/security interdependence), plus live pricing pages.
+
+**This log therefore does not repeat that work.** What follows is the layer the
+earlier session did not cover: the 2026 competitive landscape as a taxonomy, the
+marketplaces' own admissions about token-usage decoupling, and the physical
+constraints on centralized supply. Where the two overlap, the earlier file is
+authoritative and this one points to it.
+
 ## Source 1 — Rafael Pass, "The Economics of Proof-of-Work" (arXiv 2606.06700)
 
 - Submitted 4 Jun 2026, revised 24 Aug 2026.
