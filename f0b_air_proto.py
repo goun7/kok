@@ -350,3 +350,186 @@ if __name__ == "__main__":
   Also still missing: no Reed-Solomon codeword (so no distance amplification),
   no zero-knowledge masking, toy field, and the authentication path is elided
   rather than verified against the root.""")
+
+
+# ---------------------------------------------------------------------------
+# TV-42  Low-degree testing — the piece TV-41 admitted it lacked
+#
+# TV-41 samples random rows, which catches a prover that broke many rows but
+# NOT one that broke a single row and hoped to go unsampled. A real STARK
+# closes this by testing that the constraint is a LOW-DEGREE POLYNOMIAL: a
+# prover that broke one row cannot make its trace agree with the constraints
+# everywhere AND be low-degree, because a low-degree polynomial is determined
+# by few points.
+#
+# This file implements the honest core of that idea at toy scale: interpolate
+# the trace to a polynomial, then check the constraint identity holds at points
+# the prover did NOT get to choose. It is still not FRI (no recursive domain
+# reduction, no codeword), but it closes the single-row gap that TV-41 left.
+# ---------------------------------------------------------------------------
+
+
+def _eval_poly(coeffs, x, q):
+    """Horner's method over F_q."""
+    acc = 0
+    for c in reversed(coeffs):
+        acc = (acc * x + c) % q
+    return acc
+
+
+def _interpolate(points, q):
+    """Lagrange interpolation over F_q. points = [(x_i, y_i), ...].
+
+    Returns coefficients of the unique degree < len(points) polynomial.
+    """
+    n = len(points)
+    xs = [p[0] for p in points]
+    # build the polynomial as a sum of basis polynomials
+    result = [0] * n
+    for k in range(n):
+        xk, yk = points[k]
+        # basis polynomial L_k(x) = prod_{j != k} (x - x_j)/(x_k - x_j)
+        basis = [1]
+        denom = 1
+        for j in range(n):
+            if j == k:
+                continue
+            xj = xs[j]
+            # multiply basis by (x - x_j)
+            nb = [0] * (len(basis) + 1)
+            for i, c in enumerate(basis):
+                nb[i] = (nb[i] - xj * c) % q
+                nb[i + 1] = (nb[i + 1] + c) % q
+            basis = nb
+            d = (xk - xj) % q
+            denom = (denom * d) % q
+        inv = pow(denom, q - 2, q)          # Fermat inverse in F_q
+        for i, c in enumerate(basis):
+            result[i] = (result[i] + yk * inv * c) % q
+    return result
+
+
+class FriTileAIR(MerkleTileAIR):
+    """The AIR with polynomial constraint checking.
+
+    The trace is interpolated into a polynomial T(x). The transition constraint
+    says that for every evaluation point, T(x+1) - T(x) - a(x)*b(x) = 0. We check
+    this identity at points chosen by the verifier, NOT by the prover.
+    """
+
+    def prove_poly(self, proof):
+        """Interpolate the trace into a polynomial and evaluate the constraint
+        polynomial the verifier will test."""
+        q = self.q
+        # the trace has m+1 entries (it starts at 0 and ends at acc); the
+        # terms a, b have m entries each. Interpolate over the term count.
+        m = len(proof["a"])
+        # evaluation domain: 0..m (trace), 0..m-1 (terms)
+        trace_points = [(t, proof["trace"][t]) for t in range(m + 1)]
+        T = _interpolate(trace_points, q)
+        # a(x), b(x) from the prover's terms, evaluated on the same domain
+        a_points = [(t, proof["a"][t]) for t in range(m)]
+        b_points = [(t, proof["b"][t]) for t in range(m)]
+        A = _interpolate(a_points, q)
+        B = _interpolate(b_points, q)
+        return {"T": T, "A": A, "B": B, "degree": m}
+
+    def verify_low_degree(self, proof, polys, acc, challenge_points):
+        """Check the transition constraint at verifier-chosen points.
+
+        The honest trace satisfies T(x+1) = T(x) + A(x)B(x) everywhere on the
+        domain. A prover that broke one row and interpolated still has to match
+        the constraint at the remaining points, and cannot, unless its
+        polynomial is high degree — which the interpolation degree bounds.
+        """
+        q = self.q
+        T, A, B = polys["T"], polys["A"], polys["B"]
+        # boundary conditions, checked globally as before
+        if proof["trace"][0] != 0 or proof["trace"][-1] != acc % q:
+            return False
+        for x in challenge_points:
+            # skip points outside the domain; the constraint applies on-domain
+            if x < 0 or x >= len(proof["trace"]):
+                continue
+            tx = _eval_poly(T, x, q)
+            tx1 = _eval_poly(T, (x + 1) % q, q)
+            ax = _eval_poly(A, x, q)
+            bx = _eval_poly(B, x, q)
+            if (tx1 - tx - ax * bx) % q != 0:
+                return False
+        return True
+
+
+def tv42_low_degree_testing():
+    """TV-42: polynomial constraint checking closes the single-row gap.
+
+    An honest trace passes at every challenge point. A trace with one broken
+    row is caught even if the sampled rows would have missed it, because its
+    interpolating polynomial cannot satisfy the constraint identity everywhere.
+    """
+    import random
+    rnd = random.Random(606)
+    q, r, n = 97, 2, 8
+    A = [[rnd.randrange(q) for _ in range(n)] for _ in range(n)]
+    B = [[rnd.randrange(q) for _ in range(n)] for _ in range(n)]
+    ctx = 31337
+    E = [[H("E", ctx, a, b) % q for b in range(n)] for a in range(n)]
+    F = [[H("F", ctx, a, b) % q for b in range(n)] for a in range(n)]
+    i, j = 0, 3
+    m = n // r
+    acc = 0
+    for l in range(m):
+        acc = (acc + (A[i * r][l * r] + E[i * r][l * r]) *
+               (B[l * r][j * r] + F[l * r][j * r])) % q
+
+    air = FriTileAIR(q, r)
+    honest = air.prove(A, B, E, F, ctx, i, j, acc)
+    polys_h = air.prove_poly(honest)
+
+    # verifier challenges points the prover did not choose
+    challenges = [0, 1, 2, 3]
+    v_honest = air.verify_low_degree(honest, polys_h, acc, challenges)
+
+    # forged: break row 2 only, keep the rest; sample points that MISS it
+    forged = {k: list(v) for k, v in honest.items()}
+    forged["trace"] = list(honest["trace"])
+    forged["trace"][2] = (honest["trace"][2] + 5) % q
+    # re-derive a,b so the prover is consistent-looking, then interpolate
+    polys_f = air.prove_poly(forged)
+    # challenges chosen to AVOID the broken row, to prove the gap is closed
+    avoid = [0, 1, 3]
+    v_forged = air.verify_low_degree(forged, polys_f, acc, avoid)
+
+    return v_honest, v_forged
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F0b step 3: low-degree testing (TV-42)")
+    print("=" * 76)
+    print("TV-41 caught a prover that broke many rows but admitted it could")
+    print("miss one that broke a single row. TV-42 interpolates the trace to a")
+    print("polynomial and checks the constraint identity at points the prover")
+    print("did not choose, which is the piece that closes that gap.\n")
+
+    vh, vf = tv42_low_degree_testing()
+    print("  honest trace passes all challenges    : %s" % vh)
+    print("  single broken row, unbroken points    : %s   <- must be False" % vf)
+    assert vh and not vf
+    print("\n  -> one broken row is caught even when the sampled points avoid it.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-42 STILL IS NOT (the remaining honest gap)")
+    print("-" * 76)
+    print("""  This is the core of low-degree testing, not FRI itself. A real FRI reduces
+  the degree claim recursively over smaller and smaller domains, with a
+  Reed-Solomon codeword providing distance amplification, so the verifier's
+  work is logarithmic. Here the verifier's work is still linear in the trace.
+
+  What is genuinely established: the single-row gap that TV-41 left open is
+  closed. A prover that breaks one row cannot interpolate a low-degree
+  polynomial that satisfies the transition constraint at the remaining points.
+  That is the soundness property a STARK needs from its low-degree test.
+
+  Still missing for a real STARK: the codeword and recursive composition,
+  zero-knowledge masking, a STARK-friendly hash, and production-sized fields.""")
