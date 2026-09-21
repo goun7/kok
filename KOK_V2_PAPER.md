@@ -520,6 +520,7 @@ and we intend to measure it rather than to assume it."**
 
 | Phase | Content | Criterion (defined success) |
 |---|---|---|
+| **F0b — Provenance proof** | Close the gap that reason (b) depends on: the "STARK-like" trace must become a real AIR so that a buyer's provenance claim is a proof, not a promise. Also measure liveness under realistic delay (the toy assumes all blocks valid). | A real AIR for one MatMul task; a third party can verify the provenance claim without trusting the miner. **Until this closes, reason (b) is a sales pitch, not a defensible position.** |
 | **F0 — Demand discovery** | Find the first real customer with a real job. Not a testnet, not a simulation: a party who already pays for compute and would switch to KÖK if it were cheaper, or a job that cannot run permissionlessly anywhere else. Interview ≥10 candidates; record what they actually pay, what they need, and what would make them switch. | **≥1 signed letter of intent to buy compute at a named price.** This is the seed of demand (§12.1); without it the chain converges to the empty-block equilibrium and stays there |
 | **F1 — Formal spec** | statement schema, task market protocol, GHOSTDAG+rejection-sampling spec, economic model | Walk-through by independent cryptographers; T1–T6 skeletons. **✅ complete on paper: `KOK_V2_TECHNICAL_SPEC.md`** |
 | **F1b — Working prototype** | task lifecycle + penalty economics + difficulty retarget | **✅ `u_layer_prototype.py` (TV-5..TV-10), `g_layer_tests.py` (TV-1..TV-4, RT-1..RT-3) — all PASS** |
@@ -755,6 +756,25 @@ provider will not host, or a result whose *provenance* must be verifiable (prova
 inference, reproducible research, a regulatory audit trail) has no substitute at any price.
 This is the smaller market but the more defensible one, because the incumbent cannot compete
 on it by lowering prices.
+
+**Reason (b) has three weaknesses, and selling it before they close is fraud-adjacent:**
+
+1. **Permissionlessness cuts both ways.** A protocol that cannot refuse a job cannot refuse a
+   malign one. The same property that defends KOK against deplatforming also invites the
+   content a cloud provider would remove — and this sits in direct tension with the MiCA/AML
+   posture of §9. **This is a risk to be priced, not a bug to be fixed**: a permissionless
+   chain cannot be selectively permissionless.
+2. **Provenance is currently claimed, not proven.** The prototype's "STARK-like" trace is not a
+   real AIR (§A.0) — so the buyer's provenance guarantee rests on the honest miner and the fee,
+   not on mathematics. **This is closable** and it is why F0b exists: until the trace is a real
+   AIR, reason (b) is a promise from an anonymous team, which is exactly what a buyer paying
+   for provenance is trying to avoid.
+3. **Liveness is unmeasured.** The GHOSTDAG toy assumes all blocks are valid, so the
+   availability story (10 BPS, no provider outage) is an argument, not a measurement.
+
+The strategic reading: **reason (b) is the more defensible position, but it is not yet a
+defensible *claim*.** F0b is what makes it one. Reason (a) needs no new cryptography — only a
+customer — but it is vulnerable to the incumbent's price list. Neither is free.
 
 Everything else — the green narrative, the "wasted energy" argument, the AI-for-all rhetoric
 — is decoration that Pearl's measured zero already falsified. **A chain whose only story is
