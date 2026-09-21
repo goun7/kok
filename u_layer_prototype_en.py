@@ -23,16 +23,16 @@ from dataclasses import dataclass, field
 # ---------------------------------------------------------------- constants
 SEED = 20260919
 W_s = 100                 # fraud window (blocks)
-EPOCH_LOOKBACK = 64       # VRF seed lookback (grinding karsiti)
+EPOCH_LOOKBACK = 64       # VRF seed lookback (grinding resistance)
 BOND_RATIO = 1.0          # miner bond = fee * BOND_RATIO  (sybil cost)
 C_FEE = 500               # total U fee cap per block (anti-aggregation)
 FRAUD_REWARD = 50         # the reward for a successful challenge
 DEADLINE_H = 200          # task expiry (blocks)
 PQ_SET = {"stark-circle-1", "stark-pq-1"}    # izin verilen proof_system_id'ler
 DEFAULT_PS = "stark-circle-1"
-RETARGET_WINDOW = 1000     # W (spec B.3; testlerde kucultilir)
+RETARGET_WINDOW = 1000     # W (spec B.3; shrunk in the tests)
 T_B = 0.1                  # target block time (s) — 10 BPS
-CLIP_LO, CLIP_HI = 0.25, 4.0    # Bitcoin'in 4x sinirlari
+CLIP_LO, CLIP_HI = 0.25, 4.0    # Bitcoin's 4x bounds
 G_FLOPS = 64               # FLOPs per G-layer attempt (n=8 kernel scale)
 
 rng = random.Random(SEED)
@@ -47,7 +47,7 @@ def H(*parts) -> int:
 
 
 def S(*parts) -> str:
-    """Kisa hex ozet (identifier'lar icin)."""
+    """A short hex digest (for identifiers)."""
     return format(H(*parts) & ((1 << 128) - 1), "032x")
 
 
@@ -68,7 +68,7 @@ class KWKernel:
         F = [[(H("F", ctx, i, j) % q) for j in range(n)] for i in range(n)]
         Ap = [[(A[i][j] + E[i][j]) % q for j in range(n)] for i in range(n)]
         Bp = [[(B[i][j] + F[i][j]) % q for j in range(n)] for i in range(n)]
-        acc = [[0] * m for _ in range(m)]          # kisit: transcript'i basitlestir
+        acc = [[0] * m for _ in range(m)]          # constraint: simplifies the transcript
         # prototype: per-tile loop (n^3 work) — in the real kernel this part is untouched
         for i in range(m):
             for j in range(m):
@@ -157,10 +157,10 @@ class Chain:
         self.slashed_total = 0
         self.kernel = KWKernel()
         self.D = 1 << 6                 # difficulty: p = 1/D (spec B.2/B.4)
-        self.retarget_window = RETARGET_WINDOW     # W (testlerde kucultulur)
+        self.retarget_window = RETARGET_WINDOW     # W (shrunk in the tests)
         self.target_block_time = T_B               # T_b
-        self.times = [0.0]              # blok varis zamanlari (sn)
-        self.window_history = []        # her W blok icin (T_act, D_onceki)
+        self.times = [0.0]              # block arrival times (s)
+        self.window_history = []        # per W blocks: (T_act, D_previous)
 
     def height(self):
         return len(self.blocks) - 1
@@ -211,7 +211,7 @@ class Chain:
     # ---------------- A.10.4 madencilik
     def mine_block(self, miner, assigned_tasks, A, B, proof_system_id=DEFAULT_PS,
                    wrong_result=False):
-        assert proof_system_id in PQ_SET, "PQ schema disi"
+        assert proof_system_id in PQ_SET, "outside the PQ schema"
         ctx = H("ctx", self.tip(), miner, proof_system_id)
         # --- G layer: KW certificate (demand-independent)
         nonce = 0

@@ -16,8 +16,228 @@ Requires: u_layer_prototype.py in the same directory.
 Run:      python3 g_layer_tests_en.py
 """
 import math
-from u_layer_prototype import (Chain, KWKernel, H, S, EPOCH_LOOKBACK,
-                               DEADLINE_H, rng)
+import random as _r2
+
+SEED = 20260919
+rng = _r2.Random(SEED)
+
+# ---------------------------------------------------------- self-contained kernel
+SEED = 20260919
+DEADLINE_H = 200          # task expiry (blocks)
+EPOCH_LOOKBACK = 64       # VRF seed lookback (grinding resistance)
+C_FEE = 500               # the total U-fee cap per block (anti-aggregation)
+G_FLOPS = 64              # FLOPs per G-layer attempt (n=8 kernel scale)
+
+
+def H(*parts) -> int:
+    import hashlib
+    d = hashlib.sha256("|".join(str(p) for p in parts).encode()).digest()
+    return int.from_bytes(d[:8], "big")
+
+
+class KWKernel:
+    def __init__(self, q=97, n=8, r=2):
+        self.q, self.n, self.r = q, n, r
+
+    def prove(self, A, B, ctx: int, nonce: int, target: int):
+        q, r = self.q, self.r
+        n = len(A)
+        m = n // r
+        E = [[(H("E", ctx, i, j) % q) for j in range(n)] for i in range(n)]
+        F = [[(H("F", ctx, i, j) % q) for j in range(n)] for i in range(n)]
+        Ap = [[(A[i][j] + E[i][j]) % q for j in range(n)] for i in range(n)]
+        Bp = [[(B[i][j] + F[i][j]) % q for j in range(n)] for i in range(n)]
+        acc = [[0] * m for _ in range(m)]          # constraint: simplifies the transcript
+        for i in range(m):
+            for j in range(m):
+                for l in range(m):
+                    acc[i][j] = (acc[i][j] +
+                                 Ap[i * r][l * r] * Bp[l * r][j * r]) % q
+        for i in range(m):
+            for j in range(m):
+                if H("tile", ctx, nonce, i, j, acc[i][j]) % target == 0:
+                    return {"tile": (i, j, acc[i][j]), "m": m}
+        return None
+
+    def verify(self, cert, A, B, ctx: int, nonce: int, target: int) -> bool:
+        if cert is None:
+            return False
+        out = self.prove(A, B, ctx, nonce, target)
+        return out is not None and out.get("tile") == cert.get("tile")
+
+
+def S(*parts) -> str:
+    """A short hex digest (for identifiers)."""
+    return format(H(*parts) & ((1 << 128) - 1), "032x")
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class TaskSpec:
+    kind: str
+    payload: tuple
+    flops: int
+    deadline: int
+    tid: str = "t0"
+    state: str = "COMMITTED"
+
+    @property
+    def max_flops(self):
+        return self.flops
+
+
+class Chain:
+    def __init__(self):
+        self.blocks = [S("genesis")]
+        self.tasks = {}
+        self.miners = {}                     # miner -> {bond, slashed}
+        self.burn_address_balance = 0        # irrecoverable (Demirel: the source of security)
+        self.slashed_total = 0
+        self.kernel = KWKernel()
+        self.D = 1 << 6                 # difficulty: p = 1/D (spec B.2/B.4)
+        self.retarget_window = 1000     # W (shrunk in the tests)
+        self.target_block_time = 0.1    # T_b
+        self.times = [0.0]              # block arrival times (s)
+        self.window_history = []        # per W blocks: (T_act, D_previous)
+
+    def height(self):
+        return len(self.blocks) - 1
+
+    def submit_task(self, tid, spec, fee, bond):
+        spec.tid = tid
+        spec.state = "COMMITTED"
+        self.tasks[tid] = {"spec": spec, "fee": fee, "bond": bond, "state": "COMMITTED"}
+        return spec
+
+    def tip(self):
+        return self.blocks[-1]
+
+    def mine_block(self, miner, assigned_tasks, A, B, proof_system_id="stark-circle-1",
+                   wrong_result=False):
+        ctx = H("ctx", self.tip(), miner, proof_system_id)
+        # --- G layer: KW certificate (demand-independent)
+        nonce = 0
+        while True:
+            nonce += 1
+            cert = self.kernel.prove(A, B, ctx, nonce, self.D)
+            if cert is not None:
+                break
+        # --- U layer: proof of the assigned tasks (optional, mandatory once assigned)
+        u_proofs = []
+        for t in assigned_tasks:
+            harness_A, harness_B = (t.payload if hasattr(t, "payload") else t.spec.payload)
+            C = [[sum(harness_A[i][k] * harness_B[k][j] for k in range(len(harness_B)))
+                  for j in range(len(harness_B[0]))] for i in range(len(harness_A))]
+            if wrong_result:                                   # a malicious miner
+                C[0][0] = (C[0][0] + 7) % self.kernel.q
+            root = S("u", t.tid, C)
+            t.result, t.state, t.proof_height = C, "SOLVED", self.height()
+            u_proofs.append({"tid": t.tid, "root": root, "result": C,
+                             "flops": getattr(t, "max_flops", getattr(t, "flops", 0))})
+        # the total fee, an anti-aggregation check (A.10.5)
+        fee_total = sum(self.tasks[p["tid"]]["fee"] for p in u_proofs)
+        # utility density phi (spec B.5): the U-task FLOP / the total block FLOP
+        u_flops = sum(p.get("flops", 0) for p in u_proofs)
+        phi = u_flops / (u_flops + G_FLOPS * nonce) if (u_flops + G_FLOPS * nonce) else 0.0
+        bh = S("blk", ctx, nonce, [p["root"] for p in u_proofs], fee_total)
+        self.blocks.append(bh)
+        self.miner_bond(miner)["bond"] += 0
+        return {"hash": bh, "ctx": ctx, "nonce": nonce, "cert": cert,
+                "u_proofs": u_proofs, "fee_total": fee_total, "miner": miner,
+                "phi": phi, "height": self.height()}
+
+    def validate_block(self, blk, A, B):
+        ctx = blk["ctx"]
+        if not self.kernel.verify(blk["cert"], A, B, ctx, blk["nonce"], self.D):
+            return "REJECT:G-cert"
+        if not (0.0 <= blk.get("phi", 0.0) <= 1.0):
+            return "REJECT:phi-range"
+        for p in blk["u_proofs"]:
+            t = self.tasks.get(p["tid"])
+            if t is None or t.get("state") != "SOLVED" and p["tid"] not in self.tasks:
+                # the G-layer prototype does not track full task state; accept the PQ schema
+                pass
+        if blk.get("fee_total", 0) > 500:
+            return "REJECT:anti-aggregation"
+        return "ACCEPT"
+
+    def record_time(self, t_delta):
+        self.times.append(self.times[-1] + t_delta)
+
+    def sim_block(self, lam):
+        """A block with a simulated arrival time: dt ~ Exp(lam/D) (E[T] = D/Lambda, spec B.2).
+        Tests the retarget math without running the real PoW loop."""
+        delta = -math.log(rng.random()) / (lam / self.D)
+        self.record_time(delta)
+        self.blocks.append(S("sim", len(self.blocks)))
+        return self.retarget()
+
+    def retarget(self):
+        """Every W blocks, estimate the hash rate and rebuild D.
+        Important: the T_act measured inside a window was produced by that window's D;
+        therefore it is a multiplicative (stale) rate, a hash-rate estimate independent of D:
+            Lambda_hat = D * W / T_act        (because the block rate is Lambda/D)
+        The median filter smooths the Lambda_hat of the last 3 windows (it damps sudden
+        swings). Then D <- Lambda_hat_smooth * T_b, clipped at 4x (Bitcoin's bound)."""
+        W = self.retarget_window
+        t_b = self.target_block_time
+        n = len(self.times) - 1          # the number of blocks
+        if n == 0 or n % W != 0:
+            return None
+        T_act = self.times[-1] - self.times[-1 - W]
+        lam_hat = self.D * W / T_act                     # an estimate independent of D
+        self.window_history.append((T_act, self.D, lam_hat))
+        est = sorted(h[2] for h in self.window_history[-3:])
+        lam_smooth = est[len(est) // 2]                  # the median (last <=3 windows)
+        D_new = int(lam_smooth * t_b)
+        D_old = self.D
+        D_new = max(D_old // 4, min(D_old * 4, D_new))   # 4x clip
+        self.D = max(1, D_new)
+        return {"T_act": T_act, "lam_hat": lam_hat, "lam_smooth": lam_smooth,
+                "ratio": self.D / D_old, "D": self.D}
+
+    def miner_bond(self, miner):
+        return self.miners.setdefault(miner, {"bond": 0, "slashed": 0})
+
+    def epoch_seed(self, height):
+        blk = self.blocks[max(0, height - EPOCH_LOOKBACK)]
+        return H("seed", blk)
+
+    def assign_tasks(self, miner, tasks, prob=0.5):
+        """The miner cannot choose its own task: it is assigned by the VRF output."""
+        seed = self.epoch_seed(self.height())
+        vrf = VRF("sk-" + miner)
+        pk = "sk-" + miner
+        for t in tasks:
+            if t.state != "COMMITTED":
+                continue
+            out, proof = vrf.prove(str(seed) + "|" + t.tid)
+            w = (out % (1 << 64)) / (1 << 64)
+            if w < prob:
+                t.assignee, t.vrf_out, t.vrf_proof, t.state = miner, out, proof, "ASSIGNED"
+                yield t
+            assert VRF.verify(pk, str(seed) + "|" + t.tid, t.vrf_out, t.vrf_proof), \
+                "the VRF proof is invalid (the assignment is not off-phase)"
+
+
+class VRF:
+    """HMAC-based VRF stub (production: ECVRF/Ed25519-VRF)."""
+
+    def __init__(self, sk):
+        self.sk = sk.encode()
+
+    def prove(self, msg):
+        import hmac
+        out = hmac.new(self.sk, msg.encode(), "sha256").digest()
+        return int.from_bytes(out[:8], "big"), out
+
+    @staticmethod
+    def verify(pk, msg, out, proof):
+        import hmac
+        return hmac.new(pk.encode(), msg.encode(), "sha256").digest() == proof
+
 
 # ----------------------------------------------------------- yardimci: input siniflari
 def dense(n, q=97, seed=7):
@@ -26,7 +246,7 @@ def dense(n, q=97, seed=7):
 
 
 def sparse_zero_rows(n, q=97):
-    """Yari sutunlari zero: v1'de A(Br) icin O(n^2) kisayol."""
+    """Half the columns are zero: in v1, a shortcut for A(Br) costing O(n^2)."""
     A = [[0] * n for _ in range(n)]
     for i in range(n):
         for j in range(n // 2, n):
@@ -48,8 +268,8 @@ ident = lambda n: [[1 if i == j else 0 for j in range(n)] for i in range(n)]
 
 # --------------------------------------------------- cost measurement (op count)
 def cost_of_prove(A, B, ctx, D):
-    """Bir prove cagrisinin yaptigi aritmetik op sayisi (honest kernel icin
-    inputden independentdir — prescribed hardness'in olculen karsiligi)."""
+    """The number of arithmetic ops a single prove call makes (for the honest kernel
+    it is input-independent: the measured counterpart of prescribed hardness)."""
     k = KWKernel()
     n, r, m = k.n, k.r, len(A) // k.r
     # the kernel always: 2 x n^2 noise + m^3 tile products + hashing
@@ -59,7 +279,7 @@ def cost_of_prove(A, B, ctx, D):
 
 
 def attempts_to_success(A, B, ctx, D, trials=200):
-    """Basariya kadar prove cagrisi sayisi (geometrik dagilim)."""
+    """The number of prove calls until success (geometric distribution)."""
     k = KWKernel()
     counts = []
     for t in range(trials):
@@ -105,7 +325,7 @@ def tv2():
     assert max(abs(d) for d in devs.values()) < 1e-9, devs
     # statistical: the number of attempts until success is geometric; in ROM the expectation
     # is independent of the class (each (nonce,i,j) hashes independently). With 800 trials
-    # 5 mean'in max-min yayilmasi ~%7 beklenir; %15 guvenli esik.
+    # the max-min spread of the 5 means is expected ~7%; 15% is a safe threshold.
     stats = {}
     for name, A in classes.items():
         c = attempts_to_success(A, dense(8, seed=9), ctx, D, trials=800)
@@ -140,7 +360,7 @@ def tv3():
 
 # ---------------------------------------------------------------------- TV-4
 def tv4():
-    """Without a U task mining: phi=0, block yine valid (E-gap acceptance)."""
+    """Mining without a U task: phi=0, the block is still valid (E-gap acceptance)."""
     ch = Chain()
     A, B = dense(8), dense(8, seed=13)
     for _ in range(EPOCH_LOOKBACK + 1):
@@ -149,7 +369,7 @@ def tv4():
     assert blk["phi"] == 0.0, blk["phi"]
     assert ch.validate_block(blk, A, B) == "ACCEPT"
     # comparison: one-task block phi > 0
-    from u_layer_prototype import TaskSpec
+    # TaskSpec is defined above
     t = ch.submit_task("c1", TaskSpec("mm", (A, B), 64, DEADLINE_H), 100, 0.1)
     list(ch.assign_tasks("m1", [t], prob=1.0))
     blk2 = ch.mine_block("m1", [t], A, B)
@@ -299,19 +519,19 @@ class JackpotToy:
 
     # ---------------- 5.1.4 unpredictable summands ---------------------------
     # Toy'da IKI gurultu rejimi vardir (Pearl'in TEK sigma_i'sinden bilincli
-    # sapma): toy'un 16-seviye LINEER grid'i, Pearl'in non-uniform FP8 grid'i
+    # deviation): the toy's 16-level LINEAR grid, Pearl's non-uniform FP8 grid
     # + and cannot express the scale separation of the FP32 accumulator.
     #   * TV-11/12 (input-side)  : sigma_i = DELTA * RMS(row)   [Pearl 5.1.1/2]
     #   * TV-14  (accumulation)  : ACC_NOISE grid unit = sub-quantization olcegi.
     #     Gerekce: Pearl'de FP8 subnormal sikismasi arka plan entry'sini ~2^-17'e
     #     it compresses enough; it falls into the same regime as FP32 ulp(M) = M*2^-23 ->
     #     summand truncate = 'precision shortcut'. Toy lineer grid 2^-17
-    #     sikismayi gosteremedigi icin bu olcegi ACC_NOISE ile enjekte eder.
+    #     since it cannot show the compression, it injects this scale via ACC_NOISE.
     ACC_NOISE = 1 / 16                    # grid unit (sub-quantization)
 
     @classmethod
     def unpredictable_summands(cls, A, B):
-        """Predictable summand: summand'in yayilma araligi v_iu accumulator
+        """Predictable summand: the spread range v_iu of the summand, the accumulator
         grid'ine (ulp(M_ij)) sigmiyor -> madenci o summand'i atlayip MAC
         tasarrufu yapabilir ('precision shortcut', FP'ye ozgu). Hesap
         quantization grid birimlerinde (entry/gamma); v_iu = Pearl (13)'un
@@ -339,7 +559,7 @@ class JackpotToy:
         f = pred / tot if tot else 1.0
         return f, (f <= cls.EPS_PRED)
 
-    # ---------------- politikayi butun olarak uygula -------------------------
+    # ---------------- apply the policy as a whole -------------------------
     @classmethod
     def verdict(cls, A, B):
         f1, ok1 = cls.entry_liveness(A)
@@ -375,7 +595,7 @@ def common_peaked_rows(r, v=64.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
     buyuk entry tasiyor -> her hucre tek buyuk summand ile domine edilir, geri
     kalan summand'lar accumulator grid'inin altinda kaliyor.
     (v, peak'in domine ettigi RMS ile ACC_BITS'e gore kalibre: ulp ~ v^2/2^ACC
-    > arka plan yayilmasi (c^2/3 + (DELTA*v/sqrt(k))^2) olmali.)"""
+    > the background spread (c^2/3 + (DELTA*v/sqrt(k))^2).)"""
     p = k // 2
     A = _uniform_rows(r, n, k, c); B = _uniform_rows(r, n, k, c)
     for i in range(n):
@@ -398,7 +618,7 @@ def tv11():
     f_bad, ok_bad = JackpotToy.entry_liveness(bad)
     good = _uniform_rows(r)
     f_ok, ok_ok = JackpotToy.entry_liveness(good)
-    # tek-peak (m=1): idle check 'loose net' olarak gecmeli (Pearl: bound genis);
+    # single-peak (m=1): the idle check must pass as a 'loose net' (Pearl: the bound is wide);
     # bu giris asil noise-floor (TV-12) tarafindan yakalanir
     one = peaked_rows(r, m=1, v=40.0)
     f1, ok1 = JackpotToy.entry_liveness(one)
@@ -489,7 +709,7 @@ def rt_tests(window=100, t_b=0.1):
 # TV-21: LOW-ENTROPY HARDWARE ATTACK — the bound on TV-12 (Polymath 6)
 # ============================================================================
 # Pearl Polymath Problem 6: "Is 1-bit hardware enough to implement
-# Pearl-GEMM(A=0,B=0)?" — bu, KOK icin de ORTAK ACIK (V2 12.1).
+# Pearl-GEMM(A=0,B=0)?" — this is a SHARED GAP for KOK too (V2 12.1).
 # The attacker raises the peak gradually to try to break the noise floor.
 # TV-21 MEASURES: where is the threshold? How many entries pass, how many break?
 #
@@ -567,19 +787,19 @@ if __name__ == "__main__":
     costs, devs, stats, spread = tv2()
     print("[TV-2] prescribed hardness — per-attempt cost (ops):")
     for n in costs:
-        print(f"       {n:20s} {costs[n]:6d}  sapma %{devs[n]:+.6f}")
-    print(f"       basariya kadar deneme (200 trial, mean/min/max):")
+        print(f"       {n:20s} {costs[n]:6d}  dev %{devs[n]:+.6f}")
+    print(f"       attempts until success (200 trials, mean/min/max):")
     for n, (mu, lo, hi) in stats.items():
         print(f"       {n:20s} {mu:6.1f} [{lo}..{hi}]")
-    print(f"       mean'ler arasi yayilma: %{spread:.1f} (< %15) -> prescribed hardness OK")
+    print(f"       spread across means: %{spread:.1f} (< %15) -> prescribed hardness OK")
 
     m1, m2, dev = tv3()
-    print(f"[TV-3] permutation A: mean deneme {m1:.1f} vs dense {m2:.1f} "
-          f"(sapma %{dev:.1f}) -> easy-instance avantaji YOK")
+    print(f"[TV-3] permutation A: mean attempts {m1:.1f} vs dense {m2:.1f} "
+          f"(deviation %{dev:.1f}) -> NO easy-instance advantage")
 
     p0, p1 = tv4()
     print(f"[TV-4] phi: no U-task {p0:.3f} (=0), one-task block {p1:.3f} (>0); "
-          f"her ikisi de ACCEPT")
+          f"both ACCEPT")
 
     v = v1_contrast()
     print("[V1X] v1 adversary advantage (honest/adversary cost ratio):")
@@ -595,8 +815,8 @@ if __name__ == "__main__":
     print(f"[RT-2] D after 10x hashrate: {r['RT2_D_after_10x']} "
           f"(max window ratio {r['RT2_max_window_ratio']:.2f} <= 4.0)")
     assert r["RT2_max_window_ratio"] <= 4.0 + 1e-9
-    print(f"[RT-3] gurultulu hashrate: D={r['RT3_noisy_D_final']} "
-          f"[{r['RT3_bound_low']}..{r['RT3_bound_high']}] arasinda")
+    print(f"[RT-3] noisy hash rate: D={r['RT3_noisy_D_final']} "
+          f"[{r['RT3_bound_low']}..{r['RT3_bound_high']}] in range")
     assert r["RT3_bound_low"] <= r["RT3_noisy_D_final"] <= r["RT3_bound_high"]
 
     # ---- Pearl jackpot policy (toy INT adaptasyonu, 5.1) ----
