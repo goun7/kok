@@ -699,6 +699,28 @@ to the extent that KW's kernel is the same work as the sold work (overhead alpha
 confirmed verbatim from KW). Where the two overlap, the fee is nearly pure margin. Where they
 do not, the utility layer competes with mining for the same FLOPs and must pay the market rate.
 
+**This restatement is not ours; it is the independently published one.** Rafael Pass's "The
+Economics of Proof-of-Useful-Work" (arXiv 2606.06700, June 2026, DOI verified) reaches the same
+conclusion by equilibrium analysis and names the regime KÖK is aiming at: **Duplexia**, in
+which — verbatim — *"block rewards act as REBATES on inference prices, generating additional
+socially useful computation that would not arise without the blockchain."* Three of his
+findings matter directly:
+
+- **"Free" is wrong; "subsidised by token emission" is right**, and the subsidy is exactly a
+  price rebate, which is what TV-35 measures. The useful compute is additional and would not
+  exist without the block reward — but the block reward pays for it.
+- **Duplex work carries a computational overhead** (KW's alpha ~ 1.3), so the "same work twice"
+  story is also approximate rather than exact.
+- **PoUW does not make attacks cheaper**: once equilibrium prices are accounted for, the
+  economic cost of a majority attack remains tied to the block reward. This answers the most
+  common objection to the design, from the source a critic would cite.
+
+Pass's equilibrium also names the two failure regimes KÖK must avoid: **Bitconia** (the chain
+degenerates into ordinary PoW — the empty-block equilibrium of TV-36) and **Fortessia**
+(duplex mining is displaced by something else; security improves but useful output does not).
+**KÖK's roadmap is, in effect, a plan to land in Duplexia** and its kill criterion (§11b) is
+the honest test of whether it has instead landed in Bitconia — which is what Pearl measured.
+
 This distinction is not rhetorical. It decides the design: **the utility layer must be built so
 that the sold work and the mined work overlap as much as the KW construction allows.** Every
 task that requires the miner to do *additional* compute beyond the mining kernel is
@@ -754,6 +776,31 @@ at all. Three findings, each from a live source:
 **The strategic consequence:** the market is real (Aethir), the specific combination is
 unproven (Qubic/Dynex/Bittensor), and the price bar is measurable (not a guess). That is
 enough to justify F0 — and enough to define its failure honestly.
+
+**The channel problem, which is the real reason F0 is hard.** Aethir reached $127.8M because it
+operates like a vendor: it has a sales function and signs enterprise deals. **A permissionless
+protocol has no sales function and cannot acquire one without ceasing to be permissionless.**
+There is no channel through which "KÖK" calls a buyer, because there is no entity called KÖK —
+only a protocol and whoever mines it. So the two-sided-market problem is worse than the usual
+one: the supply side is self-organising and the demand side has no one to talk to.
+
+The consequence is a narrowing of what F0 can actually be. It cannot be "enterprise outreach",
+so it must be **outreach to the buyers the incumbents cannot or will not serve**:
+
+- work that a cloud provider refuses to host (reason (b), and note it is also the smaller
+  market, which is precisely why the incumbent left it);
+- work whose provenance must be verifiable and where a vendor's word is not enough;
+- **other chains' own proof requirements** — the demand that is *crypto-internal*, where the
+  buyer is another protocol rather than an enterprise, and where the buying is itself a
+  protocol action rather than a sales call.
+
+The third is the one that survives the channel analysis, because it is the only one where the
+buyer needs no one to sell to it. It is also the market the research found to be real but
+revenue-free: Axiom, =nil;, Layer N all prove *demand* for verifiable compute and publish no
+*revenue* from it. **That is the honest shape of the opportunity: demand exists, money has not
+followed, and the protocol that lets it follow has no sales team.** This is why F0b (the real
+AIR) is not an engineering nice-to-have — it is the closest thing to a product the protocol can
+offer a buyer that cannot be called on the phone.
 
 ### The two-sided cold start, modelled (TV-36)
 
