@@ -874,10 +874,60 @@ Everything else — the green narrative, the "wasted energy" argument, the AI-fo
 | Direction | Why plausible | Why it might fail | Status |
 |---|---|---|---|
 | **Verifiable inference as a service** | The U layer already proves MatMul; inference *is* MatMul. The (b)-reason. | Verification cost may exceed the job's cost at small scale; the provenance market is unproven | **Primary candidate.** Needs a real buyer (F0) |
-| **ZK-coprocessing for other chains** | Other L1/L2s provably need off-chain compute with proofs; KÖK's proving market is exactly that | Competes with dedicated prover networks that do not also run a chain | **Secondary.** The prover market is real; whether KÖK is the cheapest prover is not |
+| **ZK-coprocessing for other chains** | Other L1/L2s provably need off-chain compute with proofs; KÖK's proving market is exactly that | Competes with dedicated prover networks that do not also run a chain | **WEAK after the Axiom measurement** — see the note below this table |
 | **Permissionless batch compute** | The (a)-reason: MatMul-shaped work that is price-sensitive | A commodity market; the cross-subsidy must be genuine to win on price | **Conditional on the overlap being real** |
 | **AI agent settlement layer** | Fast blocks (10 BPS, GHOSTDAG) + a native compute market is a coherent agent substrate | Speculative; depends on an agent ecosystem that does not yet exist | **Explicitly deferred — do not build on a hope** |
-| **ZK-coprocessing, analysed** | Demand is *endogenous*: other L1/L2s provably need proofs (bridges, light clients, fraud windows) that they cannot generate themselves — so the "why would anyone use this" question inverts to "I already need this". The seed problem partly disappears. | **The overlap must be real for a ZK proof, not just for MatMul.** KW's MatMul-transcript PoW is not a zk-SNARK's AIR, so the cross-subsidy does not automatically carry over; this requires the same real-AIR work as F0b. Dedicated prover networks (RiscZero, =nil;, Succinct, Axiom) run no chain, so their whole cost base is proof-making and they hold the first-mover position | **Strongest second candidate; it shares F0b's precondition — a real AIR unlocks both reason (b) and this market** |
+
+**Note on the downgrade (2026-09-21, verified from axiom.xyz and nil.foundation):**
+the prover market is real but the competition is *fast*, not merely cheap. **OpenVM 2.1
+proves an Ethereum mainnet block in real time on 4 GPUs** (29 Jul 2026) and OpenVM 2.0
+reaches 1 GHz proving throughput across 64 GPUs with 100 bits of provable post-quantum
+security, formally verified in Lean. =nil; is an Ethereum L2 live on mainnet with zkSharding
+and 300+ developers. **This dismantles the cross-subsidy argument for that specific market:**
+when a rival proves Ethereum in real time on four GPUs, "our provers are mining anyway" is
+not a decisive edge, because the buyer is not shopping for cheap proving — it is shopping for
+fast proving, and the incumbent has already crossed that bar. KÖK's ZK direction is therefore
+recorded as **weak**, not secondary.
+
+**The one direction that survives this measurement, and why.** Confidential compute is where
+the demand is *provably* paying today: Akash ships hardware-enforced TEEs to a one-line config
+and names its buyers explicitly — *"sensitive medical records, proprietary algorithmic trading
+models, or core company intellectual property embedded in model weights"* (28 Jul 2026,
+verbatim). Akash's answer to "can I trust an unknown provider" is *don't trust — encrypt*.
+KÖK's answer would be *don't trust — verify*. **Both solve the same buyer's problem, and the
+buyer exists and is paying right now.** The honest caveat is that Akash's solution ships today
+and KÖK's requires F0b (a real AIR). This is the strongest customer answer the research has
+produced, and it is the first one that makes F0b a market requirement rather than an
+engineering preference.
+| **ZK-coprocessing, analysed — now downgraded** | Demand is *endogenous*: other L1/L2s provably need proofs (bridges, light clients, fraud windows) that they cannot generate themselves — so the "why would anyone use this" question inverts to "I already need this". The seed problem partly disappears. | **The overlap must be real for a ZK proof, not just for MatMul.** KW's MatMul-transcript PoW is not a zk-SNARK's AIR, so the cross-subsidy does not automatically carry over; this requires the same real-AIR work as F0b. Dedicated prover networks (RiscZero, =nil;, Succinct, Axiom) run no chain, so their whole cost base is proof-making and they hold the first-mover position | **Strongest second candidate; it shares F0b's precondition — a real AIR unlocks both reason (b) and this market** |
+
+### Who would actually use this — the customer answer, verified (2026-09-21)
+
+The market research now answers the question with named buyers rather than segments, and the
+answer is narrower and more useful than the earlier "two reasons" framing:
+
+**The buyers exist and are paying today: health, finance, and IP-holders running
+privacy-sensitive AI inference.** Akash sells them hardware-enforced confidential compute
+(TEE) right now, in a one-line config, and describes the workload in its own words as
+*"sensitive medical records, proprietary algorithmic trading models, or core company
+intellectual property embedded in model weights."* That is the demand, stated by the vendor
+that is serving it.
+
+**Akash's answer is *don't trust — encrypt*. KÖK's answer would be *don't trust — verify*.**
+These are two solutions to the same buyer's problem. The buyer does not care which one wins on
+philosophy; they care whether their model weights are safe on a stranger's GPU. The proof-based
+answer is the one that does not depend on trusting Intel or AMD's enclave implementation, and
+in that narrow sense it is a stronger product — **but it does not exist yet, and F0b is what
+builds it.**
+
+What the same measurement *demolishes* is the ZK-coprocessing idea: OpenVM proves Ethereum in
+real time on 4 GPUs, so "our provers mine anyway" is not a competitive edge in a market where
+the buyer wants speed and already has it. **That direction is now recorded as weak, not
+secondary** — an honest downgrade from the earlier version of this section.
+
+**So the concrete customer answer, verified rather than hoped:** health, finance, and
+IP-sensitive inference buyers who would prefer a proof over an enclave. One buyer from that
+group is the F0 target. **Everything else in this paper is in service of that one sentence.**
 
 ### The kill criteria, stated in advance
 
