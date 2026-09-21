@@ -62,6 +62,18 @@ Arbitrary Matrix Multiplication"** (ePrint 2025/685 = arXiv 2504.09971v4).
 Conjecture A.1 (random rotation) is **still open** — this is Pearl's own
 Polymath Problem 1, and it is the single largest open assumption we inherit.
 
+**Bibliography status:** every arXiv and ePrint identifier in this project was
+fetched against the live archive and matched on title, authors and venue
+(**11/11, 2026-09-21**). The per-entry table is in `KOK_V2_REFERENCES.md`.
+
+## Name
+
+**KÖK** is Turkish for *root* — the root of a tree, and by extension the root
+node of a DAG and the roots of unity in a finite field, the senses a consensus
+layer actually uses. It is **not** *Kök Tengri* (the Old Turkic Sky God, where
+*kök* is a **color** word, a different homograph); an early draft conflated the
+two and that error was removed. The name carries no religious or national claim.
+
 ## External review
 
 The design is under independent review by academic cryptographers. The review is
