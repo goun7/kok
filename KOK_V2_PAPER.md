@@ -1234,11 +1234,32 @@ rights token with a TEE as the enforcement boundary.**
 That has a real answer, and it is the one §11b already states from the buyer's side. A TEE and a
 zkVM solve **different halves of the same buyer's problem.** The TEE provides *confidentiality*:
 the provider never sees the data, which is exactly why Akash's confidential-compute buyers
-(medical records, trading models, IP in weights) are paying today. It does **not** provide
-*verification*: nothing attests that the computation was performed correctly, only that it ran
-inside an enclave. Kruger and Georg's rights token inherits exactly this asymmetry — it enforces
-*what* an analyst may run, and it does so convincingly, but the ledger records a redemption rather
-than a correctness proof.
+(medical records, trading models, IP in weights) are paying today.
+
+**The full text of 2609.21728 (fetched and read 2026-09-22) confirms the other half of the
+asymmetry in the authors' own words.** Their threat model separates trust into "a platform layer
+(the TEE and its remote attestation) and an authorisation layer (the on-chain rules governing
+which code may run on which pool)" (§2.4). The platform layer rests on an explicit *assumption*,
+not a proof: "(T1) Hardware: the TEE faithfully executes the loaded image and remote attestation
+binds its measurement to a verifiable quote. We accept the published adversary model for the
+underlying TEE family and treat **physical attacks and microarchitectural side channels** as **out
+of scope**." Their §1.2 repeats the point as a limitation: "known limitations of Intel SGX, such as
+**side-channel vulnerabilities**, apply to our prototype."
+
+What their ledger does record is provenance, and they say so precisely: the combination of on-chain
+redemption records and attested enclaves "provides a **tamper-evident audit trail of who computed
+what, on which dataset, and under which approved code**." Their §2.3 enforcement is over *code
+identity*: "each non-append DRT names an open-source program and a hash of its compiled artefact,
+and before execution the enclave fetches the program and **refuses to run if the hash does not
+match**." That is a strong and genuinely useful guarantee — a buyer can verify *which* program ran,
+and the pool creator can bound outputs by supply and by code. It is a different guarantee from
+verifying *that the output is correct*. Correctness in their architecture is inherited from T1; if
+the enclave is compromised the ledger still shows an impeccable audit trail of the wrong result.
+
+This is the honest shape of the comparison: their title says "verifiable computation," and what is
+verifiable is **authorisation and provenance**, under a hardware-trust assumption they state
+openly and bound explicitly. Nothing here is a defect in their work — the scope is declared. It is
+the reason the two systems are not substitutes.
 
 KÖK's zkVM proof inverts the emphasis: it verifies *that* the work was done correctly, and KW's
 Remark 2.2 (the zkSNARK variant, which KÖK adopts as F0b) adds confidentiality on top. So the two

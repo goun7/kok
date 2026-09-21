@@ -408,6 +408,20 @@ differs, rather than noting it vaguely:
 - **Their primitive is a rights token, not an escrowed fee.** KOK's task market
   escrows a fee and burns part of it irrecoverably; here the ledger records
   issuance and redemption of a scoped right.
+- **What is verifiable in their title is authorisation and provenance, not output
+  correctness — confirmed in their own words (full text fetched 2026-09-22).**
+  Their §2.4 separates trust into "a platform layer (the TEE and its remote
+  attestation) and an authorisation layer (the on-chain rules governing which code
+  may run on which pool)." The platform layer is an assumption they state openly:
+  "(T1) Hardware: the TEE faithfully executes the loaded image... We accept the
+  published adversary model for the underlying TEE family and treat physical
+  attacks and microarchitectural side channels as out of scope." Their §2.3
+  enforcement is over code identity — the enclave "refuses to run if the hash does
+  not match" — and what the ledger records is provenance: "a tamper-evident audit
+  trail of who computed what, on which dataset, and under which approved code."
+  If the enclave is compromised, that trail is still impeccable and the result is
+  still wrong. This is a declared scope, not a defect; it is why the two systems
+  are complements rather than substitutes.
 - **They have a running reference implementation on Solana.** KOK has F3a, which
   is off-protocol and deliberately not a chain. This is a real deployment
   advantage for them, on a chain that already exists.
