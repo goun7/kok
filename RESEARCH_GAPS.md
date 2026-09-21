@@ -467,6 +467,24 @@ denied only 187 of the 25,640 transfer calls it evaluated, 148 of them for a
 forbidden recipient. The boundary stops unauthorized transfers while letting
 legitimate ones through.
 
+**Three bounds on the reading, from the full text (fetched 2026-09-22), stated
+because a reinstated direction has to carry its own limits.** The authors scope
+their result in §1.3: "It is scoped to payments, to one tool schema, in a simulated
+bank. It is not evidence about data exfiltration, code execution, or delegation
+between agents." They raise the strongest counter-argument to their own headline in
+§6.1: **five of the fourteen models reached zero unpermitted transfers with no layer
+at all**, so the layer's value is not that it is the only thing that works but that
+it works **independently of which model is chosen** — the property a deployer needs
+and cannot get from a model ranking. And the zero is not a zero-width interval: the
+session-clustered upper bound is 0.38%, quoted conservatively over the exact
+per-evaluation bound of 0.0043%.
+
+What this does and does not establish for KÖK's thesis: it does not establish demand
+for a compute market. It establishes that a **deterministic pre-action check at a
+tool boundary is a measurable security primitive**, which is the same structural
+position KÖK's fraud window occupies for task settlement. The parallel is
+architectural, not commercial.
+
 ### Why this reopens the direction the log rejected
 
 The AI-agent security gap was rejected on the grounds that CertiK's losses traced to
@@ -604,12 +622,19 @@ research supports the path; it does not shorten it.
    that assumption may not hold, and if it fails, subsidising inference may not
    expand output the way Duplexia predicts. Nobody has tested this.
 3. ~~The TEE-versus-zkVM comparison has not been written from KOK's side.~~
-   **Written (2026-09-22), in the paper's section 11 correction.** The argument is
-   that a TEE and a zkVM solve different halves of the same buyer's problem — the
-   TEE gives confidentiality, the zkVM gives verification of correctness, and KW's
-   Remark 2.2 adds confidentiality on top of the proof. What remains open is not
-   the argument but the delivery: Akash ships the confidentiality half today and
-   KOK's F0b has not been written.
+   **Written (2026-09-22) and now sourced verbatim.** The full HTML text of
+   2609.21728 was fetched and read, and the argument's central claim is confirmed
+   in the authors' own words: their §2.4 threat model separates a platform layer
+   (TEE + attestation) from an authorisation layer, and the platform layer rests on
+   the stated assumption that "the TEE faithfully executes the loaded image," with
+   "physical attacks and microarchitectural side channels... out of scope." What
+   their ledger records is provenance — "a tamper-evident audit trail of who
+   computed what, on which dataset, and under which approved code." So a TEE and a
+   zkVM solve different halves of the same buyer's problem: the TEE gives
+   confidentiality, the zkVM gives verification of correctness, and KW's Remark 2.2
+   adds confidentiality on top of the proof. What remains open is not the argument
+   but the delivery: Akash ships the confidentiality half today and KOK's F0b has
+   not been written.
 4. Whether agents can be real buyers of inference at all — not merely authorized to
    pay, but carrying demand a human did not initiate — is an open empirical
    question that no source here answers.
