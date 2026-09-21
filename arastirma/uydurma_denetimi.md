@@ -214,3 +214,38 @@ references +98 satir) — hepsi IYILESME: Hawthorne uydurmasi cikarildi,
 bibliography 11/11 dogrulandi, MiCA + Ripple + bütce + isim bolumleri eklendi.
 Yani Demirel'in elindeki versiyon ASKI (eksik) — ama teknik ozu ayni:
 prototiplerin sayisal sonuclari HIC degismedi (parity 67/95/51/83 ayni).
+
+---
+
+## G) *** ADVERSARIAL SELF-REVIEW (2026-09-21) — KIRILGANLIK BULUNDU ***
+
+Hedef: "g_layer_tests_en.py INGILIZCE" iddiasi. Saldirdim. **Sonuc: yikici.**
+
+**BULGU 1 (kritik): EN dosya TURKCE modulden import ediyordu.**
+`from u_layer_prototype import (Chain, KWKernel, H, S, ...)`
+- EN dosya tek basina HIC CALISMIYORDU (bos dizinde NameError).
+- Denetim EN dosyayi TR sembollerle derliyordu -> import sinirindan
+  sizan Turkce'yi ASLA goremazdi.
+- Demirel/Dikshit paketi acip g_layer'i tek basina calistirmaya kalksa
+  HATA alacakti. *** Bu, gonderilen paketin bilinmeyen bir kirilma noktasiydi. ***
+
+**BULGU 2 (kendi cevirim hatam): prove() HIC None DONMUYORDU.**
+Cevirirken target kontrolunu atlamisim: prove() her zaman cert donduruyordu.
+Sonuc: `attempts_to_success` her zaman 1.0 olctu -> **TV-2 prescribed-hardness
+testi TAMAMEN NO-OP'TU.** Gercek deger: 4.4/4.4/4.5 (geometric, dogru).
+*** "test geciyor" raporum BOS bir testi raporluyordu. ***
+
+**BULGU 3: phi 0.059 yerine 0.250 olmaliydi** (G_FLOPS*nonce + max_flops
+okuma hatasi). rng global random yerine SEED'li Random olmaliydi
+(reproducibility).
+
+**Duzeltme:** g_layer_tests_en.py tamamen self-contained yapildi (KWKernel,
+Chain, S, TaskSpec, VRF, assign_tasks, mine_block, validate_block, sim_block,
+retarget icsel). 7/7 EN dosya BOS DIZINDE tek basina calisiyor (dogrulandi).
+
+**BULGU 4: 17 Turkce string daha** (yorum + cikti: "gecerli", "maliyet",
+"mean'ler arasi yayilma", "sapma", "deneme", "beklenen", "gurultulu"...)
+TOPLAM bu oturumda: ~95 string.
+
+*** LESSON: "INGILIZCE" iddiasi icin TEK GUVENLI TEST, dosyayi bos dizine
+kopyalayip calistirmaktir. Kaynak taramasi yetersiz. ***

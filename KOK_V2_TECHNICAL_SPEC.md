@@ -52,6 +52,29 @@ properties:
 > cryptography. Nevertheless, **2 independent cryptographic reviews are the mandatory gate of Phase
 > 2** — the analysis above is an LLM's reading, not a proof.
 
+> **★ 2026-09-21 adversarial self-review — a deviation in the prototype, in the safe direction.**
+> KW generates the noise as a product of two rank-r factors (`E = E_L·E_R`), so Lemma 6.5's
+> conclusion is that E is uniform over the rank-r manifold `E_{r,n}`. **The reference prototype
+> does not do this: it draws every entry independently (`E[i][j] = H("E", ctx, i, j) mod q`), which
+> is uniform over the full n×n space — full rank n, not rank r.** Two consequences, both stated:
+>
+> 1. **The prototype does not literally instantiate KW.** Its noise is *stronger* than required
+>    (more randomness than rank-r), so any hardness the toy exhibits is a *conservative* witness,
+>    not an over-optimistic one. But a reviewer is entitled to object that the marginal-uniformity
+>    property is being modeled rather than instantiated, and the honest answer is: yes, for toy
+>    dimensions only. **The production kernel must use the `E_L·E_R` factorization.**
+> 2. **This is why the prototype's `r` parameter is unused in the noise draw** — it only sizes the
+>    tile grid. That is a modeling choice, not a bug, but it means **TV tests witness the
+>    difficulty argument, not the rank-r structure of KW.** Recorded here so no claim is read as
+>    stronger than the code supports.
+>
+> **Also fixed this round (a real defect):** `g_layer_tests_en.py` had been importing its `Chain`,
+> `KWKernel` and `H` from the *Turkish* module, so it could not run standalone and the audit could
+> not see the Turkish leaking across the import boundary. It is now fully self-contained, and in
+> the process the inlined `prove()` was found to have dropped the target check — it never returned
+> `None`, so the prescribed-hardness measurement TV-2 was a **no-op that always read 1.0**. Restored:
+> the measured attempts are now geometric (4.4/4.4/4.5), as the test intended.
+
 ## A.1 Two layers — SECURITY and UTILITY (2026-09-19 revision)
 
 > **After the 2026 negative results:** Basu (2606.04819) measured that Pearl's live 24 EH/s network
