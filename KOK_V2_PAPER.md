@@ -545,7 +545,7 @@ its utility surface). Therefore we split F3 into **two sub-phases**:
 
 | Phase | Content | Criterion | Duration (target) |
 |---|---|---|---|
-| **F3a — Economy testnet (off-protocol)** | Only the **U layer**: task market + escrow/burn/slash + VRF assignment, **without consensus** — a central sequencer (mock leader) produces blocks, a dummy proof in place of the G layer. Tokens are test tokens. Goal: **to measure real demand and the penalty economy** — this is KÖK's least-measured assumption (φ>0). | ≥1 **real paying** task; a slashing-triggered attack case; escrow refund rate measured | **3–4 months** (in parallel with the cryptographer review) |
+| **F3a — Economy testnet (off-protocol)** | Only the **U layer**: task market + escrow/burn/slash + VRF assignment, **without consensus** — a central sequencer (mock leader) produces blocks, a dummy proof in place of the G layer. Tokens are test tokens. Goal: **to measure real demand and the penalty economy** — this is KÖK's least-measured assumption (φ>0). | ≥1 **real paying** task; a slashing-triggered attack case; escrow refund rate measured | **3–4 months** (in parallel with the cryptographer review). **Progress (2026-09-21): the mechanism is proven at prototype scale — TV-21 supplies the demand meter (φ), TV-22 walks one task end to end through escrow, assignment, solve, verification, settlement and burn, and shows a censored task cannot inflate φ because only SETTLED tasks count. The links are not broken. What no prototype can manufacture is the buyer: test tokens are not demand, and the remaining question is a person spending currency they acquired outside the protocol. That is what the testnet itself is for.** |
 | | **★ Working prototype (2026-09-20): `f3a_sequencer_proto.py` — TV-15..TV-19 all PASS: refund-guarantee, task-migration, censorship-freeness, dilemma-free verification, honest lifecycle.** The toy limits are in the file. |
 | **F3b — Consensus devnet** | `kok-node` (Rust), GHOSTDAG parent-set selection, KW per-tile G layer, difficulty retarget (window+median), filler tasks (φ=0). **The entire protocol**, with real proofs. | 10 BPS, verify ≤2 ms/block, difficulty approaches the target in 7 days (F3's original criterion) | **4–6 months** after F3a |
 | **F5 — Open testnet** | The two are merged; `kok-miner`; ecosystem task channels. | 1000+ miners, demand paying for ≥1 of the real (a)/(b) tasks | **3–4 months** after F3b |
@@ -981,6 +981,36 @@ problem of §11b turned into a design principle rather than a handicap.
 The consequence for sequencing is strict: **no promise may be made until F0b exists and is
 audited, and the audit is what the letter of intent buys.** If the LOI arrives and no grant
 follows, the honest move is the kill criterion below, not a larger promise.
+
+### Why the review waits, and the measurement does not
+
+A cryptographic review of the G layer is available and affordable in principle,
+and it has been deferred deliberately, not for want of money alone. The reason
+is priority. The review would examine KW's cryptography, and the independent
+analysis above already reports KW's own justifications verbatim: ROM
+unpredictability and marginal uniformity are proven, Assumption 6.4 follows
+almost automatically from the output-size bound and KW says so. **The
+cryptography is not the binding constraint. The binding constraint is demand.**
+Pearl ran a 24 EH/s proof-of-useful-work network and measured zero useful
+compute sold. A cryptographic review cannot change that number.
+
+So the order is: measure first, review second. F3a is a testnet, not a mainnet —
+the U layer alone, a central sequencer, a dummy proof, test tokens, no consensus,
+no audit required, no investment required. Its single job is to find out whether
+anyone pays for a task. Two outcomes are both useful: a zero means the Pearl
+failure is ours too, and no mainnet should be built on it; a non-zero result is
+the evidence that justifies the review and the grant that pays for it.
+
+**Launching the mainnet to see who shows up is the experiment Pearl already
+ran**, and it produced the zero. Repeating it is not a strategy; it is the same
+measurement at a thousand times the cost.
+
+Investment is likewise deferred rather than refused. A token sale raises the
+MiCA question, since mining grants value or a right and the token is therefore
+not an Art. 3(9) utility; equity implies a premine and gives up the fair-launch
+position that keeps the token on the commodity side. Either path costs the
+project something it is currently holding. Until a measurement says the demand
+exists, that price is being paid for nothing.
 
 ### The kill criteria, stated in advance
 
