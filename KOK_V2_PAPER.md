@@ -945,6 +945,28 @@ secondary** — an honest downgrade from the earlier version of this section.
 IP-sensitive inference buyers who would prefer a proof over an enclave. One buyer from that
 group is the F0 target. **Everything else in this paper is in service of that one sentence.**
 
+### The zero-budget constraint, and what it forbids
+
+The project has no capital for the expensive parts — a security audit, a mainnet, hosting —
+and this is not a problem for F0, because outreach costs nothing. **The danger is the opposite
+of spending: getting a "yes" and over-promising delivery that cannot be funded.** One email
+promising a working zk-AIR mainnet to a company processing medical data, backed by no audit
+and no capital, destroys the project's credibility in a single step — the mirror image of
+Pearl's failure, which marketed a capability it could not deliver.
+
+The zero-budget path is therefore: **contact ($0) → letter of intent ($0) → grant application
+($0) → the grant pays for the audit and the testnet.** Akash's grants programme, Aethir's
+$100M ecosystem fund, and Ethereum Foundation grants are the realistic candidates, and a
+signed LOI is precisely what such programmes fund. **Intermediaries do the selling, not the
+protocol:** Akash does not sell to the customers in its own case studies — providers with GPUs
+and sales teams do. KÖK publishes the market; providers serve it. A permissionless chain
+cannot acquire a sales function without ceasing to be permissionless, which is the channel
+problem of §11b turned into a design principle rather than a handicap.
+
+The consequence for sequencing is strict: **no promise may be made until F0b exists and is
+audited, and the audit is what the letter of intent buys.** If the LOI arrives and no grant
+follows, the honest move is the kill criterion below, not a larger promise.
+
 ### The kill criteria, stated in advance
 
 To be worth continuing past F3a, the project must show **one real paying task**. If F3a ends

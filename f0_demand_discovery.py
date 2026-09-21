@@ -207,6 +207,42 @@ if __name__ == "__main__":
      cryptography, which cannot fix a market that is not there.""")
 
     print("\n" + "-" * 76)
-    print("Honest limits: this tool does not create demand. It only prevents the")
-    print("project from confusing optimism for evidence. A filled log with zero")
-    print("signed letters is the correct and useful negative result.")
+    print("ZERO-BUDGET MODE (2026-09-21) — the constraint that rewrites the plan")
+    print("-" * 76)
+    print("""  The project has no money for the expensive parts. That is not a problem
+  for F0, because the two halves of demand discovery cost opposite amounts:
+
+    contact + conversations      $0     <- we can do this today
+    delivery after a YES         $50k+  <- audit, mainnet, infrastructure
+
+  The danger is therefore not spending money on outreach. It is getting a YES
+  and then over-promising delivery we cannot fund. One email that promises a
+  working zk-AIR mainnet to a company handling medical data, backed by no
+  audit and no capital, destroys the project's credibility in one step. That
+  is the mirror image of Pearl's failure: marketed a capability, could not
+  deliver the work.
+
+  THE ZERO-BUDGET PATH (every step free until a grant pays for the rest):
+
+    1. Contact: ask 'we are building this, would you use it?' — never 'we
+       will serve you'. The question measures demand; it does not sell.
+    2. Letter of intent: free to sign. Its purpose is not a deal; it is
+       EVIDENCE for the next step.
+    3. Grant applications: Akash grants, the Aethir $100M ecosystem fund,
+       Ethereum Foundation grants. Applying is free. A signed LOI is exactly
+       what these programmes fund, and the grant — not our capital — pays for
+       the audit and the testnet.
+    4. Intermediaries do the selling, not the protocol. Akash does not sell to
+       its own case-study customers; providers with GPUs and sales teams do.
+       KOK publishes the market, providers serve it. A permissionless chain
+       cannot have a sales function without ceasing to be permissionless.
+
+  THE HARD QUESTION TO KEEP ASKING: if a buyer says yes, can we hand them
+  unaudited cryptographic code and let it touch medical records? Today the
+  answer is no, because F0b is a toy AIR. So no promise may be made until
+  F0b exists AND is audited — and the audit is what the LOI buys.
+
+  WHAT STAYS TRUE IF ALL OF IT FAILS: a filled log with zero letters is the
+  correct negative result and the kill criterion of section 11b applies —
+  fall back to the specified pure-PoW mode rather than marketing a capability
+  that cannot be delivered.""")
