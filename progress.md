@@ -1862,3 +1862,71 @@ COMMIT: 921e461
 - Açık sorular (RESEARCH_GAPS.md sonunda): Bloomberg birincil kaynağı hala fetch edilmedi;
   Pass'ın elastikiyet varsayımı supply-constrained dünyada test edilmedi; zkVM-vs-TEE
   karşılaştırması KÖK tarafından henüz yazılmadı; ajanlar gerçek alıcı olabilir mi bilinmiyor.
+
+## Oturum 8 — tam otonom bakım ve derinlemesine doğrulama (22 Eylül 2026)
+
+Kullanıcı uykuda ("10 saat boyunca tam otonom kök network'ü geliştir"). Hedef belli,
+sormaya gerek yok. Bu oturum **bulgu-odaklı** ilerledi: iddiaları değil, çalışan kodu
+ve çapraz-referansları doğruladı. **5 gerçek hata bulundu ve düzeltildi.**
+
+**YAPILANLAR (8 commit):**
+
+**(1) Türkçe sızıntı temizliği (c1383f1) — 23 gerçek karma-dil sitesi.**
+Önceki oturumun "temiz" iddiası yetersizdi: audit tool'unun "-in" false positive'ları
+arkasında gerçek Türkçe gizleniyordu. Çift büyük/küçük harfli **gölge dizin**
+(`KONSensus` vs `Konsensus`) bulundu — write aracı bazen yanlış yere yazıyordu,
+bash workdir'i bazen yanlış çözüyordu. Gölge dizin silindi, sorun kökten çözüldü.
+f3a/g_layer/ghostdag/u_layer içinde 23 yarı-çevrilmiş site düzeltildi (bazıları
+iki dilde de okunmuyordu). Son tarama: **0 belirsiz Türkçe** (Türkçe dosyalar
+kasıtlı Türkçe kaldı).
+
+**(2) zkVM-vs-TEE argümanı düzgün yazıldı (b447b42).**
+Önceki cevap tek cümlelik bir iddiattı ve **§11b ile çelişiyordu** (orada Akash'in
+TEE'si talebin ödendiğinin kanıtı olarak gösteriliyordu). Uzlaştırıldı: TEE ve zkVM
+**aynı alıcının sorununun farklı yarımını** çözer — TEE gizlilik (sağlayıcı veriyi
+görmez), zkVM doğruluk (hesabın doğru çalıştığı kanıtlanır). Kwuger & Georg'in hak
+token'ı bu asimetriyi miras alır. KÖK'ün zkVM'i vurguyu tersine çevirir; KW Remark
+2.2 (F0b) gizliliği üstüne ekler. **Dürüst boşluk:** Akash bugün gizlilik yarımını
+satıyor, F0b henüz yazılmadı — teslimat boşluğu, argüman boşluğu değil. § referansı
+10→11b olarak düzeltildi; tüm § çapraz-referansları başlıklarla karşılaştırıldı.
+
+**(3) TV-34: iki raporlama hatası bulundu (ee85afb, b100363).**
+Coverage review sırasında DemandMeter okurken bulundu — test değil, **inspeksiyon**
+değil, **çalıştırarak** kanıtlandı:
+- `_seen` seti sadece SETTLED'ı koruyordu → REFUNDED/MIGRATED/SLASHED görevler
+  listede kaldıkları **her blokta yeniden sayılıyordu**. Repro: 1 görev, 30 blok →
+  refunded_tasks=15 (1 olmalıydı). φ etkilenmedi, finansal defterler etkilenmedi
+  (tv24b olay sayaçlarını okuyor), ama **raporlanan oranlar** yanlıştı.
+- `migrated_tasks` **ölü sayaçtı**: migrate_task görevi A'nın dict'inden silip
+  B'ye ASSIGNED ekliyor → MIGRATED durumu asla observable değil. Repro: 1 migrate,
+  meter 0 okuyor. `testnet.migrations` okunarak düzeltildi.
+TV-34 regresyon guard'ı eklendi. Suite: 7 ACCEPT, rc=0.
+
+**(4) TV-ID çakışması belgelendi (efb3b61).**
+Yeni testim TV-26 idi ama o ghostdag'ın splitter-attack testi. TV-34'e yeniden
+numaralandı. Daha geniş sorun: spec tablosu TV-21..26'yı g_layer/ghostdag'a,
+TV-27..33'ü fp8/bond_margin'e veriyor; f3a'nın demand-meter serisi TV-21..25'i
+yerel olarak yeniden kullanıyor ve makale o seriyi alıntılıyor. Sessizce yeniden
+numaralandırmak yerine (makale alıntılarını kırar) **çakışma spec'e yazıldı**,
+"belirsizlik anlamlıysa dosyayı da adlandırın" notuyla.
+
+**(5) Bloomberg açık sorusu düşürüldü (49a7a86).**
+Akash blog yazısı tamamen getirilip okundu: "According to Bloomberg" diyor ama
+**link, tarih, yazar vermiyor**. Üç yol denendi: DDG bot-challenge, Bing bozuk
+(sorgudan bağımsız irrelevant sonuçlar), Bloomberg paywall. Sonuç: "getirilmedi"
+değil **"izlenebilir değil"**. IEEE gaz türbini / Maine moratoryum / arazi redleri
+de aynı muameleyi gördü. **Yapısal argüman bu sayıya bağlı değil** ama ölçüm olarak
+tekrar edilmemeli. Açık soru #3 (TEE) kapatılarak işaretlendi.
+
+**Doğrulamalar:** fee invariant `fees_in == refunded+burned+paid` migration
+senaryosunda da tutuyor (100 = 0+30+70). Spec A.5.2 state machine ile uyumlu.
+Tüm 7 suite yeşil (fp8 rc=1 bilinçli negative result). 6 markdown dosyasında
+0 Türkçe karakter.
+
+**Kritik altyapı dersi:** `KONSensus`/`Konsensus` gölge dizini bir düzine
+"esrarengiz" hatanın (edit "not found", read "not found", bash workdir sapması)
+**tek kaynağıydı**. Silindikten sonra tüm araçlar aynı yolu kullanmaya başladı.
+Bundan sonra path her zaman `Ko*nsensus` veya tam küçük-harfli.
+
+**BEKLEYEN (değişmedi):** Alon Burg (alıcı → φ>0 ölçülebilir mi), Demirel (G-layer
+review → Faz 2 kapısı). F3b YOK. E-posta YOK. Yatırım erteli.
