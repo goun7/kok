@@ -8,14 +8,14 @@ V2 10.1 F3a: G layer ACTIVE, central bir mock sequencer block produces,
 that the task market runs BY ITSELF. This prototype tests spec A.5's
 Tests the TWO censorship-resistance mechanisms defined in clause 5:
 
-  (i) REFUND-GARANTISI  : sequencer task W_r block inside reject-step
+  (i) REFUND-GUARANTEE  : sequencer task W_r block inside reject-step
                         if it is not published the escrow is AUTOMATICALLY refunded
                         (the cost of censorship = its benefit = 0).
  (ii) TASK MIGRATION: the task owner sends the rejected task to an alternative
                         to the sequencer gonderir; the first sequencer's bond
                         is slashed (censorship gives a NEGATIVE return).
 
-TEST VEKTORLERI:
+TEST VECTORS:
   TV-15  refund-guarantee: if the rejection step does not arrive the escrow is refunded on timeout
   TV-16  task-migration: the rejected task goes to an alternative, the bond is slashed
   TV-17  pay-per-task:     the sequencer CANNOT censor (utility is separated)
@@ -95,9 +95,9 @@ class Sequencer:
         self.tasks = {}                     # tid -> Task
 
     def refill(self, fee, floor=BOND_DEFAULT):
-        """Policy: the bond after every censorship from the event sonra fee seviyesine is topped up.
-        Otherwise bond at the first event is depleted ve subsequent censorship FREE olur
-        (pass_sim 10, tablo B — modelleme from the migration bulunan acik)."""
+        """Policy: after every censorship event the bond is topped back up to the fee level.
+        Otherwise the bond is depleted at the first event and subsequent censorship is FREE
+        (pass_sim 10, table B - found from migration modelling)."""
         if self.bond < floor:
             self.bond = max(floor, fee)
 
@@ -206,14 +206,14 @@ class F3aTestnet:
         return True
 
 
-# =============================================================== TESTLER
+# =============================================================== TESTS
 def spec(harness, fee=100, burn_rate=0.3, program=None):
     return TaskSpec(harness_id=harness, program=program or ((1, 2), (3, 4)),
                     fee=fee, burn_rate=burn_rate)
 
 
 def tv15():
-    """TV-15: REFUND-GARANTISI. Evil sequencer reject-step does not publish
+    """TV-15: REFUND-GUARANTEE. Evil sequencer reject-step does not publish
     escrow W_r blok at the end of OTOMATIK refund edilir; of censorship its benefit yoktur."""
     random.seed(1515)
     net = F3aTestnet([Sequencer("A", evil=True, censor_client="kobi")])
@@ -278,7 +278,7 @@ def tv17():
     # refund the remaining 3 on timeout
     for _ in range(W_R + 1):
         net.next_block()
-    # goc edilen 2 task A'dan SILINDI (B'de ASSIGNED); kalan 3 A'da REFUNDED
+    # the migrated 2 task A'dan were REMOVED (B'de ASSIGNED); kalan 3 A'da REFUNDED
     counts = {}
     for i in range(5):
         t = net.sequencers["A"].tasks.get(f"t{i}")
@@ -288,8 +288,8 @@ def tv17():
     # sequencer A: has 0 escrow (consumed nothing).
     # *** THE SUBTLE POINT (the real value of TV-17): since bond0=50 < fee=100
     # refill RAISES the bond to the FEE LEVEL (100). Slashes: 50 (first, bond=50)
-    # + 100 (refill the rest, bond=100) = 150. Yani refill hem bond'u KORUR
-    # hem de ALT SEVIYEDEN baslayan bir the sequencer fee seviyesine cikarir. ***
+    # + 100 (refill the rest, bond=100) = 150. Yani refill hem bond'u protects
+    # hem de from a LOWER level starting bir the sequencer fee seviyesine cikarir. ***
     held = sum(t.escrow for t in net.sequencers["A"].tasks.values())
     assert held == 0, "sequencer escrow held escrow"
     assert net.sequencers["A"].bond == 100, "bond fee seviyesine did not appear"
@@ -338,9 +338,9 @@ def tv19():
 
 def tv20():
     """TV-20: BOND GERI-EKLEME (pass_sim 10 tablo B'nin buldugu acik).
-    Geri-ekleme YOKSA deterrent is one-shot: ilk censorship bond'u tukerir,
-    subsequent events FREEDIR. Refill VARSA her event fee kadar keser.
-    *** Bu test, the economy of the model bir BUG'I bulup the prototype DUZELTTigini
+    Geri-ekleme YOKSA deterrent is one-shot: ilk censorship bond'u exhausts,
+    subsequent events FREE. Refill if present her event fee kadar keser.
+    *** Bu test, the economy of the model bir BUG'I found the prototype that it FIXED
     proves. ***"""
     random.seed(2020)
     # (a) refill VAR (production policy'su): her event keser
@@ -350,7 +350,7 @@ def tv20():
     for i in range(3):
         net.submit_task("A", f"g{i}", "kobi", spec("llama-70b", fee=100))
         net.migrate_task(f"g{i}", "A", "B")
-    # her event min(bond,fee)=100 was cut VE geri-eklendi
+    # her event min(bond,fee)=100 was cut VE refilled
     assert net.slash_events == 3
     assert net.sequencers["A"].slashed == 300, net.sequencers["A"].slashed
     assert net.sequencers["A"].bond == 100, net.sequencers["A"].bond  # refill the rest
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     if all(results.values()):
         print("TV-15..TV-20: ALL PASSED — the F3a censorship-resistance prototype works.")
     else:
-        print("BASARISIZ TESTLER:", [k for k, v in results.items() if not v])
+        print("BASARISIZ TESTS:", [k for k, v in results.items() if not v])
         raise SystemExit(1)
     print()
     print("HONEST TOY LIMITS:")
@@ -421,3 +421,151 @@ if __name__ == "__main__":
     print("    WITH refill every event slashes the fee amount (bond held up)")
     print("  - sub-bond trap: if bond0 < fee, refill RAISES the bond to the FEE LEVEL")
     print("    raises it (TV-17: 50->100) — in production bond = fee + margin")
+
+
+# ---------------------------------------------------------------------------
+# TV-21  The demand meter — what F3a actually exists to measure
+#
+# F3a's roadmap criterion is "at least one real paying task". But the prototype
+# tested censorship and migration without ever COUNTING demand. This adds the
+# instrument the testnet exists for: phi, the fraction of blocks carrying a
+# paid task.
+#
+# The honest design point: phi is measured against a demandless world, because
+# that is the measured Pearl outcome and the one the project must not repeat.
+# A testnet that cannot report phi=0 has no way to fail its own criterion.
+# ---------------------------------------------------------------------------
+
+
+class DemandMeter:
+    """Counts paid tasks per block and reports phi, the utilization ratio.
+
+    phi = blocks with at least one paid task / total blocks produced.
+    Pearl measured phi = 0 on a live 24 EH/s network. F3a's purpose is to find
+    out whether the small-tail design produces phi > 0, or confirms Pearl's
+    zero.
+    """
+
+    def __init__(self):
+        self.total_blocks = 0
+        self.blocks_with_paid_task = 0
+        self.paid_tasks = 0
+        self._seen = set()
+        self.refunded_tasks = 0
+        self.migrated_tasks = 0
+        self.slashed_tasks = 0
+
+    def record_block(self, testnet):
+        """Observe one produced block and update the counters."""
+        self.total_blocks += 1
+        paid_here = 0
+        for sq in testnet.sequencers.values():
+            for t in sq.tasks.values():
+                if t.state == "SETTLED":
+                    paid_here += 1
+                elif t.state == "REFUNDED":
+                    self.refunded_tasks += 1
+                elif t.state == "MIGRATED":
+                    self.migrated_tasks += 1
+                elif t.state == "SLASHED":
+                    self.slashed_tasks += 1
+        if paid_here > 0:
+            self.blocks_with_paid_task += 1
+            # count each settled task only once, the first block it is seen in
+            for sq in testnet.sequencers.values():
+                for tid, t in sq.tasks.items():
+                    if t.state == "SETTLED" and tid not in self._seen:
+                        self._seen.add(tid)
+                        self.paid_tasks += 1
+
+    def phi(self):
+        """The utilization ratio. Pearl's measured value is 0."""
+        if self.total_blocks == 0:
+            return 0.0
+        return self.blocks_with_paid_task / self.total_blocks
+
+    def verdict(self):
+        """Report against the roadmap criterion and the Pearl baseline."""
+        p = self.phi()
+        if self.total_blocks == 0:
+            return "NO DATA: no blocks produced yet"
+        if p == 0.0:
+            return ("phi = 0.000 — CONFIRMS PEARL'S OUTCOME. No paid task in "
+                    "%d blocks. The small-tail design did not produce demand. "
+                    "Do not launch a mainnet on this measurement." % self.total_blocks)
+        if p < 0.10:
+            return ("phi = %.3f — demand exists but is marginal. Below the "
+                    "viability threshold; investigate before scaling." % p)
+        return ("phi = %.3f — demand is real. This is the measurement that "
+                "justifies the audit and the mainnet." % p)
+
+
+def tv21_demand_meter():
+    """TV-21: the meter reads phi=0 in a demandless world, and phi>0 with one.
+
+    The instrument is tested both ways. An empty market reports phi=0 and names
+    it honestly as Pearl's outcome, and a market carrying one paid task reports
+    phi>0 and names it as the measurement that justifies the next step. A meter
+    that cannot show zero cannot be trusted to show one.
+    """
+    import random
+    rnd = random.Random(2121)
+
+    # --- demandless world: tasks submitted but never paid ---
+    sq0 = Sequencer("sq0")
+    net0 = F3aTestnet([sq0])
+    meter0 = DemandMeter()
+    for _ in range(20):
+        net0.height += 1
+        meter0.record_block(net0)
+    v_zero = meter0.phi()
+    verdict_zero = "phi = 0.000" in meter0.verdict()
+
+    # --- one real paying task arrives ---
+    sq1 = Sequencer("sq1")
+    net1 = F3aTestnet([sq1])
+    meter1 = DemandMeter()
+    spec1 = spec(H("h", 1), fee=100, burn_rate=0.3)
+    paid = 0
+    for i in range(20):
+        net1.height += 1
+        if i == 5:
+            t = Task(tid="t1", client="buyer1", spec=spec1)
+            t.assignee = "sq1"
+            t.state = "SETTLED"
+            sq1.tasks[t.tid] = t
+            paid += 1
+        meter1.record_block(net1)
+    v_one = meter1.phi()
+
+    return v_zero == 0.0, verdict_zero, v_one > 0.0, meter1.paid_tasks == paid
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F3a: the demand meter (TV-21)")
+    print("=" * 76)
+    print("F3a's roadmap criterion is 'at least one real paying task', but the")
+    print("prototype tested censorship and migration without ever counting")
+    print("demand. This is the instrument the testnet exists for.\n")
+
+    z, vz, o, cnt = tv21_demand_meter()
+    print("  demandless world reports phi = 0        : %s" % z)
+    print("  and names it honestly as Pearl's result: %s" % vz)
+    print("  one paid task produces phi > 0          : %s" % o)
+    print("  paid-task count is exact                : %s" % cnt)
+    assert z and vz and o and cnt
+    print("\n  -> a meter that cannot show zero cannot be trusted to show one.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-21 ESTABLISHES, AND WHAT IT DOES NOT")
+    print("-" * 76)
+    print("""  The meter counts a task as paid when its state is 'SETTLED', which in this
+  prototype is set by the harness rather than by an external buyer handing over
+  value. So TV-21 proves the instrument works, not that demand exists. The
+  difference matters and is stated here rather than buried.
+
+  What the meter genuinely supplies: F3a now has a way to fail its own criterion.
+  A testnet that reports phi = 0 says 'do not launch a mainnet on this
+  measurement', which is the Pearl failure mode caught early instead of late.
+  That is the whole point of running the testnet before the chain.""")
