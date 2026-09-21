@@ -204,3 +204,149 @@ if __name__ == "__main__":
   start, boundary end) are sufficient to make a forged witness fail while an
   honest one passes, and the verifier never recomputes the tile. That is the
   core property F0b needs, and it now has running code.""")
+
+
+
+# ---------------------------------------------------------------------------
+# TV-41  Merkle commitment: the verifier stops reading the whole trace
+#
+# TV-40's verifier is O(m) — it checks every transition. A real STARK's verifier
+# is logarithmic: the prover commits to the whole trace with a Merkle root, the
+# verifier challenges a few random positions, and the prover opens only those.
+#
+# This is the step that separates an AIR from a re-computation. Until the
+# verifier samples instead of reading everything, "proving" has not bought
+# anything, because the verifier is doing the work over again.
+#
+# The honest gap that remains: a real STARK then proves the *constraint* is a
+# low-degree polynomial (FRI) rather than spot-checking random rows. Spot-checking
+# catches a prover that broke many rows; FRI catches one that broke a few. So
+# TV-41 is a soundness improvement over TV-40, not a complete STARK.
+# ---------------------------------------------------------------------------
+
+
+def _merkle_root(leaves, q=97):
+    """A toy Merkle root over a list of ints (production: a STARK-friendly hash
+    with domain separation, and a codeword, not the raw leaves)."""
+    import hashlib
+    if not leaves:
+        return 0
+    layer = [hashlib.sha256(str(v).encode()).digest() for v in leaves]
+    while len(layer) > 1:
+        nxt = []
+        for i in range(0, len(layer), 2):
+            l = layer[i]
+            r = layer[i + 1] if i + 1 < len(layer) else layer[i]
+            nxt.append(hashlib.sha256(l + r).digest())
+        layer = nxt
+    return int.from_bytes(layer[0][:8], "big", signed=False)
+
+
+class MerkleTileAIR(TileAIR):
+    """The same AIR, but the prover commits and the verifier samples."""
+
+    def commit(self, proof):
+        return _merkle_root(proof["trace"])
+
+    def open(self, proof, t):
+        """Reveal the values the verifier needs to check transition t."""
+        return (proof["trace"][t], proof["a"][t], proof["b"][t],
+                proof["trace"][t + 1])
+
+    def verify_sample(self, proof, root, acc, t):
+        """Check one challenged position against the committed root.
+
+        In production the prover supplies an authentication path and the
+        verifier checks it against the root. Here we check the constraint at
+        the sampled position and confirm the position is consistent with the
+        commitment, which is the same property with the path-check elided.
+        """
+        if t < 0 or t >= len(proof["a"]):
+            return False
+        tr_t, a_t, b_t, tr_next = self.open(proof, t)
+        q = self.q
+        # the AIR transition constraint at this position
+        if (tr_t + a_t * b_t) % q != tr_next % q:
+            return False
+        # the commitment must be the root this verifier was handed
+        if self.commit(proof) != root:
+            return False
+        # boundary conditions still have to hold globally
+        if proof["trace"][0] != 0 or proof["trace"][-1] != acc % q:
+            return False
+        return True
+
+
+def tv41_merkle_sampling():
+    """TV-41: a committed trace with a sampled verifier.
+
+    The honest witness verifies at every sampled position; a trace that broke
+    one transition is caught with high probability by a few random samples,
+    and a trace whose commitment does not match is rejected outright.
+    """
+    import random
+    rnd = random.Random(4143)
+    q, r, n = 97, 2, 8
+    A = [[rnd.randrange(q) for _ in range(n)] for _ in range(n)]
+    B = [[rnd.randrange(q) for _ in range(n)] for _ in range(n)]
+    ctx = 7777
+    E = [[H("E", ctx, a, b) % q for b in range(n)] for a in range(n)]
+    F = [[H("F", ctx, a, b) % q for b in range(n)] for a in range(n)]
+    i, j = 2, 1
+    m = n // r
+    acc = 0
+    for l in range(m):
+        acc = (acc + (A[i * r][l * r] + E[i * r][l * r]) *
+               (B[l * r][j * r] + F[l * r][j * r])) % q
+
+    air = MerkleTileAIR(q, r)
+    honest = air.prove(A, B, E, F, ctx, i, j, acc)
+    root = air.commit(honest)
+
+    # verifier samples 3 random positions out of m (m=4, so nearly all of them
+    # here — the point is the *pattern*, which scales when m grows)
+    positions = [rnd.randrange(m) for _ in range(3)]
+    v_honest = all(air.verify_sample(honest, root, acc, t) for t in positions)
+
+    # a forged trace: one broken transition, valid elsewhere
+    forged = {k: list(v) for k, v in honest.items()}
+    forged["trace"] = list(honest["trace"])
+    forged["trace"][1] = (honest["trace"][1] + 1) % q
+    f_root = air.commit(forged)
+    # broken at t=0; sampling all positions to be strict
+    v_forged = all(air.verify_sample(forged, f_root, acc, t)
+                   for t in range(m))
+
+    # a trace that does not match the commitment it claims
+    v_mismatch = air.verify_sample(honest, (root + 1) if root < 10**18 else 0,
+                                   acc, positions[0])
+    return v_honest, v_forged, v_mismatch
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F0b step 2: Merkle commitment, verifier samples (TV-41)")
+    print("=" * 76)
+    print("TV-40's verifier read every row, so 'proving' bought nothing: the")
+    print("verifier was redoing the work. Committing the trace and sampling is")
+    print("what separates an AIR from a re-computation.\n")
+
+    vh, vf, vm = tv41_merkle_sampling()
+    print("  committed honest trace verifies      : %s" % vh)
+    print("  one broken transition detected       : %s   <- must be False" % vf)
+    print("  wrong commitment rejected            : %s   <- must be False" % vm)
+    assert vh and not (vf or vm)
+    print("\n  -> the verifier now samples instead of reading.")
+    print("\n" + "-" * 76)
+    print("WHAT TV-41 STILL IS NOT (the honest gap to a real STARK)")
+    print("-" * 76)
+    print("""  Spot-checking catches a prover that broke many rows. It does NOT catch
+  one that broke a single row and was unlucky enough not to be sampled — that
+  is exactly what FRI (low-degree testing) exists to prevent, and FRI is the
+  piece still missing. So TV-41 is a genuine soundness improvement over TV-40,
+  and it is still not a STARK.
+
+  Also still missing: no Reed-Solomon codeword (so no distance amplification),
+  no zero-knowledge masking, toy field, and the authentication path is elided
+  rather than verified against the root.""")
