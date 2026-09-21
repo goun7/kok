@@ -570,13 +570,32 @@ research supports the path; it does not shorten it.
 **What remains genuinely open, and is not papered over:**
 
 1. The "nearly half of data centers delayed" figure is still unfetched at its
-   primary source. It is cited from a self-interested blog.
+   primary source, and the attempt to fetch it (2026-09-22) downgrades it further
+   than "unfetched". The Akash blog post was retrieved and read in full: it says
+   "According to Bloomberg, nearly half of U.S. data centers planned for 2026 are
+   now expected to be delayed or canceled" and gives **no link, no date and no
+   author** for that Bloomberg reference. So the figure cannot be traced even from
+   the document that cites it. Three routes to the primary source were attempted:
+   DuckDuckGo returns a bot challenge, Bing returns irrelevant localised results
+   regardless of the query, and Bloomberg itself sits behind a paywall. The
+   figure is therefore **not verifiable with the tools available**, and it stays
+   quarantined as an unverified secondary claim. The same applies to the IEEE
+   Spectrum seven-year gas-turbine wait, the Maine moratorium and the land
+   refusals: all are stated in the same self-interested blog without primary
+   links. **The structural argument does not depend on this number** — land,
+   permitting and energy move on multi-year timescales regardless of whether
+   "nearly half" is the right fraction — but the specific figure should not be
+   repeated as a measurement.
 2. Pass's model assumes an elastic inference market. In a supply-constrained world
    that assumption may not hold, and if it fails, subsidising inference may not
    expand output the way Duplexia predicts. Nobody has tested this.
-3. The TEE-versus-zkVM comparison has not been written from KOK's side. The
-   counter-position exists (2609.21728) and KOK's answer to it is currently an
-   assertion, not an argument.
+3. ~~The TEE-versus-zkVM comparison has not been written from KOK's side.~~
+   **Written (2026-09-22), in the paper's section 11 correction.** The argument is
+   that a TEE and a zkVM solve different halves of the same buyer's problem — the
+   TEE gives confidentiality, the zkVM gives verification of correctness, and KW's
+   Remark 2.2 adds confidentiality on top of the proof. What remains open is not
+   the argument but the delivery: Akash ships the confidentiality half today and
+   KOK's F0b has not been written.
 4. Whether agents can be real buyers of inference at all — not merely authorized to
    pay, but carrying demand a human did not initiate — is an open empirical
    question that no source here answers.
