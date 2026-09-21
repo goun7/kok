@@ -1179,10 +1179,17 @@ ideology is physical.** Reporting on centralized AI infrastructure describes pla
 delayed or canceled, a Maine moratorium, communities refusing eight-figure land offers, and gas
 turbine lead times of years. If centralized inference capacity is genuinely supply-constrained,
 buyers have a reason to look for capacity elsewhere that has nothing to do with permissionlessness.
-**This is recorded as a signal, not a measurement.** The primary sources were cited by a
-self-interested blog and were not independently fetched; the IEA's "Energy and AI" report
-(April 2025) corroborates the structural constraint but predates the 2026 figures. If the
-constraint is real, it is the first external thing that could fill the empty cell. Whether it is
+The supply side is constrained on **two independent axes**, both reported in Akash's own 2025
+review: **NVIDIA H100s stayed allocation-only through 2025 with 6-12 month wait times for
+enterprise buyers, and AWS and Azure responded by raising prices while reducing availability.**
+Compute access became the primary business constraint for the startups and mid-market builders who
+are the natural first customers of a permissionless market.
+
+**This is recorded as a signal, not a measurement.** The data-center-delay figures were cited by a
+self-interested blog and not independently fetched; the IEA's "Energy and AI" report (April 2025)
+corroborates the structural energy constraint but predates the 2026 figures; the H100 allocation
+and price-increase claims are Akash's self-report, not NVIDIA's or the clouds'. If the constraint
+is real on both axes, it is the first external thing that could fill the empty cell. Whether it is
 real is exactly the kind of question F3a's buyer is there to answer — Astria moved providers for a
 price reason, which is a capacity-and-cost reason, not an ideological one.
 

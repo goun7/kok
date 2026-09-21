@@ -302,6 +302,48 @@ solve becomes easier for everyone, including KOK.
 
 **Status: homepage fetched. Protocol specifics not yet read.**
 
+## Source 11 — Akash 2025 in review: the scale of the reference marketplace
+
+Fetched from akash.network/blog/akash-2025-year-in-review (9 Jan 2026). This fills in
+the scale that the Q1 report's $5M figure lacked context for:
+
+- **Deployments grew 466% to over 3.1 million created** in 2025.
+- **Daily fees hit all-time highs above $13,000.**
+- **AkashML launched managed inference at 70-85% lower cost than AWS.**
+- The network held a **consistent 60% utilization rate for accelerated compute**.
+- Grayscale named AKT a "Top 20 Asset with High Potential" for three consecutive
+  quarters.
+- H100s remained allocation-only through 2025, with 6-12 month wait times for
+  enterprise buyers; AWS and Azure raised prices while reducing availability.
+
+The last point is the demand-side fact that matters most for KOK. **Compute access
+became the primary business constraint** for startups and mid-market AI builders,
+and the incumbent cloud responded to scarcity by raising prices. That is the
+economic condition under which a buyer moves providers for a price reason — which
+is exactly the case F0 recorded for Astria, and exactly the buyer profile the F3a
+invitation targeted.
+
+The 70-85% cost claim is Akash's own marketing figure, so it is treated as a claim,
+not a measurement. The $13K/day in fees is also self-reported. But the direction is
+corroborated by the 466% deployment growth and the 60% utilization rate: the
+marketplace was absorbing real demand, not just reporting a number.
+
+## Source 12 — H100 allocation and the supply constraint, corroborated
+
+The same Akash report independently corroborates the GPU-supply side of the
+physical-constraint story (Source 7): NVIDIA H100s stayed allocation-only through
+2025 with 6-12 month wait times, and AWS and Azure responded by raising prices and
+cutting availability. Combined with the data-center construction delays, the
+picture is a supply side constrained on **two independent axes** — hardware
+allocation and physical infrastructure — while demand accelerated.
+
+This is the strongest structural argument found for why the empty cell might be
+fillable now rather than in the abstract future. It is still not a measurement of
+what KOK would sell, and it is still not an excuse to announce anything.
+
+**Status: supply constraint corroborated from a second Akash source. Still not
+independently verified against NVIDIA or cloud-provider primary data.**
+
 ## Source 9 — IEA "Energy and AI" (primary source on the energy constraint)
 
 Fetched from iea.org/reports/energy-and-ai. Published **10 April 2025**, CC BY 4.0.
