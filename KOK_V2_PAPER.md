@@ -1137,6 +1137,60 @@ Demirel Thm 2 at the construction level), **(ii) defining utility only via fee-p
 published tail-emission economy with the Pass model.** All antecedents are attributed;
 **Pearl's collapse proves that this differentiation is necessary.**
 
+### 12.1b ★ The wider competitive map, and the one empty cell (2026-09-21)
+
+The rivalry analysis above treats Pearl as the comparator, which is right, because it is the
+only live PoUW chain. But the wider field was surveyed while waiting on Astria and Demirel, and
+it changes what KÖK is competing **for**, if not whom. The survey comes from a Pearl-affiliated
+source, so its ranking is not used here; only its taxonomy and status facts are, and those were
+checked against the projects' own sites.
+
+The taxonomy separates real PoUW from marketing on three tests: the mining work **is** the useful
+work, the output is **verifiable on-chain**, and **there is a paying customer**. The third test is
+the one Pearl fails, and it is the one φ measures.
+
+| Project | Useful work | Consensus | Paying customer? |
+|---|---|---|---|
+| **Pearl** | LLM inference (NoisyGEMM) | PoUW | **no** — measured zero |
+| **Bittensor** | subnet ML tasks | incentive chain | **no** — "the chain pays contributors in TAO" |
+| **Gensyn** | training → now verifiable inference, oracles | not PoUW | not yet; repositioned to prediction markets |
+| **Akash** | generic GPU/CPU compute | **PoS marketplace** | **yes** — $5M all-time spend |
+| **Render** | GPU rendering | **PoS marketplace** | yes, production |
+| **io.net** | GPU aggregation | **DePIN** | some |
+| **Golem** | generic compute | marketplace | low usage |
+
+The pattern is the finding. **Useful work with paying customers exists — in marketplaces on PoS,
+where it is not tied to block production. True PoUW exists — with no paying customer.** The two
+halves have not met in one system. Pearl and Bittensor pay from inflation; Akash and Render sell
+real compute but secure nothing by it. KÖK's target is specifically the unoccupied cell: useful
+work that is both consensus-relevant and externally purchased.
+
+Two external observations sharpen this. First, **Akash's own Q1 2026 report describes the failure
+mode KÖK's U layer is built against**, in Akash's words: under their earlier AEP-23 scheme "when
+tenants pay in USDC, demand for AKT weakens. Usage grew while AKT's role as the network's core
+economic unit eroded." They fixed it with burn-mint equilibrium, live on mainnet since 23 March
+2026 — buy AKT, burn it to a stable credit, settle. KÖK's irrecoverable fee burn reaches the same
+position structurally rather than via a two-token path, but the important thing is that **the
+problem was real enough for the largest decentralised compute marketplace to fork its economics
+mid-flight.** That is a second measured failure alongside Pearl's, pointing the same way.
+
+Second, and more speculatively: the **only demand-side force found that requires no crypto
+ideology is physical.** Reporting on centralized AI infrastructure describes planned data centers
+delayed or canceled, a Maine moratorium, communities refusing eight-figure land offers, and gas
+turbine lead times of years. If centralized inference capacity is genuinely supply-constrained,
+buyers have a reason to look for capacity elsewhere that has nothing to do with permissionlessness.
+**This is recorded as a signal, not a measurement.** The primary sources were cited by a
+self-interested blog and were not independently fetched; the IEA's "Energy and AI" report
+(April 2025) corroborates the structural constraint but predates the 2026 figures. If the
+constraint is real, it is the first external thing that could fill the empty cell. Whether it is
+real is exactly the kind of question F3a's buyer is there to answer — Astria moved providers for a
+price reason, which is a capacity-and-cost reason, not an ideological one.
+
+**What this does not change:** the roadmap, the wait for Demirel, or the single-invitation
+discipline. The survey supports the claim that the chosen problem is real and the architecture
+fits two documented failures. It does not create a buyer, and it does not license an announcement
+beyond the one already sent.
+
 ### 12.2 The name, and what it does and does not claim (2026-09-21)
 
 The name is stated once, plainly, and with its etymology **used correctly** — an earlier draft
@@ -1185,4 +1239,10 @@ Security/zkVM: 2609.15020 (ZEBRA) · 2605.25493 (ZK-Tracer) · 2607.11466 (Prezt
 **Pearl primary:** pearlresearch.ai/research/int-whitepaper · pearlpolymath.com ·
 github.com/pearl-research-labs/pearl · Pass 2606.06700 · Basu 2606.04819 · DAG: 2018/104
 (PHANTOM) · 2109.01102 / 2305.16757 / 2501.10888 · Difficulty: 2608.16884 (ω<2.371177) ·
-Market: CoinGecko (BTC/KAS/TAO/RNDR/AKT/DNX) · Digiconomist · blockchain.info
+Market: CoinGecko (BTC/KAS/TAO/RNDR/AKT/DNX) · Digiconomist · blockchain.info ·
+**Competitive landscape (§12.1b, surveyed 2026-09-21):** akash.network/token and
+akash.network/blog/akash-network-q1-2026-report (BME, $5M all-time spend, the AEP-23
+admission) · bittensor.com ("the chain pays contributors in TAO") · gensyn.ai (open-1b,
+Delphi, Credibly Neutral AI Oracles) · iea.org/reports/energy-and-ai (April 2025, primary
+energy source) · lordofpearls.xyz/blog/top-pouw-chains-2026 (taxonomy used; Pearl-affiliated,
+ranking not used)
