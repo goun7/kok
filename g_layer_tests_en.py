@@ -303,7 +303,7 @@ def tv1():
     same = ch.kernel.verify(b1["cert"], A, B, b1["ctx"], b1["nonce"], ch.D)
     other = ch.kernel.verify(b1["cert"], A, B, b2["ctx"], b1["nonce"], ch.D)
     assert same and not other, "replay reddi fails"
-    return "PASS", "cert kendi ctx'inde valid, baska parent'ta REJECT"
+    return "PASS", "cert valid in its own ctx, REJECT under a different parent"
 
 
 # ---------------------------------------------------------------------- TV-2
@@ -410,11 +410,11 @@ def v1_contrast():
 #   * the noise is iid (NOT rank-r). The 1st/2nd/4th checks of 5.1 are per-entry/per-row
 #     are statistics; rank-r only 4'un *attack versiyonunu* effects
 #     (in the toy this is triggered by peaked-rows).
-#   * sigma_i = DELTA * RMS(row) — per-entry noise std (Pearl'in C.4/C.5
+#   * sigma_i = DELTA * RMS(row) — per-entry noise std (Pearl's C.4/C.5
 #     not the exact counterpart of the normalization; whether Pearl's sigma_i is per-entry
-#     row-level mi oldugu from the text net did not appear; this toy choice "noise-to-signal
+#     or row-level did not appear in the text; this toy choice is "noise-to-signal
 #     consistent with the statement "the same in every row").
-#   * tamed/unpredictable thresholds toy olcege (K=64, GRID=16) kalibre was done;
+#   * tamed/unpredictable thresholds were calibrated to the toy scale (K=64, GRID=16);
 #     Pearl's production values (tau_tame=256 etc.) are for k~4096-16384.
 #   * unpredictable: the toy uses the v_iu < ulp(M_ij) comparison (Pearl
 #     uses the divisor v_iu < ulp(M_ij)^2 + 2^21 — it comes from the FP8 bit budget).
@@ -525,18 +525,18 @@ class JackpotToy:
     #   * TV-14  (accumulation)  : ACC_NOISE grid unit = sub-quantization its scale.
     #     Rationale: at Pearl FP8 subnormal its congestion arka plan entry'sini ~2^-17'e
     #     it compresses enough; it falls into the same regime as FP32 ulp(M) = M*2^-23 ->
-    #     summand truncate = 'precision shortcut'. Toy lineer grid 2^-17
-    #     since it cannot show the compression, it injects this scale via ACC_NOISE.
+    #     summand truncation = 'precision shortcut'. The toy's linear grid is 2^-17
+    #     and cannot show the compression, so this scale is injected via ACC_NOISE.
     ACC_NOISE = 1 / 16                    # grid unit (sub-quantization)
 
     @classmethod
     def unpredictable_summands(cls, A, B):
-        """Predictable summand: the spread range v_iu of the summand, the accumulator
-        grid'ine (ulp(M_ij)) does not fit -> the miner o summand'i atlayip MAC
-        can save ('precision shortcut', specific to FP). The
-        quantization grid in its units (entry/gamma); v_iu = Pearl (13)'un
-        ikinci-moment its product (2^21 the divisor FP8 bit from its budget gelir; toy'da
-        sub-quantization injected via ACC_NOISE)."""
+        """Predictable summand: the spread range v_iu of the summand does not fit
+        into the accumulator grid (ulp(M_ij)) -> the miner can skip that summand in
+        the MAC and save work ('precision shortcut', specific to FP). The units are
+        the quantization grid (entry/gamma); v_iu is the second moment of Pearl
+        (13)'s product, with 2^21 as the divisor from the FP8 bit budget; in the toy
+        the sub-quantization is injected via ACC_NOISE."""
         g = cls.gamma(A)
         denom = float(1 << cls.ACC_BITS)
         _, M = cls.product_with_magnitude(A, B)
@@ -581,8 +581,8 @@ def _uniform_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 
 def peaked_rows(r, m=2, v=40.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """'No-noise entries' + 'low local entropy' (Pearl 5.2): her in the line m adet
-    a large entry far exceeding the noise, the remainder small."""
+    """'No-noise entries' + 'low local entropy' (Pearl 5.2): each row carries m
+    large entries far exceeding the noise, the remainder small."""
     A = _uniform_rows(r, n, k, c)
     for i in range(n):
         for pos in r.sample(range(k), m):
@@ -591,9 +591,9 @@ def peaked_rows(r, m=2, v=40.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
 
 
 def common_peaked_rows(r, v=64.0, n=JackpotToy.N, k=JackpotToy.K, c=3):
-    """'Precision shortcut' (Pearl 5.2 + 7): every row of A and B is at the SAME position
-    a large entry carries -> every cell is dominated by a single large summand, the rest
-    kalan summand'lar accumulator grid'inin under remains.
+    """'Precision shortcut' (Pearl 5.2 + 7): every row of A and B carries a large
+    entry at the SAME position -> every cell is dominated by a single large summand,
+    while the remaining summands fall under the accumulator grid.
     (v, dominated by the peak; calibrate RMS to ACC_BITS: ulp ~ v^2/2^ACC
     > the background spread (c^2/3 + (DELTA*v/sqrt(k))^2).)"""
     p = k // 2
@@ -619,7 +619,7 @@ def tv11():
     good = _uniform_rows(r)
     f_ok, ok_ok = JackpotToy.entry_liveness(good)
     # single-peak (m=1): the idle check must pass as a 'loose net' (Pearl: the bound is wide);
-    # bu giris asil noise-floor (TV-12) by yakalanir
+    # a single large entry is caught by the noise floor (TV-12)
     one = peaked_rows(r, m=1, v=40.0)
     f1, ok1 = JackpotToy.entry_liveness(one)
     assert not ok_bad and ok_ok, (f_bad, f_ok)
@@ -858,7 +858,7 @@ if __name__ == "__main__":
     print(f"       healthy    : predictable %{100*t14['good_random'][0]:.1f} -> "
           f"{'ACCEPT' if t14['good_random'][1] else 'RED'}")
 
-    print("[TV-21] low-entropy (Polymath 6) dayaniklilik curve:")
+    print("[TV-21] low-entropy (Polymath 6) robustness curve:")
     t21, _sweep = tv21()
 
     print("-" * 72)

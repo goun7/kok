@@ -137,8 +137,8 @@ class Task:
     fee: int
     burn_rate: float
     state: str = "COMMITTED"     # COMMITTED -> ASSIGNED -> SOLVED -> SETTLED/SLASHED/EXPIRED
-    escrow: int = 0          # fee'den kalan odenebilir escrow (TV-5: 70)
-    bond: int = 0            # ayri teminat (TV-7 slash the source)
+    escrow: int = 0          # the payable escrow remaining from the fee (TV-5: 70)
+    bond: int = 0            # separate collateral (TV-7 slashes it)
     burned: int = 0
     assignee: str = ""
     vrf_out: int = 0
@@ -186,7 +186,7 @@ class Chain:
     # ---------------- A.10.3 VRF assignment (lookback seed)
     def epoch_seed(self, height):
         h = height - EPOCH_LOOKBACK
-        assert h >= 0, "lookback yok"
+        assert h >= 0, "height below the lookback"
         return H("seed", self.blocks[h])
 
     def assign_tasks(self, miner, tasks, prob=0.5):
@@ -253,23 +253,23 @@ class Chain:
 
     def sim_block(self, lam):
         """The simulation goes from arrival to its duration per block: Δt ~ Exp(λ/D) (E[T] = D/Λ, spec B.2).
-        Gercek PoW dongusunu without running retarget its mathematics test eder."""
+        It tests the retarget mathematics without running a real PoW loop."""
         delta = -math.log(rng.random()) / (lam / self.D)
         self.record_time(delta)
         self.blocks.append(S("sim", len(self.blocks)))
         return self.retarget()
 
     def retarget(self):
-        """Her W blokta hashrate estimated yap ve D'yi again kur.
+        """Every W blocks the hashrate is estimated and D is set again.
         Important: the T_act measured inside a window was produced by that window's D;
         therefore it is a multiplicative (stale) rate, a hash-rate estimate independent of D
             Lambda_hat = D * W / T_act        (because block rate = Lambda/D)
         is used. The median filter smooths the Lambda_hat of the last 3 windows
-        (it also smooths its fluctuations). Then D <- Lambda_hat_smooth * T_b, 4x ile
-        bounded (as Bitcoin's is)."""
+        (it also smooths its fluctuations). Then D <- Lambda_hat_smooth * T_b, bounded
+        by 4x (as Bitcoin's is)."""
         W = self.retarget_window
         t_b = self.target_block_time
-        n = len(self.times) - 1          # blok the count
+        n = len(self.times) - 1          # the block count
         if n == 0 or n % W != 0:
             return None
         T_act = self.times[-1] - self.times[-1 - W]
@@ -371,7 +371,7 @@ def tv5():
 
 
 def tv6():
-    """Anti-aggregation: tek blokta sum(fee) > C_FEE -> REJECT."""
+    """Anti-aggregation: in a single block, sum(fee) > C_FEE -> REJECT."""
     ch = Chain()
     tasks, A = [], [[1, 2], [3, 4]]
     for k in range(6):                            # 6 * 100 = 600 > C_FEE=500
@@ -384,7 +384,7 @@ def tv6():
     except AssertionError as e:
         caught = "anti-aggregation" in str(e)
     assert caught
-    # cozum: parcalamak (250 + 250 iki blokta)
+    # the solution is to split (250 + 250 across two blocks)
     ch.mine_block("m1", tasks[:3], A, A)
     ch.mine_block("m1", tasks[3:], A, A)
     return caught, len(ch.blocks) - 1
@@ -423,7 +423,7 @@ def tv8():
 
 
 def tv10():
-    """PQ downgrade: non-PQ schema ile signed blok -> REJECT."""
+    """PQ downgrade: a block signed with a non-PQ schema -> REJECT."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
     caught = False

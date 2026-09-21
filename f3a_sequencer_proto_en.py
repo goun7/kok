@@ -99,8 +99,8 @@ class Sequencer:
     def __init__(self, sid, bond=BOND_DEFAULT, evil=False, censor_client=""):
         self.sid = sid
         self.bond = bond
-        self.evil = evil                    # censorship modu
-        self.censor_client = censor_client  # this client's tasks are censoredorshiple
+        self.evil = evil                    # censorship mode
+        self.censor_client = censor_client  # this client's tasks are censored
         self.slashed = 0
         self.tasks = {}                     # tid -> Task
 
@@ -259,7 +259,7 @@ def spec(harness, fee=100, burn_rate=0.3, program=None):
 
 def tv15():
     """TV-15: REFUND-GUARANTEE. Evil sequencer reject-step does not publish
-    escrow W_r blok at the end an AUTOMATIC refund is issued; of censorship its benefit yoktur."""
+    escrow, at the end of W_r blocks an AUTOMATIC refund is issued, so censorship has no benefit."""
     random.seed(1515)
     net = F3aTestnet([Sequencer("A", evil=True, censor_client="kobi")])
     ok = net.submit_task("A", "t1", "kobi", spec("llama-70b"))
@@ -293,11 +293,11 @@ def tv16():
     assert migrated
     # slash min(bond, fee) = 100; the bond is REFILLED (TV-20's policy)
     assert net.sequencers["A"].slashed == 100, "bond was not cut"
-    assert net.sequencers["A"].bond == bond_before, "bond uste was not formatted (refill)"
+    assert net.sequencers["A"].bond == bond_before, "bond was not topped up (refill)"
     assert net.slash_events == 1 and net.migrations == 1
-    # task artik B'de ASSIGNED
+    # the task is now ASSIGNED on B
     assert net.sequencers["B"].tasks["t2"].state == "ASSIGNED"
-    # cozum + settle B'de calisir
+    # solve + settle run on B
     assert net.solve_task("B", "t2", "result-hash")
     assert net.settle_task("B", "t2")
     assert net.burn_address == 30  # 100*0.3 burn occurred
@@ -323,7 +323,7 @@ def tv17():
     # refund the remaining 3 on timeout
     for _ in range(W_R + 1):
         net.next_block()
-    # the migrated 2 task A'dan were REMOVED (B'de ASSIGNED); kalan 3 A'da REFUNDED
+    # the 2 migrated tasks were REMOVED from A (ASSIGNED on B); the remaining 3 are REFUNDED on A
     counts = {}
     for i in range(5):
         t = net.sequencers["A"].tasks.get(f"t{i}")
@@ -333,11 +333,11 @@ def tv17():
     # sequencer A: has 0 escrow (consumed nothing).
     # *** THE SUBTLE POINT (the real value of TV-17): since bond0=50 < fee=100
     # refill RAISES the bond to the FEE LEVEL (100). Slashes: 50 (first, bond=50)
-    # + 100 (refill the rest, bond=100) = 150. Yani refill hem bond'u protects
-    # hem de from a LOWER level starting bir the sequencer fee seviyesine cikarir. ***
+    # + 100 (refill the rest, bond=100) = 150. So refill both protects the bond
+    # and RAISES it from a lower starting level up to the fee level. ***
     held = sum(t.escrow for t in net.sequencers["A"].tasks.values())
     assert held == 0, "sequencer escrow held escrow"
-    assert net.sequencers["A"].bond == 100, "bond fee seviyesine did not appear"
+    assert net.sequencers["A"].bond == 100, "bond was not raised to the fee level"
     assert net.sequencers["A"].slashed == 150, "cumulative slash 50+100=150 should be"
     # refund total = 3 * 70 = 210
     assert net.refunds == 210, net.refunds
@@ -368,7 +368,7 @@ def tv18():
 
 def tv19():
     """TV-19: HONEST ORDER. A single honest sequencer runs the whole loop:
-    submit -> assign -> solve -> settle; burn gerceklesir, escrow tuketilir."""
+    submit -> assign -> solve -> settle; the burn happens, the escrow is consumed."""
     random.seed(1919)
     net = F3aTestnet([Sequencer("A", evil=False)])
     net.submit_task("A", "tA", "kobi", spec("llama-70b", fee=100, burn_rate=0.3))
@@ -382,20 +382,19 @@ def tv19():
 
 
 def tv20():
-    """TV-20: BOND REFILL (pass_sim 10 tablo B'nin buldugu acik).
-    Grefill is absent, the deterrent is one-shot: the first censorship exhauststs,
-    subsequent events FREE. Refill, if present, cuts up to the fee per event.
-    *** This test, the economy of the model bir BUG'I found the prototype that it FIXED
-    proves. ***"""
+    """TV-20: BOND REFILL (the gap that pass_sim 10, table B, found).
+    If refill is absent, the deterrent is one-shot: the first censorship exhausts the
+    bond, subsequent events are FREE. Refill, if present, cuts up to the fee per event.
+    *** This test proves the model economy found a prototype BUG and FIXED it. ***"""
     random.seed(2020)
-    # (a) refill VAR (production policy'su): her event keser
+    # (a) refill PRESENT (the production policy): every event cuts the bond
     net = F3aTestnet([Sequencer("A", bond=100, evil=True, censor_client="kobi"),
                       Sequencer("B", evil=False)])
     bond0 = net.sequencers["A"].bond
     for i in range(3):
         net.submit_task("A", f"g{i}", "kobi", spec("llama-70b", fee=100))
         net.migrate_task(f"g{i}", "A", "B")
-    # her event min(bond,fee)=100 was cut VE refilled
+    # every event cut min(bond,fee)=100 AND was refilled
     assert net.slash_events == 3
     assert net.sequencers["A"].slashed == 300, net.sequencers["A"].slashed
     assert net.sequencers["A"].bond == 100, net.sequencers["A"].bond  # refill the rest
@@ -410,7 +409,7 @@ def tv20():
             self.sequencers[from_seq].bond -= slash
             self.sequencers[from_seq].slashed += slash
             self.slash_events += 1
-            # refill YOK — bu eski (faulty) is the behaviour
+            # NO refill — this is the old (faulty) behaviour
             t.state = "MIGRATED"
             t.migrated_to = to_seq
             del self.sequencers[from_seq].tasks[tid]
@@ -425,7 +424,7 @@ def tv20():
         net2.submit_task("A", f"h{i}", "kobi", spec("llama-70b", fee=100))
         net2.migrate_task(f"h{i}", "A", "B")
     assert net2.slash_events == 3
-    # the FIRST event's bond was exhausted, subsequent IKISI FREE (100, 300 degil)
+    # the FIRST event exhausted the bond, the remaining TWO are FREE (100, not 300)
     assert net2.sequencers["A"].slashed == 100, net2.sequencers["A"].slashed
     assert net2.sequencers["A"].bond == 0, "bond would have been exhausted"
     print(f"  TV-20 bond-refill:   3 censorship events; refill -> 300 slashed (bond {bond0}->100);")

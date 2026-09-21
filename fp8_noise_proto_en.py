@@ -194,7 +194,7 @@ def tv29_noise_floor_closes_attack():
     Qtiles = quantize_vec(tiles, "E4M3")
     uniq = len(set(Qtiles))
     # with the floor, the output tiles must spread (>=8 distinct values)
-    assert uniq >= 8, f"TV-29: noise floor ile hala low entropy: {uniq} deger"
+    assert uniq >= 8, f"TV-29: with the noise floor the entropy is still low: {uniq} values"
     return "PASS", f"with the noise floor (8 units), {uniq} distinct output values - attack closed"
 
 

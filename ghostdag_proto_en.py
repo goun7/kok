@@ -85,14 +85,14 @@ class GHOSTDAG:
                    ∩ mergeset(B)) -- expands greedily.
     A block is "blue" if its anticone in selected_parent's mergeset is < k;
     otherwise "red".
-    blue_score(B) = |{mavi blocks}|
-    selected_parent(B) = mergeset'teki en yuksek blue_score (ties: en dusuk hash).
+    blue_score(B) = |{blue blocks}|
+    selected_parent(B) = the highest blue_score in the mergeset (ties: lowest hash).
     """
 
     def __init__(self, k: int = GHOSTDAG_K):
         self.k = k
         self.blocks: dict = {}          # bid -> Block
-        self.mergesets: dict = {}       # bid -> set of bid (kendi mergeset'i)
+        self.mergesets: dict = {}       # bid -> set of bids (that block's mergeset)
         self.selected: dict = {}        # bid -> selected_parent bid
         self.blue_score: dict = {}      # bid -> blue score
         self.is_blue: dict = {}         # bid -> bool
@@ -183,25 +183,25 @@ class GHOSTDAG:
         The overall GHOSTDAG ordering (toy approach).
 
         The true GHOSTDAG order: the chain formed by the BLUE blocks in the mergeset
-        takip eder (selected_parent the chain), red blocks eklemek icin
-        "red" of blocks mavi-blok-sonrasina its placement gerekir.
+        is followed (the selected_parent chain), and red blocks are appended after
+        the blue block they follow.
 
-        Buradaki toy versiyon: bid'den baslayip selected_parent the chain
-        izler VE mergeset'teki mavi blocks derinlige gore ekler. Amaclar:
+        The toy version here: starting from bid it follows the selected_parent chain
+        and adds the blue blocks of the mergeset by depth. The goals are:
         (1) no block has an empty mergeset (liveness),
-        (2) mavi blocks once gelir.
+        (2) blue blocks come first.
         """
         if bid not in self.blocks:
             return []
         seen = set()
         out = []
-        # 1. selected_parent the chain (mavi omurga)
+        # 1. the selected_parent chain (the blue backbone)
         cur = bid
         while cur is not None and cur not in seen and cur in self.blocks:
             seen.add(cur)
             out.append(cur)
             cur = self.selected.get(cur)
-        # 2. mergeset'teki diger mavi blocks (derinlik its order)
+        # 2. the other blue blocks of the mergeset (ordered by depth)
         ms = self.mergesets.get(bid, set())
         for b in sorted(ms, key=lambda x: -self.blue_score.get(x, 0)):
             if b in self.blocks and b not in seen:
@@ -230,12 +230,11 @@ def parent_set_hash(parents: list) -> str:
 def mine_chain(g: GHOSTDAG, n: int, rng: random.Random, miners=("A", "B", "C"),
                fork_prob=0.0):
     """
-    Rastgele bir DAG uret; fork_prob probably paralel blok (fork).
+    Generate a random DAG; fork_prob is the probability of a parallel block (fork).
 
-    Parent aday havuzu tum DAG'in son blocks (tips) degil, from the past
-    rastgele selected are blocks - thus DAG really DAG gibi buyur
-    (tek bir zincir yerine). Bu, anticone/fork of its tests meaningful its being
-    icin is required.
+    The parent candidate pool is not the whole DAG's latest blocks (tips); blocks are
+    selected randomly from the past as well - so the result is really a DAG rather
+    than a single chain. This is required for the anticone/fork tests to be meaningful.
     """
     all_bids = []
     for i in range(n):
@@ -274,7 +273,7 @@ def tv22_blue_rule():
                 ac = g._anticone(b) & ms
                 if len(ac) > g.k:
                     bad += 1
-    assert bad == 0, f"TV-22: {bad} mavi blok anticone > k={g.k}"
+    assert bad == 0, f"TV-22: {bad} blue blocks have anticone > k={g.k}"
     return "PASS", f"blue={sum(g.is_blue.values())}, all anticone<={g.k}"
 
 
@@ -294,7 +293,7 @@ def tv23_selected_parent_max_score():
         best = max(scores, key=lambda x: (x[0], -int(x[1], 16)))[1]
         if sp != best:
             bad += 1
-    assert bad == 0, f"TV-23: {bad} blokta selected_parent max blue_score degil"
+    assert bad == 0, f"TV-23: in {bad} blocks the selected_parent is not the max blue_score"
     return "PASS", f"{len(g.blocks)} blocks, every selected=max blue_score"
 
 
@@ -304,7 +303,7 @@ def tv24_mergeset_limit():
     g = GHOSTDAG(k=GHOSTDAG_K)
     mine_chain(g, 80, rng, fork_prob=0.4)
     big = [b for b, ms in g.mergesets.items() if len(ms) > MERGESET_SIZE_LIMIT]
-    assert not big, f"TV-24: {len(big)} blok mergeset its limit asti"
+    assert not big, f"TV-24: {len(big)} blocks exceed the mergeset limit"
     return "PASS", f"max mergeset={max(len(m) for m in g.mergesets.values())} (limit {MERGESET_SIZE_LIMIT})"
 
 
@@ -339,7 +338,7 @@ def tv26_splitter_attack():
     # the mean order of recent blocks should be at least 40% of the DAG
     avg_recent = sum(lens) / len(lens)
     assert avg_recent >= len(g.blocks) * 0.4, \
-        f"TV-26: guncel blok its average {avg_recent:.1f} < %40*{len(g.blocks)}"
+        f"TV-26: recent blocks average {avg_recent:.1f} < 40%*{len(g.blocks)}"
     # no block should have an empty order (at least itself)
     empty = [b for b in g.blocks if len(g.order(b)) == 0]
     assert not empty, f"TV-26: the ordering of {len(empty)} blocks is empty"
