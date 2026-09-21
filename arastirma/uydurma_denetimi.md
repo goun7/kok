@@ -182,3 +182,35 @@ aciklamasi yok. Bu, paper'da ve e-postalarda ACIKLANMIS durumda.)
 
 **SONUC C3: Bibliyografyada HIC dogrulanmamis veya supheli giris kalmadi.
 Puan tablosundaki ">=10 bibliography girisi dogrulanmali" acigi TAMAMEN KAPANDI.**
+
+---
+
+## F) *** DEMIREL'E GONDERILEN VERSIYONUN GERCEK DURUMU (2026-09-21) ***
+
+**Olculdu, tahmin degil.** `git show a6c7f56:<dosya>` ile GONDERILEN tam versiyon
+cekildi ve ayni denetim kodu calistirildi:
+
+| Dosya | Kaynak Turkce | Cikti Turkce |
+|---|---|---|
+| g_layer_tests_en.py | 10 | 0 |
+| u_layer_prototype_en.py | 34 | 1 |
+| f3a_sequencer_proto_en.py | 6 | 0 |
+| ghostdag_proto_en.py | 11 | 0 |
+| fp8_noise_proto_en.py | 7 | 0 |
+| bond_margin_proto_en.py | 9 | 0 |
+| **TOPLAM** | **77** | **1** |
+
+**Yorum:** 77 Turkce stringin 76'si KAYNAKTA (yorum + docstring), yalnizca 1 tanesi
+CALISMA CIKTISINDA gorunuyor. Demirel kodu calistirsa bile neredeyse hic Turkce
+gormez; ama KAYNAK DOSYAYI acip okusa 77 Turkce string gorecek.
+
+**Kullanici'nin "duzeltme postasina gerek yok, once cevap versin" talimati:
+saygiyle yerine getirilir.** Bu kayit, Demirel cevap verdiginde durumun NET
+olmasi icin tutuldu — eger "kodun icinde Turkce vardi" derse, bu bilinen ve
+olculmus bir gercek (77/77'si simdi INGILIZCE, HEAD'de 0).
+
+**Ayrica:** gonderildikten sonra 9 dosya degisti (spec +172, paper +257,
+references +98 satir) — hepsi IYILESME: Hawthorne uydurmasi cikarildi,
+bibliography 11/11 dogrulandi, MiCA + Ripple + bütce + isim bolumleri eklendi.
+Yani Demirel'in elindeki versiyon ASKI (eksik) — ama teknik ozu ayni:
+prototiplerin sayisal sonuclari HIC degismedi (parity 67/95/51/83 ayni).
