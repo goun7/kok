@@ -1229,9 +1229,25 @@ is still unoccupied **at the intersection with PoUW consensus**, which this pape
 at all (no prescribed hardness, no leader election from the work, Solana underneath). But the
 utility half is no longer novel by itself, and the design choice KÖK must now be able to defend
 explicitly is: **why an escrowed fee with irrecoverable burn and a zkVM proof, rather than a
-rights token with a TEE as the enforcement boundary.** That has a real answer — TEE attestation is
-hardware-trusted and side-channel-exposed, KÖK's proof is cryptographic and the fraud window is
-economic — but it is now a question to be argued, not an assumption to stand on.
+rights token with a TEE as the enforcement boundary.**
+
+That has a real answer, and it is the one §11b already states from the buyer's side. A TEE and a
+zkVM solve **different halves of the same buyer's problem.** The TEE provides *confidentiality*:
+the provider never sees the data, which is exactly why Akash's confidential-compute buyers
+(medical records, trading models, IP in weights) are paying today. It does **not** provide
+*verification*: nothing attests that the computation was performed correctly, only that it ran
+inside an enclave. Kruger and Georg's rights token inherits exactly this asymmetry — it enforces
+*what* an analyst may run, and it does so convincingly, but the ledger records a redemption rather
+than a correctness proof.
+
+KÖK's zkVM proof inverts the emphasis: it verifies *that* the work was done correctly, and KW's
+Remark 2.2 (the zkSNARK variant, which KÖK adopts as F0b) adds confidentiality on top. So the two
+are complements on paper, and the honest question is not which is better but **which half the
+buyer is actually paying for.** Akash's shipped evidence says the confidentiality half has paying
+customers right now, and KÖK's F0b has not been written. That is a real gap in delivery, not a gap
+in the argument, and it is stated here rather than smoothed over. What remains KÖK's own is the
+combination: prescribed-hardness consensus *and* a paid task market with cryptographic
+settlement, which the Solana design does not attempt.
 
 **A second finding, same day, that partly reinstates a direction this project had ruled out.**
 The AI-agent security gap was rejected during the same research pass on the strength of the
