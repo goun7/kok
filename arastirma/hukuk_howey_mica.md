@@ -98,3 +98,55 @@ kullanılıyor. Bu, paper'da zaten "not verified / open item" olarak etiketli.
 
 **PRATIK ETKI:** hicbiri. Paper zaten dis citasyon olmadan yazilmis;
 arastirma bu bosluklari aciga cikardi ki bilerek kalmasin.
+
+---
+
+## A3) *** SEC v. RIPPLE — TAMAMEN COZULDU (2026-09-21) ***
+
+**Yontem:** Wikipedia API (`action=parse&section=10&prop=wikitext`) ile Ripple_Labs
+sayfasinin "SEC litigation (2020-2025)" bolumu TAMAMEN cekildi. Onceki CourtListener
+ve sec.gov denemeleri basarisizdi ama Wikipedia API calisti.
+
+### DOGRULANMIS ZAMAN CIZELGESI (verbatim ozet)
+
+1. **22 Aralik 2020** — SEC, Ripple + 2 yoneticisine (Larsen, Garlinghouse) SDNY'de
+   dava acti (Securities Act of 1933 kayit hukumleri). IDDIA: XRP'nin kayitsiz
+   satislariyla **$1.3 milyar** toplanmasi.
+2. **13 Temmuz 2023** — Hakim **Analisa Torres** ozet karar verdi:
+   - Mahkeme **XRP'nin kendisini satisin kosullarindan ayirdi.**
+   - **Kurumsal (institutional) satislar = kayitsiz yatirim sozlesmesi** (menkul kiymet).
+   - **Borsalardaki programmatic satislar = menkul kiymet DEGIL** — alicilarin
+     "baskalarinin cabalarindan kar bekledigi" gerekliligi saglanmadi.
+   - Diger dagitimlar "yatirim-of-money" gerekliligini karsilamadi.
+   - Larsen/Garlinghouse'un kendi borsa satislari yatirim sozlesmesi degildi.
+3. **Ekim 2023** — SEC, Garlinghouse/Larsen'e yardim-etme iddialarini **with prejudice**
+   (tekrar acilamaz) dusurdu.
+4. **7 Agustos 2024** — Torres nihai karar: kurumsal satislar icin **$125,035,150
+   ceza** + gelecek ihlaller icin ihtiyat hukmu (injunction).
+5. **2025** — Taraflar injunction'i kaldirip cezayi **$50 milyon**'e dusurmek istedi;
+   **Torres REDDETTI** ("istisnai kosullar" yok).
+6. **7 Agustos 2025** — **SEC ve Ripple kendi itirazlarini geri cekti. DAVA KAPANDI.**
+7. *** 17 Mart 2026 — SEC, kripto varliklara federal menkul kiymet yasalarinin
+   uygulanmasina iliskin YORUM yayimladi (CFTC rehberligiyle). 23 Mart'ta Federal
+   Register'da yayimlandi. XRP'yi **bitcoin, ether, solana, stellar ile birlikte
+   "dijital emtia" (digital commodity) ornekleri** olarak belirledi — degerin
+   "baskalarinin zorunlu yonetici cabalarindan kar beklentisinden" degil,
+   "calisan kripto sistemleri ve arz-talep"den kaynaklandigi belirtildi.
+   *** ANCAK acikca soyle dedi: "kendisi menkul kiymet olmayan bir kripto varlik
+   yine de bir yatirim sozlesmesinin parcasi olarak sunulabilir/satilabilir —
+   islemin kosullarina bagli olarak." ***
+
+### KOK v2 ICIN CIKARIM (bu artik kaynakli, ic kaynakli degil!)
+
+- **Fair-launch / borsa satislari guc kazandi:** Torres'in "programmatic satislar
+  menkul kiymet degil" karari + 2026 yorumu, "madenci kazanir, borsada satar"
+  modelinin Howey disinda kalmasini destekler (alici belirli bir issuernin
+  cabasindan kar beklemez).
+- *** ANCAK KOK v2 kendini guvene alamaz: *** "kendisi menkul kiymet olmayan varlik
+  yine de yatirim sozlesmesi olarak sunulabilir." Yani bir **on-satis / investor
+  round / hazine satisi** yine menkul kiymet olur. KOK v2'nin fair-launch
+  kararliligi burada deger kazanir: premine/yatirimci YOK.
+- **2026 yorumu KOK icin dogrudan alintilanabilir** (Federal Register, 23 Mart 2026).
+
+**SONUC: A SIKKI KAPANDI. Paper §9 Howey analizi artik gercek 2026 ictihati ve
+SEC yorumu ile destekleniyor.**

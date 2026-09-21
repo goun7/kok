@@ -349,25 +349,43 @@ with pinned test vectors.
   (a change is the strongest broken trust signal; please remove v1's laxness of "to be
   finalized before launch").
 
-### 8.1 ★ The market size — what is measured, what is a guess (2026-09-21)
+### 8.1 ★ The market — what is measured, and what remains a guess (2026-09-21)
 
-A design paper that claims a market usually cites a forecast. **KÖK v2 deliberately does not
-publish a TAM number**, and the reason is stated as a finding rather than as a gap:
+This section states a market size from primary evidence, and then says exactly where that
+evidence stops.
 
-- **What is measured (cited, verifiable):** Pearl's live network is **24 EH/s, ~320,000 GPUs,
-  ~112 MW** (Basu 2606.04819) — and it produces **zero** useful AI compute. That is the only
-  hard datapoint on what a PoUW chain actually attracts at scale, and it is a datapoint about
-  **mining supply**, not demand. Bitcoin's live hashrate is **~957 EH/s** at **$81,162**
-  (blockchain.info, 2026-09-21) — the security benchmark a PoW chain must stand against.
-- **What is NOT measured (and is not claimed):** the paying demand for verifiable compute on a
-  permissionless chain. **No source in this paper estimates it.** The honest position: the
-  existence of a GPU-rental market proves that compute is bought and sold, but **nothing in that
-  market is priced in a permissionless settlement token today**, and the size of the subset that
-  would be is **unknown**. F3a (§10.1) exists precisely to measure it.
-- **Why no TAM is published:** a market-size forecast in a pre-testnet paper would be either
-  a vendor's promotional figure (not citable in an academic document) or a guess dressed as
-  analysis. **The paper's discipline is to claim only what it can source** (§11). This costs
-  points with readers who expect a TAM; it buys credibility with the readers who check footnotes.
+**The size of AI compute spending (cited, verifiable):** the single cleanest proxy is the revenue
+of the dominant GPU supplier — it is a tax-aware count of how much the world pays for the hardware
+that AI compute runs on. NVIDIA's revenue, from its own reported figures:
+
+| FY | Revenue (bn $) | Net income (bn $) |
+|---|---|---|
+| 2023 | 26.9 | 4.3 |
+| 2024 | 60.9 | 29.7 |
+| 2025 | 130 | 72.8 |
+| **2026** | **215** | **120** |
+
+That is **an 8× increase in three years**, and it is still accelerating: Q2 FY2027 revenue was
+**$96.2B, +106% year-over-year** (from $46.7B). The build-out is equally visible in commitments:
+NVIDIA's memorandum of understanding to invest **$100B in OpenAI** carries an undertaking to build
+new AI data centers of **at least 10 GW** of system power; NVIDIA also invested **$2B** in the AI
+cloud provider Nebius (2026). *(Source: NVIDIA's reported figures as compiled in the cited
+secondary record, 2026-09-21; each figure is re-checkable against NVIDIA's own earnings releases.)*
+
+**What this evidence does NOT establish, and the paper does not claim:**
+1. It is **not** the total AI market — it excludes energy, facilities, integration and labour,
+   which sit outside the chip supplier's revenue. The true spend is larger; the growth rate is the
+   useful signal, not the absolute ceiling.
+2. **Nothing here prices a permissionless task.** The subset of this market that would settle as a
+   fee-paying task **on a public L1 is unknown** — it is not 1% of the above, nor 0.1%; it has
+   never been measured, because no chain has yet offered it as a priced market. **F3a (§10.1)
+   exists to measure it**, and §10.2 explains why F3a is deliberately the cheapest decision point.
+
+**Why the discipline matters:** a pre-testnet paper that quotes a TAM forecast would be quoting a
+vendor's promotional number, and an academic reader who checks the footnote would find it. The
+figures above are reported earnings — they survive the check. **The honest market claim is:
+"the spend exists and it is growing at ~100%/yr; the addressable permissionless subset is unknown,
+and we intend to measure it rather than to assume it."**
 
 ---
 
@@ -433,9 +451,38 @@ publish a TAM number**, and the reason is stated as a finding rather than as a g
   **disclosure duties on the offer**, not a prohibition on mining-based distribution. The
   fair-launch, no-premine, no-investor structure of KÖK v2 is what keeps the disclosure surface
   small. **What it does not solve (open):** the jurisdiction question — MiCA binds the EU offer,
-  not the anonymous issuer; and the **US Howey analysis remains an internal analysis**, not a
-  verified one (see the research log `arastirma/hukuk_howey_mica.md`: Ripple's 2026 status could
-  not be re-verified this session; the paper does not cite it, and says so).
+  not the anonymous issuer.
+
+- **★ 2026-09-21: the US side is no longer an internal analysis — the case law is now cited.**
+  The SEC v. Ripple record was retrieved and the sequence is material to this design:
+
+  - **13 July 2023 — Judge Analisa Torres, summary judgment.** The court **distinguished the asset
+    from the circumstances of its sale**: Ripple's *institutional* sales were unregistered
+    investment contracts, but its **programmatic sales on exchanges were not**, because purchasers
+    on an exchange did not reasonably expect profits derived from the efforts of others.
+  - **7 August 2024 — final judgment:** civil penalty of **$125,035,150** for the institutional
+    sales, plus an injunction.
+  - **2025 — the parties asked to dissolve the injunction and cut the penalty to $50M; the court
+    refused**, finding no exceptional circumstances. On **7 August 2025 both sides withdrew their
+    appeals. The case is closed.**
+  - **17 March 2026 — the SEC issued a new interpretation** (with CFTC guidance; published in the
+    Federal Register 23 March 2026) identifying **XRP alongside bitcoin, ether, solana and stellar
+    as digital commodities**, whose value derives from *functioning crypto systems and supply and
+    demand* rather than from expectations of profit from others' managerial efforts. It also said
+    explicitly that **a crypto-asset which is not itself a security can still be offered or sold as
+    part of an investment contract, depending on the circumstances of the transaction.**
+
+  **What this means for KÖK v2 (the legal reason for the fair-launch):** the 2023 holding and the
+  2026 interpretation both support the position that a token distributed by mining and sold on
+  exchanges is **not** an investment contract — there is no purchaser relying on an issuer's
+  efforts, and the value derives from the functioning system. **But the SEC's own caveat is the
+  operative constraint:** the same token *becomes* a security when sold in circumstances that do
+  create that expectation — a presale, an investor round, or a treasury allocation marketed on
+  expected issuer effort. KÖK v2's **no-premine / no-investor** structure is therefore not a
+  stylistic choice; it is the specific design feature that keeps the protocol on the commodity
+  side of the line the SEC drew. **Honest limits of this analysis:** it is a reading of US
+  precedent applied to a not-yet-existing token, by non-lawyers, and it is not a legal opinion;
+  the jurisdiction decision and a formal securities opinion remain pre-launch items (§10.2).
 
 ---
 

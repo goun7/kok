@@ -202,12 +202,32 @@ re-checked before being cited externally.
   **(7)** e-money token, **(9)** utility token, **(10)** issuer.
   *Note: earlier working notes cited "Article 3(1)(5)" — the official numbering is (9) for
   utility token; corrected.*
-- **SEC v. Ripple / Howey — NOT re-verified this session.** CourtListener REST v4 was queried
-  (search types o/r, courts ca2 and nysd, docket number 20-cv-10932, docket id 646160) and
-  returned **no Ripple record**; RECAP coverage is likely incomplete there. sec.gov returned
-  403 and the search engines returned bot-protection pages. **The paper's Howey discussion is
-  the authors' own analysis and is labeled as such** — it does not cite Ripple, so this
-  un-verified status is a disclosure, not a defect.
+- **SEC v. Ripple — VERIFIED 2026-09-21 (case closed; new 2026 SEC interpretation).** The
+  procedural record, from the SEC litigation section of the Ripple record: filed 22 Dec 2020 in
+  SDNY; **13 July 2023** Judge Analisa Torres held **programmatic exchange sales were not
+  investment contracts** while institutional sales were; **7 Aug 2024** final judgment,
+  **$125,035,150** penalty + injunction; 2025 request to cut the penalty to $50M **refused**;
+  **7 Aug 2025 both appeals withdrawn — case closed**; **17 Mar 2026** the SEC (with CFTC
+  guidance, Federal Register 23 Mar 2026) identified **XRP with bitcoin, ether, solana and
+  stellar as digital commodities**, while stating a non-security asset **can still be sold as
+  part of an investment contract depending on the transaction**. This is the cited basis for
+  §9's US analysis. *Not a substitute for a formal securities opinion.*
+- **NVIDIA — AI compute market size, from reported earnings (2026-09-21).** Annual revenue
+  ($B): **2023: 26.9 · 2024: 60.9 · 2025: 130 · 2026: 215** (net income 2026: $120B). Quarterly
+  momentum: Q4 FY2026 **$68.1B**; Q2 FY2027 **$96.2B, +106% YoY** (from $46.7B). Build-out:
+  **$100B** NVIDIA→OpenAI MOU with **≥10 GW** of new AI data centers; **$2B** into AI-cloud
+  provider Nebius (2026). **This is the proxy for AI compute spending cited in §8.1.** Its
+  limit is stated there: chip-supplier revenue is not total AI spend, and **the permissionless
+  priced subset has never been measured.**
+- **arXiv IDs re-verified 2026-09-21** (arXiv /abs/ pages, HTTP 200):
+  **2504.09971** = Komargodski & Weinstein, *Proofs of Useful Work from Arbitrary Matrix
+  Multiplication* (submitted 14 Apr 2025, v4 revised 13 Nov 2025) ✓;
+  **2606.06700** = **Rafael Pass**, *The Economics of Proof-of-Useful-Work* (submitted 4 Jun
+  2026) — the **Bitconia / Fortessia / Duplexia** regimes are confirmed verbatim ✓;
+  **2606.04819** = **Abhinaba Basu**, *The Usefulness Gap in Proof-of-Useful-Work: An Empirical
+  Study of Pearl's cuPOW Protocol* (submitted 3 Jun 2026, v2 5 Jun 2026) — **24 EH/s,
+  ~320,000 GPU-equivalents, ~112 MW, zero useful AI computation, GPU rental +38%, utilization
+  57%→94%, 8,012 workers, 44 pool-accepted shares, $0.76, ROI −1%..+67%** all confirmed ✓.
 
 ---
 
