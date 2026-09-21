@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-KÖK v2 - F3a PROTOTYPE: off-protocol economics testnet (mock sequencer)
+KOK v2 - F3a PROTOTYPE: off-protocol economics testnet (mock sequencer)
 ========================================================================
 
 V2 10.1 F3a: G layer ACTIVE, central bir mock sequencer block produces,
@@ -391,7 +391,7 @@ def tv20():
 
 if __name__ == "__main__":
     print("=" * 72)
-    print("KÖK v2 F3a PROTOTYPE - mock sequencer + censorship resistance (TV-15..TV-20)")
+    print("KOK v2 F3a PROTOTYPE - mock sequencer + censorship resistance (TV-15..TV-20)")
     print("=" * 72)
     results = {}
     for name, fn in [("TV-15", tv15), ("TV-16", tv16), ("TV-17", tv17),
