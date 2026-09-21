@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-KOK v2 — U-Katmani Prototip (calisan kod, testnet oncesi referans implementasyon)
+KOK v2 — U-LAYER PROTOTYPE (working code, a pre-testnet reference implementation)
 ================================================================================
 Akis:  submit_task (escrow + bond + burn)
-    -> VRF atamasi  (epoch seed, lookback=64)
-    -> mine_block   (G katmani KW sertifika + U katmani STARK-benzeri ispat)
+    -> VRF assignment  (epoch seed, lookback=64)
+    -> mine_block   (G-layer KW certificate + U-layer STARK-like proof)
     -> validate_block (G + VRF + proof + C_FEE anti-aggregation + PQ schema)
     -> challenge / slash / settle  (W_s = 100 block fraud window)
 
-G katmani (KW/cuPOW) BU dosyada sadelestirilmis bir kernel ile temsil edilir:
-gerceklestirilebilir bir MatMul-transkript PoW (kucuk boyut, per-tile hash).
+The G layer (KW/cuPOW) is represented in this file by a simplified kernel:
+a feasible MatMul-transcript PoW (small size, per-tile hash).
 Goal: test the U-layer economics/penalty machine with real code; the KW kernel
 prototip seviyesindedir ve cuPOW ile degistirilecek nokta acca isaretlenmistir.
 
-Bagimlilik: yok (standart kutuphane). Determinist: SEED sabit.
+Dependencies: none (standard library). Deterministic: the SEED is fixed.
 Calistirma: python3 u_layer_prototype.py
 """
 import hashlib, hmac, math, random
@@ -26,14 +26,14 @@ W_s = 100                 # fraud window (blocks)
 EPOCH_LOOKBACK = 64       # VRF seed lookback (grinding karsiti)
 BOND_RATIO = 1.0          # miner bond = fee * BOND_RATIO  (sybil cost)
 C_FEE = 500               # total U fee cap per block (anti-aggregation)
-FRAUD_REWARD = 50         # basarili itiraz odulu
+FRAUD_REWARD = 50         # the reward for a successful challenge
 DEADLINE_H = 200          # task expiry (blocks)
 PQ_SET = {"stark-circle-1", "stark-pq-1"}    # izin verilen proof_system_id'ler
 DEFAULT_PS = "stark-circle-1"
 RETARGET_WINDOW = 1000     # W (spec B.3; testlerde kucultilir)
-T_B = 0.1                  # hedef blok suresi (sn) — 10 BPS
+T_B = 0.1                  # target block time (s) — 10 BPS
 CLIP_LO, CLIP_HI = 0.25, 4.0    # Bitcoin'in 4x sinirlari
-G_FLOPS = 64               # G katmani deneme basina FLOP (n=8 kernel olcegi)
+G_FLOPS = 64               # FLOPs per G-layer attempt (n=8 kernel scale)
 
 rng = random.Random(SEED)
 
@@ -51,9 +51,9 @@ def S(*parts) -> str:
     return format(H(*parts) & ((1 << 128) - 1), "032x")
 
 
-# ------------------------------------------------------- G katmani: sade KW
+# ------------------------------------------------------- G layer: plain KW
 # Not: bu, KW'nin per-tile varyantinin (Remark 2.1) minyatur bir taklididir.
-# Transcript: (n/r)^3 adet ara r x r blok; PoW: bir tile hash'i target'in altinda.
+# Transcript: (n/r)^3 intermediate r x r blocks; PoW: a tile hash is below the target.
 # to be replaced by the cuPOW kernel: keeps the same interface once the burn stub is real.
 class KWKernel:
     def __init__(self, q=97, n=8, r=2):
@@ -64,12 +64,12 @@ class KWKernel:
         q, r = self.q, self.r
         n = len(A)
         m = n // r
-        E = [[(H("E", ctx, i, j) % q) for j in range(n)] for i in range(n)]   # gurultu (sade)
+        E = [[(H("E", ctx, i, j) % q) for j in range(n)] for i in range(n)]   # noise (plain)
         F = [[(H("F", ctx, i, j) % q) for j in range(n)] for i in range(n)]
         Ap = [[(A[i][j] + E[i][j]) % q for j in range(n)] for i in range(n)]
         Bp = [[(B[i][j] + F[i][j]) % q for j in range(n)] for i in range(n)]
         acc = [[0] * m for _ in range(m)]          # kisit: transcript'i basitlestir
-        # prototip: per-tile loop (n^3 is) — gercek kernel'da bu kisma dokunulmaz
+        # prototype: per-tile loop (n^3 work) — in the real kernel this part is untouched
         for i in range(m):
             for j in range(m):
                 for l in range(m):
@@ -99,7 +99,7 @@ class KWKernel:
 
 
 # ------------------------------------------------------------- VRF (stub)
-# Prototip: HMAC-tabanli VRF (gercekte ECVRF/Ed25519-VRF).
+# Prototype: an HMAC-based VRF (in reality ECVRF/Ed25519-VRF).
 class VRF:
     def __init__(self, sk):
         self.sk = sk
@@ -114,7 +114,7 @@ class VRF:
         return int.from_bytes(exp, "big") == out and exp.hex() == proof
 
 
-# ------------------------------------------------------ U katmani: harness
+# ------------------------------------------------------ U layer: harness
 @dataclass
 class TaskSpec:
     harness_id: str
@@ -153,7 +153,7 @@ class Chain:
         self.blocks = [S("genesis")]
         self.tasks = {}
         self.miners = {}                     # miner -> {bond, slashed}
-        self.burn_address_balance = 0        # geri harcanamaz (Demirel: guvenlik kaynagi)
+        self.burn_address_balance = 0        # irrecoverable (Demirel: the source of security)
         self.slashed_total = 0
         self.kernel = KWKernel()
         self.D = 1 << 6                 # difficulty: p = 1/D (spec B.2/B.4)
@@ -183,7 +183,7 @@ class Chain:
         self.tasks[tid] = t
         return t
 
-    # ---------------- A.10.3 VRF atamasi (lookback seed)
+    # ---------------- A.10.3 VRF assignment (lookback seed)
     def epoch_seed(self, height):
         h = height - EPOCH_LOOKBACK
         assert h >= 0, "lookback yok"
@@ -203,7 +203,7 @@ class Chain:
                 t.assignee, t.vrf_out, t.vrf_proof, t.state = miner, out, proof, "ASSIGNED"
                 yield t
             assert VRF.verify(pk, str(seed) + "|" + t.tid, t.vrf_out, t.vrf_proof), \
-                "VRF kaniti gecersiz (atama saf disi degil)"
+                "the VRF proof is invalid (the assignment is not off-phase)"
 
     def miner_bond(self, miner):
         return self.miners.setdefault(miner, {"bond": 0, "slashed": 0})
@@ -213,7 +213,7 @@ class Chain:
                    wrong_result=False):
         assert proof_system_id in PQ_SET, "PQ schema disi"
         ctx = H("ctx", self.tip(), miner, proof_system_id)
-        # --- G katmani: KW sertifika (talepten bagimsiz)
+        # --- G layer: KW certificate (demand-independent)
         nonce = 0
         while True:
             nonce += 1
@@ -226,9 +226,9 @@ class Chain:
             harness_A, harness_B = t.spec.program
             C = [[sum(harness_A[i][k] * harness_B[k][j] for k in range(len(harness_B)))
                   for j in range(len(harness_B[0]))] for i in range(len(harness_A))]
-            if wrong_result:                                   # kotu niyetli madenci
+            if wrong_result:                                   # a malicious miner
                 C[0][0] = (C[0][0] + 7) % self.kernel.q
-            # "STARK-benzeri" iz: ciktilarin Merkle koku + deterministik siralama
+            # the "STARK-like" trace: the Merkle root of the outputs + a deterministic ordering
             root = S("u", t.tid, C)
             u_proofs.append({"tid": t.tid, "root": root, "result": C,
                              "ps": proof_system_id, "height": self.height(),
@@ -247,7 +247,7 @@ class Chain:
                 "u_proofs": u_proofs, "fee_total": fee_total, "miner": miner,
                 "phi": phi, "height": self.height()}
 
-    # ---------------- B.3 difficulty retarget (zaman modeli)
+    # ---------------- B.3 difficulty retarget (time model)
     def record_time(self, t_delta):
         self.times.append(self.times[-1] + t_delta)
 
@@ -262,7 +262,7 @@ class Chain:
     def retarget(self):
         """Her W blokta hashrate tahmini yap ve D'yi yeniden kur.
         Important: the T_act measured inside a window was produced by that window's D;
-        bu yuzden carpansal (stale) oran degil, D'den bagimsiz hashrate tahmini
+        therefore it is a multiplicative (stale) rate, a hash-rate estimate independent of D
             Lambda_hat = D * W / T_act        (cunku blok hizi = Lambda/D)
         is used. The median filter smooths the Lambda_hat of the last 3 windows
         (ani dalgalanmalari ezer). Sonra D <- Lambda_hat_smooth * T_b, 4x ile
@@ -273,7 +273,7 @@ class Chain:
         if n == 0 or n % W != 0:
             return None
         T_act = self.times[-1] - self.times[-1 - W]
-        lam_hat = self.D * W / T_act                     # D'den bagimsiz tahmin
+        lam_hat = self.D * W / T_act                     # an estimate independent of D
         self.window_history.append((T_act, self.D, lam_hat))
         est = sorted(h[2] for h in self.window_history[-3:])
         lam_smooth = est[len(est) // 2]                  # median (last <=3 windows)
@@ -316,7 +316,7 @@ class Chain:
             self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
             t.state = "SLASHED"
             return "SLASHED", FRAUD_REWARD
-        # kotu niyetli itiraz
+        # a malicious challenge
         self.miners[challenger]["slashed"] += 1
         return "CHALLENGE_REJECTED", 0
 
@@ -343,13 +343,13 @@ def kurtosis(mat):
 
 def tv9_kurtosis_trap():
     """Basu 2606.04819: uniform-random matrisler NN'den ayrint edilebilir AMA
-    adversarial N(0,18) kurtosis kontrolunu geciyor. => kontrol guvenlik DEGIL."""
+    the adversarial N(0,18) passes the kurtosis check. => the check is NOT security."""
     r2 = random.Random(1)
     uniform = [[r2.randint(-64, 64) for _ in range(64)] for _ in range(64)]
     nn_like = [[int(r2.gauss(0, 3)) for _ in range(64)] for _ in range(64)]
     adversarial = [[int(round(r2.gauss(0, 18))) for _ in range(64)] for _ in range(64)]
     k_u, k_n, k_a = kurtosis(uniform), kurtosis(nn_like), kurtosis(adversarial)
-    # kontrol: "kurtosis 2.0-4.0 arasi olmali" (NN-benzeri) — geciyor mu?
+    # check: "the kurtosis must be between 2.0-4.0" (NN-like) — does it pass?
     trap = (2.0 <= k_a <= 4.0)
     return {"uniform": k_u, "nn": k_n, "adversarial": k_a,
             "adversarial_passes_naive_check": trap}
@@ -391,7 +391,7 @@ def tv6():
 
 
 def tv7():
-    """Fraud slash: hatali ispat + kanit -> madenci bond kesilir, itirazci odul alir."""
+    """Fraud slash: a wrong proof + evidence -> the miner's bond is slashed, the challenger gets a reward."""
     ch = Chain()
     A = [[1, 2], [3, 4]]
     # produce 64+ blocks to exceed the lookback (empty blocks = zero-demand liveness too)
@@ -438,7 +438,7 @@ def tv10():
 
 
 def tv123_stub():
-    """TV-1..TV-4 G-katmani testleri bu prototipin kapsami disinda (KW_ANALIZ.md
+    """TV-1..TV-4 G-layer tests are outside this prototype's scope (KW_ANALIZ.md
     ve G-katmani kernel test dosyasinda). Burada yalnizca replay reddi dogrulanir."""
     ch = Chain()
     A, B = [[1, 2], [3, 4]], [[5, 6], [7, 8]]
@@ -477,7 +477,7 @@ if __name__ == "__main__":
     print(f"[TV-9] kurtosis : uniform={k['uniform']:.2f} nn={k['nn']:.2f} "
           f"adversarial={k['adversarial']:.2f}")
     print(f"       did the adversarial input PASS the naive check? "
-          f"{k['adversarial_passes_naive_check']}  => kontrol guvenlik degil (Basu)")
+          f"{k['adversarial_passes_naive_check']}  => the check is not security (Basu)")
 
     print(f"[TV-10] PQ downgrade: legacy schema REJECT={tv10()}")
 
@@ -487,5 +487,5 @@ if __name__ == "__main__":
     print("ALL TEST VECTORS PASSED — U-layer state machine + penalty economics working.")
     print("Known prototype limits: (1) G kernel cuPOW yerini tutan sadelestirme;")
     print("(2) VRF HMAC-stub; (3) 'STARK-benzeri' iz gercek AIR degil; (4) retarget")
-    print("testleri g_layer_tests.py'de (zaman modeli); (5) GHOSTDAG parent-set")
+    print("tests are in g_layer_tests.py (time model); (5) GHOSTDAG parent-set")
     print("selection missing (single parent). All share the interface of spec A.10/B.3.")

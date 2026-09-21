@@ -172,7 +172,7 @@ class GHOSTDAG:
             ac_b = self._anticone(b)
             in_ms = ac_b & ms
             self.is_blue[b] = len(in_ms) <= self.k
-        self.is_blue[bid] = True  # kendisi her zaman mavi
+        self.is_blue[bid] = True  # itself is always blue
 
         # step 4: blue_score = count of blue blocks in the mergeset (+1 for itself)
         blue = sum(1 for b in ms if self.is_blue.get(b, False))

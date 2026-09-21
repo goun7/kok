@@ -56,7 +56,7 @@ class TaskSpec:
     harness_id: str
     program: object             # (A, B) — toy "faydali is"
     fee: int
-    burn_rate: float            # fee'nin yuzdesi geri-alamaz burn
+    burn_rate: float            # a percentage of the fee: irrecoverable burn
 
     @property
     def burn(self) -> int:
@@ -76,8 +76,8 @@ class Task:
     escrow: int = 0
     burned: int = 0
     assignee: str = ""
-    assigned_at: int = 0        # hangi blokta atandi
-    reject_at: int = 0          # hangi blokta rejection-step yayinlandi
+    assigned_at: int = 0        # the block in which it was assigned
+    reject_at: int = 0          # the block in which the rejection-step was published
     result: object = None
     migrated_to: str = ""       # TV-16: migrated sequencer
 
@@ -188,10 +188,10 @@ class F3aTestnet:
         t.state = "SOLVED"
         return True
 
-    # --- settle: escrow ucreti, burn girer (geri-alamaz) ---
+    # --- settle: the escrow fee, the burn enters (irrecoverable) ---
     def settle_task(self, seq_id, tid, verify_ok=True):
         t = self.sequencers[seq_id].tasks.get(tid)
-        # CHALLENGED task, itiraz cozulduyse SETTLE olabilir (fraud window kapatma)
+        # a CHALLENGED task can SETTLE if the challenge is resolved (closing the fraud window)
         if t is None or t.state not in ("SOLVED", "CHALLENGED"):
             return False
         # spec A.5.2: verification is MANDATORY; the verifier cannot skip it (no dilemma)
@@ -275,7 +275,7 @@ def tv17():
     for i in range(2):
         net.migrate_task(f"t{i}", "A", "B")
     assert net.migrations == 2 and net.slash_events == 2
-    # kalan 3'u zamanasimi ile refund et
+    # refund the remaining 3 on timeout
     for _ in range(W_R + 1):
         net.next_block()
     # goc edilen 2 task A'dan SILINDI (B'de ASSIGNED); kalan 3 A'da REFUNDED
@@ -285,8 +285,8 @@ def tv17():
         if t is not None:
             counts[t.state] = counts.get(t.state, 0) + 1
     assert counts == {"REFUNDED": 3}, counts
-    # sequencer A: 0 escrow'a sahip (no consumed nothing).
-    # *** INCE NOKTA (TV-17'nin gercek degeri): bond0=50 < fee=100 oldugu icin
+    # sequencer A: has 0 escrow (consumed nothing).
+    # *** THE SUBTLE POINT (the real value of TV-17): since bond0=50 < fee=100
     # refill RAISES the bond to the FEE LEVEL (100). Slashes: 50 (first, bond=50)
     # + 100 (refill the rest, bond=100) = 150. Yani refill hem bond'u KORUR
     # hem de ALT SEVIYEDEN baslayan bir sequenceryi fee seviyesine cikarir. ***
@@ -309,11 +309,11 @@ def tv18():
     net = F3aTestnet([Sequencer("A", evil=False)])
     net.submit_task("A", "t9", "kobi", spec("llama-70b"))
     net.solve_task("A", "t9", "r")
-    # hatali verification -> CHALLENGED, dilemma sayaci artar (izlenir)
+    # a wrong verification -> CHALLENGED, the dilemma counter increases (tracked)
     assert not net.settle_task("A", "t9", verify_ok=False)
     assert net.dilemma_triggers == 1
     assert net.sequencers["A"].tasks["t9"].state == "CHALLENGED"
-    # dogru verification -> SETTLED, dilemma tetiklenmedi
+    # a correct verification -> SETTLED, the dilemma was not triggered
     assert net.settle_task("A", "t9", verify_ok=True)
     assert net.dilemma_triggers == 1  # hala 1 (geri sayilmiyor)
     assert net.burn_address == 30
@@ -355,7 +355,7 @@ def tv20():
     assert net.sequencers["A"].slashed == 300, net.sequencers["A"].slashed
     assert net.sequencers["A"].bond == 100, net.sequencers["A"].bond  # refill the rest
 
-    # (b) refill YOK (regression guard: eski acik):
+    # (b) NO refill (regression guard: the old gap):
     class NoRefillNet(F3aTestnet):
         def migrate_task(self, tid, from_seq, to_seq):
             t = self.sequencers[from_seq].tasks.get(tid)

@@ -225,9 +225,9 @@ it. **KÖK solution:**
 ## A.8 Lifecycle (for S2)
 
 ```
-submit → bond → (epoch seed commit) → VRF ataması → proof (S2) / cert (S1)
+submit → bond → (epoch seed commit) → VRF assignment → proof (S2) / cert (S1)
    → block inclusion → W_s-block fraud window → settle (fee + reward)
-   → hile kanıtı: slash + itirazcıya reward
+   → fraud proof: slash + reward to the challenger
 ```
 
 ## A.9 Fallback and cryptographic resilience
@@ -338,11 +338,11 @@ Verifier:  LISTENING → CHALLENGING → FRAUD_PROVEN | REJECTED
 def submit_task(client, task_spec, fee, burn_rate, gas):
     # task_spec: {harness_id, program_commit: MerkleRoot, max_flops,
     #             public_inputs_commit, deadline: Height}
-    assert fee > 0 and burn_rate in (0.0, 0.5]      # burn = Demirel'in geri-alamaz vergisi
-    bond = fee * BOND_RATIO                          # sybil pahalı (Lemma 1'ye karşı)
-    burn = fee * burn_rate                           # escrow'dan geri-alamaz: güvenlik kaynağı
+    assert fee > 0 and burn_rate in (0.0, 0.5]      # burn = Demirel's irrecoverable tax
+    bond = fee * BOND_RATIO                          # sybil is expensive (against Lemma 1)
+    burn = fee * burn_rate                           # irrecoverable from escrow: the source of security
     escrow = lock(client, fee + bond, until=deadline + W_s)
-    burn_immediately(burn)                           # Protokol'ün burn adresi (spend cannot)
+    burn_immediately(burn)                           # the protocol's burn address (cannot be spent)
     tid = H("task" ‖ client ‖ task_spec ‖ fee ‖ escrow)
     emit(TaskCommitted{tid, task_spec, fee, escrow_id, expire=deadline})
     return tid
@@ -351,7 +351,7 @@ def submit_task(client, task_spec, fee, burn_rate, gas):
 ### A.10.3 VRF assignment (from the epoch seed — against grinding)
 
 ```python
-EPOCH_LOOKBACK = 64      # seed, N-64 bloğundan: madenci bugün etkileyemez
+EPOCH_LOOKBACK = 64      # seed from block N-64: a miner cannot influence it today
 
 def epoch_seed(height):
     blk = chain[height - EPOCH_LOOKBACK]
@@ -362,7 +362,7 @@ def assign_tasks(height, tasks):
     for t in tasks:                                  # independent assignment per task
         vrf_out, vrf_proof = vrf.prove(miner_vrf_key, seed ‖ t.tid)
         w = as_int(vrf_out) / 2**256                  # [0,1)
-        if w < t.assignment_probability(height):      # stake/compute-ağırlıklı kapı
+        if w < t.assignment_probability(height):      # stake/compute-weighted gate
             assigned[miner].append((t, vrf_out, vrf_proof))
     # The miner cannot CHOOSE its assigned task; it only accepts it or FORFEITS (bond slash)
 ```
@@ -371,14 +371,14 @@ def assign_tasks(height, tasks):
 
 ```python
 def mine_block(miner, assigned_tasks, ctx):
-    # G katmanı (her blok, talepten bağımsız):
+    # G layer (every block, demand-independent):
     A, B = miner.choose_matrices()                    # serbest; prescribed hardness ne olursa olsun
     while True:
         nonce = rng()
         cert = kw.prove(A, B, ctx ‖ nonce)            # 1+o(1) overhead, ctx-bound (T-A2)
         digest = fs_transcript(cert).digest()
         if int(H(digest ‖ nonce), 16) < target:
-            break                                     # blok kazıldı
+            break                                     # block mined
 
     # U layer (inside the same block, optional, a boost but NOT MANDATORY):
     proofs = []
@@ -394,12 +394,12 @@ def mine_block(miner, assigned_tasks, ctx):
 ```python
 def validate_block(blk):
     ctx = ctx_of(blk)                                 # selected_parent‖miner‖...‖proof_system_id
-    if not kw.verify(blk.kw_cert, ctx ‖ blk.nonce):   return REJECT     # G katmanı
+    if not kw.verify(blk.kw_cert, ctx ‖ blk.nonce):   return REJECT     # G layer
     if int(H(fs_digest(blk.kw_cert) ‖ blk.nonce),16) >= target: return REJECT
     fee_total = 0
     for (t, proof) in zip(blk.tasks, blk.u_proofs):
         if not vrf.verify(t.assignee, epoch_seed ‖ t.tid, proof.vrf):  return REJECT
-        if not stark.verify(proof, t.program_commit):  return REJECT     # Lean-doğrulanmış AIR
+        if not stark.verify(proof, t.program_commit):  return REJECT     # Lean-verified AIR
         fee_total += t.fee
     if fee_total > C_FEE:                              return REJECT     # anti-aggregation (T-A3)
     return ACCEPT
@@ -413,9 +413,9 @@ def challenge(challenger, tid, proof):
     ok = recheck_with_independent_backend(proof)      # different proving backend
     if not ok:
         slash(proof.miner, proof.miner.bond)
-        reward(challenger, FRAUD_REWARD)              # itirazı kazanır
+        reward(challenger, FRAUD_REWARD)              # the challenger wins
     else:
-        slash(challenger, challenger.bond)            # kötü niyetli itiraz
+        slash(challenger, challenger.bond)            # a malicious challenge
     settle(tid, winner)
 ```
 
@@ -574,7 +574,7 @@ v2's own BPS is not yet chosen.
 Let `T_act` be the elapsed time over a window of `W` blocks; the target block time is `T_b`:
 
 ```
-Lambda_hat = D · W / T_act                       // D'den bagimsiz hashrate tahmini
+Lambda_hat = D · W / T_act                       // hash-rate estimate, independent of D
 Lambda_smooth = median( Lambda_hat of the last <=3 windows )   // median filter
 D <- clip( Lambda_smooth · T_b ,  D/4,  4·D )    // Bitcoin'in 4x sinirlari
 ```
@@ -639,13 +639,13 @@ D <- clip( Lambda_smooth · T_b ,  D/4,  4·D )    // Bitcoin'in 4x sinirlari
 
 **Equation set:**
 ```
-S = M + D/γ                                    (güvenlik)
-Q = L + D/α                                    (inference arzı)
+S = M + D/γ                                    (security)
+Q = L + D/α                                    (inference supply)
 π_M = P·R/S − e ≤ 0,     π_M = 0 iff M > 0
 π_L = p − e ≤ 0,         π_L = 0 iff L > 0
 π_D = P·R/(γS) + p/α − e ≤ 0,  π_D = 0 iff D > 0
 Q = 𝒟(p)                                      (market clearing)
-θ = P·R / (p·Q)                                (T/I oranı, sabit varsayım)
+θ = P·R / (p·Q)                                (T/I ratio, assumed constant)
 ```
 
 **Demand:** isoelastic `𝒟(p) = K·p^(−ε)`, `ε > 1` (default `ε = 2`).
@@ -698,7 +698,7 @@ against the regime classification of Theorem 1:
 ## C.5 Monetary policy (emission curve, exact formula)
 
 ```
-R(t) = max( R_∞, R_0 · 2^(−⌊t/T_half⌋) )         T_half = 4 yıl
+R(t) = max( R_∞, R_0 · 2^(−⌊t/T_half⌋) )         T_half = 4 years
 hazineden: h(t) = τ · R(t), τ = 0.05              (escrow + milestone vesting)
 total supply: ∫R dt = finite cap + infinite tail   (tail: R_∞ unbounded, decreasing total)
 ```

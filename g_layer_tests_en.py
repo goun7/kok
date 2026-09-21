@@ -52,7 +52,7 @@ def cost_of_prove(A, B, ctx, D):
     inputden independentdir — prescribed hardness'in olculen karsiligi)."""
     k = KWKernel()
     n, r, m = k.n, k.r, len(A) // k.r
-    # kernel her zaman: 2 adet n^2 gurultu + m^3 tile carpimi + hashing
+    # the kernel always: 2 x n^2 noise + m^3 tile products + hashing
     flops = 2 * n * n + m * m * m * (2 * r * r + 1)
     # nonce dongusu: ortalama D/(m*m) prove cagrisi (her cagrida m^2 tile denenir)
     return flops
@@ -104,7 +104,7 @@ def tv2():
     # per-attempt cost is COMPLETELY input-independent (the kernel always does m^3 ops)
     assert max(abs(d) for d in devs.values()) < 1e-9, devs
     # statistical: the number of attempts until success is geometric; in ROM the expectation
-    # siniftan independentdir (her (nonce,i,j) independent duz hash). 800 trial ile
+    # is independent of the class (each (nonce,i,j) hashes independently). With 800 trials
     # 5 mean'in max-min yayilmasi ~%7 beklenir; %15 guvenli esik.
     stats = {}
     for name, A in classes.items():
@@ -167,7 +167,7 @@ def v1_contrast():
     honest_v1 = n ** 3                     # A*B tam carpim
     attack_sparse = (n // 2) * n * n       # yari-bos A: ~n^3/2
     attack_perm = n * n                    # perm: sadece satir secimi
-    attack_zero = n                        # A=0: sonuc zero, carpim yok
+    attack_zero = n                        # A=0: the result is zero, no product
     kw_all = cost_of_prove(dense(n), dense(n, seed=2), 0, 1 << 6)   # inputden independent
     return {
         "v1_honest": honest_v1,
@@ -184,20 +184,20 @@ def v1_contrast():
 # Kaynak: "Pearl Floating Point Scheme Specification" (Eylul 2026) 5.1, 5.2, 7.
 # Pearl FP8 giris + FP32 magnitude-grid accumulator + rank-r gurultu + per-tensor
 # scale kullanir. Bu toy adaptasyon: kaba INT-grid quantization + toy magnitude-
-# grid accumulator + per-row sabit noise-to-signal iid gurultu.
+# a grid accumulator + per-row constant noise-to-signal iid noise.
 #
-# Bilincli sapmalar (toy olcek icin; PEARL_DOCS_ANALIZ.md 11.1'de doc):
-#   * gurultu iid (rank-r DEGIL). 5.1'in 1./2./4. kontrolu per-entry/per-row
+# Conscious deviations (for the toy scale; documented in PEARL_DOCS_ANALIZ.md 11.1):
+#   * the noise is iid (NOT rank-r). The 1st/2nd/4th checks of 5.1 are per-entry/per-row
 #     istatistikleridir; rank-r yalnizca 4'un *attack versiyonunu* etkiler
-#     (toy'da peaked-rows ile tetiklenir).
+#     (in the toy this is triggered by peaked-rows).
 #   * sigma_i = DELTA * RMS(row) — per-entry noise std (Pearl'in C.4/C.5
 #     not the exact counterpart of the normalization; whether Pearl's sigma_i is per-entry
 #     row-level mi oldugu metinden net cikmadi, bu toy secim "noise-to-signal
 #     consistent with the statement "the same in every row").
 #   * tamed/unpredictable esikleri toy olcege (K=64, GRID=16) kalibre edildi;
-#     Pearl'in uretim degerleri (tau_tame=256 vs.) k~4096-16384 icin.
+#     Pearl's production values (tau_tame=256 etc.) are for k~4096-16384.
 #   * unpredictable: toy v_iu < ulp(M_ij) comparisonsi kullanir (Pearl
-#     v_iu < ulp(M_ij)^2 + 2^21 boleni kullanir — FP8 bit butcesinden gelir).
+#     uses the divisor v_iu < ulp(M_ij)^2 + 2^21 — it comes from the FP8 bit budget).
 #     Toy'da esik 2^21 olcegi anlamsiz; yapi (summand spread vs accumulation
 #     grid) korunur.
 #
@@ -355,7 +355,7 @@ class JackpotToy:
 # --------------------- test input siniflari (Pearl 5.2 attack vektorleri) ----
 def _uniform_rows(r, n=JackpotToy.N, k=JackpotToy.K, c=3):
     """Saglikli 'typical workload' arka plan: uniform [-c, c] inputler.
-    (Gaussian yerine uniform: max/RMS orani ~sqrt(3) sabit -> noise-floor ve idle
+    (uniform instead of Gaussian: the max/RMS ratio ~sqrt(3) is constant -> the noise floor and idle
     marjlari temiz; Gaussian'da max~4sigma marj kirilgan.)"""
     return [[r.uniform(-c, c) for _ in range(k)] for _ in range(n)]
 
@@ -535,20 +535,20 @@ def tv21():
     ratios = [nf for _, nf, _ in sweep]
     assert abs(ratios[-1] - 0.707) < 0.02, ratios[-1]
     print(f"\n  {n_pass}/{len(sweep)} v values ACCEPTED - the attack passed at NO v")
-    print(f"  noise/g asimptotu ~0.707 < SIGMA_MIN=1 (DELTA*sqrt(m/k)*GRID/2)")
+    print(f"  noise/g asymptote ~0.707 < SIGMA_MIN=1 (DELTA*sqrt(m/k)*GRID/2)")
     print()
-    print("  *** TOY MODELLEMENIN ITIRAFI (neden bu sonuc 'cok iyi' degil) ***")
-    print("  Toy'da gurultu = DELTA * RMS(row); peak v artinca RMS de v ile buyur,")
-    print("  yani noise/g orani SABIT kalir. OTE YANDAN Pearl'in FP8 gerceginde")
-    print("  (whitepaper 5.1.2) peak, PER-TENSOR SCALE UP zorlar ve gurultuyu")
-    print("  SIFIRA DOGRU SIKISTIRIR (reduced-alphabet donanim avantaji).")
+    print("  *** THE TOY MODEL'S OWN CONFESSION (why this result is not 'very good') ***")
+    print("  In the toy, noise = DELTA * RMS(row); as the peak v grows, RMS grows with v,")
+    print("  so the noise/g ratio STAYS CONSTANT. BY CONTRAST, in Pearl's real FP8")
+    print("  (whitepaper 5.1.2) a peak forces a PER-TENSOR SCALE UP and COMPRESSES")
+    print("  the noise TOWARD ZERO (a reduced-alphabet hardware advantage).")
     print("  So in FP8 the direction of the attack is the REVERSE of the toy's:")
-    print("    - toy:  v artinca noise/g ~ sabit (0.707) -> her zaman RED")
+    print("    - toy:  as v grows, noise/g ~ constant (0.707) -> always RED")
     print("    - FP8:  as v grows the noise pins to the grid -> ACCEPT risk (attack)")
     print("  => the toy's 'all v RED' result for TV-12 is NOT a proof for FP8;")
-    print("     that the control is discriminative only in the INT/fixed-point toy")
-    print("     gosterir. FP8 icin noise modelinin QUANTIZATION-WARE (RMS degil,")
-    print("     per-tensor scale + subnormal sikisma) yeniden yazilmasi gerekir")
+    print("     it only shows the control is discriminative in the INT/fixed-point toy.")
+    print("     For FP8 the noise model must be rewritten QUANTIZATION-AWARE (not RMS;")
+    print("     per-tensor scale + subnormal compression) -")
     print("     - this must be done in the Phase 3 Hawkeye (Path A) context.")
     print("     (that is exactly why we injected ACC_NOISE in TV-14.)")
     print()

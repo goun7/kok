@@ -60,7 +60,7 @@ def censor_net(fee, bond, b_out, n_events, refill=True, slash_mode="capped"):
         if slash_mode == "capped":
             slash = min(cur, fee)
         else:
-            slash = min(cur, bond)  # full: bond'un tumu (tukenene kadar)
+            slash = min(cur, bond)  # full: the entire bond (until depleted)
         total_slash += slash
         cur -= slash
         if refill:

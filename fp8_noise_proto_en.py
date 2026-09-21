@@ -48,7 +48,7 @@ import math
 from collections import Counter
 
 # ============================================================
-# FP8 MODEL (sadelestirilmis)
+# FP8 MODEL (simplified)
 # ============================================================
 FP8_FORMATS = {
     "E4M3": {"emax": 448.0, "subnormal_min": 2.0**-9, "mant_bits": 3, "levels": 256},
@@ -162,7 +162,7 @@ def tv28_low_entropy_attack_succeeds():
     n, k, c, jitter = 16, 32, 1e-4, 1e-6
     B = [rng.uniform(-1, 1) for _ in range(k)]
     A = attack_rows(rng, n, k, c, jitter)
-    # honest miner INT modeli noise ekler (noise floor YOK)
+    # the honest miner's INT model adds noise (NO noise floor)
     noisy = []
     for row in A:
         sig = noise_int_model(row)
@@ -185,7 +185,7 @@ def tv29_noise_floor_closes_attack():
     n, k, c, jitter = 16, 32, 0.001, 1e-5
     B = [rng.uniform(-1, 1) for _ in range(k)]
     A = attack_rows(rng, n, k, c, jitter)
-    # noise floor ILE (sigma_min = 8 quantized unit, Pearl SS5)
+    # WITH the noise floor (sigma_min = 8 quantized units, Pearl SS5)
     noisy = []
     for row in A:
         sig = noise_fp8_aware(row, sigma_min=8.0)
