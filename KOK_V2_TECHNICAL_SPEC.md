@@ -497,6 +497,16 @@ def challenge(challenger, tid, proof):
 | TV-31 | **Capped slash bound — SPEC CORRECTION** | f3a mode slash=min(bond,fee); bond ∈ {100,500,2000}, fee=100, B_out=60 | all three bonds give the **same net (−40)** — the slash saturates at fee; critical **fee = B_out = 60** | Raising bond above fee is inert; "bond = fee + margin" needs the FULL slash mode |
 | TV-32 | **FULL-mode margin is linear** | slash=bond; fee=100, B_out ∈ {120,150,200,300,500} | margin = B_out − fee with **max error 0.00, R²=1.0000** (B_out=300 → margin=200) | The §10 threshold equation holds exactly in FULL slash mode |
 | TV-33 | **Free-censorship window** | bond=300, fee=100, N=20; refill on/off | no refill: net **+900** (profitable) after a 3-event window; with refill: net **−800** | Refill is mandatory; without it only bond/fee events are deterred |
+| TV-34 | **Terminal tasks counted once** (f3a, added 2026-09-22) | one REFUNDED + one SLASHED task observed over 30 blocks; one migration | refunded **1** and slashed **1** (not 15 each); migrated **1** | The meter's reported rates are arithmetic, not impressions — two reporting bugs found and closed |
+
+**ID collision, recorded honestly (2026-09-22).** This table allocates TV-21..TV-26 to the
+g_layer/ghostdag series and TV-27..TV-33 to the fp8/bond_margin series. The f3a prototype's later
+demand-meter series reuses TV-21..TV-25 locally (demand meter, end-to-end paying task, three buyer
+populations, slashing case, VRF assignment), and the paper's roadmap citations refer to that f3a
+series. The two numberings do not collide *within* any file, but they do collide across files.
+Rather than renumber either series silently — which would break the paper's citations and the
+reader's ability to trace a number to a test — the collision is stated here. Where ambiguity matters,
+name the file as well as the number.
 
 **TV-21 (low-entropy, Polymath 6) — honest boundary:** the attacker swept the peak v from 10→400;
 **no v passed** (noise/g asymptotic ~0.707 < SIGMA_MIN=1). Beneath this "nice" result lies **a

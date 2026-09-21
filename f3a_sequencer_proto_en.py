@@ -1169,7 +1169,7 @@ if __name__ == "__main__":
 
 
 def tv26_terminal_states_counted_once():
-    """TV-26: terminal tasks are counted once, not once per later block.
+    """TV-34: terminal tasks are counted once, not once per later block.
 
     The demand meter's _seen set originally guarded only SETTLED tasks, because
     phi depends on them alone. But REFUNDED, MIGRATED and SLASHED tasks stay on
@@ -1215,7 +1215,7 @@ def tv26_terminal_states_counted_once():
     meter.record_block(net)
     ok_migrated = (meter.migrated_tasks == 1)
     ok_paid = (meter.paid_tasks == 0 and meter.phi() == 0.0)
-    print("  TV-26 once-only:     refunded %d (exp 1), slashed %d (exp 1), "
+    print("  TV-34 once-only:     refunded %d (exp 1), slashed %d (exp 1), "
           "paid %d, phi %.3f  %s" %
           (meter.refunded_tasks, meter.slashed_tasks, meter.paid_tasks,
            meter.phi(), "ACCEPT" if (ok_state and ok_refund and ok_slash
@@ -1226,12 +1226,12 @@ def tv26_terminal_states_counted_once():
 if __name__ == "__main__":
     print()
     print("=" * 76)
-    print("KOK v2 — F3a: terminal tasks counted once (TV-26, regression guard)")
+    print("KOK v2 — F3a: terminal tasks counted once (TV-34, regression guard)")
     print("=" * 76)
     print("The meter's _seen set guarded SETTLED tasks only, so REFUNDED,")
     print("MIGRATED and SLASHED tasks were recounted in every block they spent")
     print("on the sequencer's list. Phi was unaffected, but the reported refund")
     print("and slash rates were inflated by the lingering time.\n")
     ok = tv26_terminal_states_counted_once()
-    assert ok, "TV-26 FAILED: terminal tasks are being recounted"
+    assert ok, "TV-34 FAILED: terminal tasks are being recounted"
     print("\n  -> the reporting counters are arithmetic, not impressions.")
