@@ -229,6 +229,14 @@ re-checked before being cited externally.
   ~320,000 GPU-equivalents, ~112 MW, zero useful AI computation, GPU rental +38%, utilization
   57%→94%, 8,012 workers, 44 pool-accepted shares, $0.76, ROI −1%..+67%** all confirmed ✓.
 
+**★ Bibliography status: 11/11 LIVE-VERIFIED 2026-09-21.** Every arXiv and
+  ePrint identifier in this file was fetched against the live archive this session and matched
+  on title, authors and venue. The complete 11-row table with per-entry evidence is in
+  `arastirma/uydurma_denetimi.md` §C3. Two further verifications worth noting: the SoK
+  (ePrint 2025/1814) is led by **Pratyush Dikshit of the University of Luxembourg** — the
+  reviewer this package was sent to — and Pass (2606.06700) is confirmed the **sole author**.
+  No citation in this package is unverified.
+
 ---
 
 ## ★ PROOF INDEX — where each claim is proven (2026-09-20)

@@ -144,3 +144,41 @@ ePrint HTML sayfalari (HTTP 200) ile 4 kritik girisi **birebir** teyit ettim:
 DOGRULANDI. Kalan risk: sadece arXiv ID'leri (2504.09971, 2606.06700,
 2606.04819) bu oturumda arXiv API bos dondugu icin teyit edilemedi —
 daha onceki oturumlarda dogrulanmisti.**
+
+---
+
+## C3) *** BUTUN BIBLIOGRAPHY DOGRULANDI — 11/11 (2026-09-21) ***
+
+Oturum 18'in basinda 4/4 ePrint teyit etmistim; simdi kalan 7 tanesi de
+canli sayfalarla teyit edildi. **KOK v2 EN paketinin tum citasyon tabani
+2026-09-21 itibariyle LIVE-VERIFIED.**
+
+| # | ID | Baslik (dogrulandi) | Yazarlar (dogrulandi) | Kaynak |
+|---|---|---|---|---|
+| 1 | arXiv 2504.09971 | Proofs of Useful Work from Arbitrary Matrix Multiplication | Ilan Komargodski, Omri Weinstein | /abs/ 200 |
+| 2 | arXiv 2606.06700 | The Economics of Proof-of-Useful-Work | **Rafael Pass** (tek yazar) | /abs/ 200 |
+| 3 | arXiv 2606.04819 | The Usefulness Gap in PoUW: Pearl's cuPOW | **Abhinaba Basu** | /abs/ 200 |
+| 4 | arXiv 2007.01046 | Proofs of Useless Work -- Positive and Negative Results | Maya Dotan, Saar Tochner | /abs/ 200 |
+| 5 | arXiv 2209.03865 | Challenges of Proof-of-Useful-Work (PoUW) | Felix Hoffmann | /abs/ 200 |
+| 6 | ePrint 2017/203 | Proofs of Useful Work | Marshall Ball, Alon Rosen, Manuel Sabin, Prashant Nalini Vasudevan | HTML 200 |
+| 7 | ePrint 2018/104 | PHANTOM and GHOSTDAG | Yonatan Sompolinsky, Shai Wyborski, Aviv Zohar | HTML 200 |
+| 8 | ePrint 2025/685 | (= arXiv 2504.09971) | Komargodski, Weinstein | HTML 200 |
+| 9 | ePrint 2026/1492 | Proof of Demand Is Not Proof of Work | Omer Demirel, Snowfall Finance LLC | HTML 200 |
+| 10 | ePrint 2024/1731 | Arc: Accumulation for Reed-Solomon Codes | Benedikt Bunz, Pratyush Mishra, Wilson Nguyen, William Wang | HTML 200 |
+| 11 | ePrint 2025/1814 | SoK: Is Proof-of-Useful-Work Really Useful? | **Pratyush Dikshit (Uni Luxembourg)**, Ashkan Emami, Johannes Sedlmeir (Uni Muenster), Gilbert Fridgen | HTML 200 |
+
+### *** ONEMLI YAN BULGU: ELESTIRMEN SECIMI DOGRULANDI ***
+SoK ePrint 2025/1814'in ilk yazarı **Pratyush Dikshit — University of Luxembourg**.
+Yani EPOSTA_SOK.md'deki elestirmen (pratyush.dikshit@uni.lu) bir PoUW
+uzmanina isabet ediyor: "Is Proof-of-Useful-Work Really Useful?" SoK'unun
+ilk yazari, 50'den fazla PoUW insasini incelemis. Bu, gonderi secimimizin
+kurulmus nedenini aciklar — ve ulasilabilirlik (uni.lu people search) zaten
+dogrulanmisti.
+
+### Pass 2606.06700'DEKI " affiliation " NOTU (daha onceki bulgu)
+Pass'in tek yazar oldugu teyit edildi. (Daha onceki oturumda "done while
+consulting for Pearl Research Labs" ifadesi tespit edilmisti — COI
+aciklamasi yok. Bu, paper'da ve e-postalarda ACIKLANMIS durumda.)
+
+**SONUC C3: Bibliyografyada HIC dogrulanmamis veya supheli giris kalmadi.
+Puan tablosundaki ">=10 bibliography girisi dogrulanmali" acigi TAMAMEN KAPANDI.**

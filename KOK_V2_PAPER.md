@@ -610,14 +610,21 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
    escrow/bond/burn/anti-aggregation). KÖK v2 builds this — details in §12.
 5. **FP verification: two paths, neither yet working in KÖK.** The Pearl path (**Hawkeye
    bit-exact replay**, MLSys 2026, in production) is **proven today** but ties KÖK v2 to GPU
-   generations (sm90 whitelist; the governance for extending the whitelist is undefined — this
-   sub-item itself is a limit). The native zkVM path (arXiv 2606.05433) has a **~36-month**
+   generations (sm90 whitelist). **The whitelist governance — previously left undefined,
+   which was itself a limit — is now specified** (spec §A.11: proposal + bit-exactness
+   dossier → 2-epoch verification window → zero false-accept tolerance → versioned-schema
+   activation → symmetric removal; its own limit is stated there — a whitelist is only as
+   honest as the population verifying it). The native zkVM path (arXiv 2606.05433) has a **~36-month**
    horizon. Until then: fixed-point + error budget + the INT KW kernel (with transcript; the
    transcript-less design in Pearl's FP scheme was deferred to FP, spec §A.9b).
-6. **The paper's ceiling is ~85/100.** The remaining 15 points **are proofs**: the criteria of
+6. **The paper's ceiling is ~85/100.** The remaining ~15 points **are proofs**: the criteria of
    F3–F6, the live security budget, real paying task demand, independent audits. **A perfect
    paper is not equal to a running chain** — this is written at the top of the document so
-   that the perfectionism is honest.
+   that the perfectionism is honest. **Current standing (2026-09-21): ≈80/100** by the
+   internal rubric — up from 37 (v1) and 77 — with the bibliography now **11/11
+   live-verified**, the US precedent cited (§9) and the market sized from reported earnings
+   (§8.1). The 80→85 gap is exactly the set of items no paper can close: human review and
+   live measurement.
 
 ---
 

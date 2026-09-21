@@ -150,3 +150,39 @@ ve sec.gov denemeleri basarisizdi ama Wikipedia API calisti.
 
 **SONUC: A SIKKI KAPANDI. Paper §9 Howey analizi artik gercek 2026 ictihati ve
 SEC yorumu ile destekleniyor.**
+
+---
+
+## D) YARGI KARSILASTIRMASI — KISMEN COZULDU (2026-09-21)
+
+**Yontem:** Wikipedia API "Legality of cryptocurrency by country or territory"
+(174 KB wikitext). *** ONEMLI SINIR: *** bu sayfanin verileri **Bitcoin**
+uzerinedir; **token ihraci/offer** icin degildir. KOK v2'nin ihtiyaci olan
+token-satisi rejimi degil, bu veri ancak bir baslangic noktasi.
+
+### DOGRULANMIS (verbatim)
+
+- **Isvicre:** Bitcoin isletmeleri AML'ye tabi, bazi durumlarda banka lisansi
+  gerekebilir (kaynak FINMA). *Isvicre'de ICO icin FINMA'nin ayri bir rehber
+  framework'u oldugu biliniyor ama BU SAYFADA dogrulanmadi.*
+- **Singapur:** MAS (Merkezi Banka) 2013'te "isletmelerin bitcoin kabul etmesi
+  ticari bir karardir, MAS mudahale etmez" dedi. *Token ichin MAS Payment
+  Services Act / DPT (digital payment token) rejimi bu sayfada YOK.*
+- **BAE:** Merkezi Banka kripto para birimlerini odeme araci olarak TANIMIYOR;
+  perakende odeme hizmetleri icin yeni bir duzenleme uzerinde calisiyor
+  (Library of Congress kaynakli). *Dubai VARA bu sayfada YOK.*
+- **El Salvador:** **Bitcoin 8 Haziran 2021 tarihli Bitcoin Law ile resmi
+  odeme araci (legal tender) yapildi** — dunyada ilk. *Bu BTC icindir; token
+  ihraci rejimi degildir.*
+
+### DURUST SONUC
+Bu dort yargin **Bitcoin icin** durumunu teyit edebildim. KOK v2'nin asil
+ihtiyaci olan **"anonim bir issuer'in token satisi hangi yargida en az
+sorunlu"** sorusu BU VERI ILE CEVAPLANAMAZ. Bunun icin her yarginin
+token-offer/ICO rehberine bakmak gerekir (FINMA ICO guidelines, MAS PSA/DPT,
+VARA framework) — bunlar bu oturumda dogrulanmadi.
+
+**PAPER'A YAZILACAK SEY (dürüst):** yargi karsilastirmasi bilincli olarak
+"yapilmadi" olarak birakiliyor, nedeni ile: secim, token-satisi rejimini
+dogrulamadan yapilamaz; bu, bir avukatin gerektigi yer (§10.2). **BOSLUK
+KAPANMADI — ama artik neyin eksik oldugu NET.**
