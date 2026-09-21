@@ -1930,3 +1930,52 @@ Bundan sonra path her zaman `Ko*nsensus` veya tam küçük-harfli.
 
 **BEKLEYEN (değişmedi):** Alon Burg (alıcı → φ>0 ölçülebilir mi), Demirel (G-layer
 review → Faz 2 kapısı). F3b YOK. E-posta YOK. Yatırım erteli.
+
+
+## Oturum 8 eki — birincil kaynak dogrulamasi (22 Eylul, devam)
+
+Onceki oturumun en zayif noktasi **iki kritik makalenin sadece ozetinden alinti
+yapilmasiydi**. Ikinisinin de tam HTML metni getirilip okundu. Sonuc: **makaledeki
+tum rakamlar dogruydu**, ama alinti yapmanin durustlugu eksikti — simdi ikisi de
+kendi sinirlarini tasiyor.
+
+**2609.21728 (Kruger & Georg, TEE + DRT) — tam metin okundu:**
+- Benim "dogruluk kaniti yok" iddiam **yazarlarin kendi sozleriyle** dogrulandi:
+  S2.4 "platform katmani (TEE + remote attestation) ve yetkilendirme katmani"
+  ayrımı; T1 **varsayim** ("the TEE faithfully executes the loaded image"),
+  "physical attacks and microarchitectural side channels **out of scope**";
+  S1.2 "known limitations of Intel SGX, such as **side-channel vulnerabilities**,
+  apply to our prototype."
+- Ledger'in kaydi **provenans**: "tamper-evident audit trail of **who computed
+  what, on which dataset, and under which approved code**" (P4/S2.1).
+- S2.3 enforcement **code identity** uzerinde: enclave "refuses to run if the hash
+  does not match."
+- **Durust cerceve:** "verifiable computation" basliginda var, ama dogrulanabilir
+  olan **yetkilendirme ve provenans**, donanim-guven varsayimi altinda. Bu bir
+  kusur degil, **beyan edilmis kapsam** — iki sistemi ikame degil tamamlar yapiyor.
+
+**2609.22076 (APort Vault) — tam metin okundu:**
+- Makaledeki 140/76,842 vs 0/69,297, 25,370 mesru odeme, 187 red — **hepsi birebir
+  dogru**.
+- **Eksik olan uc sinir, yazarlarin kendisinden:**
+  (1) S1.3: "scoped to payments, to one tool schema, in a simulated bank. It is
+  **not evidence about data exfiltration, code execution, or delegation**."
+  (2) S6.1 **en guclu karsi-arguman**: 14 modelin **5'i katman olmadan sifira
+  ulasti** — katmanin degeri "tek calisan sey" degil, **model seciminden bagimsiz
+  calisan sey** (dagiticinin ihtiyaci olan ozellik bu, model siralamasindan
+  gelmez).
+  (3) Sifir sifir-genislikli aralik degil: 790 oturum ust sinir **%0.38**.
+- **Tez icin neyi neyi kurmadigi acikca yazildi:** compute pazari icin talep
+  kurmuyor; **tool sinirinda deterministik pre-action check'in olculebilir bir
+  guvenlik ilkel oldugunu** kuruyor — KOK'un fraud window'inin task settlement icin
+  isgal ettigi ayni yapisal konum. Paralellik **mimari, ticari degil**.
+
+**Ek dogrulamalar:**
+- `f0b_air_proto.py` (makalenin TV-40..43 alintisi) tamamen Ingilizce (KOK false
+  positive haric).
+- Tum `_en.py` + tum `.md` belgeler: **0 belirsiz Turkce**. Kalan Turkce =
+  kasitli Turkce dosyalar (u_layer_prototype.py, progress.md, task_plan.md).
+- Tum S capraz-referanslari gecerli. 7/7 suite yesil (fp8 bilincli rc=1).
+
+**8 ek commit toplam.** Agac temiz. Ana yol hala iki cevabi bekliyor (Alon Burg,
+Demirel). F3b YOK, mail YOK, duyuru YOK.
