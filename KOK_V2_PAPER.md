@@ -804,6 +804,25 @@ the law (now navigable). It depends on **one customer with one job**. That is no
 unique to KÖK; it is the shape of every two-sided market. But it is the reason the roadmap now
 begins with demand discovery rather than with a testnet.
 
+**The critical path, stated once and plainly:**
+
+```
+F0 (demand discovery)  ─┐
+                        ├──> F3a (economy testnet) ──> F3b ──> F5 ──> F6
+F0b (real AIR)         ─┘
+```
+
+- **F0 and F0b are both unblocked today.** Neither waits on a cryptographer, a lawyer or an
+  investor. F0 is a sales exercise (10 interviews, one letter of intent); F0b is an engineering
+  one (one real AIR for one MatMul task). They can run in parallel with the Demirel review.
+- **F3a cannot start without F0** — an economy testnet with no demand measures nothing, which is
+  the precise error Pearl's years of running made.
+- **F2 is already in flight.** When F0b lands, the review package is re-sent with a real AIR,
+  because the first package had 77 untranslated strings and a modeled-but-not-instantiated
+  noise distribution (both since fixed and recorded in §A.0).
+- **The kill criterion is a date, not a feeling.** If F3a ends with zero real paying tasks, the
+  honest move is the specified pure-PoW fallback (§A.9) — a designed-for outcome, not a defeat.
+
 > **2026-09-19 update:** Pearl is now compared **from the primary source** (INT whitepaper +
 > live site + GitHub; see `PEARL_DOCS_ANALIZ.md`). The previous table relied only on Basu's
 > measurement; now Pearl's own documents are also available.
