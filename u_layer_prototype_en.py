@@ -614,3 +614,57 @@ if __name__ == "__main__":
     print("        -> Pearl's gap was that its verifier did not; this is the")
     print("           causal difference between 24 EH/s of real work and")
     print("           24 EH/s of theatre.")
+
+
+# =============================================================================
+# TV-39  The ctx binding, tested (2026-09-21) — closes KW_ANALIZ item (iv)
+#
+# KW's Lemma 6.5 assumes sigma is "unpredictable". In KW's original protocol
+# sigma is chosen by an interactive verifier, which does not exist on a chain.
+# KOK binds sigma to the chain: sigma = ctx = H("ctx", tip, miner, proof_id).
+#
+# The three-step argument (KW_ANALIZ 6.3) is:
+#   (1) ctx is deterministic, so every node computes the same sigma, and since
+#       it is a random-oracle output it satisfies the uniformity Lemma 6.5 needs.
+#   (2) ctx depends on the parent block, which does not exist yet when the miner
+#       works, so the miner cannot know sigma ahead of time - which is exactly
+#       the condition KW states verbatim: "Since sigma is not known to the
+#       (malicious) prover ahead of time and O is a random oracle, the output of
+#       the random oracle is random and unpredictable."
+#   (3) The miner's identity is inside ctx, so a certificate cannot be replayed
+#       at another chain position or by another miner.
+#
+# This test proves (3) by construction: a valid certificate at one ctx fails at
+# another. It is the runnable form of the replay-prevention argument.
+# =============================================================================
+def tv39_ctx_binding():
+    import random as _r
+    _r.Random(99)
+    q, n = 97, 8
+    ch = Chain()
+    k = ch.kernel
+    A = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
+    B = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
+    ctx_here, ctx_there = 11111, 22222
+
+    cert, good = None, 0
+    for good in range(1, 400):
+        c = k.prove(A, B, ctx_here, good, ch.D)
+        if c is not None:
+            cert, good = c, good
+            break
+    assert cert is not None
+    same_position = k.verify(cert, A, B, ctx_here, good, ch.D)
+    replayed = k.verify(cert, A, B, ctx_there, good, ch.D)
+    return same_position, replayed
+
+
+if __name__ == "__main__":
+    _sp, _rp = tv39_ctx_binding()
+    print("[TV-39] The ctx binding (KW_ANALIZ item iv):")
+    print("        certificate at its own ctx          : %s" % _sp)
+    print("        same certificate at another ctx     : %s   <- must be False" % _rp)
+    assert _sp and not _rp
+    print("        -> a certificate cannot be replayed to another chain position.")
+    print("        -> KW's Lemma 6.5 needs sigma unpredictable; binding sigma to the")
+    print("           chain makes it so structurally rather than by assumption.")

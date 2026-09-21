@@ -90,7 +90,7 @@ The remaining two gaps (economics, law) are addressed in §7 and §9.
 > "useful work is chain security" promise — there cannot be.**
 
 ### 3.1 Cryptographic foundation: Komargodski–Weinstein MatMul PoUW
-- **Construction:** ePrint 2025/685 (2025-04-15, 3 revisions, latest 2025-12-08). Arbitrary MatMul,
+- **Construction:** ePrint 2025/685 = arXiv 2504.09971v4 (received 2025-04-15; arXiv v4 2025-11-13; ePrint latest rev 2025-12-08). Arbitrary MatMul,
   miner-chosen input, **1+o(1) multiplicative overhead**, prescribed hardness; a claimed resistance
   to FMM algorithms (ω<2.371177, Aug. 2026).
 - **What it provides / what it does not:** KW provides **work soundness (W)** — working for h(n) is
@@ -520,7 +520,7 @@ and we intend to measure it rather than to assume it."**
 
 | Phase | Content | Criterion (defined success) |
 |---|---|---|
-| **F0b — Provenance proof** | Close the gap that reason (b) depends on: the "STARK-like" trace must become a real AIR so that a buyer's provenance claim is a proof, not a promise. Also measure liveness under realistic delay (the toy assumes all blocks valid). **Motivated by §F: TV-38 already shows the verifier binds the certificate to the computation, but on toy sizes (q=97, n=8, r=2) and a tile-level check — a real AIR is what turns that into an asymptotic claim.** | A real AIR for one MatMul task; a third party can verify the provenance claim without trusting the miner. **Until this closes, reason (b) is a sales pitch, not a defensible position.** |
+| **F0b — zk-AIR: provenance AND privacy (the highest-leverage item on this roadmap)** | Close the gap that reason (b) depends on: the "STARK-like" trace must become a real AIR, and the AIR should be built **zero-knowledge** — prove correct execution *without revealing the inputs*. Also measure liveness under realistic delay. **Motivated by §F: TV-38 already shows the verifier binds the certificate to the computation, but on toy sizes and a tile-level check; a real AIR is what turns that into an asymptotic claim.** **The privacy extension is not extra work: an AIR with the zero-knowledge property serves two markets with one construction — provenance for the buyer who must prove a result, and privacy for the buyer who must not reveal model weights or sensitive data.** | A real zk-AIR for one MatMul task; a third party can verify *correctness without seeing the inputs*. **Until this closes, reason (b) is a sales pitch, not a defensible position — and the privacy story does not exist at all.** |
 | **F0 — Demand discovery** | Find the first real customer with a real job. Not a testnet, not a simulation: a party who already pays for compute and would switch to KÖK if it were cheaper, or a job that cannot run permissionlessly anywhere else. Interview ≥10 candidates; record what they actually pay, what they need, and what would make them switch. | **≥1 signed letter of intent to buy compute at a named price.** This is the seed of demand (§12.1); without it the chain converges to the empty-block equilibrium and stays there |
 | **F1 — Formal spec** | statement schema, task market protocol, GHOSTDAG+rejection-sampling spec, economic model | Walk-through by independent cryptographers; T1–T6 skeletons. **✅ complete on paper: `KOK_V2_TECHNICAL_SPEC.md`** |
 | **F1b — Working prototype** | task lifecycle + penalty economics + difficulty retarget | **✅ `u_layer_prototype.py` (TV-5..TV-10), `g_layer_tests.py` (TV-1..TV-4, RT-1..RT-3) — all PASS** |
@@ -899,6 +899,22 @@ buyer exists and is paying right now.** The honest caveat is that Akash's soluti
 and KÖK's requires F0b (a real AIR). This is the strongest customer answer the research has
 produced, and it is the first one that makes F0b a market requirement rather than an
 engineering preference.
+**The privacy extension is not our invention — KW proposes it.** Remark 2.2 of the KW paper
+(verbatim, from the full text fetched 2026-09-21) says the verifier's work *"can delegate the
+verifier's work ... to the prover by asking the latter to compute a SNARK certifying that the
+verifier would have accepted the proof had it seen it. Furthermore, **if privacy of A, B is an
+issue, the prover can use a zkSNARK.**"* So F0b is the construction KW designed but did not
+build: the zk-AIR both removes the verifier's cost and hides the inputs. **This is why the risk
+of F0b is engineering (writing the AIR), not cryptographic (inventing a scheme) — the scheme is
+published.**
+
+What F0b deliberately does *not* do is KW's adjacent Remark 2.3, which asks whether the SNARK
+computation itself could be the source of hardness, removing the need for the noise matrices
+E, F. **KÖK rejects that path**, because prescribed hardness — the ability to retarget ε
+independently of the task, as Bitcoin does — is required for the difficulty adjustment, and a
+SNARK's cost is tied to the task rather than to an independent target. KW raises the objection
+in the remark itself. So F0b is strictly the verifier-delegation of Remark 2.2, not the
+hardness substitution of Remark 2.3, and the G layer's security argument is untouched.
 | **ZK-coprocessing, analysed — now downgraded** | Demand is *endogenous*: other L1/L2s provably need proofs (bridges, light clients, fraud windows) that they cannot generate themselves — so the "why would anyone use this" question inverts to "I already need this". The seed problem partly disappears. | **The overlap must be real for a ZK proof, not just for MatMul.** KW's MatMul-transcript PoW is not a zk-SNARK's AIR, so the cross-subsidy does not automatically carry over; this requires the same real-AIR work as F0b. Dedicated prover networks (RiscZero, =nil;, Succinct, Axiom) run no chain, so their whole cost base is proof-making and they hold the first-mover position | **Strongest second candidate; it shares F0b's precondition — a real AIR unlocks both reason (b) and this market** |
 
 ### Who would actually use this — the customer answer, verified (2026-09-21)
