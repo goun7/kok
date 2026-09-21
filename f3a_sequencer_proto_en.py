@@ -147,13 +147,20 @@ class F3aTestnet:
     # --- block production (central; GHOSTDAG in F3b) ---
     def next_block(self):
         self.height += 1
-        # refund-guarantee: in every block, refund the CENSORED tasks past the window
+        # refund-guarantee: in every block, refund the CENSORED tasks past the
+        # window. Nothing was delivered, so the buyer is made whole on the FULL
+        # fee: the escrow AND the earmarked burn. Leaving the burn stranded in
+        # limbo - neither refunded nor actually burned - breaks the
+        # fees_in == refunded + burned + paid invariant, and it would also let a
+        # censoring sequencer keep part of a fee for work it never did. The
+        # SLASHED path refunds escrow + burn for the same reason.
         for sq in self.sequencers.values():
             for t in list(sq.tasks.values()):
                 if t.state == "CENSORED" and self.height - t.assigned_at > self.w_r:
                     t.state = "REFUNDED"
-                    self.refunds += t.escrow
+                    self.refunds += t.escrow + t.burned
                     t.escrow = 0
+                    t.burned = 0
         return self.height
 
     # --- task the sending (client by sequencer is chosen) ---
@@ -269,13 +276,13 @@ def tv15():
     for _ in range(W_R):
         net.next_block()
         assert net.sequencers["A"].tasks["t1"].state == "CENSORED", \
-            "refund-guarantee erken was triggered"
+            "the refund-guarantee was triggered too early"
     # exceeded W_r -> automatic refund
     net.next_block()
     t = net.sequencers["A"].tasks["t1"]
-    assert t.state == "REFUNDED" and net.refunds == 70, (t.state, net.refunds)
-    assert t.escrow == 0 and net.burn_address == 0
-    print("  TV-15 refund-guarantee:  NO-REJECTION -> automatic refund (escrow=70)  ACCEPT")
+    assert t.state == "REFUNDED" and net.refunds == 100, (t.state, net.refunds)
+    assert t.escrow == 0 and t.burned == 0 and net.burn_address == 0
+    print("  TV-15 refund-guarantee:  NO-REJECTION -> automatic refund (full fee 100, nothing burned)  ACCEPT")
     return True
 
 
@@ -339,8 +346,9 @@ def tv17():
     assert held == 0, "sequencer escrow held escrow"
     assert net.sequencers["A"].bond == 100, "bond was not raised to the fee level"
     assert net.sequencers["A"].slashed == 150, "cumulative slash 50+100=150 should be"
-    # refund total = 3 * 70 = 210
-    assert net.refunds == 210, net.refunds
+    # refund total = 3 * 100 = 300: nothing was delivered, so the buyer is
+    # made whole on the full fee (escrow + earmarked burn), not the escrow alone
+    assert net.refunds == 300, net.refunds
     print(f"  TV-17 censorship-free: gain=0 (refund {net.refunds}), slash 50+100=150")
     print("                        (bond0=50<fee=100 -> refill raised the bond to the fee level)  ACCEPT")
     return True
@@ -444,12 +452,12 @@ if __name__ == "__main__":
             results[name] = fn()
         except AssertionError as e:
             results[name] = False
-            print(f"  {name}: BASARISIZ -> {e}")
+            print(f"  {name}: FAILED -> {e}")
     print("-" * 72)
     if all(results.values()):
         print("TV-15..TV-20: ALL PASSED — the F3a censorship-resistance prototype works.")
     else:
-        print("BASARISIZ TESTS:", [k for k, v in results.items() if not v])
+        print("FAILED TESTS:", [k for k, v in results.items() if not v])
         raise SystemExit(1)
     print()
     print("HONEST TOY LIMITS:")
@@ -1235,3 +1243,54 @@ if __name__ == "__main__":
     ok = tv26_terminal_states_counted_once()
     assert ok, "TV-34 FAILED: terminal tasks are being recounted"
     print("\n  -> the reporting counters are arithmetic, not impressions.")
+
+
+def tv35_refund_books_balance():
+    """TV-35: a timed-out task refunds the FULL fee, and the books balance.
+
+    The invariant fees_in == refunded + burned + paid must hold on every path,
+    including the timeout refund. The escrow alone is 70 of a 100 fee with
+    burn_rate 0.3; refunding only the escrow left the earmarked 30 stranded in
+    limbo - neither back with the buyer nor in the burn address - so a censoring
+    sequencer kept part of a fee for work it never delivered.
+
+    Nothing was delivered, so nothing is burned: the buyer is made whole on the
+    full fee, which is the same treatment the SLASHED path already gave.
+    """
+    net = F3aTestnet([Sequencer("A", bond=50, evil=True, censor_client="kobi")])
+    fees_in = 0
+    s = spec("llama-70b", fee=100, burn_rate=0.3)
+    net.submit_task("A", "t1", "kobi", s)
+    fees_in += s.fee
+    for _ in range(W_R + 2):
+        net.next_block()
+
+    state = net.sequencers["A"].tasks["t1"].state
+    fees_refunded = net.refunds
+    fees_burned = net.burn_address
+    fees_paid = sum((t.spec.fee - t.spec.burn)
+                    for sq in net.sequencers.values()
+                    for t in sq.tasks.values() if t.state == "SETTLED")
+    total = fees_refunded + fees_burned + fees_paid
+    balance = (fees_in == total)
+    full_refund = (fees_refunded == fees_in)
+
+    print("  TV-35 refund books:     state %s | in %d = refund %d + burn %d + "
+          "paid %d (total %d) %s" %
+          (state, fees_in, fees_refunded, fees_burned, fees_paid, total,
+           "ACCEPT" if (balance and full_refund and state == "REFUNDED")
+           else "RED"))
+    return balance and full_refund and state == "REFUNDED"
+
+
+if __name__ == "__main__":
+    print()
+    print("=" * 76)
+    print("KOK v2 — F3a: the refund-guarantee books balance (TV-35)")
+    print("=" * 76)
+    print("A timed-out task left the earmarked burn stranded: neither refunded")
+    print("nor burned, so fees_in did not equal refunded + burned + paid, and")
+    print("a censoring sequencer kept part of a fee for work it never did.\n")
+    ok = tv35_refund_books_balance()
+    assert ok, "TV-35 FAILED: the refund path does not balance the books"
+    print("\n  -> nothing delivered, nothing burned, buyer made whole.")

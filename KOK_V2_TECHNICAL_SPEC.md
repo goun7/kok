@@ -168,8 +168,13 @@ it. **KÖK solution:**
    sequencer is **a temporary test centralization** (to be replaced by GHOSTDAG in F3b).
    Therefore the spec defines **two mechanisms** against sequencer censorship:
    (i) **Refund-guarantee:** the sequencer either includes the task within W_r blocks or publishes a
-   rejection-step; if it rejects or times out, the escrow is **automatically refunded** (with no
-   bond, to the task owner) — the **cost of censorship is zero, and its benefit is also zero**.
+   rejection-step; if it rejects or times out, the buyer is **automatically refunded the full fee**
+   — escrow *and* the earmarked burn — with no bond, to the task owner. Nothing was delivered, so
+   nothing is burned, and the buyer is made whole. (Spec correction, 2026-09-22: this previously
+   said "the escrow is refunded", which stranded the burn portion in limbo — neither returned to
+   the buyer nor actually burned — and broke `fees_in == refunded + burned + paid`. Found by the
+   TV-35 probe; see §A.5 and the TV-35 row in the test table.) The **cost of censorship is zero,
+   and its benefit is also zero.**
    (ii) **Task-migration:** the task owner can resubmit the rejected task (with the same
    `task_ref`) to an **alternative sequencer**; the first sequencer's bond is slashed (censorship
    yields **negative returns**).
@@ -478,9 +483,9 @@ def challenge(challenger, tid, proof):
 | TV-12 | **Noise floor** (Pearl 5.1.2) | Single-peaked row (the peak is adjusted to the per-tensor scale) | noise < σ_min=1 grid unit → **RED** | Low-local-entropy → special hardware |
 | TV-13 | **Tamed products** (Pearl 5.1.3) | Identical rows (rank-1 tile) | tamed ratio > ε_tame → **RED**; typical workload passes | Coherent dot products |
 | TV-14 | **Unpredictable summands** (Pearl 5.1.4) | Common-peak A,B (each cell a single summand) | predictable ratio > ε_pred → **RED** | FP precision shortcut |
-| TV-15 | **Refund-guarantee** (§A.5.5-i, F3a) | Bad sequencer does not publish a rejection-step; W_r blocks pass | CENSORED → automatically **REFUNDED** (escrow=70, refund) | Benefit of censorship = 0 |
+| TV-15 | **Refund-guarantee** (§A.5.5-i, F3a) | Bad sequencer does not publish a rejection-step; W_r blocks pass | CENSORED → automatically **REFUNDED** the full fee 100 (escrow 70 + burn 30, nothing burned) | Benefit of censorship = 0 |
 | TV-16 | **Task-migration** (§A.5.5-ii, F3a) | The rejected task goes to an alternative sequencer | bond 100 → 0 (**min(bond, fee)** slashed) + settles in B | Censorship **negative return** |
-| TV-17 | **Censorship-freeness** (F3a) | All 5 tasks censored; 2 migrate, 3 time out | held escrow **0**; refund 210; bond 50 → 0 | The sequencer can **never** hold the escrow |
+| TV-17 | **Censorship-freeness** (F3a) | All 5 tasks censored; 2 migrate, 3 time out | held escrow **0**; refund 300 (3 × full fee); bond 50 → 0 | The sequencer can **never** hold the escrow |
 | TV-18 | **Dilemma-free verification** (§A.5.2, F3a) | Faulty verify → CHALLENGED; then correct verify | dilemma trigger 1 (monitored), SETTLED + burn 30 | Verification is mandatory, cannot be skipped |
 | TV-19 | **Honest lifecycle** (F3a) | submit → assign → solve → settle | burn=30, refund=0, slash=0 | Basic flow |
 | TV-20 | **Bond refill** (§A.5.5, the gap found in pass_sim §10 and added to the prototype) | 3 censorship events; refill YES vs NO | refill: **3×100=300** slashed; refill-NO: **100 slashed, 2 events FREE** (bond depleted at the first event) | The deterrent must **not** be one-shot |
@@ -498,6 +503,7 @@ def challenge(challenger, tid, proof):
 | TV-32 | **FULL-mode margin is linear** | slash=bond; fee=100, B_out ∈ {120,150,200,300,500} | margin = B_out − fee with **max error 0.00, R²=1.0000** (B_out=300 → margin=200) | The §10 threshold equation holds exactly in FULL slash mode |
 | TV-33 | **Free-censorship window** | bond=300, fee=100, N=20; refill on/off | no refill: net **+900** (profitable) after a 3-event window; with refill: net **−800** | Refill is mandatory; without it only bond/fee events are deterred |
 | TV-34 | **Terminal tasks counted once** (f3a, added 2026-09-22) | one REFUNDED + one SLASHED task observed over 30 blocks; one migration | refunded **1** and slashed **1** (not 15 each); migrated **1** | The meter's reported rates are arithmetic, not impressions — two reporting bugs found and closed |
+| TV-35 | **Refund books balance** (f3a, added 2026-09-22) — SPEC CORRECTION | one censored task, fee 100, burn_rate 0.3; W_r+2 blocks elapse | refund **100** (not 70), burn **0**, paid **0**: fees_in == refunded + burned + paid | The timeout refund previously stranded the earmarked burn in limbo, and a censor kept part of a fee for work never done |
 
 **ID collision, recorded honestly (2026-09-22).** This table allocates TV-21..TV-26 to the
 g_layer/ghostdag series and TV-27..TV-33 to the fp8/bond_margin series. The f3a prototype's later
