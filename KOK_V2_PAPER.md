@@ -1,6 +1,6 @@
 # KÖK Network v2 — PoW L1 + Verifiable-Compute Market: The Best System Possible on Paper
 
-**Date:** 19 September 2026 (KW/Pearl/Demirel update) · **Status:** Design document (supersedes the v1 paper)
+**Date:** 21 September 2026 (KW/Pearl/Demirel update + verified bibliography, MiCA and SEC v. Ripple) · **Status:** Design document (supersedes the v1 paper)
 **Symbol:** `$KOK` · **Consensus:** GHOSTDAG + KW MatMul PoUW (demand-independent security) · **Fair launch**
 **Technical spec:** `KOK_V2_TECHNICAL_SPEC.md` (Annex A task market, Annex B difficulty, Annex C economy)
 
@@ -484,6 +484,36 @@ and we intend to measure it rather than to assume it."**
   precedent applied to a not-yet-existing token, by non-lawyers, and it is not a legal opinion;
   the jurisdiction decision and a formal securities opinion remain pre-launch items (§10.2).
 
+- **★ 2026-09-21: the MiCA disclosure text, drafted against the article it comes from.** MiCA
+  does not merely classify; it requires the white paper to carry specific statements. Drafting
+  them now — from the verified text, not from a summary — is the cheapest real compliance work
+  available to a pre-testnet project. **The four mandatory statements (per the MiCA
+  white-paper provision, quoted from the official text):**
+  > "(a) the crypto-asset may lose its value in part or in full; (b) the crypto-asset may not
+  > always be transferable; (c) the crypto-asset may not be liquid; (d) where the offer to the
+  > public concerns a utility token, that utility token may not be exchangeable against the
+  > good or service..."
+
+  **Drafted for KÖK v2 (a disclosure, not a legal document):**
+  > (a) The KÖK token has no collateral, no issuer promise and no revenue share. Its value, if
+  > any, derives from fee-paying demand for verifiable compute and from mining cost; both are
+  > uncertain and the token may lose all value. (b) Transferability depends on third-party
+  > infrastructure (nodes, wallets, exchanges) that does not yet exist; the token may not be
+  > transferable. (c) There is no market and no liquidity is promised; early blocks carry
+  > rewards no one has agreed to buy. (d) KÖK v2 is not a utility token under MiCA Art. 3(9)
+  > — see the classification above — so this paragraph is stated for completeness: the token
+  > may not be exchangeable for any good or service of the issuer, because the issuer provides
+  > no good or service except the protocol itself.
+
+  **What this is, stated plainly:** a disclosure drafted to match the regulation's own wording.
+  It is **not** a MiCA white paper, which requires an issuer, a legal entity and a competent
+  authority — none of which exist while the project is anonymous (§10.2). **The honest framing:
+  the disclosure content is ready; the legal vehicle is not.** When a legal entity exists, this
+  text becomes the core of the white paper's risk section. Until then it is a design artifact,
+  and it is published here so that the promise it makes — *we will disclose the risks, in the
+  regulator's own words, before we ask anyone for anything* — is verifiable now rather than
+  promised later.
+
 ---
 
 ## 10. Proof, Audit and Roadmap
@@ -749,7 +779,7 @@ mixed two homographs and an academic reader would have noticed:
 
 ---
 
-## 13. References (September 20, 2026, live)
+## 13. References (21 September 2026, live — 11/11 verified)
 
 > **For the verified full list + access notes: `KOK_V2_REFERENCES.md`** (ePrint PDF gives raw
 > binary; use ar5iv.org for full text). **Working evidence:** `pass_sim.py` (Pass economics,
