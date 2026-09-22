@@ -15,12 +15,20 @@ The goal here is deliberately small and honest: implement the *shape* of an AIR
   - a forged witness is rejected, WITHOUT the verifier recomputing the tile.
 
 WHAT THIS IS NOT:
-  - not a zk-STARK (no FRI, no Merkle commitment, no zero-knowledge masking)
-  - not asymptotically secure (toy field q=97, toy sizes)
+  - not a zk-STARK (no FRI recursion, no Reed-Solomon codeword, no randomised
+    low-degree test — TV-42 spot-checks rows instead, which catches a prover
+    that broke many rows but not one that broke a few)
+  - not asymptotically secure (toy field q=97, toy sizes; the Merkle path is
+    elided rather than verified, so the commitment is not yet binding)
   - not production code
 
-WHAT IT IS: the first runnable instance of the F0b direction, so the roadmap
-item has code behind it instead of only prose.
+WHAT THIS IS: the first runnable instance of the F0b direction, so the roadmap
+item has code behind it instead of only prose. Four steps run as a chain:
+TV-40 the AIR constraints, TV-41 Merkle commitment with sampled verification,
+TV-42 the spot-checking low-degree test, TV-43 zero-knowledge masking via
+one-time pad. Each step states the gap it still does not close, and the honest
+overall position is that this is the property at toy scale, not an audited
+system.
 
 Run:  python3 f0b_air_proto.py
 """
