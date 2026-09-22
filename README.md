@@ -39,7 +39,8 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 | `f0_demand_discovery.py` | **F0 as an instrument**: candidate scoring rubric, price test against the measured crossover, append-only interview log |
 | `f0_candidate_list.py` | Six named buyers from Akash's own case studies, scored by the F0 rubric |
 | `f0b_air_proto.py` | **F0b, the AIR chain (TV-40 to TV-43)**: constraints, Merkle commitment with sampled verification, low-degree testing, and zero-knowledge masking |
-| `probe_edges_en.py` | **Adversarial edge probes (TV-45..TV-49)**: corners the spec is quiet about. Not requirements — they exist because the three real bugs found this pass were all caught by provoking the machine, not by reading it |
+| `probe_edges_en.py` | **Adversarial edge probes (TV-45..TV-49)**: corners the spec is quiet about. Not requirements — they exist because the three real f3a bugs found this pass were all caught by provoking the machine, not by reading it |
+| `probe_u_layer_en.py` | **u_layer adversarial probes (TV-51..TV-55)**: same method on the L1 prototype. TV-51 found a bookkeeping bug — the escrow field went negative at settlement while the money flow was correct |
 
 All prototypes are **stdlib-only Python 3**: `python3 <file>`. No dependencies.
 

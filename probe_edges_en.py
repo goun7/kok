@@ -2,7 +2,7 @@
 
 These are deliberately NOT the named TV tests. The TV tests check that the
 mechanism does what the spec says. These probes try to provoke the state machine
-into places the spec is quiet about, and they exist because all three real bugs
+into places the spec is quiet about, and they exist because all three real f3a bugs
 found in this pass (the terminal-state recount, the dead migrated_tasks counter,
 and the stranded burn on timeout refund) were found by running the machine rather
 than by reading it.

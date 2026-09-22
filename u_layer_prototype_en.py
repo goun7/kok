@@ -325,7 +325,11 @@ class Chain:
         if t.state == "SOLVED":
             t.state = "SETTLED"
             pay = t.fee - t.burned             # to the miner from escrow; the burn has already gone
-            t.escrow -= (t.burned + pay)
+            # The escrow was initialised as fee - burn, so it never held the
+            # burn: it was collected at submission. Subtracting burned again
+            # drove this field to -30 and any health reader would report a
+            # shortfall that does not exist. Only the payable part is drawn.
+            t.escrow -= pay
             return pay
         return 0
 
