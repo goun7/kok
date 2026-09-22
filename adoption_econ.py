@@ -203,9 +203,13 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
             # bother to serve a market with no buyers. This is the Pearl state.
             # The price advantage decides whether ANY seed can escape: arrivals
             # must be able to outrun churn somewhere below the barrier. If the
-            # subsidy is weak (price_adv < ~1) the dead state is ABSORBING -- no
-            # seed escapes, which is the honest reading of a PoUW chain whose
-            # compute costs more than the market pays.
+            # subsidy is weak the dead state is ABSORBING -- no seed escapes,
+            # which is the honest reading of a PoUW chain whose compute earns
+            # less than the market pays.
+            # Measured by binary search over tv36_cold_start: the escape
+            # threshold sits at a cross-subsidy ratio of about 0.79, not at 1.0.
+            # Escape begins BEFORE parity, which is the one piece of good news
+            # the model offers; below 0.79 no seed below the barrier escapes.
             # Arrivals come from the price advantage alone (a buyer who finds a
             # genuinely cheaper supplier switches regardless of liquidity), plus a
             # small term from the market that already exists. Churn is the cost of
@@ -333,7 +337,11 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
     print(f"      slogan about wasted energy.")
 
     # *** THE INVERTED INCENTIVE: the crossover RISES with the token price. ***
-    # At launch (rewards high) the crossover is $10; at the 2-KOK tail it is $250.
+    # At launch (rewards high) the crossover is $2.64; at the tail it is $66.00.
+    # (The values above are printed by the code below; an earlier comment here
+    # stated $10 and $250, which were the numbers under a different parameter
+    # set and no longer matched what the run produces. If the two ever disagree
+    # again, the printed values are the authoritative ones.)
     # Read carefully, this is the project's most uncomfortable fact:
     #   - when the token is CHEAP, selling beats mining -> the utility layer is
     #     price-competitive, but the chain is small and nobody has heard of it;
@@ -396,11 +404,33 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
 
 if __name__ == "__main__":
     print("=" * 76)
-    print("KOK v2 — ADOPTION ECONOMICS (TV-35 / TV-36 / TV-37)")
+    print("KOK v2 — ADOPTION ECONOMICS (TV-35 / TV-36 / TV-37 / TV-60)")
     print("=" * 76)
     print("Testing the project's central claim with arithmetic, not adjectives.\n")
 
     r35 = tv37_verdict()
+
+    print("\n" + "-" * 76)
+    print("TV-60: THE ESCAPE THRESHOLD, MEASURED (regression guard)")
+    print("-" * 76)
+    lo, hi = 0.5, 1.0
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        if tv36_cold_start(0.0002, mid)["escaped_dead_state"]:
+            hi = mid
+        else:
+            lo = mid
+    absorbing_below = lo
+    # 0.79 is the value the paper quotes; allow a small band so a legitimate
+    # parameter refinement moves the guard, not the prose.
+    ok = 0.75 <= absorbing_below <= 0.83
+    print("      escape begins at a cross-subsidy ratio of about %.4f" % hi)
+    print("      below %.2f the dead state is absorbing for every seed below the"
+          % absorbing_below)
+    print("      paper quotes ~0.79; guard band 0.75..0.83  %s"
+          % ("ACCEPT" if ok else "RED"))
+    assert ok, ("TV-60: the escape threshold has moved outside the quoted band; "
+                "the paper says ~0.79 — check both before assuming either is right")
 
     print("\n" + "-" * 76)
     print("TV-35/36/37 COMPLETE")

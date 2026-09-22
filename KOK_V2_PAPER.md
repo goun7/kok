@@ -786,7 +786,8 @@ at all. Three findings, each from a live source:
   the warning.
 - **Verified prices set the bar.** H100 spot is $2.15/GPU-hr (Nebius preemptible) and
   DeepSeek V4-Pro is $1.32/M-token at peak. KÖK's compute must beat *these* numbers, and
-  TV-35's crossover ($2.64 at launch rewards) says it can — while the token stays cheap.
+  TV-37's crossover ($2.64 at launch rewards, $66.00 at the tail) says it can — while the
+  token stays cheap.
 
 **The strategic consequence:** the market is real (Aethir), the specific combination is
 unproven (Qubic/Dynex/Bittensor), and the price bar is measurable (not a guess). That is
@@ -833,9 +834,18 @@ market to escape the dead state. Two findings, both stated plainly:
    programme creates a buyer who has a job. The seed is brought by someone who already pays
    for compute. **This is why F0 (demand discovery) is now the first roadmap phase, ahead of
    the formal spec's successor phases.**
-2. **Below roughly break-even, the dead state is absorbing** — no seed escapes. The chain
-   cannot subsidise its way to adoption if its compute costs more than the market's; the
-   cross-subsidy must be real, which loops back to the overlap requirement.
+2. **Below a cross-subsidy ratio of about 0.79, the dead state is absorbing** —
+   no seed escapes. When the ratio is below roughly 0.79 — the chain's compute
+   earning less than about four-fifths of what the market pays for it — the
+   model's arrival term cannot outrun churn at any seed below the liquidity
+   barrier, so the empty-block state is inescapable from inside. Above that
+   threshold a seed of about **0.02% of the network's compute** (D₀ ≥ 0.0002)
+   escapes and reaches roughly 40% of the addressable market. The threshold is
+   measured by binary search over the model, not assumed to sit at break-even:
+   escape begins before parity, which is the one piece of good news the model
+   offers, and it does not change the conclusion. The chain cannot subsidise its
+   way to adoption if its compute costs more than the market's; the cross-subsidy
+   must be real, which loops back to the overlap requirement.
 3. **The speculation paradox.** The crossover token price (where mining and selling pay the
    same) is pushed in *opposite* directions by the two kinds of success. A **larger network**
    splits the fixed reward over more FLOPs, so mining pays less per FLOP, the crossover

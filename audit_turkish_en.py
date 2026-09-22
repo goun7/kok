@@ -78,7 +78,9 @@ DEFAULT_FILES = [
     'f3a_sequencer_proto_en.py', 'g_layer_tests_en.py',
     'u_layer_prototype_en.py', 'ghostdag_proto_en.py',
     'fp8_noise_proto_en.py', 'pass_sim_en.py', 'bond_margin_proto_en.py',
-    'f0b_air_proto.py', 'probe_edges_en.py',
+    'f0b_air_proto.py', 'probe_edges_en.py', 'probe_u_layer_en.py',
+    'probe_ghostdag_en.py', 'adoption_econ.py', 'f0_demand_discovery.py',
+    'f0_candidate_list.py',
 ]
 
 
