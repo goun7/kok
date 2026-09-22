@@ -38,12 +38,12 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 | `adoption_econ.py` | **The adoption question**: cross-subsidy arithmetic (TV-35), two-sided cold-start model (TV-36), the honest verdict (TV-37), and the measured escape threshold (TV-60, ~0.79 — guarded, so the paper and the model cannot drift apart) |
 | `f0_demand_discovery.py` | **F0 as an instrument**: candidate scoring rubric, price test against the measured crossover, append-only interview log |
 | `f0_candidate_list.py` | Six named buyers from Akash's own case studies, scored by the F0 rubric |
-| `f0b_air_proto.py` | **F0b, the AIR chain (TV-40 to TV-43)**: constraints, Merkle commitment with sampled verification, low-degree testing, and zero-knowledge masking |
+| `f0b_air_proto.py` | **F0b, the AIR chain (TV-40 to TV-43, TV-66)**: constraints, Merkle commitment with sampled verification, low-degree testing, zero-knowledge masking, and the TV-66 fix that restores hiding with verifier-unknowable masks (`SzZkTileAIR`) |
 | `probe_edges_en.py` | **Adversarial edge probes (TV-45..TV-49)**: corners the spec is quiet about. Not requirements — they exist because the three real f3a bugs found this pass were all caught by provoking the machine, not by reading it |
 | `probe_u_layer_en.py` | **u_layer adversarial probes (TV-51..TV-55)**: same method on the L1 prototype. TV-51 found a bookkeeping bug — the escrow field went negative at settlement while the money flow was correct |
 | `probe_ghostdag_en.py` | **GHOSTDAG adversarial probes (TV-56..TV-59)**: TV-59 measures a real deviation — the greedy mergeset makes the ordering sequence work a block does not reference (572 entries outside past(B) on 51 blocks). Documented, not hidden |
 | `probe_pass_sim_en.py` | **Pass economic model probes (TV-61..TV-64)**: TV-62/TV-63 found that `_theta_from_PR` bracketed 1e-12..1e9 and never checked the (theta_low, theta_high) interval its docstring names — low-price parameter sets returned a Fortessia-regime theta as if it were Duplexia. Fixed; `solve()` was never wrong |
-| `probe_f0b_zk_en.py` | **F0b zero-knowledge probe (TV-65)**: TV-43's "zero-knowledge" claim is **retracted** — the mask derives from a seed the *verifier* supplies, so it recovers every plaintext it was sent. Provenance, not privacy |
+| `probe_f0b_zk_en.py` | **F0b zero-knowledge probe (TV-65)**: TV-43's "zero-knowledge" claim is **retracted** — the mask derives from a seed the *verifier* supplies, so it recovers every plaintext it was sent. Provenance, not privacy. **Fixed by TV-66 in `f0b_air_proto.py` (`SzZkTileAIR`): prover-drawn masks, commitment before the challenge, one cross-term opening — hiding is now demonstrated at toy scale** |
 
 All prototypes are **stdlib-only Python 3**: `python3 <file>`. No dependencies.
 

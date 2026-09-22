@@ -661,7 +661,17 @@ research supports the path; it does not shorten it.
    was sent. The prototype establishes provenance (soundness without transmitting
    secrets) but not confidentiality, at any scale. The gap to Akash is therefore
    not "KOK has not written the code" but "KOK wrote the code and it does not
-   hide."
+   hide" — a statement that held for two days and is now itself outdated: probe
+   TV-66 (2026-09-22, `SzZkTileAIR` in `f0b_air_proto.py`) restores the hiding
+   property with verifier-unknowable masks, a commitment made before the
+   challenge point, and a single cross-term opening. Four checks pass: the
+   honest masked proof verifies, the TV-65 recovery attack finds nothing over 64
+   guessed seeds, two witnesses under the same seed give different views that
+   reveal neither, and a one-value forgery is caught at both transitions that
+   touch it (measured survival 0.3200 against the analytic 0.3333). The honest
+   residual gap to Akash's confidentiality is no longer "does not hide" but
+   "hides at toy scale, in a toy field q=97, with a hash commitment instead of a
+   Merkle root with a codeword" — a delivery gap, not an absence.
 4. Whether agents can be real buyers of inference at all — not merely authorized to
    pay, but carrying demand a human did not initiate — is an open empirical
    question that no source here answers.

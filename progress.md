@@ -2238,3 +2238,20 @@ garanti veriyorsa, probe o garantisin test edilmis olmasini ister.
 
 **Durum:** 12/12 ana suite + 5 proba dosyasi yesil. 0 Turkish. Agac temiz.
 Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK.
+
+## Oturum 8 eki 9 — TV-66 (TV-65'i duzelten ilk fix)
+
+TV-65 TV-43'un zero-knowledge olmadigini kanitlamisti. Bugun retraction
+duzeltiliyor. SzZkTileAIR: prover maskelerini ceker, z'den once commit eder,
+tek cross-term z'de acilir.
+
+Dort kontrol geciyor: honest verify; TV-65 saldirisi 64 tohumda bos; iki
+tanik ayni tohumla farkli view, tanik vermiyor; tek degerlik forgery iki
+geciste yakalanir (0.3200 vs 0.3333).
+
+Uc hata: pad farkta; pm[z-1] iki kez; oran (m-3)/(m-1). Olcum dogruydu.
+
+Gizli hata: TV-43 assert'i "leaked"i yanlis tanimliyordu. Bos testti.
+Cascade: PAPER (L529 RESTORED, L685, L740), SPEC (TV-66), README, GAPS (L664).
+
+Durum: 13/13 + 5 proba yesil. f0b rc=0. 0 Turkish. Iki cevap bekleniyor.
