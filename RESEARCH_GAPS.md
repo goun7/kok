@@ -689,3 +689,16 @@ zero. Two independent papers, written for different purposes, describe the same
 network as sitting at the same point. That is the strongest single piece of
 external evidence the calibration has, and it is now recorded as such rather
 than asserted.
+
+The internal numbers were checked the same way: every quantitative result the
+spec table quotes from `bond_margin_proto_en.py` (TV-31 the capped slash giving
+net −40 at all three bond values with critical fee = B_out = 60; TV-32 the
+FULL-mode margin with max error 0.00 and R² = 1.0000; TV-33 the free-censorship
+window at +900 without refill and −800 with it) and from `fp8_noise_proto_en.py`
+(TV-27 the 100% subnormal flush; TV-28 the entropy-0 pinning, a negative result
+that the file deliberately reports with a failing exit code; TV-29 the 13
+distinct values under the noise floor; TV-30 the 6.64% / 3.52% / 1.37% sweep and
+the DELTA ≤ 0.06 correction) was reproduced by running the files and compared
+line by line. All agree exactly. The one cosmetic difference is a signed zero
+(entropy −0.00 versus the table's 0.00), which is a float-printing artefact and
+not a disagreement.
