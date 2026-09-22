@@ -658,7 +658,7 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
    plugin, while the permissionless miner's optimum is raw filler; the useful work occurs in
    Pearl's **separate** hosted-inference business. Pearl's shortcoming is not technical but
    **architectural**: leaving the marketplace in whitepaper §1 as a future vision (no
-   escrow/bond/burn/anti-aggregation). KÖK v2 builds this — details in §12.
+   escrow/bond/burn/anti-aggregation). KÖK v2 builds this — details in §3 and §12.1b.
 5. **FP verification: two paths, neither yet working in KÖK.** The Pearl path (**Hawkeye
    bit-exact replay**, MLSys 2026, in production) is **proven today** but ties KÖK v2 to GPU
    generations (sm90 whitelist). **The whitelist governance — previously left undefined,
