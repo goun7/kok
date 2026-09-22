@@ -2166,3 +2166,40 @@ kucuk harfli `Konsensus`.**
 
 **Durum:** 8/8 ana suite yesil + 3 probe dosyasi yesil. 0 Turkce. Agac temiz.
 Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK.
+
+
+## Oturum 8 eki 7 — son modulde 5. GERCEK bug + makale/kod capraz kontrolu (22 Eylul)
+
+Son probalanmamis modul `pass_sim_en.py`'di (Pass ekonomik modeli; makalenin
+Pearl 5.8%, Fortessia x3.33, PR/2 iddialari buradan). **5. gercek bug bulundu**
+ayrica makale ile kod arasinda uc capraz-kontrol hatasi.
+
+**TV-62/63: `_theta_from_PR` docstring'inin soyledigi araligi HIC kontrol ETMIYOR.**
+- Docstring: "cozum (theta_low, theta_high) icinde olmali".
+- Kod: `lo, hi = 1e-12, 1e9` — aralik denenmedi.
+- Sonuc: P=0.01..0.30 icin **theta=0.007..0.16 dondu**, hepsi theta_low=0.30'un
+  altinda. Yani **Fortessia rejimindeki parametreler, sanki Duplexia cozmus gibi**
+  sayi dondurdu. Makalenin alintiladigi rejim haritasini bozan bir yanlis.
+- **`solve()` HIC hatali degildi** — o cagirmadan once PR'yi theta_low*e*Q_B ile
+  karsilastiriyor. Bug FONKSIYONUN SOZLESMESINDEYDI, docstring'e guvenen her
+  cagirani yakan turden.
+- Duzeltme: bracket artik araligin kendisi; dis kokler NaN donuyor.
+
+**Makale <-> kod capraz kontrolunden uc hata:**
+1. **Yanlis esik.** Makale: "break-even'in altinda olu durum emicidir." Kod
+   olculdu: **esik 0.79** (binary search), break-even (1.0) DEGIL. Yani
+   kacis pariteden ONCE basliyor. Makale duzeltildi, **TV-60 regression guard**
+   eklendi (0.75..0.83 bandi) ki makale ile model ayrilamasin.
+2. **Yanlis TV referansi.** Makale "TV-35's crossover ($2.64)" diyordu;
+   crossover TV-37'de. Duzeltildi + "$10/$250" lik eski yorum duzeltildi
+   (kod $2.64/$66 uretiyordu — makale dogru, yorum yanlisti).
+3. **27 olmus dosya referansi.** `pass_sim.py`, `u_layer_prototype.py`,
+   `g_layer_tests.py`, `f3a_sequencer_proto.py` -> 27 yerde `_en` ile
+   bitmeyen isimler. Makale okuyan biri `python3 pass_sim.py` calistirirsa
+   ESKI Turkce dosyayi calistirirdi. Hepsi `_en.py` yapildi.
+
+**Metodoloji:** docstring bir SOZLESMEDIR, yorum degil. Fonksiyonun docstring'i
+bir garanti veriyorsa, probe o garantinin test edilmis olmasini ister.
+
+**Genisletilmis denetim:** adoption_econ + f0 dosyalari da Turkce taramasina
+alindi. 0 hit. 12/12 suite + 4 proba dosyasi yesil. 0 Turkish. Agac temiz.
