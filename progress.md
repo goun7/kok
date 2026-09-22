@@ -2203,3 +2203,38 @@ bir garanti veriyorsa, probe o garantinin test edilmis olmasini ister.
 
 **Genisletilmis denetim:** adoption_econ + f0 dosyalari da Turkce taramasina
 alindi. 0 hit. 12/12 suite + 4 proba dosyasi yesil. 0 Turkish. Agac temiz.
+
+
+## Oturum 8 eki 8 — TV-43 SIFIR BILGI DEGIL; makalenin (b) gerekcesi sifirlandi (22 Eylul)
+
+**Bu oturumun en buyuk bulgusu.** F0b'nin TV-43 adimi "zero-knowledge masking"
+iddia ediyordu; makalenin merkezi (b) gerekcesi (girdileri gostermadan sonuc
+ispatla) buna dayaniyordu. **Probe TV-65 ile sifir bilginin HIC olmadigi
+kanitlandi.**
+
+- Maske `d(t) = H("mask", seed, t)` ve **seed'i VERIFIER veriyor.**
+- `verify_zk` icinde `real_a = (ma - H("mask", seed, x+1)) % q` — verifier
+  maskesini CIKARARAK acik metni okuyor.
+- Probe, kotal bir verifier olarak yalnizca seed'i ve gonderilen degerleri
+  kullanip **tum gizli tanigi (trace, a, b) geri cikardi**, ustelik honest proof
+  hala verify ediyordu.
+- **Reader'a anahtari verilmis bir one-time pad, pad degildir.**
+
+**Makale duzeltildi:** "one-time-pad hiding rather than Schwartz-Zippel" gibi
+yumusak bir bosluk yazilmisti; gercekte **gizleme hic yoktu**. Makale, spec,
+README ve RESEARCH_GAPS'in hepsine duzeltme yazildi. (b) gerekcesinin artik
+**HIC prototype destegi yok** — maske verifier'in bilemedigi bir yone donene
+kadar.
+
+**Ne saglam ne degil:** SOUNDNESS saglam (honest kabul, forged red; AIR,
+commitment, low-degree test gercekten calisiyor). Olmayan yalnizca Gizluluk.
+
+**Ayni oturumda 5. gercek bug (TV-62/63)** `_theta_from_PR`'de bulundu:
+1e-12..1e9 bracket'i docstring'in soyledigi (theta_low, theta_high) araligini
+HIC kontrol etmiyordu. Cozum: bracket araligin kendisi.
+
+**Metodoloji:** docstring bir SOZLESMEDIR. Bir fonksiyon docstring'inde bir
+garanti veriyorsa, probe o garantisin test edilmis olmasini ister.
+
+**Durum:** 12/12 ana suite + 5 proba dosyasi yesil. 0 Turkish. Agac temiz.
+Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK.
