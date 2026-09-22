@@ -123,7 +123,7 @@ class GHOSTDAG:
         return fut
 
     def _anticone(self, bid: str) -> set:
-        """Anticone: ne gecmiste ne gelecegte those that are."""
+        """Anticone: neither in the past nor in the future of this block."""
         past = self._past(bid)
         fut = self._future(bid)
         return {b for b in self.blocks if b != bid and b not in past and b not in fut}

@@ -418,7 +418,8 @@ def v1_contrast():
 #     Pearl's production values (tau_tame=256 etc.) are for k~4096-16384.
 #   * unpredictable: the toy uses the v_iu < ulp(M_ij) comparison (Pearl
 #     uses the divisor v_iu < ulp(M_ij)^2 + 2^21 — it comes from the FP8 bit budget).
-#     Toy'da esik 2^21 its scale anlamsiz; yapi (summand spread vs accumulation
+#     In the toy the 2^21 scale is not meaningful; the structure (summand spread
+#     vs accumulation
 #     grid) korunur.
 #
 # Goal: verify all four controls REJECT DEGENERATE inputs and ACCEPT healthy ones
@@ -824,7 +825,7 @@ if __name__ == "__main__":
     print("[TV-11] entry liveness (Pearl 5.1.1):")
     t11 = tv11()
     print(f"       2-peak rows : idle %{100*t11['bad_2peak'][0]:.2f} "
-          f"(esik %{100*JackpotToy.EPS_IDLE:.2f}) -> "
+          f"(threshold %{100*JackpotToy.EPS_IDLE:.2f}) -> "
           f"{'RED' if not t11['bad_2peak'][1] else 'ACCEPT'}")
     print(f"       healthy    : idle %{100*t11['good'][0]:.2f} -> "
           f"{'ACCEPT' if t11['good'][1] else 'RED'}")
@@ -833,7 +834,7 @@ if __name__ == "__main__":
 
     print("[TV-12] noise floor (Pearl 5.1.2):")
     t12 = tv12()
-    print(f"       tek-peak row: noise {t12['bad_single_peak'][0]:.2f} grid unit "
+    print(f"       single-peak row: noise {t12['bad_single_peak'][0]:.2f} grid unit "
           f"< {JackpotToy.SIGMA_MIN:.0f} -> "
           f"{'RED' if not t12['bad_single_peak'][1] else 'ACCEPT'}")
     print(f"       healthy    : noise {t12['good'][0]:.2f} grid unit -> "
@@ -842,7 +843,7 @@ if __name__ == "__main__":
     print("[TV-13] tamed products (Pearl 5.1.3):")
     t13 = tv13()
     print(f"       same row (rank-1): tamed %{100*t13['bad_identical'][0]:.1f} "
-          f"(esik %{100*JackpotToy.EPS_TAME:.1f}) -> "
+          f"(threshold %{100*JackpotToy.EPS_TAME:.1f}) -> "
           f"{'RED' if not t13['bad_identical'][1] else 'ACCEPT'}")
     print(f"       healthy random      : tamed %{100*t13['good_random'][0]:.1f} -> "
           f"{'ACCEPT' if t13['good_random'][1] else 'RED'}")
@@ -853,7 +854,7 @@ if __name__ == "__main__":
     print("[TV-14] unpredictable summands (Pearl 5.1.4):")
     t14 = tv14()
     print(f"       common-peak : predictable %{100*t14['bad_common_peak'][0]:.1f} "
-          f"(esik %{100*JackpotToy.EPS_PRED:.1f}) -> "
+          f"(threshold %{100*JackpotToy.EPS_PRED:.1f}) -> "
           f"{'RED' if not t14['bad_common_peak'][1] else 'ACCEPT'}")
     print(f"       healthy    : predictable %{100*t14['good_random'][0]:.1f} -> "
           f"{'ACCEPT' if t14['good_random'][1] else 'RED'}")

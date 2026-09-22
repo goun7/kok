@@ -439,7 +439,8 @@ def tv10():
 
 def tv123_stub():
     """TV-1..TV-4 G-layer tests are outside this prototype's scope (KW_ANALIZ.md
-    and the G-layer kernel test in the file). Here only replay rejection dogrulanir."""
+    and the G-layer kernel test in the file). Here only replay rejection is
+    verified."""
     ch = Chain()
     A, B = [[1, 2], [3, 4]], [[5, 6], [7, 8]]
     for _ in range(EPOCH_LOOKBACK + 1):

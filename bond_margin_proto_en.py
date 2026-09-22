@@ -28,7 +28,8 @@ ECONOMIC MODEL (same as pass_sim §10 + 2 slash modes):
 TESTS:
 - TV-31: in CAPPED mode the deterrent is BOUNDED BY FEE - bond > fee is inert
   (SPEC CORRECTION: "bond = fee + margin" only holds in the "full" mode)
-- TV-32: FULL modda margin = B_out - fee lineer; esik the equation dogrulanir
+- TV-32: in FULL mode the margin = B_out - fee is linear; the threshold equation
+  is verified
 - TV-33: without refill the "free censorship window" = bond/fee events;
   refill closes the window
 
@@ -51,7 +52,7 @@ def censor_net(fee, bond, b_out, n_events, refill=True, slash_mode="capped"):
     """
     Total net payoff of N censorship events (from the sequencer view).
 
-    slash_mode="capped": slash = min(bond, fee)  [f3a gercek its behaviour]
+    slash_mode="capped": slash = min(bond, fee)  [f3a's actual behaviour]
     slash_mode="full":   slash = bond            [spec A.5.5 the intent]
     """
     cur = bond
