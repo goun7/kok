@@ -2017,3 +2017,40 @@ sistematik hali.
 
 **Durum:** 6/6 suite yesil (f3a 8 ACCEPT). 0 Turkce. Audit temiz. Ana yol hala
 iki cevabi bekliyor (Alon Burg, Demirel). F3b YOK, mail YOK.
+
+
+## Oturum 8 eki 3 — TV-ID carpismalarini temizledim + probe seti dosyalandi (22 Eylul)
+
+**Adversarial probe seti artik dosya:** `probe_edges_en.py` (TV-45..49). Onceleri
+tek-seferlik `_probe_edges.py` idi; sildim. Ama 3 gercek hatanin hepsi **provoke
+ederek** bulundugu icin, probe'un kendisini de korumaya almaya deger — geri
+donerlerse yakalar.
+
+**3 GERCEK TV-ID carpismasi buldum (kendim yaratmistim):**
+- **TV-34** (benim f3a "terminal counted once") = `u_layer_prototype_en.py`
+  TV-34 "empty-input attack A=B=0". Carpisma belgelenmemisti.
+- **TV-35** (benim f3a "refund books") = `adoption_econ.py` TV-35 cross-subsidy.
+- **TV-36..40** (benim probe'lar) = adoption_econ TV-36/37 + u_layer TV-38/39 +
+  f0b TV-40..43'in tam ortasi.
+
+**Yeniden numaralandim:** TV-34 -> **TV-50**, TV-35 -> **TV-44**,
+TV-36..40 -> **TV-45..49**. TV-44..50 tamamen bostu (tum projeyi taradim).
+
+**Neden bazen carpisma belgeleyip bazen siliyorum?** TV-21..26 carpismasi
+**bilincli lokal yeniden kullanim** (f3a'nin demand-meter serisi g_layer/ghostdag
+serisiyle ayni numaralari, makale o serie atifta bulunuyor) — belgeleniyor. Ama
+bu uc tanesi **ilgisiz testlerle kazara carpismaydi**; numara tasimak, belge
+yazmaktan ucuz. Spec'teki carpisma notu bunu acikliyor.
+
+**KOK NEDENI COZULDU:** bos bir `_KONSensus_L1` (BUYUK harf) golge dizin geri
+gelismis; `write`/`edit`/`read` araclarimdan bazilari yolunu case-insensitive
+cozdugu icin **golgeye** yaziyordu (son `_append3.py` boyle kayboldu — golgeyi
+silince dosya da gitti). Golge `rmdir` ile kaldirildi; simdi tek bir dizin var.
+Bu, oturum boyunca araliksiz gorunen "not found" / ENOENT / "file changed"
+belirtilerinin aciklamasi. **Bundan sonra mutlak yol duzgun cozunmeli.**
+
+**Ders:** "temiz" demeden once **butun projeyi tara**. Tek dosyada unique olmak
+yetmiyor; carpisma dosyalar arasi.
+
+**Durum:** 7/7 suite yesil (f3a 8 ACCEPT, probe 5/5). 0 Turkce karakter/morfoloji.
+Agac temiz. Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK, duyuru YOK.
