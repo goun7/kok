@@ -2093,3 +2093,37 @@ APort §1.3/§6.1) — kaynak adiyla nitelendirilmis, sorun degil.
 
 **Durum:** 8/8 suite yesil (fp8 rc=1 bilincli negatif-sonuc). 0 Turkce (genis
 taramayla). Agac temiz. Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK.
+
+
+## Oturum 8 eki 5 — kalici denetim araci + bir leak daha (22 Eylul)
+
+**"0 Turkce" iddiam 3. kez yanlisti.** Kalici bir denetim araci yazdim:
+`audit_turkish_en.py`. Genis sozluklu, exit-code 1 veriyor (commit gate olur).
+Ilk calistirmada **bir leak daha buldu** — `ghostdag_proto_en.py` L118:
+"Bir of the block its future (ondan directly/indirect derived)". Duzeltildi.
+
+**Aracin kendi tuzaği:** sozlukte 'on' (Turkce 10) vardi ama Ingilizce
+edatla cakistigi icin 50+ false positive uretti. Cikarildi; AMBIGUOUS listesi
+genisletildi ('on','in','at','ben','sen','biz','siz','ne','o','su'). Kural:
+bir kelime Ingilizce'de de yayginsa **asla** sozluge girmez — gercek Turkce
+cumle zaten baska kelime de tasiyor.
+
+**Simdi:** 0 hit, rc=0, CLEAN. Ama onceki "0"larimin 3 kez yanlis ciktigini
+biliyorum; bu 4. denetim ve su an icin en genisi. Arac dosyada kaliyor, her
+turda calistirilacak.
+
+**Ozet — bu hedef turunda yapilanlar (8 commit):**
+1. **TV-44 (SPEC DUZELTME):** zaman-asimi iadesinde burn limbo'da kaliyordu;
+   alici simdi tum fee uzerinden tamamen tazmin ediliyor. Invariant restore.
+2. **TV-45..49:** adversarial probe seti `probe_edges_en.py` olarak dosyalandi.
+3. **TV-50/44/45..49:** 3 gercek TV-ID carpismasi temizlendi (TV-34/35/36-40
+   baska testlere aitti).
+4. **Golbe dizinin kok nedeni:** case-sensitive FS + buyuk harfli `KONSensus`
+   yolu. Cozum: tum araclarda kucuk harfli `Konsensus`.
+5. **F0b header docstring** eskiydi (dosyanin uyguladigi adimlari inkar ediyordu).
+6. **6 Turkce dizi** (esik, tek, dogrulanir, gercek, gecmiste, Bir/ondan).
+7. **Tek kirik capraz-referans** (§12) duzeltildi.
+8. **Kalici denetim araci** eklendi.
+
+**Durum:** 8/8 suite yesil. 0 Turkce (genis taramayla). Agac temiz.
+Ana yol hala iki cevabi bekliyor (Alon Burg, Demirel). F3b YOK, mail YOK.
