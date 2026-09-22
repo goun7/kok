@@ -1177,7 +1177,7 @@ if __name__ == "__main__":
 
 
 def tv26_terminal_states_counted_once():
-    """TV-34: terminal tasks are counted once, not once per later block.
+    """TV-50: terminal tasks are counted once, not once per later block.
 
     The demand meter's _seen set originally guarded only SETTLED tasks, because
     phi depends on them alone. But REFUNDED, MIGRATED and SLASHED tasks stay on
@@ -1223,7 +1223,7 @@ def tv26_terminal_states_counted_once():
     meter.record_block(net)
     ok_migrated = (meter.migrated_tasks == 1)
     ok_paid = (meter.paid_tasks == 0 and meter.phi() == 0.0)
-    print("  TV-34 once-only:     refunded %d (exp 1), slashed %d (exp 1), "
+    print("  TV-50 once-only:     refunded %d (exp 1), slashed %d (exp 1), "
           "paid %d, phi %.3f  %s" %
           (meter.refunded_tasks, meter.slashed_tasks, meter.paid_tasks,
            meter.phi(), "ACCEPT" if (ok_state and ok_refund and ok_slash
@@ -1234,19 +1234,19 @@ def tv26_terminal_states_counted_once():
 if __name__ == "__main__":
     print()
     print("=" * 76)
-    print("KOK v2 — F3a: terminal tasks counted once (TV-34, regression guard)")
+    print("KOK v2 — F3a: terminal tasks counted once (TV-50, regression guard)")
     print("=" * 76)
     print("The meter's _seen set guarded SETTLED tasks only, so REFUNDED,")
     print("MIGRATED and SLASHED tasks were recounted in every block they spent")
     print("on the sequencer's list. Phi was unaffected, but the reported refund")
     print("and slash rates were inflated by the lingering time.\n")
     ok = tv26_terminal_states_counted_once()
-    assert ok, "TV-34 FAILED: terminal tasks are being recounted"
+    assert ok, "TV-50 FAILED: terminal tasks are being recounted"
     print("\n  -> the reporting counters are arithmetic, not impressions.")
 
 
-def tv35_refund_books_balance():
-    """TV-35: a timed-out task refunds the FULL fee, and the books balance.
+def tv44_refund_books_balance():
+    """TV-44: a timed-out task refunds the FULL fee, and the books balance.
 
     The invariant fees_in == refunded + burned + paid must hold on every path,
     including the timeout refund. The escrow alone is 70 of a 100 fee with
@@ -1275,7 +1275,7 @@ def tv35_refund_books_balance():
     balance = (fees_in == total)
     full_refund = (fees_refunded == fees_in)
 
-    print("  TV-35 refund books:     state %s | in %d = refund %d + burn %d + "
+    print("  TV-44 refund books:     state %s | in %d = refund %d + burn %d + "
           "paid %d (total %d) %s" %
           (state, fees_in, fees_refunded, fees_burned, fees_paid, total,
            "ACCEPT" if (balance and full_refund and state == "REFUNDED")
@@ -1286,11 +1286,11 @@ def tv35_refund_books_balance():
 if __name__ == "__main__":
     print()
     print("=" * 76)
-    print("KOK v2 — F3a: the refund-guarantee books balance (TV-35)")
+    print("KOK v2 — F3a: the refund-guarantee books balance (TV-44)")
     print("=" * 76)
     print("A timed-out task left the earmarked burn stranded: neither refunded")
     print("nor burned, so fees_in did not equal refunded + burned + paid, and")
     print("a censoring sequencer kept part of a fee for work it never did.\n")
-    ok = tv35_refund_books_balance()
-    assert ok, "TV-35 FAILED: the refund path does not balance the books"
+    ok = tv44_refund_books_balance()
+    assert ok, "TV-44 FAILED: the refund path does not balance the books"
     print("\n  -> nothing delivered, nothing burned, buyer made whole.")

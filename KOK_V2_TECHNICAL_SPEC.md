@@ -173,7 +173,7 @@ it. **KÖK solution:**
    nothing is burned, and the buyer is made whole. (Spec correction, 2026-09-22: this previously
    said "the escrow is refunded", which stranded the burn portion in limbo — neither returned to
    the buyer nor actually burned — and broke `fees_in == refunded + burned + paid`. Found by the
-   TV-35 probe; see §A.5 and the TV-35 row in the test table.) The **cost of censorship is zero,
+   TV-44 probe; see §A.5 and the TV-44 row in the test table.) The **cost of censorship is zero,
    and its benefit is also zero.**
    (ii) **Task-migration:** the task owner can resubmit the rejected task (with the same
    `task_ref`) to an **alternative sequencer**; the first sequencer's bond is slashed (censorship
@@ -502,10 +502,11 @@ def challenge(challenger, tid, proof):
 | TV-31 | **Capped slash bound — SPEC CORRECTION** | f3a mode slash=min(bond,fee); bond ∈ {100,500,2000}, fee=100, B_out=60 | all three bonds give the **same net (−40)** — the slash saturates at fee; critical **fee = B_out = 60** | Raising bond above fee is inert; "bond = fee + margin" needs the FULL slash mode |
 | TV-32 | **FULL-mode margin is linear** | slash=bond; fee=100, B_out ∈ {120,150,200,300,500} | margin = B_out − fee with **max error 0.00, R²=1.0000** (B_out=300 → margin=200) | The §10 threshold equation holds exactly in FULL slash mode |
 | TV-33 | **Free-censorship window** | bond=300, fee=100, N=20; refill on/off | no refill: net **+900** (profitable) after a 3-event window; with refill: net **−800** | Refill is mandatory; without it only bond/fee events are deterred |
-| TV-34 | **Terminal tasks counted once** (f3a, added 2026-09-22) | one REFUNDED + one SLASHED task observed over 30 blocks; one migration | refunded **1** and slashed **1** (not 15 each); migrated **1** | The meter's reported rates are arithmetic, not impressions — two reporting bugs found and closed |
-| TV-35 | **Refund books balance** (f3a, added 2026-09-22) — SPEC CORRECTION | one censored task, fee 100, burn_rate 0.3; W_r+2 blocks elapse | refund **100** (not 70), burn **0**, paid **0**: fees_in == refunded + burned + paid | The timeout refund previously stranded the earmarked burn in limbo, and a censor kept part of a fee for work never done |
+| TV-50 | **Terminal tasks counted once** (f3a, added 2026-09-22) | one REFUNDED + one SLASHED task observed over 30 blocks; one migration | refunded **1** and slashed **1** (not 15 each); migrated **1** | The meter's reported rates are arithmetic, not impressions — two reporting bugs found and closed |
+| TV-44 | **Refund books balance** (f3a, added 2026-09-22) — SPEC CORRECTION | one censored task, fee 100, burn_rate 0.3; W_r+2 blocks elapse | refund **100** (not 70), burn **0**, paid **0**: fees_in == refunded + burned + paid | The timeout refund previously stranded the earmarked burn in limbo, and a censor kept part of a fee for work never done |
+| TV-45..TV-49 | **Adversarial edge probes** (f3a, added 2026-09-22) | challenged-then-repaired; partial slash with bond < fee; double-settle; migrate of a SOLVED task; phi over the blocks after a settlement | all **ACCEPT**: the repaired task settles and burns; the buyer is whole at 100 with only 30 slashed; re-settling changes nothing; migration refused; phi = 0.10 over 10 blocks | Probes of the corners the spec is quiet about. Not requirements — they exist because all three real bugs this pass were found by provoking the machine, not by reading it |
 
-**ID collision, recorded honestly (2026-09-22).** This table allocates TV-21..TV-26 to the
+**ID collisions, recorded honestly (2026-09-22).** This table allocates TV-21..TV-26 to the
 g_layer/ghostdag series and TV-27..TV-33 to the fp8/bond_margin series. The f3a prototype's later
 demand-meter series reuses TV-21..TV-25 locally (demand meter, end-to-end paying task, three buyer
 populations, slashing case, VRF assignment), and the paper's roadmap citations refer to that f3a
@@ -513,6 +514,15 @@ series. The two numberings do not collide *within* any file, but they do collide
 Rather than renumber either series silently — which would break the paper's citations and the
 reader's ability to trace a number to a test — the collision is stated here. Where ambiguity matters,
 name the file as well as the number.
+
+Three further collisions were found and removed rather than documented (2026-09-22, same pass):
+the f3a regression guards had been numbered TV-34, TV-35 and TV-36..TV-40, which already belonged
+to `u_layer_prototype_en.py` (TV-34 empty-input attack), `adoption_econ.py` (TV-35 cross-subsidy,
+TV-36/37 cold start and verdict) and the f0b/u_layer series (TV-38..TV-40). They are renumbered to
+TV-44, TV-50 and TV-45..TV-49, which are free. The difference is that the TV-21..26 collision is a
+deliberate local reuse of a documented series, while these three were accidental collisions with
+unrelated tests — renumbering was cheaper than disambiguating prose, so the numbers moved and the
+citations moved with them.
 
 **TV-21 (low-entropy, Polymath 6) — honest boundary:** the attacker swept the peak v from 10→400;
 **no v passed** (noise/g asymptotic ~0.707 < SIGMA_MIN=1). Beneath this "nice" result lies **a

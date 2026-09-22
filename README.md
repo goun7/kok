@@ -30,7 +30,7 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 | `KOK_V2_REFERENCES.md` | Bibliography + a proof index mapping every claim to evidence |
 | `g_layer_tests_en.py` | Layer G: replay rejection, prescribed hardness, low-entropy, retarget (TV-1..TV-21) |
 | `u_layer_prototype_en.py` | Layer U: escrow, burn, VRF, fraud, slashing (TV-5..TV-10) |
-| `f3a_sequencer_proto_en.py` | Censorship-resistance: refund, migration, bond refill (TV-15..TV-20) |
+| `f3a_sequencer_proto_en.py` | Censorship-resistance: refund, migration, bond refill (TV-15..TV-20); demand meter and paying task (TV-21..TV-25); regression guards (TV-44, TV-50) |
 | `ghostdag_proto_en.py` | GHOSTDAG ordering with Kaspa mainnet parameters (TV-22..TV-26) |
 | `fp8_noise_proto_en.py` | Quantization-aware FP8 noise model (TV-27..TV-30) |
 | `bond_margin_proto_en.py` | Censorship-economics measurement (TV-31..TV-33) |
@@ -39,6 +39,7 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 | `f0_demand_discovery.py` | **F0 as an instrument**: candidate scoring rubric, price test against the measured crossover, append-only interview log |
 | `f0_candidate_list.py` | Six named buyers from Akash's own case studies, scored by the F0 rubric |
 | `f0b_air_proto.py` | **F0b, the AIR chain (TV-40 to TV-43)**: constraints, Merkle commitment with sampled verification, low-degree testing, and zero-knowledge masking |
+| `probe_edges_en.py` | **Adversarial edge probes (TV-45..TV-49)**: corners the spec is quiet about. Not requirements — they exist because the three real bugs found this pass were all caught by provoking the machine, not by reading it |
 
 All prototypes are **stdlib-only Python 3**: `python3 <file>`. No dependencies.
 
