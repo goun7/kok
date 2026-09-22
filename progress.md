@@ -2127,3 +2127,42 @@ turda calistirilacak.
 
 **Durum:** 8/8 suite yesil. 0 Turkce (genis taramayla). Agac temiz.
 Ana yol hala iki cevabi bekliyor (Alon Burg, Demirel). F3b YOK, mail YOK.
+
+
+## Oturum 8 eki 6 — probe methodunu 2 module daha uyguladim (22 Eylul)
+
+Probe yontemi 3 f3a bug'i bulmustu. Ayni yontemi **u_layer** ve **ghostdag**'a
+uyguladim. Sonuc: **1 yeni gercek bug + 1 olculmus sapma.**
+
+**TV-51: u_layer'da escrow eksiye dustu (4. GERCEK bug).**
+- `submit_task`: `t.escrow = fee - burn` (burn aninda dusuluyor), `settle`:
+  `t.escrow -= (burned + pay)` = 70 - 100 = **-30**.
+- Para akisi DOGRUYDU (burn submitte dustu, miner 70 aldi, burn_address 30).
+- **Defter alani yanlisti.** `t.escrow`'u okuyan herhangi bir saglik okuyucusu
+  olmayan bir acigi raporlardi. `t.escrow -= pay` olarak duzeltildi.
+- TV-52..55 temiz: double-settle bir kezoder, SLASHED miner'a odeme yapmaz,
+  u_layer burn'u submitte toplar (f3a'dan bilincli fark — refund-guarantee
+  sadece f3a'da), gec challenge reddedilir.
+
+**TV-59: GHOSTDAG mergeset'i greedy ve olculmemis bir sapma.**
+- Gercek tanim: `mergeset(sp) U (anticone(sp) ∩ past(B))`. Kod `∩ past(B)`'yi
+  "bilinmiyor" diyerek atiyor (L160-161) — dosyada "greedy approx" yaziyordu.
+- **Ama sapmanin boyutu hicbir yerde yazmiyordu.** Olctum: 51 blokluk DAG'da
+  **572 order girdisi block'un kendi past'i disinda.**
+- Anlami: iki block'un siralamasi, hicbirinin referans vermedigi is uzerinde
+  GUARANTILI TUTARLI DEGIL. Bu, dosya ile uyguladigi ePrint 2018/104 arasindaki
+  **en buyuk bosluk**. Gercek mergeset F3b isi.
+- "BUG" olarak duzelmedim — **olculup belgelendi** (ghostdag TOY LIMITS'e
+  eklendi, KOK_V2_REFERENCES.md'e uyarı satiri, spec'e TV-56..59 satiri).
+- **Metodoloji:** "toy" yazan bir yorum, olcum Degildir. Sayiyi yazmadan once
+  calistir.
+
+**Probe dosyalari kalici:** `probe_u_layer_en.py`, `probe_ghostdag_en.py`.
+Toplam 14 probe (TV-45..59, aralardaki TV-50/44 ile). Hepsi commit'lendi.
+
+**Golge 3. kez geri geldi** — `write` cagrilarimda yanlislikla buyuk harfli
+`KONSensus` kullandim. Tasidim, sildim. **Kural oturdu: tum arac cagrilarinda
+kucuk harfli `Konsensus`.**
+
+**Durum:** 8/8 ana suite yesil + 3 probe dosyasi yesil. 0 Turkce. Agac temiz.
+Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK.
