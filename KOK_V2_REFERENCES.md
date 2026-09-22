@@ -134,7 +134,7 @@ System date: 19 September 2026.
     M/L/D activities, Δ = 1/γ + 1/α − 1, θ = PR/(pQ), **Theorem 1** (Bitconia /
     Fortessia / Duplexia regimes), **Theorem 3** (p = αe/(1+θ), ΔSV), **Prop 1**, attack
     cost = PR/2 (in every regime), Fisher foundation. The theoretical basis of KÖK's
-    `pass_sim.py`; the Pearl calibration (eS=PR Tullock) reproduced the live network within
+    `pass_sim_en.py`; the Pearl calibration (eS=PR Tullock) reproduced the live network within
     5.8%. *Full verification from the PDF (2026-09-20):* **Theorem 2 = Cost₅₀% = PR/2 "in
     any competitive equilibrium, regardless of which regime"**; with partial reimbursement
     ν, **(1−ν)PR/2**; the definition of attack[block rewards are irreversible (token
@@ -255,15 +255,15 @@ re-checked before being cited externally.
 | Conjecture A.1 (random-rotation) is still open | `KW_ANALIZ.md` §6.3; Pearl Polymath Problem 1 | **Pearl itself** asks |
 | α = o(1) overhead | `KW_ANALIZ.md` §6.4 | **KW verbatim** |
 | Lemma 6.5 (E,F uniform rank-r, ROM) | `KW_ANALIZ.md` §6.4 | **KW verbatim** |
-| Prescribed hardness: no easy-instance advantage | `g_layer_tests.py` **TV-2** | **running test** (spread <15%) |
-| Permutation/sparse attack does not work | `g_layer_tests.py` **TV-3** | **running test** |
-| A=B=0 is not a bad input | `g_layer_tests.py` **TV-4** + V1X | **running test** |
-| ctx-binding closes the replay attack | `g_layer_tests.py` **TV-1** | **running test** |
-| Jackpot policy 4 checks | `g_layer_tests.py` **TV-11..TV-14** | **running test** (toy INT) |
-| Low-entropy (Polymath 6) resistance | `g_layer_tests.py` **TV-21** | **running test** — for INT; for FP8 **OPEN** (§A.10.7 note) |
+| Prescribed hardness: no easy-instance advantage | `g_layer_tests_en.py` **TV-2** | **running test** (spread <15%) |
+| Permutation/sparse attack does not work | `g_layer_tests_en.py` **TV-3** | **running test** |
+| A=B=0 is not a bad input | `g_layer_tests_en.py` **TV-4** + V1X | **running test** |
+| ctx-binding closes the replay attack | `g_layer_tests_en.py` **TV-1** | **running test** |
+| Jackpot policy 4 checks | `g_layer_tests_en.py` **TV-11..TV-14** | **running test** (toy INT) |
+| Low-entropy (Polymath 6) resistance | `g_layer_tests_en.py` **TV-21** | **running test** — for INT; for FP8 **OPEN** (§A.10.7 note) |
 | FMM progress preserves the ratio | `KW_ANALIZ.md` §3.3 line 6 | † analysis (symmetry argument) |
 | Trapdoor matrix is not a threat | `KW_ANALIZ.md` §3.3 line 5 | † analysis (E,F derived from σ) |
-| Retarget is safe (window+median) | `g_layer_tests.py` **RT-1..RT-3** | **running test** |
+| Retarget is safe (window+median) | `g_layer_tests_en.py` **RT-1..RT-3** | **running test** |
 | GHOSTDAG blue rule: blue ⟺ mergeset-anticone ≤ k | `ghostdag_proto_en.py` **TV-22** | **running test** (Kaspa k=18) |
 | selected_parent = max blue_score (ties: lowest hash) | `ghostdag_proto_en.py` **TV-23** | **running test** |
 | Mergeset size ≤ 2k (36) | `ghostdag_proto_en.py` **TV-24** | **running test** — reached exactly 36, never above |
@@ -275,15 +275,15 @@ re-checked before being cited externally.
 
 | Claim | Evidence | Type |
 |---|---|---|
-| Escrow+burn+fraud window works | `u_layer_prototype.py` **TV-5..TV-10** | **running test** |
-| Refund guarantee nullifies the benefit of censorship | `f3a_sequencer_proto.py` **TV-15** | **running test** |
-| Task-migration breaks the bond (negative return) | `f3a_sequencer_proto.py` **TV-16, TV-17** | **running test** |
-| **Bond re-adding is mandatory** (the deterrent must not be one-shot) | `f3a_sequencer_proto.py` **TV-20** + `pass_sim.py` §10 | **running test + model** — † the economics model found it open in the prototype |
-| Dynamic bond = fee + margin | `pass_sim.py` §10 (off-game 120 → bond 200 insufficient) | **model output** |
+| Escrow+burn+fraud window works | `u_layer_prototype_en.py` **TV-5..TV-10** | **running test** |
+| Refund guarantee nullifies the benefit of censorship | `f3a_sequencer_proto_en.py` **TV-15** | **running test** |
+| Task-migration breaks the bond (negative return) | `f3a_sequencer_proto_en.py` **TV-16, TV-17** | **running test** |
+| **Bond re-adding is mandatory** (the deterrent must not be one-shot) | `f3a_sequencer_proto_en.py` **TV-20** + `pass_sim_en.py` §10 | **running test + model** — † the economics model found it open in the prototype |
+| Dynamic bond = fee + margin | `pass_sim_en.py` §10 (off-game 120 → bond 200 insufficient) | **model output** |
 | **Capped slash: deterrent bounded by fee** (spec correction) | `bond_margin_proto_en.py` **TV-31** | **running test** — bonds 100/500/2000 give identical net (−40); critical fee = B_out |
 | **FULL-mode margin = B_out − fee** (linear, §10 equation confirmed) | `bond_margin_proto_en.py` **TV-32** | **running test** — max error 0.00, R²=1.0000 |
 | **Free-censorship window = bond/fee** without refill | `bond_margin_proto_en.py` **TV-33** | **running test** — +900 (no refill) vs −800 (refill) over 20 events |
-| Verifier's dilemma is not triggered | `f3a_sequencer_proto.py` **TV-18** | **running test** |
+| Verifier's dilemma is not triggered | `f3a_sequencer_proto_en.py` **TV-18** | **running test** |
 
 ### Economics
 
@@ -291,10 +291,10 @@ re-checked before being cited externally.
 |---|---|---|
 | Attack cost = PR/2 in every regime | Pass **Theorem 2** (verbatim PDF) | **verbatim PDF quote** (`extracted/Pass_full.txt`) |
 | p = (α/(1+θ))·e < e; ~23% savings | Pass **Theorem 3** (verbatim PDF) | **verbatim PDF quote** |
-| The model generates the live network from first principles (Pearl 5.8%) | `pass_sim.py` §0, §9 regression guard | **model output** |
-| Zero-demand → pure-PoW survives (Demirel Thm 2) | `pass_sim.py` §6 | **model output** |
-| Fortessia ×3.33 security | `pass_sim.py` §3 | **model output** (α=γ=1.3) |
-| **F3a cannot calibrate pass_sim** (small-scale limit) | `pass_sim.py` §9 (86% deviation) | **model output** — † negative result, corrected V2 §10.1 |
+| The model generates the live network from first principles (Pearl 5.8%) | `pass_sim_en.py` §0, §9 regression guard | **model output** |
+| Zero-demand → pure-PoW survives (Demirel Thm 2) | `pass_sim_en.py` §6 | **model output** |
+| Fortessia ×3.33 security | `pass_sim_en.py` §3 | **model output** (α=γ=1.3) |
+| **F3a cannot calibrate pass_sim** (small-scale limit) | `pass_sim_en.py` §9 (86% deviation) | **model output** — † negative result, corrected V2 §10.1 |
 | E-gap: Pearl's own admission | Polymath Economic (1) | **verbatim quote** (above, `KOK_V2_PAPER.md` §12) |
 | φ=0 on the live network | Basu arXiv 2606.04819 | **publication** (24 EH/s, zero utility) |
 

@@ -312,7 +312,7 @@ with pinned test vectors.
 ## 8. Economics and Monetary Policy (according to 2026 realities)
 
 > **2026-09-19: the claims of this section are now supported by an executable
-> simulation** — `pass_sim.py` (closed-form solver of Pass 2606.06700, Pearl-calibrated;
+> simulation** — `pass_sim_en.py` (closed-form solver of Pass 2606.06700, Pearl-calibrated;
 > output `sim_out.txt`). Below, **measured** values are bold, theoretical expectation in
 > parentheses.
 
@@ -529,10 +529,10 @@ and we intend to measure it rather than to assume it."**
 | **F0b — zk-AIR: provenance AND privacy (the highest-leverage item on this roadmap)** | Close the gap that reason (b) depends on: the "STARK-like" trace must become a real AIR, and the AIR should be built **zero-knowledge** — prove correct execution *without revealing the inputs*. Also measure liveness under realistic delay. **Motivated by §F: TV-38 already shows the verifier binds the certificate to the computation, but on toy sizes and a tile-level check; a real AIR is what turns that into an asymptotic claim.** **The privacy extension is not extra work: an AIR with the zero-knowledge property serves two markets with one construction — provenance for the buyer who must prove a result, and privacy for the buyer who must not reveal model weights or sensitive data.** | A real zk-AIR for one MatMul task; a third party can verify *correctness without seeing the inputs*. **Progress (2026-09-21): the first four steps run as a chain in `f0b_air_proto.py` — TV-40 the AIR constraints, TV-41 Merkle commitment with sampled verification, TV-42 low-degree testing that closes the single-row gap, TV-43 zero-knowledge masking where an honest witness verifies, a forged one is rejected, and no real trace value is ever transmitted. Each file states the gap it still does not close (no FRI recursion, no codeword, one-time-pad hiding rather than Schwartz-Zippel), so this is the property at toy scale, not an audited system. Until it is audited, reason (b) remains a promise rather than a proof.** |
 | **F0 — Demand discovery** | Find the first real customer with a real job. Not a testnet, not a simulation: a party who already pays for compute and would switch to KÖK if it were cheaper, or a job that cannot run permissionlessly anywhere else. Interview ≥10 candidates; record what they actually pay, what they need, and what would make them switch. | **≥1 signed letter of intent to buy compute at a named price.** This is the seed of demand (§12.1); without it the chain converges to the empty-block equilibrium and stays there |
 | **F1 — Formal spec** | statement schema, task market protocol, GHOSTDAG+rejection-sampling spec, economic model | Walk-through by independent cryptographers; T1–T6 skeletons. **✅ complete on paper: `KOK_V2_TECHNICAL_SPEC.md`** |
-| **F1b — Working prototype** | task lifecycle + penalty economics + difficulty retarget | **✅ `u_layer_prototype.py` (TV-5..TV-10), `g_layer_tests.py` (TV-1..TV-4, RT-1..RT-3) — all PASS** |
+| **F1b — Working prototype** | task lifecycle + penalty economics + difficulty retarget | **✅ `u_layer_prototype_en.py` (TV-5..TV-10), `g_layer_tests_en.py` (TV-1..TV-4, RT-1..RT-3) — all PASS** |
 | **F2 — Soundness verification** | verification of the AIR with Lean + ZEBRA-class cardinality check | Under-constrained bug = 0 (third-party audit) |
 | **F3 — Devnet** | `kok-node` (Rust), S-two/Circle STARK verifier, task market, filler tasks | 10 BPS, verify ≤2 ms/block, difficulty approaches the target in 7 days |
-| **F4 — Economic simulation** | on-chain simulation of Pass's model (3 regimes) | Controlled transition to pure-PoW mode in the zero-demand scenario. **✅ closed-form solver: `pass_sim.py` — Pearl calibration 5.8%, Fortessia ×3.33, zero-demand S→PR/e, tail $0.76** |
+| **F4 — Economic simulation** | on-chain simulation of Pass's model (3 regimes) | Controlled transition to pure-PoW mode in the zero-demand scenario. **✅ closed-form solver: `pass_sim_en.py` — Pearl calibration 5.8%, Fortessia ×3.33, zero-demand S→PR/e, tail $0.76** |
 | **F4b — Cryptographic analysis** | independent assessment of the KW conjecture | **✅ `KW_ANALIZ.md`: risk high → low-medium (Assumption 6.4 not needed; the real risk is the E-gap)** |
 | **F5 — Testnet + miner** | open testnet, `kok-miner`, ecosystem task channels | 1000+ miners, demand paying for ≥1 of the real (a)/(b) tasks |
 | **F6 — Audit + mainnet** | 2 independent security audits + bug bounty | No critical findings; miner ecosystem stable for 6 months |
@@ -563,15 +563,15 @@ but an honest GHOSTDAG PoW" (§11 item 3).
 time; number of slashing events; **ratio of real paying users** (what % of total tasks are
 real AI workloads); number of verifier's-dilemma triggers (spec §A.5).
 
-**★ HONEST LIMIT (found during the hook test, `pass_sim.py` §9):** F3a's small-network data
-(~1200 miners) **cannot recalibrate** `pass_sim.py` — the model rests on Pass Thm 2's
+**★ HONEST LIMIT (found during the hook test, `pass_sim_en.py` §9):** F3a's small-network data
+(~1200 miners) **cannot recalibrate** `pass_sim_en.py` — the model rests on Pass Thm 2's
 "competitive equilibrium" assumption, and in small networks fixed costs dominate marginal
 costs (hypothetical test: **86% deviation**). Pass's own calibration rests on a $30B inference
 market and 52,560 blocks/year; F3a is outside this scale. **Therefore F3a's role is clear:**
 it measures the U layer's demand (φ>0) — **not the Pass model**. The Pass calibration is
 valid **at mainnet scale** (proven with Pearl at 5.8%), and the **expected** zero-φ result
 from F3a is consistent with the model's "Bitconia" descent; it does not calibrate it. This
-was pinned with a working regression-guard in §9 of `pass_sim.py` (Pearl 5.8% preserved).
+was pinned with a working regression-guard in §9 of `pass_sim_en.py` (Pearl 5.8% preserved).
 
 **★ Risk (honest):** F3a's central sequencer **limits the test's real value** — a central
 sequencer can censor, and this does not measure the U layer's **censorship resistance**.
@@ -1359,8 +1359,8 @@ mixed two homographs and an academic reader would have noticed:
 ## 13. References (21 September 2026, live — 11/11 verified)
 
 > **For the verified full list + access notes: `KOK_V2_REFERENCES.md`** (ePrint PDF gives raw
-> binary; use ar5iv.org for full text). **Working evidence:** `pass_sim.py` (Pass economics,
-> Pearl-calibrated), `u_layer_prototype.py` + `g_layer_tests.py` (protocol prototype),
+> binary; use ar5iv.org for full text). **Working evidence:** `pass_sim_en.py` (Pass economics,
+> Pearl-calibrated), `u_layer_prototype_en.py` + `g_layer_tests_en.py` (protocol prototype),
 > `KW_ANALIZ.md` (cryptographic analysis), `KOK_V2_TECHNICAL_SPEC.md` (formal spec).
 
 **Core cryptography:** ePrint 2025/685 = arXiv 2504.09971v4 (Komargodski–Weinstein, MatMul

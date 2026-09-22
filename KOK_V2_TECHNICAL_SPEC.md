@@ -182,13 +182,13 @@ it. **KÖK solution:**
    provided by GHOSTDAG's parent-set diversity + miner competition — but **the refund-guarantee and
    task-migration are retained** (these are on-chain mechanisms, independent of consensus).
 
-   **★ Working prototype (2026-09-20):** `f3a_sequencer_proto.py` — TV-15..TV-20, all PASS. It
+   **★ Working prototype (2026-09-20):** `f3a_sequencer_proto_en.py` — TV-15..TV-20, all PASS. It
    proves that the two mechanisms are validated **at prototype level**; **toy limits** (listed in
    the file header): single sequencer object, W_r=3, symbolic fee/bond, dummy proof (crypto in F3b),
    no GHOSTDAG, censorship modeled with an `evil` flag.
 
    **★★ CRITICAL: The economics model found a BUG in the prototype and changed the spec.**
-   `pass_sim.py` §10 (censorship-resistance economics) produced two mandatory policy results:
+   `pass_sim_en.py` §10 (censorship-resistance economics) produced two mandatory policy results:
 
    1. **Bond refill is MANDATORY** (added to the prototype, tested with TV-20).
       My first modeling assumed the bond was fixed — **wrong**: the bond is **depleted** at the
@@ -361,7 +361,7 @@ via Path A/B.
 
 ## A.10 Full protocol pseudocode (U-layer task lifecycle)
 
-> **2026-09-19: the reference implementation of this section works** — `u_layer_prototype.py`
+> **2026-09-19: the reference implementation of this section works** — `u_layer_prototype_en.py`
 > (standard library, deterministic SEED). TV-5..TV-10 + G replay rejection **all PASS**;
 > TV-9 reproduced Basu's live Pearl kurtosis measurements (1.79 / 3.33 / 2.97) one-to-one at
 > prototype level (1.81 / 3.58 / 3.04) and proved that adversarial input **passes** the naive
@@ -477,7 +477,7 @@ def challenge(challenger, tid, proof):
 | TV-7 | Fraud slash | Faulty proof + evidence | The miner's bond is slashed, the challenger receives a reward | §A.10.6 |
 | TV-8 | Zero-demand liveness | No U task over 1000 blocks | **All blocks valid**, the chain keeps living | Demirel Thm 2 |
 | TV-9 | Kurtosis trap | Uniform-random matrices + kurtosis control | **Control invalid**: adversary with N(0,18) passes (Basu) | E-gap: distribution ≠ provenance |
-| — | *prototype measurement* | Run TV-9 with `u_layer_prototype.py` | uniform **1.81** / nn **3.58** / adversarial **3.04**; adversarial **PASSES** the [2,4] threshold | Basu live: 1.79 / 3.33 / 2.97 |
+| — | *prototype measurement* | Run TV-9 with `u_layer_prototype_en.py` | uniform **1.81** / nn **3.58** / adversarial **3.04**; adversarial **PASSES** the [2,4] threshold | Basu live: 1.79 / 3.33 / 2.97 |
 | TV-10 | PQ downgrade | Block signed with an old non-PQ schema | **REJECT**; only `proof_system_id ∈ PQ_set` | §5 crypto-agility |
 | TV-11 | **Entry liveness** (Pearl 5.1.1) | Rows whose peaks are τ_idle=8× larger than the noise | idle ratio > ε_idle=1/64 → **RED**; healthy ≈0 | No-noise-entries attack |
 | TV-12 | **Noise floor** (Pearl 5.1.2) | Single-peaked row (the peak is adjusted to the per-tensor scale) | noise < σ_min=1 grid unit → **RED** | Low-local-entropy → special hardware |
@@ -508,6 +508,7 @@ def challenge(challenger, tid, proof):
 | TV-51..TV-55 | **u_layer probes** (added 2026-09-22) | escrow after settle; double settle; slashed payout; burn at submission; challenge past W_s | TV-51 found a bookkeeping bug: the escrow field went to −30 at settlement because settle() subtracted the burn that submit_task had already excluded from it. Money flow was correct; the field was not. Fixed. The rest confirm double-settle pays once, a slashed task pays nothing, the u_layer burn is collected at submission with no refund path (a deliberate difference from f3a, which refunds the full fee on timeout), and a late challenge is refused | The probes are kept as a file (`probe_u_layer_en.py`) for the same reason as the f3a set |
 | TV-56..TV-59 | **GHOSTDAG probes** (added 2026-09-22) — MEASURED DEVIATION, NOT A BUG | mergeset vs the reference definition; selected parent is a direct parent; blue_score monotonicity; order confined to past(B) U {B} | TV-56 shows a block referencing one fork absorbs a sibling it does not know (greedy mergeset 1 vs exact 0). TV-57 and TV-58 pass cleanly. **TV-59 fails as a correctness claim**: on a 51-block DAG, 572 order entries fall outside the block's own past, because the intersection with past(B) is dropped from the mergeset | The mergeset approximation was already labelled greedy in the file, but the size of the consequence was not stated anywhere. It is now: the ordering is not a true GHOSTDAG ordering, and computing the real mergeset is F3b work. The probe ACCEPTS on "measured and documented", and would fail if the number ever silently moved |
 | TV-60 | **Escape threshold, measured** (adoption_econ, added 2026-09-22) — PROSE CORRECTION | binary search over tv36_cold_start: the smallest cross-subsidy ratio at which any seed below the liquidity barrier escapes | **0.7930** — escape begins *before* parity, not at break-even. Below 0.79 the dead state is absorbing for every seed; above it, D₀ ≥ 0.0002 escapes to ~40% of the addressable market. Guard band 0.75..0.83 | The paper previously said "below break-even the dead state is absorbing", which named the wrong threshold. Measured instead of assumed, and guarded so a future parameter change must move the guard and the prose together |
+| TV-61..TV-64 | **Pass model probes** (added 2026-09-22) | residuals zero in all three regimes; endogenous theta inside (theta_low, theta_high) or NaN; no-root parameters yield NaN; Delta<0 selects Bitconia | **TV-62/TV-63 found a real bug in `_theta_from_PR`**: the bisection bracketed 1e-12..1e9 and never checked the interval its own docstring names, so a parameter set whose root lies below theta_low returned a number as if it were a valid Duplexia root. At P=0.01..0.30 the returned theta was 0.007..0.16, all below theta_low=0.30 — the Fortessia regime, mis-sold as Duplexia. Fixed: the bracket is now the interval itself, so out-of-interval roots return NaN | `solve()` was never wrong — it tests PR against theta_low·e·Q_B before calling. The bug was in the function's contract, reachable by any caller trusting the docstring. The same round corrected 27 stale `pass_sim.py` / `u_layer_prototype.py` / `g_layer_tests.py` / `f3a_sequencer_proto.py` references across the paper, spec and references file to the `_en.py` filenames that actually run |
 
 **ID collisions, recorded honestly (2026-09-22).** This table allocates TV-21..TV-26 to the
 g_layer/ghostdag series and TV-27..TV-33 to the fp8/bond_margin series. The f3a prototype's later
@@ -565,7 +566,7 @@ is mandatory; r=2 toy rank (Pearl: r=32 for k ≤ 2¹⁶), not an asymptotic pro
 Q(A+N) modeled as a single add-then-quantize rather than per-MAC.
 
 **Source note for TV-11..TV-14:** a toy INT adaptation of the Pearl "Floating Point Scheme
-Specification" (September 2026) §5.1 — the `JackpotToy` class inside `g_layer_tests.py`; K=64,
+Specification" (September 2026) §5.1 — the `JackpotToy` class inside `g_layer_tests_en.py`; K=64,
 GRID=16, DELTA=0.5, ACC_BITS=8. Measured results (2026-09-20, all PASS):
 
 | Test | DEGENERATE input (RED) | Healthy input (ACCEPT) |
@@ -655,7 +656,7 @@ D <- clip( Lambda_smooth · T_b ,  D/4,  4·D )    // Bitcoin'in 4x sinirlari
 > (each window's ratio belonged to an old D). The correct formula extracts a **hashrate estimate
 > independent of D** from each window: `Λ̂ = D·W/T_act` (because the block rate is `Λ/D`, i.e.
 > `T_act/W = D/Λ`). This estimate is independent of D, therefore a median can be taken across
-> windows. The prototype `u_layer_prototype.py` + `g_layer_tests.py` (RT-1..RT-3) confirms this:
+> windows. The prototype `u_layer_prototype_en.py` + `g_layer_tests_en.py` (RT-1..RT-3) confirms this:
 > from 10× away from equilibrium it converges to `Λ·T_b` in 2 windows; under a 10× sudden hashrate
 > jump the per-window change is ≤4×.
 
@@ -797,7 +798,7 @@ and cannot be changed** (a change = the greatest breach of trust).
   **aggregation risk**; monitored with scenario 7 in the simulation, but not modeled.
 - **Constant e:** for heterogeneous costs, the upward-sloping supply extension of Pass §7 is needed
   (to be added in Phase 4).
-- **★ Scale-validity limit (2026-09-20, found from the `pass_sim.py` §9 hook):** the model is valid
+- **★ Scale-validity limit (2026-09-20, found from the `pass_sim_en.py` §9 hook):** the model is valid
   **only at mainnet scale**. F3a's small network (~1200 miners) **cannot recalibrate** the model —
   a hypothetical test gave an **86% deviation**. Root cause: Pass Thm 2 says "in any competitive
   equilibrium" while assuming a competitive equilibrium; in small networks the fixed costs
@@ -807,9 +808,9 @@ and cannot be changed** (a change = the greatest breach of trust).
   model stays at Pearl scale (protected with a regression-guard). This required correcting the
   related claim of V2 §10.1 — **corrected**.
 
-## C.8 Working simulation — results (`pass_sim.py`, 2026-09-19)
+## C.8 Working simulation — results (`pass_sim_en.py`, 2026-09-19)
 
-The code was run and verified (`python3 pass_sim.py`, output `sim_out.txt`). **Key findings:**
+The code was run and verified (`python3 pass_sim_en.py`, output `sim_out.txt`). **Key findings:**
 
 1. **Pearl calibration (validation):** the model's Tullock full-payment condition `eS = PR`
    produced Pearl's measured network from first principles: `S = PR/e = 338,707` GPU-op/block vs

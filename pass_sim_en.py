@@ -56,11 +56,22 @@ class Eq:
 
 def _theta_from_PR(prm: Params) -> float:
     """Endogenous theta for Duplexia (pure D): PR = theta * K * (alpha*e)^(1-eps) * (1+theta)^eps.
-    Monotonically increasing -> bisection. The solution must lie in (theta_low, theta_high)."""
+    Monotonically increasing -> bisection. The solution must lie in (theta_low, theta_high).
+
+    Both bounds are enforced (2026-09-22, found by probe TV-62/TV-63). The old
+    bisection bracketed 1e-12..1e9, which never checked the interval the
+    docstring names, so a parameter set whose root falls below theta_low was
+    returned as if it were a valid Duplexia solution. It is not: below
+    theta_low the economy is Fortessia, and the pure-D equation has no root in
+    the regime. Returning NaN there is the honest answer — the caller falls
+    back to the regime that actually applies. The NaN case is likewise
+    tightened: a root outside the interval is not a solution at all.
+    """
     c = prm.K * (prm.alpha * prm.e) ** (1 - prm.eps)
     f = lambda th: th * c * (1 + th) ** prm.eps - prm.PR
-    lo, hi = 1e-12, 1e9
-    if f(lo) > 0 or f(hi) < 0:
+    lo = prm.theta_low
+    hi = prm.theta_high
+    if not (lo < hi) or f(lo) > 0 or f(hi) < 0:
         return float('nan')
     for _ in range(200):
         mid = 0.5 * (lo + hi)
@@ -325,7 +336,7 @@ if __name__ == "__main__":
     print("  (infrastructure, opex) dominate marginal costs -> the equilibrium breaks.")
     print("  Pass's own calibration rests on a $30B inference market and 52,560")
     print("  blocks/year. KOK's F3a (1200 miners) lies OUTSIDE that scale.")
-    print("  => CONCLUSION: pass_sim.py is valid for MAIN-network (mainnet) calibration;")
+    print("  => CONCLUSION: pass_sim_en.py is valid for MAIN-network (mainnet) calibration;")
     print("     it CANNOT be re-calibrated with F3a's small-network data; F3a data")
     print("     measures only U-layer demand (phi>0), not the Pass model.")
     print("  => The V2 10.1 claim that 'pass_sim is re-calibrated with F3a data'")
