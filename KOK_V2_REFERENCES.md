@@ -269,6 +269,7 @@ re-checked before being cited externally.
 | Mergeset size ≤ 2k (36) | `ghostdag_proto_en.py` **TV-24** | **running test** — reached exactly 36, never above |
 | ctx binds the parent-set (T-A2 strengthened) | `ghostdag_proto_en.py` **TV-25** | **running test** — different parent-set ⇒ REJECT |
 | Ordering survives a splitter attack (liveness) | `ghostdag_proto_en.py` **TV-26** | **running test** — 137 blocks, 50% fork rate; **no PoW check** (toy) |
+| ⚠ The mergeset is a GREEDY approximation, not ePrint 2018/104's mergeset | `probe_ghostdag_en.py` **TV-56/TV-59** | **measured deviation, not a passing test** — the intersection with past(B) is dropped, so the ordering sequences work the block does not reference; on a 51-block DAG, 572 order entries fall outside the block's own past. Two blocks' orderings are NOT guaranteed to agree on work neither references. The true mergeset is F3b work, and this is the largest gap between the file and the paper it implements |
 
 ### U layer (task market + censorship)
 
