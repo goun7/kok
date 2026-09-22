@@ -115,7 +115,8 @@ class GHOSTDAG:
         return seen
 
     def _future(self, bid: str) -> set:
-        """Bir of the block its future (ondan directly/indirect derived)."""
+        """The future of the block: everything derived from it directly or
+        indirectly."""
         fut = set()
         for other, blk in self.blocks.items():
             if bid in self._past(other):
