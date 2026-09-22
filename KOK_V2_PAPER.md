@@ -969,14 +969,21 @@ on it by lowering prices.
    chain cannot be selectively permissionless.
 2. **Provenance is currently claimed, not proven.** The prototype's "STARK-like" trace is not a
    real AIR (§A.0) — so the buyer's provenance guarantee rests on the honest miner and the fee,
-   not on mathematics. **This is closable** and it is why F0b exists: until the trace is a real
-   AIR, reason (b) is a promise from an anonymous team, which is exactly what a buyer paying
-   for provenance is trying to avoid.
+   not on mathematics. **This is closable** and it is why F0b exists: the real AIR now runs at
+   toy scale (TV-40..43: transition and boundary constraints, Merkle commitment with sampled
+   verification, low-degree testing) and TV-66 restored the hiding property TV-65 had
+   retracted. So this weakness has moved — it is no longer "claimed, not proven". The honest
+   state is "proven at a size nobody would deploy, with no FRI recursion, no codeword and a
+   toy field q=97". The gap that remains is engineering, not mathematics, and the difference
+   matters to a buyer: a promise from an anonymous team can stay a promise forever, while a
+   toy field has a known replacement.
 3. **Liveness is unmeasured.** The GHOSTDAG toy assumes all blocks are valid, so the
    availability story (10 BPS, no provider outage) is an argument, not a measurement.
 
-The strategic reading: **reason (b) is the more defensible position, but it is not yet a
-defensible *claim*.** F0b is what makes it one. Reason (a) needs no new cryptography — only a
+The strategic reading: **reason (b) is the more defensible position, and after TV-40..43 and
+TV-66 it is a defensible *claim about a toy*, which is a different thing from a defensible
+claim about a system.** F0b is what closes the distance between them — it no longer needs to
+invent the mathematics, only to scale it. Reason (a) needs no new cryptography — only a
 customer — but it is vulnerable to the incumbent's price list. Neither is free.
 
 Everything else — the green narrative, the "wasted energy" argument, the AI-for-all rhetoric
