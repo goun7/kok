@@ -618,9 +618,29 @@ research supports the path; it does not shorten it.
    permitting and energy move on multi-year timescales regardless of whether
    "nearly half" is the right fraction — but the specific figure should not be
    repeated as a measurement.
-2. Pass's model assumes an elastic inference market. In a supply-constrained world
-   that assumption may not hold, and if it fails, subsidising inference may not
-   expand output the way Duplexia predicts. Nobody has tested this.
+2. Pass's model assumes an elastic inference market, and the paper states the
+   assumption as an assumption, not a measurement. Verbatim from 2606.06700
+   (§2, "A simple monetary model"): "We assume throughout that inference demand
+   is sufficiently elastic so that total spending pD(p) increases when effective
+   inference prices fall (elasticity greater than one), and ignore parameters
+   that occur with measure 0." The working parameters are an isoelastic curve
+   D(p) = K p^(-ε) with (K, ε) = (571,000, 2), chosen because "ε = 2 corresponds
+   to an elastic market in which lower prices unlock new use cases, consistent
+   with the Jevons effect," with a sensitivity sweep in §5.3.
+
+   What this means for KOK, stated plainly: the entire Duplexia result — that
+   inference output expands when the effective price falls — is conditional on
+   ε > 1. The paper is honest about this; it is a modelling assumption, not a
+   claim about the world. KOK inherits the condition without testing it. In a
+   supply-constrained world (GPU capacity actually saturated, which is the state
+   the launch market has been in since 2023) ε can be well below 1 over the
+   relevant range, because buyers competing for scarce capacity bid prices up
+   without expanding supply. If ε < 1 the mechanism runs the other way:
+   subsidising inference raises total spending per unit without expanding
+   output, and the Fortessia/Duplexia boundary moves. This remains untested, and
+   testing it is a demand-discovery measurement (F0), not a simulation: ask the
+   buyers what they would do at a lower price, and whether they are currently
+   capacity-constrained or price-constrained.
 3. ~~The TEE-versus-zkVM comparison has not been written from KOK's side.~~
    **Written (2026-09-22) and now sourced verbatim.** The full HTML text of
    2609.21728 was fetched and read, and the argument's central claim is confirmed
@@ -645,3 +665,27 @@ research supports the path; it does not shorten it.
 4. Whether agents can be real buyers of inference at all — not merely authorized to
    pay, but carrying demand a human did not initiate — is an open empirical
    question that no source here answers.
+
+## Verification record (2026-09-22)
+
+The numbers the paper quotes from Basu were checked against the primary source
+(arXiv 2606.04819, 16 pages, full PDF read). All four agree exactly:
+
+- kurtosis uniform 1.79 / NN weights 3.33 / adversarial Gaussian 2.97 (§4.5)
+- revenue/cost ratio ≈ 1.06, with the cost derivation stated as
+  "320K GPUs × $0.20/hr × 24h = $1.54M" (§4.6.2)
+
+The last item is the load-bearing one. `pass_sim_en.py` calibrates the Pearl
+network from those same three inputs and prints `cost_day = 1,536,000` with a
+5.8% deviation from the measured hashrate. The prototype's input arithmetic is
+therefore not an interpretation of Basu — it is Basu's own estimate, reproduced
+from the paper's stated quantities. The 5.8% deviation is measured against the
+320,000-GPU count, not against a figure the prototype invented.
+
+The corroboration runs the other way too. Basu reads the 1.06 ratio as
+"near equilibrium at current prices," which is the same economic state Pass's
+model calls the zero-profit condition the solver enforces as a residual of
+zero. Two independent papers, written for different purposes, describe the same
+network as sitting at the same point. That is the strongest single piece of
+external evidence the calibration has, and it is now recorded as such rather
+than asserted.

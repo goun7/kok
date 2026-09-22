@@ -589,7 +589,7 @@ is **structural**, and it shapes the design:
 |---|---|---|
 | **F1/F1b/F4b (spec, prototypes, analysis)** | ~0 (compute time) | **Already done.** The paper, spec and 7 runnable prototypes are the entire output of this phase. |
 | **F3a (economy testnet)** | 1 VPS + ~200 dev-hours | Can be done **by one person** in 3–4 months. This is the cheapest decision point in the entire plan, and it is deliberately first. |
-| **Cryptographer review** | $0 — **deferred payment** | The reviewers are external academics; while the project is anonymous **compensation is hard or impossible** (no bank account, no legal entity). Payment is deferred to post-funding, which means **the review timing is not ours to control** — it is the single largest schedule risk. |
+| **Cryptographer review** | $0 — **deferred payment** | The reviewers are external academics; while the project is anonymous **compensation is hard or impossible** (no bank account, no legal entity). Payment is deferred to post-funding, which means **the review timing is not ours to control** — it is the single largest schedule risk. See §11.4 for what can be done in the meantime: **an LLM adversarial review is a real substitute for *some* of what a human reviewer provides, and a poor substitute for the rest.** |
 | **F3b (consensus devnet)** | 2–3 engineers × 6 months + test GPUs | **Not fundable today.** Requires either funding (breaks anonymity) or a grant program (requires a legal entity). This is the hard gate. |
 | **F5/F6 (testnet, audits)** | 2 security audits ≈ market rate; 1000+ miners implies ecosystem traction | **Not fundable today.** Audits before mainnet are non-negotiable; an unaudited mainnet with a bond market would be reckless. |
 
@@ -671,11 +671,91 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
 6. **The paper's ceiling is ~85/100.** The remaining ~15 points **are proofs**: the criteria of
    F3–F6, the live security budget, real paying task demand, independent audits. **A perfect
    paper is not equal to a running chain** — this is written at the top of the document so
-   that the perfectionism is honest. **Current standing (2026-09-21): ≈80/100** by the
-   internal rubric — up from 37 (v1) and 77 — with the bibliography now **11/11
+   that the perfectionism is honest. **Current standing (2026-09-22): ≈83/100** by the
+   internal rubric — up from 37 (v1), 77, and 80 — with the bibliography now **11/11
    live-verified**, the US precedent cited (§9) and the market sized from reported earnings
-   (§8.1). The 80→85 gap is exactly the set of items no paper can close: human review and
+   (§8.1). The 83→85 gap is exactly the set of items no paper can close: human review and
    live measurement.
+
+   What the last two days cost and bought (stated, because the number above moved for a
+   reason and not because the prose improved). Five real bugs were found by probing, not by
+   inspection: three in f3a accounting, one in the u_layer escrow field, one in the Pass
+   solver's theta contract. Two claims were corrected against the code: the escape threshold
+   is 0.79, not break-even, and **the F0b zero-knowledge claim was retracted** — the masking
+   step derives its pad from a seed the verifier holds, so it hides nothing (TV-65). One
+   deviation was measured rather than assumed: the greedy GHOSTDAG mergeset lets the
+   ordering sequence work a block does not reference. Each is now guarded by a test that
+   would fail if the claim drifted back. The score went up because the claims that remain
+   are ones the code actually supports, not because any weakness was hidden.
+
+### 11.4 What to do while the reviewers are unreachable — an LLM adversarial review
+
+The question of whether an LLM can substitute for a human cryptographer has a
+different answer for each thing a reviewer actually does. Splitting the role is
+what makes the answer usable:
+
+**What an LLM review CAN do, and what this paper has already used it for.** A
+model reading the code and the claims side by side is genuinely good at one
+thing: finding the gap between what a document asserts and what the code does.
+That is not a small thing — the last two days of work here found five real
+accounting bugs and one retracted zero-knowledge claim by exactly that method,
+and none of them were visible on inspection. The technique that worked is
+adversarial probing: write a small program that deliberately drives the state
+machine into a corner the spec is quiet about, then see whether the books
+balance. The probes are kept as files (`probe_edges_en.py`, `probe_u_layer_en.py`,
+`probe_ghostdag_en.py`, `probe_pass_sim_en.py`, `probe_f0b_zk_en.py`) so the
+corners stay probed and any regression is caught. An LLM doing this is not
+rubber-stamping the work; it is extending the test suite with the kinds of
+questions a sceptical reader would ask.
+
+**What an LLM review CANNOT do, and saying so plainly is the point.** A model
+cannot supply the thing that makes a cryptographic claim trustworthy: **a
+reputation that a false statement would damage.** When Demirel or an external
+cryptographer signs off on a consensus rule, they are staking their name on it,
+and that stake is what a downstream party buys. A model's output carries no such
+stake, so no amount of LLM review makes the G-layer construction trustworthy to
+a third party — it only makes it *less wrong* than it was. Likewise, a model
+cannot verify the two claims this paper most depends on and cannot close: that
+the live security budget is what the model predicts, and that a real buyer will
+pay real money. Those are measurements, and no amount of reading substitutes
+for them.
+
+**The protocol, written down so it is actually followed.** While the human
+reviewers are unreachable:
+1. Every quantitative claim in the paper must be traceable to either a primary
+   source, quoted verbatim, or a runnable file that prints it. No claim rests on
+   a memory or a plausible-sounding number. This is now true for the Pass and
+   Basu numbers (§11.4's verification record in RESEARCH_GAPS.md).
+2. Probes are written adversarially and kept, not discarded once they pass. A
+   probe that passes is a regression guard; a probe that fails is a finding.
+3. When code and prose disagree, **the code is the answer and the prose is
+   corrected**, never the reverse. TV-60 (the escape threshold), TV-62/63 (the
+   theta interval) and TV-65 (zero-knowledge) were all resolved this way. Where
+   the deviation is a deliberate limit rather than a bug — the greedy mergeset —
+   it is measured, quoted with the number, and labelled as F3b work rather than
+   fixed quietly.
+4. A claim that turns out to be unsupported is **retracted in place**, with the
+   date and the probe that found it, rather than deleted. The F0b zero-knowledge
+   claim is the worked example: the paper now says it does not hold, at any
+   scale, and why. A reader can trace the correction.
+5. **A second model is used as the reviewer, not the same model as the author.**
+   This is the part that matters most and is easiest to skip. The same model
+   that wrote a claim has already accepted the assumption behind it, so it will
+   tend to find the claim unremarkable. A different model, given only the claim
+   and the code, has no such investment. The probes above were written by the
+   authoring session; the honest version of this protocol has a second session,
+   with no shared context, attempt to break the claims — the way this session
+   broke its own.
+
+**The honest verdict on the substitute.** LLM adversarial review raises the
+quality of the claims the paper can make, and it does so on a schedule we
+control. It does not raise the *trust* a third party should place in them, and
+the distinction is the reason the human-review row in the roadmap stays on the
+critical path. The ceiling under this protocol is real: a paper whose every
+claim is either verified or retracted, supported by code that actually behaves
+as described. The ceiling under human review is higher, because a staked name is
+worth more than a passed test. The project should take the first now and not
+pretend it has the second.
 
 ---
 
