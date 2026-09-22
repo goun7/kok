@@ -2054,3 +2054,42 @@ yetmiyor; carpisma dosyalar arasi.
 
 **Durum:** 7/7 suite yesil (f3a 8 ACCEPT, probe 5/5). 0 Turkce karakter/morfoloji.
 Agac temiz. Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK, duyuru YOK.
+
+
+## Oturum 8 eki 4 — genis Turkce tarama 5 dizi buldu + golge kok nedeni (22 Eylul)
+
+**"0 Turkce" iddiam yanlisti.** Tarama sozlugum cok dardi ("esik", "tek",
+"dogrulanir", "gercek", "gecmiste/gelecegte" yoktu). Genisletince **5 gercek
+dizi** cikti:
+- `bond_margin_proto_en.py` L32 "esik the equation dogrulanir", L55 "[f3a gercek
+  its behaviour]"
+- `g_layer_tests_en.py` L421 "Toy'da esik 2^21 ... anlamsiz; yapi", L828/846/857
+  print'lerinde "esik" (KULLANICIYA GORUNEN cikti), L837 "tek-peak row"
+- `ghostdag_proto_en.py` L126 "ne gecmiste ne gelecekte" (docstring)
+- `u_layer_prototype_en.py` L442 "replay rejection dogrulanir"
+
+Hepsi duzeltildi. **Ders: "0" demeden once tarama sozlugunu genislet.** Ilk
+tarama iyi niyetliydi ama kelime haznesi eksikti; "0" sonucu taramanin
+genisligine bagli, gercege degil. Kalan 11 eslesme tamamen false positive
+("bin" shebang'da, "et al." Latin kisaltmasinda, "bin" Ingilizce depo kelimesi).
+
+**GOLGE DIZININ KOCC NEDENI COZULDU (kalici):** dosya sistemi case-sensitive.
+`write`/`edit` araclarima gectigim **BUYUK harfli `KONSensus` yolu** bos golge
+dizini **yeniden yaratip** oraya yaziyordu — son `_deep_scan.py` boyle kayboldu.
+Cozum: **araclardaki tum yollarda kucuk harfli `Konsensus`** kullan. Golge
+tekrar olusursa: icerigi tasir, `rmdir` ile silerim. Bu, oturum boyunca
+araliksiz gorunen "not found" / ENOENT / "file changed" / Turkce-git-ciktilarinin
+tam aciklamasi.
+
+**F0b header docstring eskiydi:** dosyanin kendi icinde "no FRI, no Merkle
+commitment, no zero-knowledge masking" diyordu ama dosya TV-41 (Merkle) ve TV-43
+(zk masking) **icinde uyguluyordu**. Duzeltildi; her adimin kapatmadigi bosluk
+dosyada zaten yaziyor.
+
+**Makalede tek kirik capraz-referans vardi** ("§12" diye bir bolum yok; son
+bolum 11/11b). §3 ve §12.1b olarak duzeltildi. Diger 9 "kirimik" referansin
+hepsi DIS makalelere (Pass §1.8, Pearl §4.8/§5.1.2, Kruger-Georg §1.2/§2.3/§2.4,
+APort §1.3/§6.1) — kaynak adiyla nitelendirilmis, sorun degil.
+
+**Durum:** 8/8 suite yesil (fp8 rc=1 bilincli negatif-sonuc). 0 Turkce (genis
+taramayla). Agac temiz. Ana yol hala iki cevabi bekliyor. F3b YOK, mail YOK.
