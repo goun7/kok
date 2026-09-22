@@ -139,9 +139,13 @@ def tv35_cross_subsidy(price_per_Mtoken: float, utilisation: float = 1.0):
     return {
         "reward_per_s_KOK": reward_per_s_KOK,
         "tail_per_s_KOK": tail_per_s_KOK,
-        # the two costs, on comparable footing. If mining opportunity cost (in $)
-        # EXCEEDS the market compute price, the compute is NOT free and the
-        # subsidy argument does not make KOK competitive on price alone.
+        # the two per-FLOP costs, each in its OWN unit: the mining opportunity
+        # cost in KOK/FLOP and the market compute price in USD/FLOP. They are NOT
+        # on a comparable footing until one is converted with the KOK token price
+        # -- that conversion is exactly what TV-37's crossover does. If the mining
+        # opportunity cost, once converted to $, EXCEEDS the market compute price,
+        # the compute is NOT free and the subsidy argument does not make KOK
+        # competitive on price alone.
         "mining_opp_cost_per_FLOP_KOK_launch": moc_per_FLOP_KOK,
         "mining_opp_cost_per_FLOP_KOK_tail": moc_tail_KOK,
         "market_price_per_FLOP_usd": usd_per_FLOP,
@@ -178,9 +182,17 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
 
     seed_demand:          initial fraction of the network's compute that is
                           actually SOLD (D(0)). The parameter we sweep.
-    cross_subsidy_ratio:  from TV-35: market compute price / mining opportunity
-                          cost. >1 means selling beats mining (miners will serve);
-                          <1 means mining pays better (miners ignore tasks).
+    cross_subsidy_ratio:  market compute price / mining opportunity cost. >1
+                          means selling beats mining (miners will serve); <1
+                          means mining pays better (miners ignore tasks).
+                          CORRECTED (2026-09-23): this ratio is NOT produced by
+                          TV-35. TV-35 returns the mining opportunity cost in
+                          KOK/FLOP and the market price in USD/FLOP and computes no
+                          dimensionless ratio; turning those two into this number
+                          requires the KOK token price, which TV-37 uses only for
+                          its crossover analysis. The ratio is a SCENARIO input:
+                          the only caller (tv37_verdict, section [6]) passes the
+                          hardcoded values 0.5, 1.0 and 2.0.
     miner_take:           fraction of a task fee that reaches the miner.
     """
     # The model that makes the dead state REAL: demand has a liquidity barrier.

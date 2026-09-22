@@ -181,12 +181,26 @@ print(f"  alpha=gamma=1.3 -> Delta={prm.Delta:+.4f} (>0, duplex efficient)")
 print(f"  theta_low=alpha-1={prm.theta_low:.2f} ; theta_high=1/(gamma-1)={prm.theta_high:.2f}\n")
 print(f"  {'theta':>7} {'regime':22} {'M':>10} {'L':>10} {'D':>10} {'S':>10} {'p/e':>7} "
       f"{'act-resid':>10} {'inact-viol':>10}")
+worst_active = 0.0
+worst_inactive = 0.0
+worst_market = 0.0
 for theta in [0.05, 0.2, 0.3, 0.35, 0.5, 1.0, 2.0, 3.0, 3.4, 5.0, 10.0]:
     eq = solve(prm, theta)
     v = verify(eq, prm)
+    worst_active = max(worst_active, v["max_active_residual"])
+    worst_inactive = max(worst_inactive, v["max_inactive_violation"])
+    worst_market = max(worst_market, v["market_clearing_err"])
     print(f"  {theta:7.2f} {eq.name:22} {eq.M:10.0f} {eq.L:10.0f} {eq.D:10.0f} {eq.S:10.0f} "
           f"{eq.p/prm.e:7.3f} {v['max_active_residual']:10.2e} {v['max_inactive_violation']:10.2e}")
 print("\n  Acceptance criterion: active residuals < 1e-9, inactive violations = 0, market clearing < 1e-6")
+# enforced, not merely printed (2026-09-23): the criterion was stated and never
+# checked, and section 8 quoted a different market-clearing bound (1e-12). Both
+# now state and check the same numbers.
+assert worst_active < 1e-9, "active residual %.2e exceeds 1e-9" % worst_active
+assert worst_inactive == 0.0, "inactive violation %.2e != 0" % worst_inactive
+assert worst_market < 1e-6, "market-clearing error %.2e exceeds 1e-6" % worst_market
+print("  ENFORCED: worst active=%.2e, inactive=%.2e, market=%.2e -> all within criterion."
+      % (worst_active, worst_inactive, worst_market))
 
 h("2. BITCONIA REFERENCE (hypothetical Bitcoin-economy at the same theta)")
 def bitconia_ref(prm, theta):
@@ -261,7 +275,8 @@ print("  Stock effects (hardware resale value) are ABSENT from this model — th
 h("8. SUMMARY")
 print(f"""
   - The Pass model is solved in closed form; it is consistent with Theorem 1 (zero-profit
-    residuals < 1e-9, inactive-activity violations = 0, market-clearing error < 1e-12).
+    residuals < 1e-9, inactive-activity violations = 0, market-clearing error < 1e-6;
+    asserted in section 1, worst active={worst_active:.2e} inactive={worst_inactive:.2e} market={worst_market:.2e}).
   - CALIBRATION: Pearl's measured network is reproduced from the model's Tullock full-payment
     condition eS=PR: S=PR/e={338707:,} vs the measured {PEARL['gpus']:,} GPUs (5.8% deviation);
     revenue/cost ratio {PEARL['rev_day']/PEARL['cost_day']:.3f} vs the 1.06 Basu measured.

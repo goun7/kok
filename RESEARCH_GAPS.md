@@ -662,16 +662,20 @@ research supports the path; it does not shorten it.
    secrets) but not confidentiality, at any scale. The gap to Akash is therefore
    not "KOK has not written the code" but "KOK wrote the code and it does not
    hide" — a statement that held for two days and is now itself outdated: probe
-   TV-66 (2026-09-22, `SzZkTileAIR` in `f0b_air_proto.py`) restores the hiding
-   property with verifier-unknowable masks, a commitment made before the
-   challenge point, and a single cross-term opening. Four checks pass: the
-   honest masked proof verifies, the TV-65 recovery attack finds nothing over 64
-   guessed seeds, two witnesses under the same seed give different views that
-   reveal neither, and a one-value forgery is caught at both transitions that
-   touch it (measured survival 0.3200 against the analytic 0.3333). The honest
+   TV-66 restores the hiding property, and after an adversarial review caught a
+   self-confirming test in the first attempt, the corrected construction
+   Merkle-binds the pad openings so the verifier holds roots rather than leaves,
+   and the transmitted view carries no pad material at all. Five checks pass: the
+   honest masked proof verifies at every challenge point; the view contains no
+   pad; the recovery attack run against the real transcript finds nothing; a
+   one-value forgery is caught at both transitions that touch it (measured
+   survival 0.3200 against the analytic 0.3333); and a substituted pad leaf is
+   rejected because it does not verify under the committed root. The honest
    residual gap to Akash's confidentiality is no longer "does not hide" but
-   "hides at toy scale, in a toy field q=97, with a hash commitment instead of a
-   Merkle root with a codeword" — a delivery gap, not an absence.
+   "hides at toy scale, in a toy field q=97, with a hash view commitment instead
+   of a Merkle root with a codeword" — a delivery gap, not an absence — and it
+   took one round of independent adversarial review to get there, which is
+   itself evidence for §11.4's second-model rule.
 4. Whether agents can be real buyers of inference at all — not merely authorized to
    pay, but carrying demand a human did not initiate — is an open empirical
    question that no source here answers.

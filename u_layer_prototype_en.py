@@ -571,12 +571,12 @@ if __name__ == "__main__":
 # =============================================================================
 def tv38_pearl_gap():
     import random as _r
-    _r.Random(77)
+    _rng = _r.Random(77)          # fixed seed -> deterministic draws (file SEED promise)
     q, n = 97, 8
     ch = Chain()
     k = ch.kernel
-    A = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
-    B = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
+    A = [[_rng.randrange(q) for _ in range(n)] for _ in range(n)]
+    B = [[_rng.randrange(q) for _ in range(n)] for _ in range(n)]
     ctx = 999
 
     # a real certificate: the honest miner actually runs the kernel
@@ -595,7 +595,7 @@ def tv38_pearl_gap():
     v_wrong_input = k.verify(cert, A_wrong, B, ctx, good, ch.D)
 
     # (b) fabricated certificate: never ran anything, just picked a tile value
-    fake = {"tile": (0, 0, _r.randrange(q)), "m": n // 2}
+    fake = {"tile": (0, 0, _rng.randrange(q)), "m": n // 2}
     v_fabricated = k.verify(fake, A, B, ctx, good, ch.D)
 
     # (b2) correct tile COORDINATES but a value that was never computed
@@ -644,12 +644,12 @@ if __name__ == "__main__":
 # =============================================================================
 def tv39_ctx_binding():
     import random as _r
-    _r.Random(99)
+    _rng = _r.Random(99)          # fixed seed -> deterministic draws (file SEED promise)
     q, n = 97, 8
     ch = Chain()
     k = ch.kernel
-    A = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
-    B = [[_r.randrange(q) for _ in range(n)] for _ in range(n)]
+    A = [[_rng.randrange(q) for _ in range(n)] for _ in range(n)]
+    B = [[_rng.randrange(q) for _ in range(n)] for _ in range(n)]
     ctx_here, ctx_there = 11111, 22222
 
     cert, good = None, 0

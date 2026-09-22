@@ -35,7 +35,10 @@ def tv61_residuals_are_zero_in_all_regimes():
     fiction.
     """
     cases = [
-        ("Bitconia", Params(e=0.02, R=100.0, P=0.001, alpha=1.3, gamma=1.3)),
+        # alpha=gamma=2.5 -> Delta = 1/2.5 + 1/2.5 - 1 = -0.2 < 0, so this case
+        # really lands in the Bitconia branch (with alpha=gamma=1.3 Delta=+0.54
+        # and solve() returned Fortessia, so the Bitconia path was never run)
+        ("Bitconia", Params(e=0.02, R=100.0, P=0.001, alpha=2.5, gamma=2.5)),
         ("Fortessia", Params(e=0.02, R=100.0, P=0.10, alpha=1.3, gamma=1.3)),
         ("Duplexia", _duplexia_params()),
     ]
@@ -94,22 +97,32 @@ def tv63_nan_params_marked_not_ok():
 
 def tv64_regime_selection_matches_delta_sign():
     """Bitconia must appear exactly when Delta < 0, as the solver's own rule says.
+
+    The draw range must actually reach Delta < 0 or the probe is vacuous: with
+    alpha, gamma both drawn from [1.05, 2.0] the sum of reciprocals never drops
+    below 1, so Delta >= 0 on every draw, the `delta < 0` branch never fired and
+    "violations=0" was guaranteed by construction. The range below reaches both
+    signs, and exercised_count asserts the Bitconia branch was really visited.
     """
     import random
     rng = random.Random(5)
     viol = 0
+    exercised = 0
     for _ in range(60):
-        alpha = rng.uniform(1.05, 2.0)
-        gamma = rng.uniform(1.05, 2.0)
+        alpha = rng.uniform(1.05, 4.0)
+        gamma = rng.uniform(1.05, 4.0)
         prm = Params(e=0.02, R=100.0, P=rng.uniform(0.001, 0.5),
                      alpha=alpha, gamma=gamma, eps=2.0, K=3.6)
         eq = solve(prm)
         delta = prm.Delta
         # Delta < 0 should be the Bitconia regime (mining only, no demand)
-        if delta < 0 and eq.name != "Bitconia":
-            viol += 1
-    ok = viol == 0
-    return report("TV-64 Delta<0 selects Bitconia", ok, "violations=%d" % viol)
+        if delta < 0:
+            exercised += 1
+            if not eq.name.startswith("Bitconia"):
+                viol += 1
+    ok = (viol == 0 and exercised > 0)
+    return report("TV-64 Delta<0 selects Bitconia", ok,
+                  "violations=%d, Delta<0 draws=%d" % (viol, exercised))
 
 
 if __name__ == "__main__":

@@ -9,8 +9,12 @@ bug to fix or a design limit to document, never a silent pass.
 The u_layer burns the earmarked portion at SUBMISSION time, not at settlement
 (L182 of u_layer_prototype_en.py). That is a deliberate difference from f3a,
 which burns at settlement. It has a consequence worth probing: the buyer's
-escrow field is initialised to fee - burn, so the burn is already absent from it,
-and settle() subtracts the burn a second time.
+escrow field is initialised to fee - burn, so the burn is already absent from
+it, and settle() must therefore draw only the payable part. An earlier version
+did t.escrow -= (burned + pay), subtracting the burn a second time and driving
+the field to -30; that double subtraction was FIXED (2026-09-23: settle() now
+does t.escrow -= pay) and TV-51 below is the regression guard that keeps it
+fixed.
 """
 import sys
 import os
@@ -47,14 +51,21 @@ def report(name, ok, detail=""):
 
 
 def tv51_escrow_nonnegative_after_settle():
-    """The escrow field must not go negative at settlement.
+    """The escrow field must be exactly 0 after settlement, never negative.
 
-    submit_task sets t.escrow = fee - burn, so the burn is already excluded from
-    the escrow. settle() then does t.escrow -= (burned + pay), subtracting the
-    burn a second time, which drives the field negative even though every coin is
-    accounted for correctly elsewhere. The money flow is right; the bookkeeping
-    field is wrong, and any code that reads t.escrow to report health would
-    report a shortfall that does not exist.
+    submit_task sets t.escrow = fee - burn (70 of a 100 fee, burn_rate 0.3),
+    because the burn is collected at submission and is therefore already absent
+    from the escrow. settle() draws only that payable part, t.escrow -= pay, so
+    the field ends at exactly 0 while the miner is paid 70 and the burn address
+    holds 30.
+
+    FIXED (2026-09-23): an earlier settle() did t.escrow -= (burned + pay),
+    subtracting the burn a second time and driving the field to -30 even though
+    every coin was accounted for correctly elsewhere. The money flow was right;
+    the bookkeeping field was wrong, and any code reading t.escrow to report
+    health would have reported a shortfall that did not exist. This probe is the
+    regression guard for that fix: it goes RED the moment the double subtraction
+    returns.
     """
     ch = Chain()
     warm(ch)

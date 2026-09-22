@@ -1139,7 +1139,10 @@ def tv25_vrf_assignment():
     net6 = F3aTestnet([Sequencer("sq%d" % i) for i in range(4)])
     net6.height = 3
     with_b = net6.assign_by_vrf("task-w", "buyer-2", s5)
-    identity_matters = True  # documented: the mix includes the client identity
+    # measured, not assumed: the same task at the same height lands on a
+    # different sequencer when ONLY the client identity changes, which is
+    # possible only because the client is inside the VRF mix
+    identity_matters = (with_a != with_b)
 
     return spread_ok, deterministic, identity_matters, hits
 
@@ -1158,7 +1161,7 @@ if __name__ == "__main__":
           % (spread, dict(sorted(hits.items()))))
     print("  same inputs -> same sequencer         : %s" % det)
     print("  the client identity is in the mix     : %s" % ident)
-    assert spread and det
+    assert spread and det and ident
     print("\n  -> a censor must be everywhere at once to see a given task.")
     print("\n" + "-" * 76)
     print("WHAT TV-25 ESTABLISHES, AND WHAT IT DOES NOT")
@@ -1176,7 +1179,7 @@ if __name__ == "__main__":
   the source. The real VRF, with its proof, belongs to F3b.""")
 
 
-def tv26_terminal_states_counted_once():
+def tv50_terminal_states_counted_once():
     """TV-50: terminal tasks are counted once, not once per later block.
 
     The demand meter's _seen set originally guarded only SETTLED tasks, because
@@ -1240,7 +1243,7 @@ if __name__ == "__main__":
     print("MIGRATED and SLASHED tasks were recounted in every block they spent")
     print("on the sequencer's list. Phi was unaffected, but the reported refund")
     print("and slash rates were inflated by the lingering time.\n")
-    ok = tv26_terminal_states_counted_once()
+    ok = tv50_terminal_states_counted_once()
     assert ok, "TV-50 FAILED: terminal tasks are being recounted"
     print("\n  -> the reporting counters are arithmetic, not impressions.")
 

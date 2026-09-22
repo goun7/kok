@@ -60,6 +60,61 @@ def H(*parts) -> int:
     return int.from_bytes(s[:8], "big", signed=False)
 
 
+def _merkle_layers(leaves):
+    """The layer stack of a toy Merkle tree over a list of ints."""
+    import hashlib
+    layer = [hashlib.sha256(str(v).encode()).digest() for v in leaves]
+    layers = [layer]
+    while len(layer) > 1:
+        nxt = []
+        for i in range(0, len(layer), 2):
+            l = layer[i]
+            r = layer[i + 1] if i + 1 < len(layer) else layer[i]
+            nxt.append(hashlib.sha256(l + r).digest())
+        layer = nxt
+        layers.append(layer)
+    return layers
+
+
+def _merkle_open(leaves, idx):
+    """An authentication path for leaf idx (needed to open a COMMITTED value)."""
+    layers = _merkle_layers(leaves)
+    path = []
+    i = idx
+    for layer in layers[:-1]:
+        sib = i + 1 if i % 2 == 0 else i - 1
+        if sib < len(layer):
+            path.append(("L" if sib < i else "R", layer[sib]))
+        else:
+            # odd tail: the construction duplicates the last node, so the
+            # parent is hash(h || h)
+            path.append(("D", None))
+        i //= 2
+    return path
+
+
+def _merkle_check(root, idx, leaf, path):
+    """Verify that (leaf at idx) is committed under root, given its auth path."""
+    import hashlib
+    h = hashlib.sha256(str(leaf).encode()).digest()
+    for side, sib in path:
+        if side == "D":
+            h = hashlib.sha256(h + h).digest()
+        elif side == "R":
+            h = hashlib.sha256(h + sib).digest()
+        else:
+            h = hashlib.sha256(sib + h).digest()
+    return int.from_bytes(h[:8], "big", signed=False) == root
+
+
+def _merkle_root(leaves, q=97):
+    """A toy Merkle root over a list of ints (production: a STARK-friendly hash
+    with domain separation, and a codeword, not the raw leaves)."""
+    if not leaves:
+        return 0
+    return int.from_bytes(_merkle_layers(leaves)[-1][0][:8], "big", signed=False)
+
+
 class TileAIR:
     """Algebraic intermediate representation for one MatMul tile.
 
@@ -84,44 +139,73 @@ class TileAIR:
         """
         n = len(A)
         m = n // self.r
+        # the flattened matrices, used for the input commitments and the
+        # authentication paths the verifier checks the residuals against
+        flat_A = [A[rr][cc] for rr in range(n) for cc in range(n)]
+        flat_B = [B[rr][cc] for rr in range(n) for cc in range(n)]
         a_terms, b_terms, trace = [], [], [0]
         run = 0
+        a_res, b_res, a_paths, b_paths = [], [], [], []
         for l in range(m):
             a = (A[i * self.r][l * self.r] + E[i * self.r][l * self.r]) % self.q
             b = (B[l * self.r][j * self.r] + F[l * self.r][j * self.r]) % self.q
             run = (run + a * b) % self.q
             a_terms.append(a)
             b_terms.append(b)
+            a_res.append(A[i * self.r][l * self.r])
+            b_res.append(B[l * self.r][j * self.r])
+            a_paths.append(_merkle_open(flat_A, (i * self.r) * n + l * self.r))
+            b_paths.append(_merkle_open(flat_B, (l * self.r) * n + j * self.r))
             trace.append(run)
         # the honest trace must end exactly at the claimed accumulator
-        return {"a": a_terms, "b": b_terms, "trace": trace}
+        return {"a": a_terms, "b": b_terms, "trace": trace,
+                "a_res": a_res, "b_res": b_res,
+                "a_paths": a_paths, "b_paths": b_paths}
 
     # --- verification: check AIR constraints WITHOUT recomputing the tile ---
     def verify(self, proof, acc, E, F, ctx, i, j, A_commit, B_commit):
-        """Check the three AIR constraints.
+        """Check the three AIR constraints and bind the witness to the inputs.
 
-        A_commit / B_commit are hashes of the input rows the prover is bound to
-        (in production these would be Merkle commitments; here a hash stands
-        in). The verifier never sums the products — it only checks that each
-        transition step is arithmetically consistent.
+        A_commit / B_commit are Merkle roots over the flattened input matrices.
+        For each transition step the prover reveals the input residual it used
+        and an authentication path, and the verifier checks two things that an
+        earlier version of this function only asserted in a comment:
+          - the residual is committed under A_commit / B_commit, so the prover
+            cannot swap in different inputs after the fact
+          - the noisy term is exactly the ROM-derived one, so the prover cannot
+            pick a favourable E,F to make a false trace consistent
+        The verifier never sums the products — it only checks that each
+        transition step is arithmetically consistent and bound to real inputs.
         """
         a, b, trace = proof["a"], proof["b"], proof["trace"]
         q = self.q
+        n = len(E)
+        m = len(a)
         # (2) boundary: the trace starts at zero
         if trace[0] != 0:
             return False
-        # (1) transition: every step is one multiply-add, no skips, no jumps
-        for t in range(len(a)):
+        for t in range(m):
+            # (1) transition: every step is one multiply-add, no skips, no jumps
             if (trace[t] + a[t] * b[t]) % q != trace[t + 1]:
+                return False
+            # the input binding. The verifier recomputes the ROM noise from the
+            # public ctx, so the prover's noisy term must be that noise plus a
+            # residual committed under the input roots.
+            e_t = E[i * self.r][t * self.r] % q
+            f_t = F[t * self.r][j * self.r] % q
+            if (proof["a_res"][t] + e_t) % q != a[t]:
+                return False
+            if (proof["b_res"][t] + f_t) % q != b[t]:
+                return False
+            if not _merkle_check(A_commit, (i * self.r) * n + t * self.r,
+                                 proof["a_res"][t], proof["a_paths"][t]):
+                return False
+            if not _merkle_check(B_commit, (t * self.r) * n + j * self.r,
+                                 proof["b_res"][t], proof["b_paths"][t]):
                 return False
         # (3) boundary: the trace ends at the claimed accumulator
         if trace[-1] != acc % q:
             return False
-        # the noise terms must be the ROM-derived ones, so the prover cannot
-        # pick a favourable E,F to make a false trace consistent
-        for l in range(len(a)):
-            if E is not None:
-                pass  # E,F are checked by the caller against the ROM
         return True
 
 
@@ -155,8 +239,12 @@ def tv40_air_honest_accepts_forged_rejects():
     honest = air.prove(A, B, E, F, ctx, i, j, acc)
 
     # --- the verifier accepts the honest witness ---
-    A_commit = H("commit", "A", ctx, A)
-    B_commit = H("commit", "B", ctx, B)
+    # the commitments are Merkle roots over the flattened matrices, so the
+    # verifier can check each revealed input residual against them
+    flat_A = [A[rr][cc] for rr in range(n) for cc in range(n)]
+    flat_B = [B[rr][cc] for rr in range(n) for cc in range(n)]
+    A_commit = _merkle_root(flat_A)
+    B_commit = _merkle_root(flat_B)
     v_honest = air.verify(honest, acc, E, F, ctx, i, j, A_commit, B_commit)
 
     # --- a forged witness: flip one trace entry, keep the rest consistent ---
@@ -168,13 +256,29 @@ def tv40_air_honest_accepts_forged_rejects():
     # --- a forged output: claim a different accumulator ---
     v_forged_acc = air.verify(honest, (acc + 1) % q, E, F, ctx, i, j, A_commit, B_commit)
 
+    # --- a witness fabricated to hit an attacker-chosen accumulator ---
+    # This is the attack the input binding exists to stop: the trace is
+    # internally consistent and ends at acc, but it is not derived from the
+    # committed inputs. An earlier version of verify accepted this because its
+    # E,F binding was a `pass` statement.
+    target = 15
+    fab = {"a": [0, 0, 0, 15], "b": [0, 0, 0, 1],
+           "trace": [0, 0, 0, 0, target],
+           "a_res": [0, 0, 0, 0], "b_res": [0, 0, 0, 0],
+           "a_paths": honest["a_paths"], "b_paths": honest["b_paths"]}
+    v_fabricated_consistent = air.verify(fab, target, E, F, ctx, i, j,
+                                         A_commit, B_commit)
+
     # --- a completely fabricated witness with the right shape ---
     fake = {"a": [rnd.randrange(q) for _ in range(m)],
             "b": [rnd.randrange(q) for _ in range(m)],
-            "trace": [rnd.randrange(q) for _ in range(m + 1)]}
+            "trace": [rnd.randrange(q) for _ in range(m + 1)],
+            "a_res": [rnd.randrange(q) for _ in range(m)],
+            "b_res": [rnd.randrange(q) for _ in range(m)],
+            "a_paths": honest["a_paths"], "b_paths": honest["b_paths"]}
     v_fake = air.verify(fake, acc, E, F, ctx, i, j, A_commit, B_commit)
 
-    return v_honest, v_forged_trace, v_forged_acc, v_fake
+    return v_honest, v_forged_trace, v_forged_acc, v_fake, v_fabricated_consistent
 
 
 if __name__ == "__main__":
@@ -185,14 +289,15 @@ if __name__ == "__main__":
     print("bound a certificate to a computation; TV-39 stopped replay. This")
     print("file starts to remove the last gap: PROVING without RECOMPUTING.\n")
 
-    h, ft, fa, fk = tv40_air_honest_accepts_forged_rejects()
+    h, ft, fa, fk, fc = tv40_air_honest_accepts_forged_rejects()
     print("  honest witness accepted            : %s" % h)
     print("  one flipped trace entry accepted   : %s   <- must be False" % ft)
     print("  wrong claimed accumulator accepted : %s   <- must be False" % fa)
     print("  fabricated witness accepted        : %s   <- must be False" % fk)
+    print("  consistent-but-unbound witness     : %s   <- must be False" % fc)
 
     assert h, "an honest witness must verify"
-    assert not (ft or fa or fk), "a forged witness must NOT verify"
+    assert not (ft or fa or fk or fc), "a forged witness must NOT verify"
     print("\n  -> the verifier checks the AIR constraints and the boundary")
     print("     conditions without ever summing the products.")
     print("\n" + "-" * 76)
@@ -231,23 +336,6 @@ if __name__ == "__main__":
 # catches a prover that broke many rows; FRI catches one that broke a few. So
 # TV-41 is a soundness improvement over TV-40, not a complete STARK.
 # ---------------------------------------------------------------------------
-
-
-def _merkle_root(leaves, q=97):
-    """A toy Merkle root over a list of ints (production: a STARK-friendly hash
-    with domain separation, and a codeword, not the raw leaves)."""
-    import hashlib
-    if not leaves:
-        return 0
-    layer = [hashlib.sha256(str(v).encode()).digest() for v in leaves]
-    while len(layer) > 1:
-        nxt = []
-        for i in range(0, len(layer), 2):
-            l = layer[i]
-            r = layer[i + 1] if i + 1 < len(layer) else layer[i]
-            nxt.append(hashlib.sha256(l + r).digest())
-        layer = nxt
-    return int.from_bytes(layer[0][:8], "big", signed=False)
 
 
 class MerkleTileAIR(TileAIR):
@@ -588,11 +676,16 @@ class ZkTileAIR(FriTileAIR):
         }
 
     def verify_zk(self, masked, acc, challenge_points):
-        """Verify the constraint on masked values WITHOUT unmasking.
+        """Verify the constraint by UNMASKING, then checking — sound, not private.
 
-        The transition constraint T(x+1) = T(x) + A(x)B(x) becomes, under
-        masking, a relation the verifier can check on masked values alone,
-        because the mask is additive and cancels in the difference.
+        CONTRACT, stated exactly: this function verifies by reconstructing the
+        plaintext from the seed it already holds and testing the AIR constraint
+        on it. The mask is additive and cancels in the difference, so the check
+        is arithmetically equivalent to checking the unmasked witness — which is
+        exactly why it hides nothing (probe TV-65). An earlier docstring claimed
+        it verified "without unmasking"; that was wrong, and the claim is
+        retracted here rather than left in place. What this function establishes
+        is provenance, and the hiding property belongs to SzZkTileAIR (TV-66).
         """
         q = self.q
         m = len(masked["a"])
@@ -694,10 +787,11 @@ if __name__ == "__main__":
     print("was sent in the clear. This is the step KW Remark 2.2 actually")
     print("promises, and the first file that can say 'verify without seeing'.\n")
 
-    vh, vf, leaked = tv43_zero_knowledge()
+    vh, vf, transmitted_not_pasted = tv43_zero_knowledge()
     print("  masked honest witness verifies          : %s" % vh)
     print("  masked forged witness rejected          : %s   <- must be False" % vf)
-    print("  real trace value in the transmission    : %s   <- must be False" % leaked)
+    print("  real trace value pasted into the message: %s   <- must be False"
+          % (not transmitted_not_pasted))
     # Soundness only. NOTE: an earlier version asserted that the witness was
     # HIDDEN here too. It is not — probe TV-65 showed the verifier can recover
     # every value, because the mask derives from a seed the verifier supplied.
@@ -807,110 +901,158 @@ class SzZkTileAIR(TileAIR):
     """The AIR with verifier-unknowable masking (the TV-43 privacy fix).
 
     The prover draws its own random masks on the factors and a pad on the trace,
-    commits before the challenge point is known, and opens one cross-term value
-    at that point. This is the difference from ZkTileAIR: the verifier can
-    never recompute any mask, and it checks the constraint at one point instead
-    of unmasking every opening.
+    commits to the masked view AND to the pad/cross-term lists BEFORE the
+    verifier names the challenge point z, and then opens exactly one leaf of
+    each committed list at z, with an authentication path.
+
+    The separation into view (transmitted) and secrets (never transmitted) is
+    the whole point: an earlier version of this class shipped the pad inside the
+    dict the verifier reads, which leaked the entire trace — the pad is public
+    there by definition, so masked_trace minus the cumulative pad recovers every
+    value (probe TV-67 in probe_f0b_zk_en.py demonstrates it). Here the verifier
+    receives the masked view plus two Merkle ROOTS; it never sees the leaves
+    except the one it challenges.
     """
 
     def mask_sz(self, proof, prng):
-        """Add random blinding to the witness so the verifier sees no plaintext.
+        """Split the witness into a transmitted view and the prover's secrets.
 
-        prng must be the PROVER's randomness, seeded with a value the verifier
-        does not know. Committing happens after masking and before the
-        challenge, which is what binds the prover.
+        Returns (view, secrets). prng must be the PROVER's randomness, seeded
+        with a value the verifier does not know.
 
-        The construction has to handle one awkward fact: the transition
-        constraint is MULTIPLICATIVE (a_t * b_t), so additively masking the
-        factors produces cross-terms. A real STARK absorbs them with a
-        quotient polynomial; the toy here does the honest minimal equivalent —
-        the prover opens the cross-term value at the challenge point only.
-        The verifier gets one number, not the witness.
+        The transition constraint is MULTIPLICATIVE (a_t * b_t), so additively
+        masking the factors produces cross-terms. A real STARK absorbs them with
+        a quotient polynomial; the toy here has the prover open the single
+        cross-term value at the challenged point, under a Merkle commitment.
         """
         q = self.q
         m = len(proof["a"])
-        # the prover's secret masks
         qa = [prng.randrange(q) for _ in range(m)]
         qb = [prng.randrange(q) for _ in range(m)]
-        # the product pad. It enters the trace as a CUMULATIVE sum, so the
-        # difference the verifier checks carries exactly pm[z] and nothing
-        # else — a level-pad would leak pm[z-1] into the equation and break
-        # the honest check (found by running it).
+        # the product pad enters the trace as a CUMULATIVE sum, so the
+        # difference the verifier checks carries exactly pm[z] and nothing else
         pm = [prng.randrange(q) for _ in range(m)]
         pad = [0] * (m + 1)
         run = 0
         for t in range(m):
             run = (run + pm[t]) % q
             pad[t + 1] = run
-        masked = {
+        view = {
             "a": [(proof["a"][t] + qa[t]) % q for t in range(m)],
             "b": [(proof["b"][t] + qb[t]) % q for t in range(m)],
             "trace": [(proof["trace"][t] + pad[t]) % q for t in range(m + 1)],
-            # the cross-term openings the verifier needs at z. (a+qa)(b+qb)
-            # = a*b + (a*qb + qa*b + qa*qb), and the prover opens exactly the
-            # bracketed term. One number at one point hides the factors.
+        }
+        # (a+qa)(b+qb) = a*b + cross, so the prover opens exactly `cross`
+        secrets = {
+            "pm": pm,
             "cross": [((proof["a"][t] * qb[t] + qa[t] * proof["b"][t]
                         + qa[t] * qb[t]) % q) for t in range(m)],
-            "pm": pm,
+            "Cm": pad[m],
         }
-        return masked
+        return view, secrets
 
-    def commit_sz(self, masked):
-        """Commit to the masked witness. Sent before the verifier picks z."""
+    def commit_sz(self, view, secrets):
+        """Commit to the view AND the opening material, before z is chosen.
+
+        Committing the pad and the cross-terms is what makes the construction
+        SOUND: without it the prover could read z, then pick pm[z] and cross[z]
+        freely to satisfy the equation for a view it already committed. The
+        verifier holds roots, never leaves.
+        """
         import hashlib
-        material = (tuple(masked["trace"]), tuple(masked["a"]),
-                    tuple(masked["b"]))
-        d = hashlib.sha256(repr(material).encode()).digest()
-        return int.from_bytes(d[:8], "big", signed=False)
+        h = lambda b: int.from_bytes(
+            hashlib.sha256(b.encode()).digest()[:8], "big", signed=False)
+        return {
+            "view": h(repr((tuple(view["trace"]), tuple(view["a"]),
+                            tuple(view["b"])))),
+            "pm": _merkle_root(secrets["pm"]),
+            "cross": _merkle_root(secrets["cross"]),
+            "Cm": secrets["Cm"],
+        }
 
-    def check_sz(self, masked, z, q=None):
-        """Check the transition constraint at the single point z, masked.
+    def open_sz(self, secrets, z):
+        """Open the one leaf of each committed list that the challenge names."""
+        return {
+            "pm_z": secrets["pm"][z],
+            "pm_path": _merkle_open(secrets["pm"], z),
+            "cross_z": secrets["cross"][z],
+            "cross_path": _merkle_open(secrets["cross"], z),
+            "Cm": secrets["Cm"],
+        }
 
-        The honest trace satisfies T[z+1] - T[z] == a[z]*b[z]. After masking,
-        the verifier's equation is
-            (T+pm)[z+1] - (T+pm)[z] == (a+qa)(b+qb)[z] - cross[z]
-        because (a+qa)(b+qb) = a*b + (a*qb + qa*b + qa*qb), and the honest
-        prover opens exactly the bracketed cross-term. Expanding, pm cancels:
-        the difference carries pm[z] - pm[z-1] and the right side carries pm[z],
-        so the verifier subtracts pm[z-1], which it learns from the commitment.
+    def check_sz(self, view, z, opening, commit, acc=None, q=None):
+        """Check the transition constraint at the single point z, on masked
+        values plus one Merkle-verified opening of each pad list.
 
-        The verifier never sees a, b, qa or qb — only one masked value of each
-        and one cross-term opening, all at the single point z.
+        The honest trace satisfies T[z+1] - T[z] == a[z]*b[z]. The masked
+        difference carries the pad: with pad[t] = pm[0]+...+pm[t-1],
+            view[z+1] - view[z] = (T[z+1]-T[z]) + pm[z] = a[z]*b[z] + pm[z]
+        and the opened cross-term gives a*b on masked values:
+            (a+qa)(b+qb) = a*b + cross  =>  a*b = view_a*view_b - cross[z]
+        so the check is
+            view[z+1] - view[z] == view_a[z]*view_b[z] - cross[z] + pm[z]
+        Both pad values are Merkle-verified against the committed roots, so a
+        prover cannot substitute them after seeing z.
+
+        What the verifier learns: one product a[z]*b[z] and the final
+        accumulator. It does not learn the factors, and it does not learn any
+        trace value, because recovering T[t] requires pad[t], of which it holds
+        only a root.
         """
         q = q or self.q
-        m = len(masked["a"])
+        m = len(view["a"])
         if not (0 <= z < m):
             return None
-        mt = masked["trace"][z]
-        mt1 = masked["trace"][z + 1]
-        ma = masked["a"][z]
-        mb = masked["b"][z]
-        cross = masked["cross"][z]
-        # The masked trace is T[t] + pad[t] with pad[t] = pm[0]+...+pm[t-1], so
-        # the difference carries exactly pm[z] and nothing else:
-        #   mt1 - mt = (T[z+1]-T[z]) + pm[z] = a[z]*b[z] + pm[z]
-        # The honest prover's cross-term opening makes the right side
-        # computable without revealing a or b:
-        #   (a+qa)(b+qb) = a*b + cross  =>  a*b = ma*mb - cross
-        lhs = (mt1 - mt) % q
-        rhs = (ma * mb - cross + masked["pm"][z]) % q
-        return lhs == rhs
+        # the openings must be the COMMITTED ones, or the prover is free to
+        # tailor them to the challenge. This pair of checks is what the
+        # previous version was missing.
+        if not _merkle_check(commit["pm"], z, opening["pm_z"],
+                             opening["pm_path"]):
+            return False
+        if not _merkle_check(commit["cross"], z, opening["cross_z"],
+                             opening["cross_path"]):
+            return False
+        # the view must be the committed one
+        import hashlib
+        h = int.from_bytes(
+            hashlib.sha256(repr((tuple(view["trace"]), tuple(view["a"]),
+                                 tuple(view["b"]))).encode()).digest()[:8],
+            "big", signed=False)
+        if h != commit["view"]:
+            return False
+        lhs = (view["trace"][z + 1] - view["trace"][z]) % q
+        rhs = (view["a"][z] * view["b"][z] - opening["cross_z"]
+               + opening["pm_z"]) % q
+        ok = lhs == rhs
+        if acc is not None:
+            # the end boundary: view[m] - pad[m] == claimed accumulator
+            ok = ok and ((view["trace"][m] - opening["Cm"]) % q == acc % q)
+        return ok
 
 
 def tv66_schwartz_zippel():
     """The hiding property is restored, and soundness is measured not assumed.
 
-    Three claims, each with a test that would fail if the claim were false:
-      (1) HONEST ACCEPTS: a correctly masked honest proof verifies.
-      (2) ZERO-KNOWLEDGE: the verifier's view does not depend on the witness.
-          Measured the way TV-65 measured the leak — run the recovery attack
-          against the new construction and require it to fail — AND by the
-          stronger check that two different witnesses produce indistinguishable
-          views, i.e. the same masked distribution at the challenge point.
-      (3) SOUNDNESS: a forged witness that breaks one transition step is caught
-          whenever the query hits that step. The probe measures the actual
-          survival rate over 300 random z rather than quoting a bound, because
-          the honest rate for a one-step forgery is 1/m and not 2/q.
+    Four claims, each with a test that would fail if the claim were false:
+      (1) HONEST ACCEPTS: a correctly masked honest proof verifies at every
+          challenge point, with Merkle-verified openings.
+      (2a) NO PAD IN THE VIEW: the verifier's transmitted view contains no pad
+          material at all. This is the structural check that catches the bug an
+          adversarial review found in the first version of this construction,
+          which shipped the pad inside the dict the verifier reads and thereby
+          leaked the entire trace.
+      (2b) RECOVERY ATTACK: given everything the verifier actually receives —
+          the view, the commitment, and ONE opening at the challenged point —
+          an attacker must be unable to recover the real trace. The attack
+          tries the obvious route: subtract every pad the transcript permits it
+          to compute, and require that none reproduces the witness.
+      (3) SOUNDNESS: a forged witness that breaks one trace value is caught at
+          both transitions that touch it. The probe measures the actual survival
+          rate over 300 random z rather than quoting a bound, because the honest
+          rate for a one-value break is (m-3)/(m-1) and not 2/q.
+      (4) BINDING: a prover that substitutes a DIFFERENT pad leaf after seeing
+          the challenge is rejected, because the leaf does not verify under the
+          committed root. Without this check the construction is soundness-free.
     """
     import random
     rnd = random.Random(7)
@@ -928,48 +1070,64 @@ def tv66_schwartz_zippel():
                (B[l * r][j * r] + F[l * r][j * r])) % q
     honest = air.prove(A, B, E, F, 555, i, j, acc)
 
-    # (1) honest accepts
+    # the prover's randomness. The seed is fixed for reproducibility of the
+    # TEST; the security claim is that the verifier never receives it or
+    # anything derived from it except a root and one leaf.
     prng = random.Random(20260922)
-    masked = air.mask_sz(honest, prng)
-    commit = air.commit_sz(masked)
-    zs = list(range(m))
-    honest_ok = all(air.check_sz(masked, z) for z in zs)
+    view, secrets = air.mask_sz(honest, prng)
+    commit = air.commit_sz(view, secrets)
 
-    # (2) hiding. Two independent checks, because the TV-43 failure taught the
-    #     project that "not pasted into the message" is not "hidden".
-    #   (2a) the TV-65 recovery attack: brute-force a verifier-known mask. It
-    #       must find nothing, because no verifier-known mask exists.
+    # (1) honest accepts at every challenge point, with the boundary too
+    honest_ok = all(
+        air.check_sz(view, z, air.open_sz(secrets, z), commit, acc=acc)
+        for z in range(m))
+
+    # (2a) the structural check: the transmitted view must carry no pad.
+    # If "pm" or "cross" were keys of the view, the verifier would hold the pad
+    # in the clear and could subtract the cumulative sum from masked_trace.
+    pad_in_view = any(k in view for k in ("pm", "cross", "Cm"))
+
+    # (2b) the recovery attack, using only what the verifier receives.
     leaked = False
-    for guess_seed in range(64):
-        d = [H("mask", guess_seed, t) % q for t in range(m + 1)]
-        recovered = [(masked["trace"][t] - d[t]) % q for t in range(m + 1)]
-        if recovered == honest["trace"]:
-            leaked = True
-            break
-    #   (2b) the sharper test: the masked view must DEPEND on the witness (two
-    #       different witnesses give different views) yet reveal neither. If
-    #       masking were constant the construction would be degenerate; if the
-    #       view equalled the witness it would be a leak. Require both halves.
-    other = dict(honest)
-    other["trace"] = [(honest["trace"][t] + 1) % q for t in range(m + 1)]
-    prng_o = random.Random(20260922)      # SAME seed as the honest masking
-    masked_o = air.mask_sz(other, prng_o)
-    views_differ = masked_o["trace"] != masked["trace"]
-    view_reveals = masked_o["trace"] == other["trace"]
+    for z in range(m):
+        opening = air.open_sz(secrets, z)
+        # the verifier's full transcript for this challenge
+        transcript = (view, commit, opening)
+        # attack A: the TV-65 route — subtract a verifier-known mask. There is
+        # no verifier-known mask, so every guess is wrong.
+        for guess_seed in range(32):
+            d = [H("mask", guess_seed, t) % q for t in range(m + 1)]
+            if [(view["trace"][t] - d[t]) % q for t in range(m + 1)] \
+                    == honest["trace"]:
+                leaked = True
+        # attack B: subtract the pad the opening actually permits computing.
+        # The opening gives pm[z] (one leaf) and Cm (the total). A cumulative
+        # pad needs every pm[t]; the attacker knows one, so it tries assuming
+        # the unknown entries are 0, then pm[z], then Cm-derived values.
+        known_pm = {z: opening["pm_z"]}
+        for fill in (0, opening["pm_z"], opening["Cm"]):
+            guess_pm = [known_pm.get(t, fill) for t in range(m)]
+            run, rec = 0, []
+            for t in range(m + 1):
+                rec.append((view["trace"][t] - run) % q)
+                if t < m:
+                    run = (run + guess_pm[t]) % q
+            if rec == honest["trace"]:
+                leaked = True
+        del transcript  # the transcript is the attack surface, not a variable
 
     # (3) soundness: forged witness rejected. A forgery that changes ONE trace
-    # value breaks BOTH transitions that touch it, so a query at either is
-    # enough. With z drawn from {1..m-1} and the break at trace[2], the forgery
-    # is caught at z=1 and z=2 and survives only at z=m-1. The expected
-    # acceptance rate is therefore (m-3)/(m-1), NOT the (m-2)/(m-1) an earlier
-    # draft assumed — running the measurement is what caught that error, which
-    # is the point of measuring instead of quoting a bound.
+    # value breaks BOTH transitions that touch it. With the break at trace[2]
+    # and z in {1..m-1}, the forgery survives only at z=m-1, so the expected
+    # acceptance rate is (m-3)/(m-1) — NOT the (m-2)/(m-1) an earlier draft
+    # assumed. Running the measurement is what caught that error.
     forged = {k: list(v) for k, v in honest.items()}
     forged["trace"][2] = (forged["trace"][2] + 1) % q   # break one trace value
     prng2 = random.Random(99)
-    mfor = air.mask_sz(forged, prng2)
-    # exact per-z outcome: caught at every transition touching the broken value
-    per_z = {z: (air.check_sz(mfor, z) is False) for z in range(1, m)}
+    vfor, sfor = air.mask_sz(forged, prng2)
+    cfor = air.commit_sz(vfor, sfor)
+    per_z = {z: (air.check_sz(vfor, z, air.open_sz(sfor, z), cfor) is False)
+             for z in range(1, m)}
     caught_steps = [z for z, c in per_z.items() if c]
     trials = 300
     caught = 0
@@ -978,21 +1136,32 @@ def tv66_schwartz_zippel():
         if per_z[z]:
             caught += 1
     accept_rate = 1.0 - caught / trials
-    # the break at trace[2] touches transitions 1 and 2; only z=m-1 survives
     expected = (m - 3) / (m - 1)
     sound_ok = abs(accept_rate - expected) <= 0.12
 
-    print("  (1) honest masked proof verifies              : %s" % honest_ok)
-    print("  (2a) TV-65 recovery attack finds nothing      : %s"
-          % ("YES" if not leaked else "NO"))
-    print("  (2b) view depends on witness, reveals neither : %s"
-          % ("YES" if views_differ and not view_reveals else "NO"))
-    print("  (3) forged acceptance rate over %d random z    : %.4f "
-          "(expected for a one-value break: %.4f, caught at z=%s)"
-          % (trials, accept_rate, expected, caught_steps))
+    # (4) binding: a prover that opens a DIFFERENT pad leaf after seeing z must
+    # be rejected, or it could tailor the pad to the challenge and pass any
+    # forgery.
+    z0 = 1
+    good_open = air.open_sz(secrets, z0)
+    bad_open = dict(good_open)
+    bad_open["pm_z"] = (good_open["pm_z"] + 1) % q   # not the committed leaf
+    bound_ok = (air.check_sz(view, z0, good_open, commit, acc=acc) is True
+                and air.check_sz(view, z0, bad_open, commit, acc=acc) is False)
 
-    return (honest_ok and not leaked
-            and views_differ and not view_reveals and sound_ok)
+    print("  (1) honest masked proof verifies at every z  : %s" % honest_ok)
+    print("  (2a) the view carries no pad material        : %s"
+          % ("YES" if not pad_in_view else "NO — pad is in the view"))
+    print("  (2b) recovery attack on the real transcript  : %s"
+          % ("nothing found" if not leaked else "TRACE RECOVERED — LEAK"))
+    print("  (3) forged acceptance over %d random z        : %.4f "
+          "(expected %.4f, caught at z=%s)"
+          % (trials, accept_rate, expected, caught_steps))
+    print("  (4) substituted pad leaf rejected            : %s"
+          % ("YES" if bound_ok else "NO — openings are unbound"))
+
+    return (honest_ok and not pad_in_view and not leaked and sound_ok
+            and bound_ok)
 
 
 if __name__ == "__main__":
