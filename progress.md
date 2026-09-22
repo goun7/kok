@@ -2255,3 +2255,47 @@ Gizli hata: TV-43 assert'i "leaked"i yanlis tanimliyordu. Bos testti.
 Cascade: PAPER (L529 RESTORED, L685, L740), SPEC (TV-66), README, GAPS (L664).
 
 Durum: 13/13 + 5 proba yesil. f0b rc=0. 0 Turkish. Iki cevap bekleniyor.
+
+## Oturum 8 eki 10 — bagimsiz adversarial review (18 bulgu: 10 bug, 8 iddia)
+
+Review paylasilan context YOK calisti; 9 dosyayi okudu ve kostu, hepsi rc=0.
+
+En onemlisi: **TV-66'yi duzelttigim yapim, pad'i dondurulen dict'e koyuyordu.**
+mask icinde pm ile gidiyordu; verifikator cumsum(pm)'i cikarip tum trace'i
+geri okuyordu: [0,41,85,84,28]. Probe'um gecemiyordu cunku check (2a) eski
+H("mask",...) formunu deniyordu, yeni yapim hic kullanmiyordu. Self-confirming
+test. (0539f2c + a030a47 substantively wrong about hiding.)
+
+Duzeltme: view/secrets ayrimi + Merkle. mask_sz -> (view, secrets); commit_sz
+view hash'i + pm/cross Merkle root; open_sz tek yaprak + auth path; check_sz
+once Merkle check sonra denklem. Binding yuk tasiyor: z'den SONRA gonderilen
+acilimlar serbest bırakır (bir denklem, iki bilinmeyen).
+
+TV-66 5 kontrol: (1) her z'de verify; (2a) view'da pad YOK (yapisal);
+(2b) reel transcript uzerinden recovery saldirisi -> nothing;
+(3) 0.3200 vs 0.3333; (4) yerine gecirilmis yaprak reddediliyor.
+Reviewer saldirisini dogrudan replay ettim: pad in view False, recovered
+[0,50,67,51,88] != honest. Leak kapandi.
+
+Diger f0b bug'larim: TileAIR.verify'de olmus binding (`for l: if E: pass`)
+uretilmis tanigi kabul ediyordu -> prove artik a_res/b_res + Merkle auth path
+donuyor, verify hem ROM noise'ini hem input root'unu kontrol ediyor; yardimcilar
+ilk __main__ blogunun ALTINDAYdi (NameError) -> H'nin yanina tasinmasi;
+TV-43 print labeli invert; verify_zk docstring "without unmasking" yalan
+(sozlesme olarak yeniden yazildi); TV-28 stale comment.
+
+Subagent 8 fix daha (f0b'ye DOKUNMADI): u_layer RNG determinism
+(_r.Random(77) atilip seeded degildi -> 5 run byte-identical); tv26_ -> tv50_
+rename; TV-25 hardcoded identity -> olcum; TV-61 Bitconia case Fortessia
+cozuyordu (alpha 2.5); TV-64 range Delta<0 ulasilamazdi + latent startswith
+bug; pass_sim criterion assert edilmemisti; TV-51 docstring duzeltilen bug'i
+anlatiyordu; adoption_econ "comparable footing" + TV-35 flow.
+
+Dokumantasyon: SPEC TV-66 satiri (iki retraction'la), TV-16/17 bond bitis
+durumu (100'e refill, cumulative 150), TV-67 review satiri, collision update;
+PAPER L529 RESTORED + L689; RESEARCH_GAPS; README.
+
+Karar: TV-21..25 label collision (f3a vs ghostdag) renumber edilmedi — iki
+prototip + tum cross-ref'leri dokuyor, dosya adini soyleyince belirsiz kalmiyor.
+
+14/14 yesil (f0b dahil). commit d897fa8. 0 Turkish.
