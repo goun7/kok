@@ -596,8 +596,10 @@ class ZkTileAIR(FriTileAIR):
         """
         q = self.q
         m = len(masked["a"])
-        # the boundary conditions are checked on the SHIFTED values, which the
-        # verifier can compute from the seed, so the real trace stays hidden
+        # the boundary conditions are checked on the SHIFTED values. Because the
+        # mask derives from a seed the verifier knows, this check RECONSTRUCTS
+        # the real differences rather than hiding them — sound, but not
+        # zero-knowledge (probe TV-65).
         for x in challenge_points:
             if x < 0 or x >= m:
                 continue
@@ -623,11 +625,17 @@ class ZkTileAIR(FriTileAIR):
 
 
 def tv43_zero_knowledge():
-    """TV-43: the verifier accepts without ever seeing the real trace.
+    """TV-43: the verifier accepts without ever seeing the real trace on the wire.
 
     The honest masked witness verifies. A masked witness built on a FORGED trace
     is still rejected, because the mask is additive and cannot repair a broken
-    constraint. And critically: the real trace values are never transmitted.
+    constraint. And no real trace value is ever transmitted.
+
+    BUT: this is not zero-knowledge. The mask is a deterministic function of a
+    seed the verifier itself supplies, so the verifier recomputes the mask and
+    recovers every plaintext it was sent. See probe TV-65. What this step
+    establishes is provenance (soundness without transmitting secrets), not
+    privacy (soundness without LEAKING them).
     """
     import random
     rnd = random.Random(7)
@@ -688,14 +696,25 @@ if __name__ == "__main__":
     print("\n" + "-" * 76)
     print("WHAT TV-43 STILL IS NOT (the honest remaining gap)")
     print("-" * 76)
-    print("""  The hiding is one-time-pad style over a small field: each opened value is
-  masked additively with a hash-derived secret. A real zk-STARK uses
-  Schwartz-Zippel blinding inside the commitment so the mask is not recoverable
-  even from many openings, and the verifier's queries are unpredictable before
-  the commitment is fixed. Here the mask and the queries both derive from a seed
-  the verifier knows, which is sound but not zero-knowledge under composition.
+    print("""  THE HIDING DOES NOT HOLD, AND THIS SECTION WAS WRONG ABOUT IT.
 
-  What is genuinely established: the verifier accepts an honest computation and
-  rejects a forged one, while the real trace values are never transmitted. That
-  combination - soundness AND hiding - is the property the privacy buyer needs,
-  and it now has running code behind it.""")
+  An earlier version of this block called the masking "one-time-pad style" and
+  claimed TV-43 established "soundness AND hiding". It does not establish hiding.
+  The mask d(t) = H("mask", seed, t) is a deterministic function of a seed the
+  VERIFIER supplies, and verify_zk recomputes it to check the constraint — the
+  lines `real_a = (ma - H("mask", seed, x+1)) % q` and `real_diff = lhs - ddiff`
+  recover the plaintext of every value the prover sent. A one-time pad whose key
+  is handed to the reader is not a pad at all. Probe TV-65 in
+  probe_f0b_zk_en.py demonstrates it: a malicious verifier that knows only the
+  seed and the transmitted values recovers the complete secret witness (trace,
+  a and b), while the honest proof still verifies.
+
+  What is genuinely established here is SOUNDNESS ALONE: the verifier accepts an
+  honest computation and rejects a forged one, and the real values are never
+  put on the wire. That is provenance — a real result for the buyer who must
+  PROVE a computation. It is not privacy, which is what the buyer who must not
+  REVEAL model weights or sensitive data needs. The privacy property has no
+  prototype support at any scale until the mask is made verifier-unknowable, by
+  a blinding factor the verifier cannot recompute or by Schwartz-Zippel
+  evaluation at a point it cannot predict. Until then reason (b) in the paper
+  rests on nothing that runs.""")

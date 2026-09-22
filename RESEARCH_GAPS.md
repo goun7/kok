@@ -634,7 +634,14 @@ research supports the path; it does not shorten it.
    confidentiality, the zkVM gives verification of correctness, and KW's Remark 2.2
    adds confidentiality on top of the proof. What remains open is not the argument
    but the delivery: Akash ships the confidentiality half today and KOK's F0b has
-   not been written.
+   not been written — a statement this file now has to correct, because the code
+   was written and the property is absent from it. Probe TV-65 (2026-09-22) shows
+   why: F0b's TV-43 masking step derives its mask from a seed the *verifier*
+   supplies, so the verifier recomputes the mask and recovers every plaintext it
+   was sent. The prototype establishes provenance (soundness without transmitting
+   secrets) but not confidentiality, at any scale. The gap to Akash is therefore
+   not "KOK has not written the code" but "KOK wrote the code and it does not
+   hide."
 4. Whether agents can be real buyers of inference at all — not merely authorized to
    pay, but carrying demand a human did not initiate — is an open empirical
    question that no source here answers.
