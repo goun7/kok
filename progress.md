@@ -2733,3 +2733,68 @@ e80095d (1.1), d035c3e (1.2), 601fdfd (1.3), 41ffe0c (1.4),
 f28d341 (audit clean), 466b483 (Stage 2), 377a419 (Stage 3),
 43db54b (Stage 3 u=x² fix), a7548de (Stage 4), 21e7e40 (README).
 Tam suite 13/13 rc=0, audit CLEAN.
+
+## Oturum 10 — projeyi tamamlamak için kalan üç blok (2026-09-23/24)
+
+Kullanici: "Projeyi tamamlamak için yapılması gerekenleri yapalım"
+
+### BLOK A — TV-74A'nın 13 spec belirsizligi KAPANDI
+Spec'e yeni §F.5 eklendi. 13 belirsizligin her biri spec'e
+yazildi. **Her deger koda dogrulanmadan yazilmadi** — 4 tanesi
+ilk yazista yanlisti ve düzeltildi:
+- A1: HMAC anahtari YOK — `SHA256("|".join(str(p)))` 8 byte
+  kisaltili. Ilk yazista "kok-v2|" öneki uydurmustum, kodda yok.
+- A11: leaf `"%d|%d" % (index, value)` — **etiket YOK**. Ilk yazista
+  `(label, index, symbol)` uydurmustum. Iki commitmenin ayni (index,
+  value) listesinde agaclari ÇAKISIYOR (production TV-76 adim 2
+  etiketi ekler).
+- A12: target AIR'da YOK — G katmaninda. Ilk yazista "target=1"
+  uydurmustum.
+- A2: residual **noise'suz** (`A[i*r][l*r]`), constraint input
+  noise'lu. Ilk yazista ikisini ayni sanmistim.
+
+### BLOK A2 — TV-79: spec artik referansi türetiyor
+`spec_rederive_en.py`: spec'i okuyup AIR'i yeniden türetti, **4/4**:
+honest iki yönde de geçer, fabricated tile reddedilir, index binding
+tutar, A1 byte-level eslesir. **Testin kendisi 2 yeni spec hatasi
+buldu (A14/A15):**
+- A14: commitler m residual üzerinde DEGIL, **düzlestirilmis n×n
+  matris** üzerinde. Ilk türetmem residual üzerine kök kurdu,
+  referansinkiyle eslesmedi — böylece yakalandi.
+- A15: Merkle kökü 32 byte digest DEGIL, **8 byte int**. 2^64 uzay.
+
+### BLOK B — dördüncü adversarial tur (TV-80)
+7 henuz incelenmemis dosya. **3 GERÇEK hata bulundu ve ÖLÇÜLEREK
+kapatildi**:
+1. [9] `cost_of_prove` A, B, ctx, D'yi HİÇ okumuyordu — kernel
+   sabitlerinden flops hesapliyordu, "input-independent" iddiasi
+   hiç patlayamiyordu. Artik inputtan geliyor; **5 farkli içerikte
+   tek cost: 704**.
+2. [16] `validate_block` phi'yi sadece ARALIK kontrol ediyordu —
+   madenci phi=0.99 deyip sifir faydali is yapabilir. Artik
+   yeniden türetiliyor. **TV-57: gerçek phi 0.1103, yalan 0.99
+   REJECT:phi-mismatch**.
+3. g_layer [11]-[14]: `prove` matrix boyutunu INPUTTAN, `verify`
+   kernel SABITINDEN aliyordu. **6x6 proof verify'de IndexError
+   veriyordu** (A'nin 8. satirina bakiyor); 8x8 sadece sabitle
+   ayni oldugu için calisiyordu — round-3'ün bunu kaçırmassinin
+   nedeni bu. Artik inputtan; 6/8/10x hepsi verify=True.
+
+**Tekrarlayan hata sinifi yine tuttu:** üçü de "bir yerde baglama,
+baska yerde kaybolma" — prove inputu okur verify sabiti okur; madenci
+phi'yi hesaplar verifier iddiaya güvenir; docstring input-independent
+der kod inputa hiç bakmaz.
+
+**Sapma bulundu, düzeltilmedi (protokol degisikligi = yeni özellik):**
+bond_margin "full slash mode protokolde yok, A.5.5'e eklenmeli"
+diyor; spec L222 zaten tanimli gibi görünüyor — kayit altina alindi.
+
+### Temiz dosyalar
+f3a TV-15..20 hepsi geçer, toy limitler dosyanin kendi çikisinda.
+fp8'nin noise-floor negatif sonucu zaten TV-28. probe_field_scale
+zaten TV-71. probe_live_demand Stage 2 ile ayni dürüst siniri
+belirtiyor.
+
+### Commitler
+970f0c8 (F.5), b41cb63 (TV-79), 618ba06 (C1+C2), 73ab4aa (C3),
+5985f21 (TV-80), eb1bb81 (README). Tam suite 16/16 rc=0, audit CLEAN.
