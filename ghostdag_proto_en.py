@@ -183,9 +183,19 @@ class GHOSTDAG:
             self.is_blue[b] = len(in_ms) <= self.k
         self.is_blue[bid] = True  # a block is always blue in its own chain
 
-        # step 4: blue_score = count of blue blocks in the mergeset (+1 for itself)
+        # step 4: blue_score = blue_score(sp) + 1 + blue(anticone in mergeset)
+        # CONTRACT, fixed 2026-09-23 (round-3 consequence): GHOSTDAG's score is
+        # NOT mergeset-local. It is the selected parent's score plus this
+        # block's own contribution. An earlier version used |blue in mergeset|
+        # + 1, which the blue/red fix exposed as wrong: TV-58 measured 25
+        # blocks whose score DECREASES along the selected chain, which real
+        # GHOSTDAG cannot do because each child adds to its parent's score.
+        # The selected parent's score is now carried forward, which restores
+        # the monotone walk.
         blue = sum(1 for b in ms if self.is_blue.get(b, False))
-        self.blue_score[bid] = blue + 1
+        sp = self.selected.get(bid)
+        base = self.blue_score.get(sp, 0) if sp is not None else 0
+        self.blue_score[bid] = base + blue + 1
 
     def order(self, bid: str) -> list:
         """
