@@ -200,10 +200,39 @@ def tv56_vrf_public_key_is_not_the_secret():
                      rejects_old_form))
 
 
+def tv57_phi_is_rederived_not_trusted():
+    """Round-4 (2026-09-23), round-3 finding [16]: phi was only range-checked
+    against the miner's claim, so a miner could declare phi=0.99 while doing
+    zero useful work. The verifier now re-derives phi from the proofs' flops
+    and the nonce; this probe drives the lie directly.
+    """
+    ch = Chain()
+    warm(ch)
+    t = ch.submit_task("kobi", spec(), fee=100, burn_rate=0.3)
+    ch.miner_bond("A")["bond"] = 1000
+    t2 = list(ch.assign_tasks("A", [t]))
+    blk = ch.mine_block("A", t2, M, M)
+    honest = ch.validate_block(blk, M, M)
+    honest_phi = blk["phi"]
+    # the lie: same block, phi claimed as if the block were almost all useful
+    import copy
+    lie = copy.deepcopy(blk)
+    lie["phi"] = 0.99
+    lied = None
+    try:
+        lied = ch.validate_block(lie, M, M)
+    except Exception as e:
+        lied = "raised %s" % type(e).__name__
+    ok = (honest == "ACCEPT" and lied == "REJECT:phi-mismatch")
+    return report("TV-57 phi re-derived, not trusted", ok,
+                  "honest=%s honest_phi=%.4f lied=%s"
+                  % (honest, honest_phi, lied))
+
+
 if __name__ == "__main__":
     print()
     print("=" * 76)
-    print("KOK v2 — u_layer L1 adversarial edge probes (TV-51..TV-56)")
+    print("KOK v2 — u_layer L1 adversarial edge probes (TV-51..TV-57)")
     print("=" * 76)
     print()
     results = [tv51_escrow_nonnegative_after_settle(),
@@ -211,7 +240,8 @@ if __name__ == "__main__":
                tv53_slashed_task_pays_miner_nothing(),
                tv54_burn_at_submission_is_irrecoverable(),
                tv55_challenge_after_window_refused(),
-               tv56_vrf_public_key_is_not_the_secret()]
+               tv56_vrf_public_key_is_not_the_secret(),
+               tv57_phi_is_rederived_not_trusted()]
     print()
     n = sum(1 for r in results if r)
     print("probes: %d/%d" % (n, len(results)))

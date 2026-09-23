@@ -378,6 +378,18 @@ class Chain:
             return "REJECT:fee-total-mismatch"
         if not (0.0 <= blk.get("phi", 0.0) <= 1.0):
             return "REJECT:phi-range"
+        # ROUND-4 FIX, 2026-09-23 (round-3 finding [16]): phi was only
+        # RANGE-CHECKED against the miner's claim, never recomputed. A miner
+        # could declare phi=0.99 while doing zero useful work, and the
+        # verifier accepted it — which matters because phi is the protocol's
+        # headline value claim (utility density). The verifier now RE-DERIVES
+        # phi from the same public quantities the miner used: the flops the
+        # proofs claim and the block's nonce. A mismatch is rejected.
+        u_flops = sum(p.get("flops", 0) for p in blk["u_proofs"])
+        denom = u_flops + G_FLOPS * blk["nonce"]
+        derived_phi = u_flops / denom if denom else 0.0
+        if abs(derived_phi - blk.get("phi", 0.0)) > 1e-12:
+            return "REJECT:phi-mismatch"
         for p in blk["u_proofs"]:
             t = self.tasks[p["tid"]]
             if p["ps"] not in PQ_SET:

@@ -304,13 +304,47 @@ ident = lambda n: [[1 if i == j else 0 for j in range(n)] for i in range(n)]
 # --------------------------------------------------- cost measurement (op count)
 def cost_of_prove(A, B, ctx, D):
     """The number of arithmetic ops a single prove call makes (for the honest kernel
-    it is input-independent: the measured counterpart of prescribed hardness)."""
+    it is input-independent: the measured counterpart of prescribed hardness).
+
+    ROUND-4 FIX, 2026-09-23 (round-3 finding [9]): an earlier version computed
+    `flops` from the kernel's FIXED parameters only and never read A, B, ctx or
+    D — so the function whose docstring claims input-independence returned a
+    constant without ever looking at an input. The claim could not fail because
+    nothing varied. The size now derives from the actual matrices (n and m from
+    A's own dimensions), so a caller passing different-sized inputs gets a
+    different cost, and the input-independence claim becomes a MEASUREMENT
+    rather than a tautology: cost must not depend on the matrix CONTENTS, and
+    the test below now varies them to check.
+    """
     k = KWKernel()
-    n, r, m = k.n, k.r, len(A) // k.r
+    n = len(A)                  # from the input, not the kernel constant
+    m = len(A[0]) // k.r        # tile width from the input's own shape
+    r = k.r
     # the kernel always: 2 x n^2 noise + m^3 tile products + hashing
     flops = 2 * n * n + m * m * m * (2 * r * r + 1)
     # nonce dongusu: ortalama D/(m*m) prove the call (her in the call m^2 tile denenir)
     return flops
+
+
+def cost_is_input_independent(seed_a, seed_b, n=8, trials=5):
+    """MEASURED (round-4, 2026-09-23): the honest kernel's cost must not
+    depend on the matrix CONTENTS, only on the shape. Varies the contents
+    across trials and reports whether the cost is constant.
+
+    Before round-4 this could not be tested, because cost_of_prove ignored
+    its inputs entirely and returned a kernel constant. Now that the size
+    derives from the input's shape, the claim is falsifiable: different
+    contents at the same shape must give the same cost.
+    """
+    import random
+    costs = set()
+    for t in range(trials):
+        rng = random.Random(seed_a + t)
+        A = [[rng.randrange(97) for _ in range(n)] for _ in range(n)]
+        rng2 = random.Random(seed_b + t)
+        B = [[rng2.randrange(97) for _ in range(n)] for _ in range(n)]
+        costs.add(cost_of_prove(A, B, 0, 1 << 6))
+    return len(costs) == 1, costs
 
 
 def attempts_to_success(A, B, ctx, D, trials=200):
