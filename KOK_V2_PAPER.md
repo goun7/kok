@@ -351,6 +351,16 @@ with pinned test vectors.
   is the **E-gap** (Demirel 2026/1492): the protocol could not certify that the matrices were
   anyone's job. **Pearl behaved like Bitconia and was marketed as Duplexia.** KÖK v2 bakes
   this gap into the architecture via the G/U separation (§3.2).
+  **Demonstrated, not just stated (2026-09-24, `tv72_egap_mechanism_en.py`, spec TV-82):** a
+  two-arm comparison on a mock G layer measures the mechanism directly. Under the pre-binding
+  acceptance rule (verify the PoW target only) a certificate over matrices the miner prefers is
+  accepted **5/5** times — detectability is 0 *by construction*, because the cert is
+  self-consistent and the target is met, so no check exists that can fail. Under the post-binding
+  rule (the verifier derives the required program commitment from the task) the substitution is
+  rejected **4/4** and the commissioned pair is accepted. This makes the φ=0 measurement causal
+  rather than anecdotal: hashrate, difficulty and the price ratio can all be real, and the
+  quantity the protocol counts as useful work can still be unattributable to any buyer — so
+  φ=0 is the correct measurement of a network without this binding, not a paradox.
 - **Commitment:** the emission curve is published once and **cannot be changed in the future**
   (a change is the strongest broken trust signal; please remove v1's laxness of "to be
   finalized before launch").
