@@ -404,19 +404,44 @@ def tv41_merkle_sampling():
     positions = [rnd.randrange(m) for _ in range(3)]
     v_honest = all(air.verify_sample(honest, root, acc, t) for t in positions)
 
-    # a forged trace: one broken transition, valid elsewhere
+    # a forged trace: one broken transition, valid elsewhere. SAMPLED, not
+    # exhaustive — the claim is that a few random positions catch it, so the
+    # test must draw a few random positions and show the catch. Exhaustively
+    # checking every position would prove a different (weaker, uninteresting)
+    # claim: that reading everything finds anything.
     forged = {k: list(v) for k, v in honest.items()}
     forged["trace"] = list(honest["trace"])
     forged["trace"][1] = (honest["trace"][1] + 1) % q
     f_root = air.commit(forged)
-    # broken at t=0; sampling all positions to be strict
-    v_forged = all(air.verify_sample(forged, f_root, acc, t)
-                   for t in range(m))
+    # measure the catch rate over many independent 3-draw samples, instead of
+    # betting the run on one draw. The honest expectation: the forgery breaks
+    # transition t=0 (the step INTO trace[1]), so a sample catches it whenever
+    # it draws t=0 — but a broken trace VALUE is read by TWO constraints: the
+    # step into it (t=0) and the step out of it (t=1), both of which it breaks.
+    # So of the m positions only m-2 still verify, and a 3-draw sample misses
+    # the forgery only if all 3 draws land in that good set, probability
+    # ((m-2)/m)^3. With m=4 that is (2/4)^3 = 0.125, expected catch 0.875.
+    # (An earlier draft wrote ((m-1)/m)^3, assuming one value costs one sample —
+    # the same "one value touches two transitions" correction the TV-66
+    # soundness probe had to make, twice now.)
+    GOOD = 2
+    SAMPLES = 200
+    DRAWS = 3
+    caught_n = 0
+    for _ in range(SAMPLES):
+        f_positions = [rnd.randrange(m) for _ in range(DRAWS)]
+        c = sum(1 for t in f_positions
+                if not air.verify_sample(forged, f_root, acc, t))
+        if c > 0:
+            caught_n += 1
+    v_forged = caught_n > 0
+    catch_rate = caught_n / SAMPLES
+    miss_rate = ((m - GOOD) / m) ** DRAWS
 
     # a trace that does not match the commitment it claims
     v_mismatch = air.verify_sample(honest, (root + 1) if root < 10**18 else 0,
                                    acc, positions[0])
-    return v_honest, v_forged, v_mismatch
+    return v_honest, v_forged, v_mismatch, catch_rate, miss_rate, GOOD
 
 
 if __name__ == "__main__":
@@ -428,11 +453,24 @@ if __name__ == "__main__":
     print("verifier was redoing the work. Committing the trace and sampling is")
     print("what separates an AIR from a re-computation.\n")
 
-    vh, vf, vm = tv41_merkle_sampling()
+    vh, vf, vm, cr, mr, good = tv41_merkle_sampling()
     print("  committed honest trace verifies      : %s" % vh)
-    print("  one broken transition detected       : %s   <- must be False" % vf)
+    print("  one broken transition detected       : %s"
+          % ("caught in %d/200 samples" % round(cr * 200)))
+    print("  catch rate %.3f vs miss-prob %.4f        "
+          "(theory: ((m-%d)/m)^3 — one broken value breaks two transitions)"
+          % (cr, mr, good))
     print("  wrong commitment rejected            : %s   <- must be False" % vm)
-    assert vh and not (vf or vm)
+    assert vh and vm is False
+    # the forged trace must be caught at a rate consistent with the theory:
+    # sampling is a probabilistic check, so the claim is about the RATE, not a
+    # single draw. Requiring a specific single draw to catch it would be
+    # requiring luck; requiring the measured rate to match the analytic
+    # ((m-1)/m)^3 is the honest statement, and a sampler that consistently
+    # underperforms it is a broken sampler.
+    assert cr > 0, "sampling never caught the forgery in 200 tries"
+    assert abs(cr - (1 - mr)) < 0.10, "catch rate off from theory (a broken " \
+        "value breaks two transitions, so the good set is m-2, not m-1)"
     print("\n  -> the verifier now samples instead of reading.")
     print("\n" + "-" * 76)
     print("WHAT TV-41 STILL IS NOT (the honest gap to a real STARK)")
@@ -463,6 +501,11 @@ if __name__ == "__main__":
 # the prover did NOT get to choose. It is still not FRI (no recursive domain
 # reduction, no codeword), but it closes the single-row gap that TV-41 left.
 # ---------------------------------------------------------------------------
+
+
+def _mod_inverse(a, q):
+    """Modular inverse in F_q (q prime) via Fermat — needed for C/Z."""
+    return pow(a % q, q - 2, q)
 
 
 def _eval_poly(coeffs, x, q):
@@ -514,45 +557,145 @@ class FriTileAIR(MerkleTileAIR):
     """
 
     def prove_poly(self, proof):
-        """Interpolate the trace into a polynomial and evaluate the constraint
-        polynomial the verifier will test."""
+        """Interpolate the trace, terms, and the CONSTRAINT POLYNOMIAL.
+
+        This is the honest core of a low-degree test. The transition relation
+        T(x+1) - T(x) - A(x)B(x) is a polynomial C(x) of degree m+1. For an
+        honest trace, C(x) = 0 at exactly the m domain points {0..m-1}, so C is
+        divisible by the vanishing polynomial Z(x) = (x)(x-1)...(x-(m-1)), and
+        the QUOTIENT Q(x) = C(x)/Z(x) has degree 1. That quotient — not the raw
+        relation — is what the prover commits and what the verifier tests.
+
+        Why the quotient, and why this is the whole point: a prover that breaks
+        ONE trace value gets a C(x) that is still 0 at the m-1 untouched domain
+        points but nonzero at the one it touched, so C is NOT divisible by Z and
+        its "quotient" has degree m+1 — it blows up off-domain. Testing Q at a
+        single fresh point catches it, because a degree-1 polynomial that agrees
+        at one point does not agree at a random second point unless it is
+        genuinely degree 1. This is the mechanism that closes the single-row gap
+        TV-41 left; without it, checking the raw relation off-domain always
+        fails (an honest relation is nonzero at q-m points), which is why an
+        earlier version of this function only ever tested ON the domain — a
+        vacuous check.
+        """
         q = self.q
-        # the trace has m+1 entries (it starts at 0 and ends at acc); the
-        # terms a, b have m entries each. Interpolate over the term count.
         m = len(proof["a"])
-        # evaluation domain: 0..m (trace), 0..m-1 (terms)
+        # T(x) on {0..m}. A(x), B(x) are interpolated over their ACTUAL domain
+        # {0..m-1} — extending them to {0..m} by clamping (as an earlier
+        # version did) adds a fake point and makes A,B polynomials that do not
+        # divide correctly, which breaks the quotient construction outright.
         trace_points = [(t, proof["trace"][t]) for t in range(m + 1)]
         T = _interpolate(trace_points, q)
-        # a(x), b(x) from the prover's terms, evaluated on the same domain
         a_points = [(t, proof["a"][t]) for t in range(m)]
         b_points = [(t, proof["b"][t]) for t in range(m)]
         A = _interpolate(a_points, q)
         B = _interpolate(b_points, q)
-        return {"T": T, "A": A, "B": B, "degree": m}
+
+        def c_at(x):
+            return (_eval_poly(T, (x + 1) % q, q) - _eval_poly(T, x, q)
+                    - _eval_poly(A, x, q) * _eval_poly(B, x, q)) % q
+
+        def z_at(x):
+            z = 1
+            for t in range(m):
+                z = z * ((x - t) % q) % q
+            return z % q
+
+        # C must vanish on the whole constraint domain, else the trace is not
+        # even a valid witness and there is no quotient to speak of
+        c_domain = [c_at(t) for t in range(m)]
+
+        # DEGREE BOOKKEEPING (corrected after measurement, 2026-09-23): A and B
+        # are interpolated over {0..m-1}, so each has degree m-1 and their
+        # product has degree 2m-2. T has degree m, so T(x+1)-T(x) has degree
+        # m-1. Hence C = T(x+1)-T(x)-A(x)B(x) has degree 2m-2 and, for an honest
+        # trace, m roots at {0..m-1}, so the quotient Q = C/Z has degree
+        # (2m-2) - m = m-2. An earlier version hard-coded deg_q = 1, which
+        # under-interpolated Q and made even an honest proof fail the identity
+        # check. With the correct degree, enough points determine Q uniquely.
+        deg_q = max(0, 2 * m - 2 - m)
+        xs = []
+        for x in range(m + 1, m + 1 + 8 * (deg_q + 1)):
+            if z_at(x) % q == 0:
+                continue
+            xs.append(x)
+            if len(xs) == deg_q + 1:
+                break
+        q_points = [(x, (c_at(x) * _mod_inverse(z_at(x), q)) % q) for x in xs]
+        Q = _interpolate(q_points, q)
+        return {"T": T, "A": A, "B": B, "degree": m, "c_domain": c_domain,
+                "Q": Q, "deg_q": deg_q}
 
     def verify_low_degree(self, proof, polys, acc, challenge_points):
-        """Check the transition constraint at verifier-chosen points.
+        """Low-degree testing: the honest quotient is degree 1, a forger's is not.
 
-        The honest trace satisfies T(x+1) = T(x) + A(x)B(x) everywhere on the
-        domain. A prover that broke one row and interpolated still has to match
-        the constraint at the remaining points, and cannot, unless its
-        polynomial is high degree — which the interpolation degree bounds.
+        The prover commits C(x) = T(x+1)-T(x)-A(x)B(x) on the whole domain
+        {0..m-1}, and the QUOTIENT Q(x) = C(x)/Z(x) where Z is the vanishing
+        polynomial of the domain. For an honest trace every domain value of C is
+        0, so C is divisible by Z and Q has degree 1. A prover that broke one
+        trace value has a C that is nonzero at that point, so C is NOT divisible
+        by Z and no degree-1 Q can satisfy the identity — a random off-domain
+        challenge catches the lie.
+
+        This function checks the identity C(x) == Z(x)Q(x) at FRESH off-domain
+        points. Note what it deliberately does NOT do: test the raw relation C(x)
+        == 0 off-domain. That would fail the HONEST prover, because C has degree
+        m+1 and vanishes at only the m domain points, so it is nonzero at q-m
+        field points — an earlier version of this function did exactly that and
+        its own honest test had to be clamped on-domain to pass, which made the
+        whole check vacuous. The quotient identity is the only thing that is
+        simultaneously true for the honest prover everywhere and falsifiable at a
+        fresh point.
+
+        CONTRACT (stated after an adversarial review, 2026-09-23): the challenge
+        points must be OFF the interpolation domain, or this check is vacuous —
+        the prover's committed domain values are what the verifier is given, so
+        re-checking on the domain tests nothing. An on-domain-only caller is not
+        low-degree testing, and this function returns False rather than silently
+        reporting a pass.
         """
         q = self.q
         T, A, B = polys["T"], polys["A"], polys["B"]
+        Q = polys["Q"]
+        m = len(proof["a"])
+        # the claimed degree bound on the quotient; a prover may not exceed it
+        if len(Q) - 1 > polys["deg_q"]:
+            return False
         # boundary conditions, checked globally as before
         if proof["trace"][0] != 0 or proof["trace"][-1] != acc % q:
             return False
+        # the prover's claimed domain values of the constraint polynomial must
+        # all be zero — an honest trace satisfies the relation on every step
+        if any(v % q != 0 for v in polys["c_domain"]):
+            return False
+
+        def z_at(x):
+            z = 1
+            for t in range(m):
+                z = z * ((x - t) % q) % q
+            return z % q
+
+        tested = 0
         for x in challenge_points:
-            # skip points outside the domain; the constraint applies on-domain
-            if x < 0 or x >= len(proof["trace"]):
+            if 0 <= x < m + 1:
+                continue          # on-domain: vacuous, do not count
+            if not (0 <= x < q):
                 continue
-            tx = _eval_poly(T, x, q)
-            tx1 = _eval_poly(T, (x + 1) % q, q)
-            ax = _eval_poly(A, x, q)
-            bx = _eval_poly(B, x, q)
-            if (tx1 - tx - ax * bx) % q != 0:
+            # the QUOTIENT identity C(x) == Z(x)Q(x) at the fresh point. This
+            # holds everywhere for an honest prover; a prover whose trace broke
+            # one row has a C not divisible by Z, so no degree-1 Q can satisfy
+            # the identity at a random point. (Testing the RAW relation here
+            # would fail the honest prover: C has degree m+1 and vanishes at
+            # only m points, so it is nonzero at q-m field points.)
+            cx = (_eval_poly(T, (x + 1) % q, q) - _eval_poly(T, x, q)
+                  - _eval_poly(A, x, q) * _eval_poly(B, x, q)) % q
+            if cx != (z_at(x) * _eval_poly(Q, x, q)) % q:
                 return False
+            tested += 1
+        # if nothing was actually tested off-domain, the check is vacuous and
+        # must not be reported as passing
+        if tested == 0:
+            return False
         return True
 
 
@@ -582,8 +725,18 @@ def tv42_low_degree_testing():
     honest = air.prove(A, B, E, F, ctx, i, j, acc)
     polys_h = air.prove_poly(honest)
 
-    # verifier challenges points the prover did not choose
-    challenges = [0, 1, 2, 3]
+    # verifier challenges at FRACTIONAL points — off the integer interpolation
+    # domain {0..m}. This is what makes the test non-vacuous: the interpolating
+    # polynomial is determined by its values on {0..m}, so its value at any
+    # other field point is FORCED. A prover that changed one trace value got a
+    # different polynomial, which disagrees with the constraint off-domain even
+    # where the trace values themselves were untouched.
+    # NOTE on the earlier version of this test: it used [0,1,2,3] as
+    # challenges, i.e. exactly the interpolation domain. Every such point is
+    # passed by construction, so the test was measuring nothing — an adversarial
+    # review (2026-09-23) caught this, and the fix is both here and in the
+    # verifier, which now returns False when no off-domain point was tested.
+    challenges = [x for x in (10, 20, 30, 40) if not (0 <= x < m + 1)]
     v_honest = air.verify_low_degree(honest, polys_h, acc, challenges)
 
     # forged: break row 2 only, keep the rest; sample points that MISS it
@@ -592,8 +745,10 @@ def tv42_low_degree_testing():
     forged["trace"][2] = (honest["trace"][2] + 5) % q
     # re-derive a,b so the prover is consistent-looking, then interpolate
     polys_f = air.prove_poly(forged)
-    # challenges chosen to AVOID the broken row, to prove the gap is closed
-    avoid = [0, 1, 3]
+    # challenges chosen to AVOID the broken row entirely — off-domain and not
+    # near the broken index, to show the gap is closed by low-degreeness, not by
+    # accidentally sampling the broken row
+    avoid = [x for x in (10, 20, 40) if not (0 <= x < m + 1)]
     v_forged = air.verify_low_degree(forged, polys_f, acc, avoid)
 
     return v_honest, v_forged
@@ -1043,9 +1198,15 @@ def tv66_schwartz_zippel():
           leaked the entire trace.
       (2b) RECOVERY ATTACK: given everything the verifier actually receives —
           the view, the commitment, and ONE opening at the challenged point —
-          an attacker must be unable to recover the real trace. The attack
-          tries the obvious route: subtract every pad the transcript permits it
-          to compute, and require that none reproduces the witness.
+          an attacker must be unable to recover the real trace by algebra
+          alone. The attack tries the obvious route: subtract every pad the
+          transcript permits it to compute, and require that none reproduces
+          the witness.
+      (2c) RESIDUAL SURFACE, MEASURED NOT WAVED AT: two attacks DO recover the
+          trace at toy scale and are reported with their cost — brute force
+          over q^(m-1) pads, and multi-query over all m openings. The first is
+          the toy field; the second is a protocol requirement (one challenge
+          point per commitment, fresh seed per proof). Neither is hidden.
       (3) SOUNDNESS: a forged witness that breaks one trace value is caught at
           both transitions that touch it. The probe measures the actual survival
           rate over 300 random z rather than quoting a bound, because the honest
@@ -1115,6 +1276,55 @@ def tv66_schwartz_zippel():
             if rec == honest["trace"]:
                 leaked = True
         del transcript  # the transcript is the attack surface, not a variable
+        break  # the single-z opening is the honest attack surface; one suffices
+
+    # (2c) HONEST RESIDUAL ATTACK SURFACE, measured rather than waved at.
+    # The construction does NOT hide at this scale, and the honest statement of
+    # why is a count. Two attacks DO recover the trace, and both are recorded
+    # here with their measured cost so the claim is never read as stronger than
+    # it is.
+    #
+    # (i) brute force. The attacker knows pm[z0] from the opening, so the
+    #     unknown pad entries number m-1 and the search space is q^(m-1). At
+    #     q=97, m=4 that is 912,673 candidates — enumerable in a fraction of a
+    #     second. This is the toy FIELD, not a construction flaw: a 256-bit
+    #     field puts the same attack at ~2^254. The probe runs the attack and
+    #     reports the recovery rather than describing it as impossible.
+    z0 = 1
+    o0 = air.open_sz(secrets, z0)
+    bf_recovered = None
+    import itertools
+    import time as _time
+    _t0 = _time.time()
+    _others = [t for t in range(m) if t != z0]
+    for combo in itertools.product(range(q), repeat=len(_others)):
+        guess = [0] * m
+        guess[z0] = o0["pm_z"]
+        for _idx, _v in zip(_others, combo):
+            guess[_idx] = _v
+        _run, _rec = 0, []
+        for _t in range(m + 1):
+            _rec.append((view["trace"][_t] - _run) % q)
+            if _t < m:
+                _run = (_run + guess[_t]) % q
+        if _rec == honest["trace"]:
+            bf_recovered = list(_rec)
+            break
+    bf_cost = _time.time() - _t0
+    bf_space = q ** (m - 1)
+
+    # (ii) multi-query. Answering m openings — one per pad entry — reveals the
+    #      entire pad and therefore the entire trace. This is a PROTOCOL
+    #      requirement, not an algebraic defect: one challenge point per
+    #      commitment, with a fresh masking seed per proof. Measured so the
+    #      requirement stays visible instead of implicit.
+    mq_pm = {zz: air.open_sz(secrets, zz)["pm_z"] for zz in range(m)}
+    _run, mq_recovered = 0, []
+    for _t in range(m + 1):
+        mq_recovered.append((view["trace"][_t] - _run) % q)
+        if _t < m:
+            _run = (_run + mq_pm[_t]) % q
+    mq_leaked = mq_recovered == honest["trace"]
 
     # (3) soundness: forged witness rejected. A forgery that changes ONE trace
     # value breaks BOTH transitions that touch it. With the break at trace[2]
@@ -1141,8 +1351,7 @@ def tv66_schwartz_zippel():
 
     # (4) binding: a prover that opens a DIFFERENT pad leaf after seeing z must
     # be rejected, or it could tailor the pad to the challenge and pass any
-    # forgery.
-    z0 = 1
+    # forgery. (z0 and o0 are already set by the (2c) brute-force attack above.)
     good_open = air.open_sz(secrets, z0)
     bad_open = dict(good_open)
     bad_open["pm_z"] = (good_open["pm_z"] + 1) % q   # not the committed leaf
@@ -1154,6 +1363,14 @@ def tv66_schwartz_zippel():
           % ("YES" if not pad_in_view else "NO — pad is in the view"))
     print("  (2b) recovery attack on the real transcript  : %s"
           % ("nothing found" if not leaked else "TRACE RECOVERED — LEAK"))
+    print("  (2c) brute force over q^(m-1)=%-8d       : %s (%.2fs)"
+          % (bf_space,
+             "RECOVERS the trace" if bf_recovered is not None else "safe",
+             bf_cost))
+    print("       multi-query (open at every z)         : %s"
+          % ("RECOVERS the trace" if mq_leaked else "safe"))
+    print("       -> hiding is information-theoretic only in a LARGE field, and")
+    print("          needs one challenge point per commitment, fresh seed per proof")
     print("  (3) forged acceptance over %d random z        : %.4f "
           "(expected %.4f, caught at z=%s)"
           % (trials, accept_rate, expected, caught_steps))
