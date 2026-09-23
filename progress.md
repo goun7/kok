@@ -2798,3 +2798,69 @@ belirtiyor.
 ### Commitler
 970f0c8 (F.5), b41cb63 (TV-79), 618ba06 (C1+C2), 73ab4aa (C3),
 5985f21 (TV-80), eb1bb81 (README). Tam suite 16/16 rc=0, audit CLEAN.
+
+### BLOK B DEVAM — 4. turun 35 bulgusunun tam kapanisi (2026-09-24)
+
+Round-4 subagent'i 7 dosyaya 7 probe yazdi ve **35 bulgu** raporladi:
+15 BUG, 11 UNSUPPORTED-CLAIM, 5 DEAD-CODE, 3 TAUTOLOGY, 1 INTENTIONAL.
+
+**Iddialari degistiren 3 bulgu — hepsi ÖLÇÜLEREK kapatildi:**
+
+**(a) SLASH DETERRENT TEK SEFERLIKTI.** `settle_task` bond'u kesip
+**asla refill etmiyordu** (migrate_task ediyordu). Ölçüm: 5 kötü sonuç
+sequencer'i BIR KEZ cezalandirdi (50 kesildi, bond 100->0), olaylar 2-5
+bedavaydi; migration yolu ayni 5 olayda 450 topladi. tv69 bos bond üzerinden
+refund_rate ve books_balance raporladi — "kötü provider para kaybeder" bir
+kez dogru, sonra yanlisti. **Düzeltme sonrasi TV-81: [100, 200, 300, 400, 500],
+bond 100'de kaldı.**
+
+**(b) F0 DELIL ZINIRI KENDI KANITINI SIŞIRTIYORDU.** `f0_demand_discovery.py`
+her calismada kendinden eklenen bir EXAMPLE satiri yaziyor ve
+`log_status()` bunlari görüsmü olarak sayiyordu — "dürüst log" dosyanin
+kaç kere calistirildigini ölçüyordu. **10 satir, hepsi kendi-eklenmis,
+`{'interviews': 10}` rapor edildi.** Simdi: `{'interviews': 0,
+'worked_examples_in_log': 11}` — dürüst durum F0 BASLAMADI. Ayrica
+`f0_candidate_list.py` "rubrik f0_demand_discovery.py" diyordu ama kopyasi
+DEFER dalini düsmüstü — **6/6aday farkli karar sinifi aliyordu** (Flashback
+Labs iki BILINMEYEN alanla PURSUE, gerçek rubrik DEFER der).
+
+**(c) "MEASURED, not asserted" HİÇ HASH YAPMIYORDU.** `probe_field_scale_en`'in
+başligi ölçüm iddia ediyordu ama döngü `for _ in range(912673): n += 1` idi
+— saf sayma, **0 sha256 cagrisi**. Üstelik `max(1e-6, per_iter)` clamp'i
+gerçek ~7e-8 s/iter'i 1e-6 ile degistirip başligi ~13x küçültüyordu. Bu
+dosya TV-71'in destek dosyasi. **Düzeltme: döngü artık gerçek SHA-256
+leaf hash yapiyor (1.11e-06 s/hash), clamp kaldirildi.** Ayni dosya
+"256-bit field ~2^254" diyordu ki iki satir asagida ~2^768 yaziyordu — hiç
+bir m degeri q^(m-1)=2^254 yapamaz. "RESULT: SOUND" da kosulsuz True
+döndürüyordu (asla FAIL edemezdi).
+
+**Diger ölçülen düzeltmeler:** submit() ASSIGNED/REJECTED karistiryordu
+(3-degerli); TaskSpec burn_rate>1 ve negatif fee kabul edip NEGATIF escrow
+üretiyordu (range-check); duplicate tid canli task'i üzerine yazip 100 birim
+escrow'u kitaplardan siliyordu (reddet); w_r=0 veya negatif aninda refund
+(>=1); bos sequencer seti KeyError: None (adlandirilmis hata); 0.10 "viability
+threshold" magic number (VIABILITY_THRESHOLD + türetme yazildi); bond_margin
+slash_mode bir harf hatasinda ekonomiyi ters çeviriyordu (explicit); phi=0
+hardcoded literal (miktara ve kaynagina baglandi); "24 EH/s" hicbir degiskene
+bagli degildi (kaldirildi); fp8 `if x==0` ulasilamazdi ve docstring'in
+yüzdeleri stale ("~5.5%" vs ölçülen 6.64%).
+
+**Sapma bulundu, KASITLI birakildi:** full slash mode spec A.5.5'te
+TANIMLI DEGIL — L222 "Proposal: add ... to A.5.5" diyor. bond_margin
+spec'in ÖNERDIGI seyi uyguluyor ve kendi footer'inda dürüstce söylüyor.
+Eklemek protokol degisikligi = yeni özellik, yasak.
+
+**Pattern 4. turda da tuttu:** her hata "kodun kendisi hakkinda yaptigi
+bir iddia ki kod onu kontrol etmiyor" — bir kez cezalandiran deterrent,
+hiçbir sey ölçmeyen ölçüm, kendi calismalarini sayan delil logu, rubrik
+olmayan rubrik.
+
+### Commitler (Oturum 10)
+2fc5192 (f3a #1/#2/#3/#4/#6/#8/#7/#9/#5/#10 + TV-81),
+097019f (probe_field_scale #7/#9/#17/#18/#19),
+b08f2d6 (probe_live_demand #36/#37/#38),
+1437865 (F0 zinciri #27/#28/#30/#33/#34),
+8f220f6 (bond_margin #23/#24/#25 + f3a kalan),
+f29b31f (fp8 #12/#13/#15),
+TV-80 row yeniden yazildi.
+**Tam suite 21/21 rc=0, audit CLEAN.**
