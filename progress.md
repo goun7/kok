@@ -2299,3 +2299,33 @@ Karar: TV-21..25 label collision (f3a vs ghostdag) renumber edilmedi — iki
 prototip + tum cross-ref'leri dokuyor, dosya adini soyleyince belirsiz kalmiyor.
 
 14/14 yesil (f0b dahil). commit d897fa8. 0 Turkish.
+
+## Oturum 8 eki 11 — TV-41/TV-42 duzeltmeleri (review'un f0b bulgulari 2)
+
+**TV-41:** test v_forged icin TUM m pozisyonu deniyordu (exhaustive), yani
+"bir kac rastgele ornek yakalar" iddiasini test etmiyordu. Rate-based yaptim:
+200 ornek x 3 cekis. Ilk assert cr>0'un flakes'e bagimli oldugunu kesfettim
+(170/200 = 0.85). Analitik beklenti: kirilan bir DEGER iki gecisi bozar
+(t=0 ve t=1), iyi set m-2=2, miss (2/4)^3=0.125, catch 0.875. Olcum 0.85.
+((m-1)/m)^3 yazdim once — ayni "bir deger iki gecise dokunur" hatasi TV-66'da
+da yapildi, burada tekrar. GOOD dondurulup __main__'de kullanildi (NameError).
+
+**TV-42:** bu derindi. Review dogruydu: challenges [0,1,2,3] tam interpolation
+domain'i = vacuous (polynomial o noktalardan geciyor). Off-domain yaptim ->
+honest FAIL. Nedenini olctum: C(x)=T(x+1)-T(x)-A(x)B(x) honest trace'de
+domain'de sifir ama off-domainde degil (x=10'da 80). Bu gercek bir matematik
+gercegi: C degree m+1, m kok, q-m noktada sifir degil. Yani raw relation'i
+off-domain test etmek her honest'i reddeder.
+
+Quotient yaptim: Q = C/Z. Subagent'in deg_q=1 varsayimi YANLIS: A,B {0..m-1}
+uzerinden interpolate (degree m-1), A*B degree 2m-2, T degree m, C degree
+2m-2, m kok -> Q degree (2m-2)-m = m-2 = 2. 3 nokta gerekiyor, 2 nokta
+verince Q yanlis. Duzeltince x=10..50'de C == Z*Q tam match.
+
+Ek hata: A,B'yi min(t,m-1) ile {0..m}'e extend etmek fake nokta ekliyordu;
+gercek domain {0..m-1} uzerinden interpolate edince duzeldi.
+
+Simdi: honest passes True, broken row caught True, rc=0. TV-41/42 artik
+gercek low-degree testing'in cekirdegi, vacuous degil.
+
+14/14 yesil. commit 485ec98.
