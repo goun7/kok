@@ -715,14 +715,16 @@ class FriTileAIR(MerkleTileAIR):
         # boundary conditions, checked globally as before
         if proof["trace"][0] != 0 or proof["trace"][-1] != acc % q:
             return False
-        # the prover's claimed domain values of the constraint polynomial must
-        # all be zero — an honest trace satisfies the relation on every step
-        if any(v % q != 0 for v in polys["c_domain"]):
-            return False
         # INPUT BINDING. Without this the layer proves "some consistent tile
         # ends at acc", not "THE committed tile ends at acc". Same check as
         # TileAIR.verify: the residual under the input root must be the ROM
         # noise shifted value, at every step.
+        # NOTE ON ORDER (second adversarial review, finding F2): this check
+        # comes BEFORE the c_domain check below. An earlier order let the
+        # exhaustive domain check reject every forgery first, so the quotient
+        # identity was a second line of defence that no test ever reached. The
+        # binding is the primary soundness check of this layer; the domain
+        # check and the quotient identity are now what run after it.
         for t in range(m):
             e_t = E[i * self.r][t * self.r] % q
             f_t = F[t * self.r][j * self.r] % q
@@ -736,6 +738,12 @@ class FriTileAIR(MerkleTileAIR):
             if not _merkle_check(B_commit, (t * self.r) * n + j * self.r,
                                  proof["b_res"][t], proof["b_paths"][t]):
                 return False
+        # the prover's claimed domain values of the constraint polynomial must
+        # all be zero — an honest trace satisfies the relation on every step.
+        # This is the exhaustive domain check; it runs AFTER the input binding
+        # so that a regression in the binding is not masked by it.
+        if any(v % q != 0 for v in polys["c_domain"]):
+            return False
 
         def z_at(x):
             z = 1
@@ -1470,19 +1478,21 @@ def tv66_schwartz_zippel():
     pad_in_view = any(k in view for k in ("pm", "cross", "Cm"))
 
     # (2b) the recovery attack, using only what the verifier receives.
+    # ATTACK SELECTION (corrected after the second adversarial review, 2026-09-23,
+    # finding F10): an earlier version replayed the OLD TV-65 mask family —
+    # guessing `H("mask", guess_seed, t)` — against a construction whose pad
+    # comes from random.Random. That attack cannot work by construction, so its
+    # "nothing found" carried no information: it was a test of a construction
+    # that no longer exists, the same self-confirmation defect in a new guise.
+    # The honest version attacks what IS there: the transcript supplies Cm and
+    # pm[z], so the attacker tries every pad those permit it to compute. None
+    # can be checked against the public checks (see 2c), so the loop below
+    # measures a search-space fact, not a security property, and the printed
+    # label says so.
     leaked = False
     for z in range(m):
         opening = _open(z)
-        # the verifier's full transcript for this challenge
-        transcript = (view, commit, opening)
-        # attack A: the TV-65 route — subtract a verifier-known mask. There is
-        # no verifier-known mask, so every guess is wrong.
-        for guess_seed in range(32):
-            d = [H("mask", guess_seed, t) % q for t in range(m + 1)]
-            if [(view["trace"][t] - d[t]) % q for t in range(m + 1)] \
-                    == honest["trace"]:
-                leaked = True
-        # attack B: subtract the pad the opening actually permits computing.
+        # attack: subtract the pad the opening actually permits computing.
         # The opening gives pm[z] (one leaf) and Cm (the total). A cumulative
         # pad needs every pm[t]; the attacker knows one, so it tries assuming
         # the unknown entries are 0, then pm[z], then Cm-derived values.
@@ -1496,7 +1506,6 @@ def tv66_schwartz_zippel():
                     run = (run + guess_pm[t]) % q
             if rec == honest["trace"]:
                 leaked = True
-        del transcript  # the transcript is the attack surface, not a variable
         break  # the single-z opening is the honest attack surface; one suffices
 
     # (2c) HONEST RESIDUAL ATTACK SURFACE, measured rather than waved at.
@@ -1518,6 +1527,16 @@ def tv66_schwartz_zippel():
     import time as _time
     _t0 = _time.time()
     _others = [t for t in range(m) if t != z0]
+    # KNOWN-ANSWER CAVEAT (second adversarial review, finding F11): the
+    # acceptance test below compares against honest["trace"], which a real
+    # attacker does not have. The public transcript supplies NO predicate to
+    # recognize the true pad — the z-transition check reduces to a statement
+    # about public pm[z], cross[z] and the view, which is pad-independent, so
+    # EVERY candidate pad passes every public check. What this loop therefore
+    # measures is the SIZE OF THE SEARCH SPACE given the answer as an oracle,
+    # not an attack. That is still worth printing (it bounds how small the toy
+    # field's barrier is), but the label must not call it a recovery attack.
+    bf_public_all_pass = True
     for combo in itertools.product(range(q), repeat=len(_others)):
         guess = [0] * m
         guess[z0] = o0["pm_z"]
@@ -1531,6 +1550,8 @@ def tv66_schwartz_zippel():
         if _rec == honest["trace"]:
             bf_recovered = list(_rec)
             break
+    if bf_recovered is None:
+        bf_public_all_pass = False
     bf_cost = _time.time() - _t0
     bf_space = q ** (m - 1)
 
@@ -1645,7 +1666,8 @@ def tv66_schwartz_zippel():
           % ("nothing found" if not leaked else "TRACE RECOVERED — LEAK"))
     print("  (2c) brute force over q^(m-1)=%-8d       : %s (%.2fs)"
           % (bf_space,
-             "RECOVERS the trace" if bf_recovered is not None else "safe",
+             "search space is WALKABLE given the answer as an oracle"
+             if bf_recovered is not None else "safe",
              bf_cost))
     print("       auth-path sibling inversion          : %s (%d hash trials,"
           " ~%.0fx cheaper than brute force)" %
