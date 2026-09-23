@@ -671,14 +671,21 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
 6. **The paper's ceiling is ~85/100.** The remaining ~15 points **are proofs**: the criteria of
    F3–F6, the live security budget, real paying task demand, independent audits. **A perfect
    paper is not equal to a running chain** — this is written at the top of the document so
-   that the perfectionism is honest. **Current standing (2026-09-22): ≈83/100** by the
+   that the perfectionism is honest. **Current standing (2026-09-23): ≈83/100** by the
    internal rubric — up from 37 (v1), 77, and 80 — with the bibliography now **11/11
    live-verified**, the US precedent cited (§9) and the market sized from reported earnings
    (§8.1). The 83→85 gap is exactly the set of items no paper can close: human review and
    live measurement. TV-66 narrows one of them — the F0b hiding property that TV-65
    retracted is now restored and measured at toy scale — but toy scale is not a security
    margin, so it moves the claim from "unsupported" to "supported at a size nobody would
-   deploy", which is progress and not a closing.
+   deploy", which is progress and not a closing. **The score deliberately did not move on
+   2026-09-23 despite ten bug fixes, and the reason is worth stating: an adversarial review
+   found that two of the tests supporting reason (b) were vacuous (TV-41 exhaustive, TV-42
+   on-domain) and that TV-66's own first fix leaked the pad into the transcript. Fixing a
+   bug that your own claim depended on returns you to where you thought you already were,
+   which is not progress on the rubric — it is the correction of an error that was hiding
+   inside the score. What did change is the audit trail: every claim in the F0b chain now
+   has a test that can actually fail.**
 
    What the last two days cost and bought (stated, because the number above moved for a
    reason and not because the prose improved). Five real bugs were found by probing, not by
@@ -976,7 +983,11 @@ on it by lowering prices.
    state is "proven at a size nobody would deploy, with no FRI recursion, no codeword and a
    toy field q=97". The gap that remains is engineering, not mathematics, and the difference
    matters to a buyer: a promise from an anonymous team can stay a promise forever, while a
-   toy field has a known replacement.
+   toy field has a known replacement. **Even the "proven" part needed one round of
+   adversarial review before it was true: TV-41's sampling test checked every position
+   instead of sampling, and TV-42's challenges sat on the interpolation domain, so both were
+   vacuous — passing while measuring nothing. Fixed, with the degree bound corrected from an
+   assumed 1 to the measured m-2, and a broken value now caught even at points that avoid it.**
 3. **Liveness is unmeasured.** The GHOSTDAG toy assumes all blocks are valid, so the
    availability story (10 BPS, no provider outage) is an argument, not a measurement.
 
