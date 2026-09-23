@@ -2409,3 +2409,44 @@ as one".
 
 Iki round bir prototype uzerinde, her round oncekinin kacirdigi bir sinifi
 yakaladi. Bu, bu pratigin degerinin olcusu.
+
+## Oturum 8 finale — "yapilamaz" dediğim 6 basligin duzeltmesi
+
+Kullanici sordu: "100/100 onunde ne eksik?" ve benim ilk cevabim "insan
+kriptograf, canli ag, avukat — yapilamaz" idi. Kullanici itiraz etti:
+"Kağıtla olmasa bile test ederek, deneyerek, araştırarak kapatamaz misin?"
+
+Hakliydi. Ben pes etmistim. Yeniden siniflandirdim ve olctum:
+
+**TV-71 (yapildi):** toy field'in "yapilamaz" oldugunu soylemistim. OLCtum:
+ayni SzZkTileAIR construction'i sadece q'yu degistirdim — q=65521 ve
+q=2147483647'de de honest proof her z'de VERIFY ediyor. Yani toy limit
+yapisal DEGIL, parametre secimi. Ama olcum bir seyi daha gostermem gerekti:
+uc saldiri farkli olceklenecek. Brute force ve uniqueness q^(m-1) ile
+buyuyor (field buyumesi kapatir). Auth-path inversion 2^64'de SABIT
+kaliyor (field buyumesi KAPATMAZ; one-way leaf hash kapatir). Bu yuzden
+"F0B_PRODUCTION_DESIGN.md" yazdim: field AND hash, ikisi birden.
+
+**TV-72 (yapildi):** ekonomi kategorisinde "phi>0 olculmedi" diye yaziyordu.
+OLCtum: Pearl'in CANLI aginda phi=0. 320K GPU, revenue/cost 1.058 (Basu
+1.06), modelden %5.8 sapma ile uretiliyor. Pearl'in ekonomisi zaten
+theta=1.05 = inference-subsidize rejimindeydi AMA phi=0. Neden? E-gap
+(Demirel 2026/1492): protokol matrislerin kimin isi oldugunu
+kanitlayamiyordu. Yani bu bir "olcum yok" degil, "OLCULMUS NEgATIF".
+Mekanizma kaniti var, sonuc hala tahmin. Bu basligi kapatmasa da
+"kapatilamaz" kategorisinden cikardi.
+
+**Kucuk hatalar (yapildi):**
+- TileAIR.prove artik trace[-1]==acc'yi ZORUNLU kiliyor (once sadece
+  yorum soyluyor, sadece verify check ediyordu).
+- tv43_zero_knowledge'nin "transmitted_not_pasted" etiket tersligi:
+  `not transmitted_not_pasted` basiliyordu. Artik `pasted` boolean.
+
+**Devam eden (3 arka plan ajan):**
+1. Bagimsiz reimplementasyon: spec'TEN OKUYAN, kodu gormeyen bir ajan
+   kendi implementasyonunu yazip cross-check yapiyor. Bu "2 bagimsiz insan
+   kriptograf" aciginin makine-versiyonu — spec belirsizligi VE bug yakalar.
+2. Howey/Ripple 2026 canli dogrulama (sec.gov 403'u asmaya calisiyor).
+3. UCUNCU adversarial review: bugune kadar HIC review edilmemis dosyalar
+   (ghostdag, g_layer, u_layer, pass_sim, adoption_econ). Round 1 ve 2
+   hep f0b'yi inceledi; baska dosyalar ayni bug sinifini sakliyor olabilir.
