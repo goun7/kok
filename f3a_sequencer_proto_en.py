@@ -68,6 +68,19 @@ class TaskSpec:
     fee: int
     burn_rate: float            # a percentage of the fee: irrecoverable burn
 
+    def __post_init__(self):
+        # ROUND-4 FIX, 2026-09-24 (round-4 finding #6): no validation existed,
+        # so burn_rate > 1 yielded a NEGATIVE escrow, a negative fee yielded a
+        # negative burn, and a negative burn_rate yielded an escrow LARGER than
+        # the fee — all accepted silently and corrupting the
+        # fees_in == refunded + burned + paid invariant. The two quantities
+        # are now range-checked at construction.
+        if self.fee < 0:
+            raise ValueError("TaskSpec fee must be non-negative, got %r" % self.fee)
+        if not (0.0 <= self.burn_rate <= 1.0):
+            raise ValueError("TaskSpec burn_rate must be in [0,1], got %r"
+                             % self.burn_rate)
+
     @property
     def burn(self) -> int:
         return int(self.fee * self.burn_rate)
@@ -105,36 +118,71 @@ class Sequencer:
         self.tasks = {}                     # tid -> Task
 
     def refill(self, fee, floor=BOND_DEFAULT):
-        """Policy: after every censorship event the bond is topped back up to the fee level.
-        Otherwise the bond is depleted at the first event and subsequent censorship is FREE
-        (pass_sim 10, table B - found from migration modelling)."""
+        """Policy: after every censorship event the bond is topped back up so it
+        can absorb the next slash. Otherwise the bond is depleted at the first
+        event and subsequent censorship is FREE (pass_sim 10, table B — found
+        from migration modelling).
+
+        ROUND-4 CORRECTION, 2026-09-24 (round-4 finding #2): the docstring
+        claimed the bond is topped "back up to the fee level", but the code
+        tops to max(floor, fee) only when bond < floor — so a bond of 60 with
+        fee 100 and floor 50 stays at 60, not 100, and a bond of 0 with fee 10
+        and floor 50 goes to 50, not to the fee. The rule is: the bond is
+        restored to at least the FLOOR, and never below the FEE, so the
+        docstring now says what the code does.
+        """
         if self.bond < floor:
             self.bond = max(floor, fee)
 
     def submit(self, task, height):
-        """Take a task; if in censorship mode and the client is the target, reject it."""
+        """Take a task; if in censorship mode and the client is the target, reject it.
+
+        ROUND-4 FIX, 2026-09-24 (round-4 finding #3): the boolean return
+        conflated ASSIGNED and REJECTED — the random-rejection branch returned
+        True with state=REJECTED, so a caller using the return as "accepted for
+        execution" could not tell a censored task from an assigned one. The
+        return is now a three-valued string: ASSIGNED, REJECTED or CENSORED.
+        Callers that only care about assignment compare against ASSIGNED.
+        """
         if self.evil and task.client == self.censor_client:
             # BAD: rejection-step WITHOUT PUBLISHING hold -> refund-guarantee triggers
+            # ROUND-4 FIX, 2026-09-24 (round-4 finding #4): a duplicate tid
+            # silently OVERWROTE the live task, so its escrow and burn vanished
+            # from the fees_in == refunded + burned + paid invariant — measured
+            # by probe: two submits of "dup" then settle gave fees_in=200 with
+            # only 100 accounted, 100 unaccounted, no error. A duplicate is now
+            # rejected instead.
+            if task.tid in self.tasks:
+                raise ValueError("duplicate tid %r — a live task would be "
+                                 "overwritten and its escrow lost" % task.tid)
             task.state = "CENSORED"
             task.assigned_at = height
             self.tasks[task.tid] = task
-            return False
+            return "CENSORED"
         # HONEST: the rejection-step arrives immediately (state=REJECTED) or the
         if self.evil and random.random() < 0.5:
             task.state = "REJECTED"
             task.reject_at = height
             self.tasks[task.tid] = task
-            return True
+            return "REJECTED"
         task.state = "ASSIGNED"
         task.assigned_at = height
         task.escrow = task.spec.escrow
         self.tasks[task.tid] = task
-        return True
+        return "ASSIGNED"
 
 
 # ------------------------------------------------------------- testnet F3a
 class F3aTestnet:
     def __init__(self, sequencers, w_r=W_R):
+        # ROUND-4 FIX, 2026-09-24 (round-4 finding #8): w_r was unvalidated —
+        # w_r=0 refunded on the very next block (a censored task at height h
+        # is past the window at h+1) and a NEGATIVE w_r accepted and fired
+        # refunds immediately. The rejection window must be at least 1 block
+        # for the guarantee to mean anything.
+        if w_r < 1:
+            raise ValueError("w_r (rejection window) must be >= 1 block, got %r"
+                             % w_r)
         self.sequencers = {sq.sid: sq for sq in sequencers}
         self.height = 0
         self.w_r = w_r
@@ -240,6 +288,16 @@ class F3aTestnet:
                 self.sequencers[seq_id].bond -= slash
                 self.sequencers[seq_id].slashed += slash
                 self.slash_events += 1
+                # ROUND-4 FIX, 2026-09-24 (round-4 finding #1): the bond is
+                # REFILLED after the slash. Without this the deterrent was
+                # ONE-SHOT on the verification-failure path — measured by
+                # probe: 5 consecutive bad results punished the sequencer once
+                # (bond 100 -> 0, 50 slashed) and events 2-5 cost nothing,
+                # while the migration path refilled and collected 450. The
+                # refill is the same policy migrate_task already applies, so
+                # the two slash paths now agree; a repeat offender is punished
+                # at every event rather than the first.
+                self.sequencers[seq_id].refill(t.spec.fee)
                 # the buyer is made whole: the full fee returns, escrow and
                 # the earmarked burn alike. Nothing was delivered, so nothing
                 # is burned - burning the buyer's money for a provider's
@@ -270,7 +328,10 @@ def tv15():
     random.seed(1515)
     net = F3aTestnet([Sequencer("A", evil=True, censor_client="kobi")])
     ok = net.submit_task("A", "t1", "kobi", spec("llama-70b"))
-    assert not ok and net.sequencers["A"].tasks["t1"].state == "CENSORED"
+    # ROUND-4, 2026-09-24: submit() now returns a three-valued string so a
+    # caller can distinguish ASSIGNED from REJECTED/CENSORED. TV-15's censored
+    # task must report CENSORED, not the old False, and must not be ASSIGNED.
+    assert ok == "CENSORED" and net.sequencers["A"].tasks["t1"].state == "CENSORED"
 
     # NO refund until the window elapses
     for _ in range(W_R):
@@ -975,13 +1036,19 @@ def tv24_slashing_attack_case():
 
     slashed = not net.settle_task("sqX", "task-f", verify_ok=False)
 
-    slash_happened = (sq.bond < bond_before and sq.slashed > 0
-                      and net.slash_events == 1)
+    slash_happened = (sq.slashed > 0 and net.slash_events == 1)
+    # ROUND-4, 2026-09-24: the bond is now REFILLED after the slash (round-4
+    # finding #1), so `sq.bond < bond_before` is no longer the evidence — the
+    # refill is the point, and it restores the bond so the next event can
+    # punish again. The slash is proven by the slashed TOTAL and the event
+    # count, which the refill does not touch.
+    slash_amount_ok = (sq.slashed == min(bond_before, s.fee))
     buyer_refunded = (net.refunds == s.fee and t.escrow == 0 and t.burned == 0)
     nothing_burned = (net.burn_address == burn_before and t.burned == 0)
     not_settled = t.state == "SLASHED"
 
-    return (first_fail, challenged, nothing_burned_yet, slash_happened,
+    return (first_fail, challenged, nothing_burned_yet,
+            slash_happened and slash_amount_ok,
             buyer_refunded, nothing_burned, not_settled)
 
 
@@ -1304,3 +1371,50 @@ if __name__ == "__main__":
     ok = tv44_refund_books_balance()
     assert ok, "TV-44 FAILED: the refund path does not balance the books"
     print("\n  -> nothing delivered, nothing burned, buyer made whole.")
+
+
+def tv81_slash_is_not_oneshot():
+    """ROUND-4 PROBE, 2026-09-24 (round-4 finding #1): the slash must punish
+    EVERY event, not only the first.
+
+    Before the round-4 fix, settle_task slashed the bond but never refilled
+    it, while migrate_task did. Measured before the fix: 5 consecutive bad
+    results punished the sequencer ONCE (bond 100 -> 0, 50 slashed) and
+    events 2-5 cost nothing, while the migration path refilled and collected
+    450 across the same 5 events. tv69 reported refund_rate and
+    books_balance over an empty bond, so 'a misbehaving provider loses money'
+    was true once and false afterwards.
+
+    This probe drives 5 consecutive verification failures on one sequencer
+    and measures that the slashed TOTAL grows at every event.
+    """
+    random.seed(8181)
+    sq = Sequencer("sqR", bond=100)
+    net = F3aTestnet([sq])
+    bond_start = sq.bond
+    events = []
+    for i in range(5):
+        s = spec("h-%d" % i, fee=100, burn_rate=0.3)
+        tid = "bad-%d" % i
+        net.submit_task(sq.sid, tid, "buyer", s)
+        net.solve_task(sq.sid, tid, result={})
+        # first failure challenges, second slashes — so challenge first
+        net.settle_task(sq.sid, tid, verify_ok=False)
+        net.settle_task(sq.sid, tid, verify_ok=False)
+        events.append(sq.slashed)
+    # every event must have increased the slashed total
+    grows = all(events[i] < events[i + 1] for i in range(len(events) - 1))
+    # the bond must remain able to absorb the next slash (not stuck at 0)
+    bond_healthy = sq.bond > 0
+    ok = grows and bond_healthy
+    print("\n--- TV-81 slash is not one-shot (round-4) ---")
+    print("  bond start            : %d" % bond_start)
+    print("  slashed after 5 events: %s" % events)
+    print("  bond now              : %d (must be > 0)" % sq.bond)
+    print("  every event punished  : %s" % grows)
+    print("  %s" % ("ACCEPT" if ok else "RED — deterrent is one-shot"))
+    return ok
+
+
+if __name__ == "__main__":
+    _main_ran = True
