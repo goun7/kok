@@ -1383,12 +1383,15 @@ def tv66_schwartz_zippel():
 
 if __name__ == "__main__":
     # TV-66 runs LAST, because it calls the class and function defined above
-    # it. The file's overall exit code is 1, because TV-28 is an intentional
-    # negative result (the FP8 attack succeeds) — that is not a bug and must
-    # not be "fixed". TV-66's own failure is asserted here, so the two outcomes
-    # stay distinguishable: a TV-66 regression raises, TV-28 does not.
+    # it. NOTE (corrected 2026-09-23): an earlier comment here claimed this
+    # file exits 1 because of TV-28. It does not — TV-28 is an intentional
+    # negative result, but it lives in fp8_noise_proto_en.py, not here. This
+    # file exits 0 on success. The comment was stale prose left over from a
+    # draft where the two were in one file; it is wrong, and the wrong version
+    # was the one a reviewer would read first.
     ok66 = tv66_schwartz_zippel()
     assert ok66, ("TV-66 failed: the hiding property is not restored, or "
-                  "soundness regressed. Check (1), (2a), (2b) and (3) above.")
+                  "soundness or binding regressed. Check (1), (2a), (2b), "
+                  "(3) and (4) above.")
     print("\n  -> reason (b) has running code behind it again.")
 
