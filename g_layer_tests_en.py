@@ -62,8 +62,43 @@ class KWKernel:
     def verify(self, cert, A, B, ctx: int, nonce: int, target: int) -> bool:
         if cert is None:
             return False
-        out = self.prove(A, B, ctx, nonce, target)
-        return out is not None and out.get("tile") == cert.get("tile")
+        # CONTRACT, fixed 2026-09-23 (round-3 finding [10]): an earlier version
+        # called prove() and compared against ITS FIRST tile hit only. prove()
+        # returns the first tile whose hash clears the target, but a nonce can
+        # clear the target at several tiles, so a miner that legitimately found
+        # a later one first (any out-of-order or parallel search) had its
+        # honest certificate REJECTED. This is the same binding-at-one-site
+        # class as the round-two input-binding loss, in one file. The fix
+        # recomputes the CLAIMED tile at its coordinates instead of asking
+        # prove() which tile it happened to find first — the u_layer verifier
+        # already does this.
+        i = cert.get("i")
+        j = cert.get("j")
+        val = cert.get("value")
+        if i is None or j is None or val is None:
+            # the shipped cert shape is {"tile": (i, j, val), "m": m}
+            tile = cert.get("tile")
+            if not (isinstance(tile, (tuple, list)) and len(tile) == 3):
+                return False
+            i, j, val = tile
+        m = self.n // self.r
+        if not (0 <= i < m and 0 <= j < m):
+            return False
+        # recompute the tile the way prove() does: the full stride sum over the
+        # noisy factors, then the hash-under-target test
+        E = [[(H("E", ctx, a, b) % self.q) for b in range(self.n)]
+             for a in range(self.n)]
+        F = [[(H("F", ctx, a, b) % self.q) for b in range(self.n)]
+             for a in range(self.n)]
+        acc = 0
+        for l in range(m):
+            acc = (acc +
+                   ((A[i * self.r][l * self.r] + E[i * self.r][l * self.r]) % self.q)
+                   * ((B[l * self.r][j * self.r] + F[l * self.r][j * self.r]) % self.q)
+                   ) % self.q
+        if val != acc:
+            return False
+        return H("tile", ctx, nonce, i, j, val) % target == 0
 
 
 def S(*parts) -> str:

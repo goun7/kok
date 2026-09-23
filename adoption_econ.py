@@ -222,6 +222,14 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
             # threshold sits at a cross-subsidy ratio of about 0.79, not at 1.0.
             # Escape begins BEFORE parity, which is the one piece of good news
             # the model offers; below 0.79 no seed below the barrier escapes.
+            # CORRECTION 2026-09-23 (round-3 finding [28]): "below 0.79 no
+            # seed escapes" is an OVERSTATEMENT — this file's own section [6]
+            # refutes it, and a probe sweeping ratio 0.5 found 5 of 9 sub-barrier
+            # seeds (0.0016 and above) DO escape. The dynamics have a REPELLING
+            # fixed point at D*~0.00158, not an absorbing state: seeds below D*
+            # decay and seeds above it grow, and 0.79 is where the growth is
+            # fast enough to cross the 0.15 visibility line within the test's
+            # 400 steps. Restated below rather than left overclaiming.
             # Arrivals come from the price advantage alone (a buyer who finds a
             # genuinely cheaper supplier switches regardless of liquidity), plus a
             # small term from the market that already exists. Churn is the cost of
@@ -437,8 +445,16 @@ if __name__ == "__main__":
     # parameter refinement moves the guard, not the prose.
     ok = 0.75 <= absorbing_below <= 0.83
     print("      escape begins at a cross-subsidy ratio of about %.4f" % hi)
-    print("      below %.2f the dead state is absorbing for every seed below the"
+    # CORRECTION 2026-09-23 (round-3 finding [28]): the line below said
+    # "absorbing for every seed below the barrier". That is false — the
+    # dynamics have a REPELLING fixed point at D*~0.00158, so seeds ABOVE D*
+    # escape even below the 0.79 ratio. Restated to what the probe actually
+    # shows: below this ratio a seed planted at 0.0002 (the test seed, which
+    # sits below D*) does not escape within the 400-step horizon.
+    print("      below %.2f a seed planted at 0.0002 does not escape within the"
           % absorbing_below)
+    print("      400-step horizon (D*~0.00158 is the true repellor)"
+          )
     print("      paper quotes ~0.79; guard band 0.75..0.83  %s"
           % ("ACCEPT" if ok else "RED"))
     assert ok, ("TV-60: the escape threshold has moved outside the quoted band; "

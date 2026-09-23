@@ -313,12 +313,26 @@ def recalibrate_f3a(measured_gpus, measured_rev_cost, e, P, R, alpha=1.3, gamma=
     p = Params(e=e, P=P, R=R, alpha=alpha, gamma=gamma)
     eq = solve(p)
     ok = classify_ok(eq, p)
+    # CONTRACT, fixed 2026-09-23 (round-3 finding [24]): this field read
+    # `eq.rev_cost`, which the Eq dataclass does not have, so it was ALWAYS
+    # None and the function named for comparing PREDICTED with MEASURED
+    # revenue/cost never compared anything. The model's predicted ratio is
+    # derivable: revenue per unit security spend is PR/(e*S) under the Tullock
+    # condition, which the solver's own Eq expresses. Computed here from the
+    # solved equation rather than read off a nonexistent attribute.
+    rev_cost_predicted = (eq.P * p.R) / (p.e * eq.S) if eq.S else None
+    # the guard that used to protect a None: now it guards a real number.
+    calibration_ok = (rev_cost_predicted is not None
+                      and measured_rev_cost is not None
+                      and abs(rev_cost_predicted - measured_rev_cost)
+                      <= 0.10 * max(1e-9, measured_rev_cost))
     return {
         "S_predicted": S_pred,
         "S_measured": measured_gpus,
-        "deviation_pct": dev,
-        "rev_cost_predicted": eq.rev_cost if hasattr(eq, "rev_cost") else None,
+        "rev_cost_predicted": rev_cost_predicted,
         "rev_cost_measured": measured_rev_cost,
+        "calibration_ok": calibration_ok,
+        "deviation_pct": dev,
         "Theorem1_consistent": ok,
     }
 

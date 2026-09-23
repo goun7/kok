@@ -166,14 +166,22 @@ class GHOSTDAG:
         self.mergesets[bid] = ms
 
         # step 3: blue/red split - anticone within mergeset <= k
+        # CONTRACT, fixed 2026-09-23 (round-3 adversarial review finding [1]):
+        # an earlier version marked every block blue at its OWN insertion
+        # (`self.is_blue[bid] = True` at the end), so this loop's
+        # `if b in self.is_blue: continue` fired 100% of the time and line
+        # that computes blue/red never executed — 0 executions vs 361,341
+        # skips over 200 DAGs. Every block was blue, blue_score collapsed to
+        # |mergeset|+1, and TV-22 failed on 32/200 seeds while printing PASS.
+        # The block itself IS blue (a block is in its own selected-parent
+        # chain), so it is set here rather than unconditionally at insertion;
+        # mergeset members are colored from the topology, not assumed.
         for b in ms:
-            if b in self.is_blue:
-                continue
-            # b'ss anticone within the mergeset
+            # b's anticone within the mergeset
             ac_b = self._anticone(b)
             in_ms = ac_b & ms
             self.is_blue[b] = len(in_ms) <= self.k
-        self.is_blue[bid] = True  # itself is always blue
+        self.is_blue[bid] = True  # a block is always blue in its own chain
 
         # step 4: blue_score = count of blue blocks in the mergeset (+1 for itself)
         blue = sum(1 for b in ms if self.is_blue.get(b, False))
@@ -309,7 +317,19 @@ def tv24_mergeset_limit():
 
 
 def tv25_ctx_rejects_changed_parentset():
-    """"TV-25: ctx includes the parent-set -> same block, different parent-set, REJECT (T-A2)."""
+    """TV-25: ctx includes the parent-set -> same block, different parent-set,
+    REJECT (T-A2).
+
+    CORRECTION 2026-09-23 (round-3 finding [5]): the test below hashes two
+    parent sets and asserts the ctx hashes differ. That shows "a hash is a
+    function", not that replay protection is implemented. PROBES CONFIRMED:
+    kok_ctx is never referenced outside this test, and Block.__post_init__
+    builds the block identity from (miner, timestamp, sorted(parents), tasks)
+    with NO ctx and NO nonce — so the two blocks below have DIFFERENT bids and
+    DIFFERENT work, and nothing in this file rejects, rebinds, or stores a ctx.
+    The T-A2 claim is UNIMPLEMENTED in this prototype. The test is kept because
+    the ctx derivation itself is real and worth running, but its docstring no
+    longer claims it closes replay."""
     g = GHOSTDAG(k=GHOSTDAG_K)
     b1 = Block(miner="A", parents=["p1", "p2"], timestamp=1, tasks=["t1"])
     b2 = Block(miner="A", parents=["p1", "p3"], timestamp=1, tasks=["t1"])  # same work, different parent-set
@@ -317,7 +337,10 @@ def tv25_ctx_rejects_changed_parentset():
     ctx1 = kok_ctx("p1", "A", "t1", 5, "kw-v1", 0, ps1)
     ctx2 = kok_ctx("p1", "A", "t1", 5, "kw-v1", 0, ps2)
     assert ctx1 != ctx2, "TV-25: same block, different parent-set gave the same ctx (BUG)"
-    return "PASS", "different parent-set -> different ctx (T-A2 replay closed)"
+    assert b1.bid != b2.bid, "TV-25: different parents must not share a block id"
+    return ("PASS-WEAK", "different parent-set -> different ctx, and different "
+            "bid. REPLAY PROTECTION IS NOT IMPLEMENTED: no block in this file "
+            "stores or verifies a ctx, so T-A2 is unimplemented here")
 
 
 def tv26_splitter_attack():
@@ -363,7 +386,11 @@ def main():
         try:
             res, note = t()
             print(f"  {t.__name__:38} {res}: {note}")
-            if res != "PASS":
+            # PASS-WEAK is a RETRACTED CLAIM, not a failing test: the harness
+            # still runs, the property it can verify still holds, and the
+            # property it CANNOT is stated in the note (round-3 finding [5]).
+            # Only a real FAIL or a raised AssertionError fails the file.
+            if res not in ("PASS", "PASS-WEAK"):
                 allpass = False
         except AssertionError as e:
             print(f"  {t.__name__:38} FAIL: {e}")

@@ -126,7 +126,22 @@ class TaskSpec:
 
     def __post_init__(self):
         self.program_commit = S("prog", self.harness_id, self.max_flops)
-        self.public_inputs_commit = S("in", id(self.program))
+        # CONTRACT, fixed 2026-09-23 (round-3 finding [20]): an earlier version
+        # used id(self.program) — the object's MEMORY ADDRESS. Two identical
+        # specs got different commits, and the value was unreproducible across
+        # runs, so this was not a commitment. It is now a digest of the actual
+        # matrix contents, so it binds the inputs and is deterministic. The
+        # shape is (A, B); a non-tuple program falls back to a content hash.
+        prog = self.program
+        try:
+            parts = []
+            for m in prog:
+                for row in m:
+                    parts.extend(row)
+            self.public_inputs_commit = S("in", self.harness_id,
+                                           tuple(parts))
+        except TypeError:
+            self.public_inputs_commit = S("in", repr(prog))
 
 
 @dataclass
@@ -242,7 +257,19 @@ class Chain:
         phi = u_flops / (u_flops + G_FLOPS * nonce) if (u_flops + G_FLOPS * nonce) else 0.0
         bh = S("blk", ctx, nonce, [p["root"] for p in u_proofs], fee_total)
         self.blocks.append(bh)
-        self.miner_bond(miner)["bond"] += 0
+        # CONTRACT, fixed 2026-09-23 (round-3 finding [17]): the bond is
+        # SEPARATE collateral that a fraud slash actually debits. An earlier
+        # version did `bond += 0` here, so the slash path found an empty
+        # account and the reward was never credited to anyone — the fraud
+        # slash was an accounting fiction. Each task whose proof is mined
+        # posts its bond to the miner's ledger now, so the slash has
+        # something to take. The bond is already computed at submit_task
+        # (BOND_RATIO * fee) and stored on the task; this is the deposit.
+        for p in u_proofs:
+            tk = self.tasks.get(p["tid"])
+            if tk is not None and tk.bond:
+                self.miner_bond(miner)["bond"] += tk.bond
+                tk.bond = 0  # posted: not double-counted on a re-mine
         return {"hash": bh, "ctx": ctx, "nonce": nonce, "cert": cert,
                 "u_proofs": u_proofs, "fee_total": fee_total, "miner": miner,
                 "phi": phi, "height": self.height()}
@@ -289,6 +316,17 @@ class Chain:
         ctx = blk["ctx"]
         if not self.kernel.verify(blk["cert"], A, B, ctx, blk["nonce"], self.D):
             return "REJECT:G-cert"
+        # CONTRACT, fixed 2026-09-23 (round-3 finding [15]): an earlier version
+        # read blk["fee_total"] verbatim. A block claiming fee_total=0
+        # validated ACCEPT — the anti-aggregation bound was enforced only in
+        # the miner's assert, never by the verifier. The verifier now
+        # RE-DERIVES the fee total from the proof list, so the field is
+        # informational and the bound is enforced against the work itself.
+        derived_fee = sum(self.tasks[p["tid"]].fee for p in blk["u_proofs"])
+        if derived_fee > C_FEE:
+            return "REJECT:anti-aggregation"
+        if blk.get("fee_total", derived_fee) != derived_fee:
+            return "REJECT:fee-total-mismatch"
         if not (0.0 <= blk.get("phi", 0.0) <= 1.0):
             return "REJECT:phi-range"
         for p in blk["u_proofs"]:
@@ -311,9 +349,17 @@ class Chain:
               for j in range(len(harness_B[0]))] for i in range(len(harness_A))]
         if t.result != C:                                        # FRAUD was proven
             bond = max(t.fee * BOND_RATIO, 1)
+            self.miners.setdefault(t.assignee, {"bond": 0, "slashed": 0})
             self.miners[t.assignee]["slashed"] += bond
+            # actually DEBIT the bond: an earlier version incremented a
+            # slashed_total counter while the bond account held 0, so the
+            # fraud slash moved no value (round-3 finding [17])
+            self.miners[t.assignee]["bond"] = max(
+                0, self.miners[t.assignee]["bond"] - bond)
             self.slashed_total += bond
             self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
+            # and actually PAY the reward: it was returned but never credited
+            self.miners[challenger]["bond"] += FRAUD_REWARD
             t.state = "SLASHED"
             return "SLASHED", FRAUD_REWARD
         # a malicious challenge. The challenger is registered here, not only
