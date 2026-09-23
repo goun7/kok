@@ -985,8 +985,15 @@ def tv24_slashing_attack_case():
             buyer_refunded, nothing_burned, not_settled)
 
 
-def tv24_refund_rate_measured():
-    """TV-24b: the escrow refund rate, measured across a mixed load.
+def tv69_refund_rate_measured():
+    """TV-69: the escrow refund rate, measured across a mixed load.
+
+    RENAMED from tv24_refund_rate_measured (2026-09-23). That name collided
+    with tv24_slashing_attack_case above under the SAME TV-24 id, in the same
+    file — the same class of bug the tv26_/tv50_ rename fixed. It was labelled
+    "TV-24b" in the docstring, which papers over a collision rather than
+    resolving it: two tests sharing a number cannot both be traced from the
+    spec. TV-69 is free, and the call site below moves with it.
 
     The refund rate is the fraction of arriving fees that return to buyers
     rather than reaching the sequencer. A healthy market runs near zero; a
@@ -1058,7 +1065,7 @@ if __name__ == "__main__":
     print("  the task is SLASHED, not SETTLED   : %s" % ns)
     assert f1 and ch and nby and sh and br and nb and ns
 
-    r = tv24_refund_rate_measured()
+    r = tv69_refund_rate_measured()
     print()
     print("  REFUND RATE, MEASURED (300 tasks, one honest + one failing sequencer)")
     print("    fees in            : %d" % r["fees_in"])
