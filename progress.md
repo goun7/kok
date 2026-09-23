@@ -2563,3 +2563,65 @@ PAPER'a da bu ucuncu asamayi yazdim: "the spec pins the ALGEBRA
 unambiguously enough that two independent derivations agree on every
 accept/reject decision tested, while leaving the construction details to
 inference." Bu tam olarak dogru: algebra net, wire format degil.
+
+## Oturum 8 ek — ucuncu adversarial round GERCEKTE calisti + TV-58
+
+Ucuncu roundu ajan gercekten yapti bu kez: 33 bulgu, 5 dosyada.
+11 gercek bug/desteksiz iddia DuzELTILDI, 5 iddia yerinden geri cekildi.
+
+En onemlisi: GHOSTDAG'da blue/red classification TAMAMEN DEAD CODE'mus.
+Her blok kendi eklenisinde is_blue=True yaziliyordu, o yuzden "if b in
+is_blue: continue" %100 calisiyordu ve L175 hic calismiyordu (0 kez
+361,341 atlamaya karsi). Blue score mergeset boyutu olmus. TV-22 de
+32/200 DAG'de FAIL ediyormus ama bastigimiz seed/fork sansliymis.
+
+Duzelttim. SONRA DUzELTME IKINCI BIR BUG ORTAYA CIKARDI:
+blue_score mergeset-local'mis (|blue in mergeset| + 1), ama GHOSTDAG'da
+score RECURSIF: blue_score(sp) + 1 + blue(anticone). Local formu sadece
+her blok mavi oldugu icin dogru gorunuyordu. Coloring calisinca TV-58
+25 blokte score'un selected chain boyunca AZALDIGINI olctu — gercek
+GHOSTDAG'da imkansiz. Simdi recursive: TV-58 0 ihlal, 9,258 blue blok
+hala anticone<=k.
+
+Bu tam TV-66 paterni: bir bug'i duzelmek seni "oldugunu sandigin yere"
+geri goturuyor, ve yaninda baska bir gizli varsayim tasiyor.
+
+Diger duzeltmeler:
+- g_layer verify() prove()'un ILK tile'ini karsilastiriyordu; ayni
+  nonce'da birden fazla tile hedefi gecince duzgun madencinin
+  sertifikasi REDDEDILIYORDU. claim tile'i koordinatinda yeniden
+  hesaplayarak duzeltildi (u_layer zaten boyle yapiyordu — ayni
+  dosyada binding bir yerde digerinde kayip sinifi).
+- u_layer validate_block fee_total'i saldiranin dedigini okuyordu:
+  fee_total=0 yazan blok ACCEPT. Simdi proof list'ten yeniden
+  hesaplaniyor, uyumsuzluk RED.
+- Fraud slash HIC PARA HAREKET ETTIRMiyOR: bond += 0, reward hicbir
+  hesaba yazilmiyordu. Simdi bond madencilikte yatiriliyor, slash'ta
+  debit ediliyor, reward challenger'a kredi ediliyor.
+- public_inputs_commit id() kullaniyordu — bellek adresi. Deterministik
+  degildi, okunmuyordu. Simdi matrix iceriginin ozutu.
+- pass_sim'de rev_cost_predicted HER ZAMAN None idi (Eq dataclass'inda
+  oyle bir attribute yok). Isminin anlami "predicted vs measured
+  karsilastir" olan fonksiyon hicbir sey karsilastirmiyordu.
+- TV-60 "her seed icin absorbing" YANLIS — dosyanin kendi [6] tablosu
+  yalani cikardi, 9 seed'in 5'i kaciyor. D*~0.00158'de itici fixed
+  point var, absorbing state degil. Yazilan duzeltildi.
+- TV-25 "T-A2 replay closed" — kok_ctx dosyada hicbir yerde test disinda
+  kullanilmiyor. GERI CEKILDI (PASS-WEAK, not deleted).
+
+## Demirel cevabi + kullanici karari
+
+Demirel $215/saat istedi, "payment on an agreed schedule, independent of
+future funding and of the findings", ayrica ZIP'te olmayan prototype'lari
+da gonder.
+
+Kullanici: "$215 benim saatte kazanmadigim bir para bu dis denetleme isi
+hikaye olur."
+
+Yani: DIS DENETLEME SU AN ICIN YOK. Demirel'e cevap YOK (gondermek
+yasak). Bu, rubrikteki "2 insan kriptograf" kaleminin GERCEK bir dis
+dunya engeli oldugunu dogruluyor — "yapilamaz" degil "yapilmadi" ve
+kullanici bunu su an satin almayacagini netlestirdi. Kalemin geri kalan
+kismini TV-74 bagimsiz reimplementasyonu karsiliyor (o da hala
+"ayni siniftan ikinci implementasyon" = spec netligi kaniti, guvenlik
+kaniti degil).
