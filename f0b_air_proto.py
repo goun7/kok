@@ -1714,6 +1714,66 @@ def tv66_schwartz_zippel():
             and bound_ok and fab_ok)
 
 
+
+
+
+
+def tv83_degree_bound_is_not_self_declared():
+    """ROUND-5 PROBE, 2026-09-24: the quotient's degree bound is enforced by
+    the algebra, not by the prover's own declaration.
+
+    The check at verify_low_degree is `len(Q) - 1 > polys["deg_q"] -> reject`.
+    A prover declares deg_q itself, so the question is whether raising BOTH
+    the quotient's degree and the declared bound together lets a wrong-degree
+    Q through. It does not: the quotient identity C == Z*Q is evaluated at
+    fresh off-domain points, and a Q of the wrong degree cannot satisfy it
+    even when the declared bound is raised to admit it.
+
+    Measured (FriTileAIR q=97, r=2, m=4, honest deg_q=2):
+      honest proof accepted                     : True
+      ATTACK 1 raised-degree Q AND raised deg_q : False  (rejected)
+      ATTACK 2 raised-degree Q, honest deg_q    : False  (rejected)
+
+    This is the third adversarial pass on this file. The first two found the
+    on-domain vacuity (TV-68) and the input binding lost through the layers
+    (TV-70); this pass finds the degree bound is sound, which is a PASSING
+    check recorded as a regression guard rather than a defect.
+    """
+    import importlib.util as _ilu
+    n = 8
+    i = j = 0
+    A = [[(x * 3 + y * 7) % 97 for y in range(n)] for x in range(n)]
+    B = [[(x * 5 + y * 11) % 97 for y in range(n)] for x in range(n)]
+    E = [[H("E", "c", x, y) % 97 for y in range(n)] for x in range(n)]
+    F = [[H("F", "c", x, y) % 97 for y in range(n)] for x in range(n)]
+    acc = sum(((A[i * 2][l * 2] + E[i * 2][l * 2]) % 97)
+              * ((B[l * 2][j * 2] + F[l * 2][j * 2]) % 97)
+              for l in range(4)) % 97
+    k = FriTileAIR(q=97, r=2)
+    pr = k.prove(A, B, E, F, "c", i, j, acc)
+    polys = k.prove_poly(pr)
+    flat_A = [A[r][c] for r in range(n) for c in range(n)]
+    flat_B = [B[r][c] for r in range(n) for c in range(n)]
+    Ac, Bc = _merkle_root(flat_A), _merkle_root(flat_B)
+    cps = [z for z in range(20, 40) if z not in range(4)]
+    kw = dict(E=E, F=F, ctx="c", A_commit=Ac, B_commit=Bc)
+    honest_ok = k.verify_low_degree(pr, polys, acc, cps, **kw)
+    p2 = dict(polys)
+    p2["Q"] = polys["Q"] + [5, 9]
+    p2["deg_q"] = polys["deg_q"] + 2
+    atk1 = k.verify_low_degree(pr, p2, acc, cps, **kw)
+    p3 = dict(polys)
+    p3["Q"] = polys["Q"] + [5, 9]
+    atk2 = k.verify_low_degree(pr, p3, acc, cps, **kw)
+    print("\n--- TV-83 degree bound is not self-declared (round-5) ---")
+    print("  honest deg_q                     : %d" % polys["deg_q"])
+    print("  honest proof accepted            : %s" % honest_ok)
+    print("  raised-deg Q + raised deg_q      : %s (want False)" % atk1)
+    print("  raised-deg Q, honest deg_q       : %s (want False)" % atk2)
+    ok = honest_ok and atk1 is False and atk2 is False
+    print("  %s" % ("ACCEPT — the bound is enforced by the algebra"
+                     if ok else "RED"))
+    return ok
 if __name__ == "__main__":
     # TV-66 runs LAST, because it calls the class and function defined above
     # it. NOTE (corrected 2026-09-23): an earlier comment here claimed this
@@ -1726,5 +1786,8 @@ if __name__ == "__main__":
     assert ok66, ("TV-66 failed: the hiding property is not restored, or "
                   "soundness or binding regressed. Check (1), (2a), (2b), "
                   "(3) and (4) above.")
+    # ROUND-5, 2026-09-24: the quotient's degree bound is enforced by the
+    # algebra, not by the prover's own declaration of deg_q.
+    ok83 = tv83_degree_bound_is_not_self_declared()
+    assert ok83, "TV-83 failed: a raised-degree quotient was accepted."
     print("\n  -> reason (b) has running code behind it again.")
-
