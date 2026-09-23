@@ -75,7 +75,7 @@ class Block:
     bid: str = ""
 
     def __post_init__(self):
-        # CONTRACT, fixed 2026-09-23 (Aşama 1.2, closing the TV-25 retraction):
+        # CONTRACT, fixed 2026-09-23 (Stage 1.2, closing the TV-25 retraction):
         # the block id previously bound (miner, timestamp, parents, tasks)
         # with NO ctx. Two consequences: the same work under a different
         # parent-set produced a DIFFERENT bid (so "same block, different
@@ -167,7 +167,7 @@ class GHOSTDAG:
         self.selected[bid] = sp
 
         # step 2: mergeset = mergeset(sp) U (anticone(sp) ∩ past(B))
-        # CONTRACT, fixed 2026-09-23 (Aşama 1.1, TV-59):
+        # CONTRACT, fixed 2026-09-23 (Stage 1.1, TV-59):
         # The definition is mergeset = m(sp) U (anticone(sp) INTERSECT past(B)).
         # The intersection with past(B) is the part that was previously DROPPED:
         # an earlier version added ALL of anticone(sp) up to the limit, which
@@ -353,7 +353,7 @@ def tv25_ctx_rejects_changed_parentset():
     produces a different identity (T-A2).
 
     STATUS: this test was PASS-WEAK after the round-3 retraction, because
-    kok_ctx was derived but never bound into the block. Aşama 1.2
+    kok_ctx was derived but never bound into the block. Stage 1.2
     (2026-09-23) closes the retraction: Block now takes a ctx field and
     folds it into the id, so a block is bound to the exact parent-set it
     was created for. The test now checks the actual binding in three steps:
@@ -444,7 +444,7 @@ def main():
     print("    - _future() is O(n^2); tracked incrementally in production.")
     print("    - THE MERGESET IS A GREEDY APPROXIMATION, AND IT OVER-INCLUDES. The")
     print("      definition is mergeset(sp) U (anticone(sp) INTERSECT past(B)); the")
-    print("    - CLOSED 2026-09-23 (Aşama 1.1): the mergeset now intersects")
+    print("    - CLOSED 2026-09-23 (Stage 1.1): the mergeset now intersects")
     print("      anticone(sp) with past(B), so it only contains work B knows.")
     print("      Before the fix, on a 51-block DAG this put 572 order entries")
     print("      outside a block's own past, so two blocks' orderings could")

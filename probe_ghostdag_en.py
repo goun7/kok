@@ -42,7 +42,7 @@ def tv56_mergeset_deviation_measured():
     """The mergeset must only include work B knows: mergeset(sp) U (anticone(sp)
     ∩ past(B)).
 
-    Aşama 1.1, 2026-09-23: this probe used to ACCEPT the deviation (X was
+    Stage 1.1, 2026-09-23: this probe used to ACCEPT the deviation (X was
     over-included by the greedy approximation). The intersection with past(B)
     is now computed, so the probe has inverted: it verifies the FIX holds,
     not that the bug persists. A block that references A only must NOT absorb
@@ -130,7 +130,7 @@ def tv58_blue_score_does_not_decrease_along_selected_chain():
 def tv59_order_lives_within_past_plus_self():
     """Every block in order(B) must be in past(B) or be B itself.
 
-    Aşama 1.1, 2026-09-23: the mergeset now intersects with past(B), so the
+    Stage 1.1, 2026-09-23: the mergeset now intersects with past(B), so the
     deviation this probe measured (572-578 entries outside past on a 51-block
     DAG) is CLOSED. The probe's assertion has therefore inverted: it used to
     ACCEPT a nonzero count as "measured and documented", and it now FAILS on
@@ -160,7 +160,7 @@ def tv59_order_lives_within_past_plus_self():
     # back to the greedy mergeset.
     ok = len(outside) == 0
     return report("TV-59 order stays within past(B)", ok,
-                  "outside=%d (0 required; was 572 before Aşama 1.1)" % len(outside))
+                  "outside=%d (0 required; was 572 before Stage 1.1)" % len(outside))
 
 
 if __name__ == "__main__":

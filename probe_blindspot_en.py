@@ -120,7 +120,7 @@ def probe_late_challenge():
         if before == after and out[0] in ("CHALLENGE_REJECTED", "SETTLED_ALREADY"):
             print("  -> late challenge is REJECTED and the books do not move:")
             print("     the terminal state is guarded on the challenge path.")
-            print("     Aşama 1.3 (2026-09-23): the guard now has a named")
+            print("     Stage 1.3 (2026-09-23): the guard now has a named")
             print("     outcome, SETTLED_ALREADY, and the fraud path closes at")
             print("     settlement rather than only at block height. Before")
             print("     the fix this raised KeyError — the challenger was")
@@ -135,7 +135,7 @@ def probe_late_challenge():
 
 
 def probe_slash_then_settle():
-    """Aşama 1.3 (2026-09-23), the reverse order of corner 2: a task whose
+    """Stage 1.3 (2026-09-23), the reverse order of corner 2: a task whose
     fraud was PROVEN must not then be paid out. Before the fix, settle()
     only excluded the SETTLED state, so SLASHED was still payable — the
     fraud proof and the payout could both consume the same escrow."""

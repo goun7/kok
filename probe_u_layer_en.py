@@ -163,7 +163,7 @@ def tv55_challenge_after_window_refused():
 
 
 def tv56_vrf_public_key_is_not_the_secret():
-    """Aşama 1.4 (2026-09-23): knowing a miner's public identity must not let
+    """Stage 1.4 (2026-09-23): knowing a miner's public identity must not let
     you forge its assignment proof.
 
     Before the fix the chain published pk = "sk-<name>" — the SECRET itself —

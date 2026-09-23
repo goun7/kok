@@ -100,7 +100,7 @@ class KWKernel:
 
 # ------------------------------------------------------------- VRF (stub)
 # Prototype: an HMAC-based VRF (in reality ECVRF/Ed25519-VRF).
-# Aşama 1.4, 2026-09-23 — the pk == sk flaw, closed in the prototype's terms:
+# Stage 1.4, 2026-09-23 — the pk == sk flaw, closed in the prototype's terms:
 # an earlier version keyed the HMAC directly with the string passed as pk, and
 # the chain published pk == sk (the miner's NAME). So anyone who knew a
 # miner's name — which the chain broadcasts — could produce a valid
@@ -140,7 +140,7 @@ class VRF:
         # real guarantee (a forger holding pk cannot produce a proof) is
         # MEASURED by probe_u_layer_en rather than asserted here. That probe
         # constructs a VRF for miner m1 and shows a second miner's pk does not
-        # reproduce m1's proof — the property that was false before Aşama 1.4,
+        # reproduce m1's proof — the property that was false before Stage 1.4,
         # when pk was the secret itself.
         if not isinstance(pk, str) or len(pk) != 64:
             return False
@@ -392,7 +392,7 @@ class Chain:
     def challenge(self, challenger, tid, ledger_block_height):
         t = self.tasks[tid]
         assert ledger_block_height <= t.proof_height + W_s, "fraud window closed"
-        # CONTRACT, fixed 2026-09-23 (Aşama 1.3, round-3 finding [18]):
+        # CONTRACT, fixed 2026-09-23 (Stage 1.3, round-3 finding [18]):
         # a task that has already SETTLED has already paid out its escrow.
         # Challenging it afterwards would "slash" an account holding nothing
         # — the fraud window must close at settlement, not only at height.
@@ -436,7 +436,7 @@ class Chain:
 
     def settle(self, tid):
         t = self.tasks[tid]
-        # CONTRACT (Aşama 1.3): SETTLED and SLASHED are both terminal for the
+        # CONTRACT (Stage 1.3): SETTLED and SLASHED are both terminal for the
         # payout path. A slashed task's escrow must not be paid out, and a
         # settled task must not be settled twice (the earlier double-settle
         # guard relied on state alone, which worked, but SLASHED was not
