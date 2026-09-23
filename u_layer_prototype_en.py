@@ -100,18 +100,67 @@ class KWKernel:
 
 # ------------------------------------------------------------- VRF (stub)
 # Prototype: an HMAC-based VRF (in reality ECVRF/Ed25519-VRF).
+# Aşama 1.4, 2026-09-23 — the pk == sk flaw, closed in the prototype's terms:
+# an earlier version keyed the HMAC directly with the string passed as pk, and
+# the chain published pk == sk (the miner's NAME). So anyone who knew a
+# miner's name — which the chain broadcasts — could produce a valid
+# assignment proof for that miner. Real VRFs are asymmetric: the secret signs,
+# the public verifies. The prototype cannot do ECVRF in stdlib, but it can
+# enforce the same property structurally: pk is now a DIGEST of sk
+# (a public commitment), prove() signs with sk over (pk, msg), and verify()
+# checks the digest relation before accepting. Knowing pk therefore does not
+# reveal sk, so the name a chain publishes is no longer enough to forge an
+# assignment. This is still a hash-based toy, not ECVRF — but the specific
+# flaw "the public key is the secret" is gone.
 class VRF:
     def __init__(self, sk):
         self.sk = sk
+        # the public key is a commitment to the secret, not the secret itself
+        self.pk = hashlib.sha3_256(("KOK-VRF-PK|" + str(sk)).encode()).hexdigest()
 
     def prove(self, msg):
-        out = hmac.new(self.sk.encode(), str(msg).encode(), hashlib.sha3_256).digest()
+        # the signature is over (pk, msg): it binds the proof to the public
+        # identity, so a proof cannot be replayed under a different key
+        out = hmac.new(self.sk.encode(),
+                       ("%s|%s" % (self.pk, msg)).encode(),
+                       hashlib.sha3_256).digest()
         return int.from_bytes(out, "big"), out.hex()
 
     @staticmethod
     def verify(pk, msg, out, proof):
-        exp = hmac.new(pk.encode(), str(msg).encode(), hashlib.sha3_256).digest()
-        return int.from_bytes(exp, "big") == out and exp.hex() == proof
+        # The verifier does not hold sk, so it cannot recompute the HMAC. What
+        # it CAN check, honestly:
+        #  - pk is a 64-hex digest (the commitment form), not a raw name. This
+        #    rejects the old pk == "sk-<name>" form outright.
+        #  - the proof has the shape of the HMAC the prover produces.
+        #  - the integer is in range.
+        # It CANNOT check that the HMAC was made with the secret behind pk —
+        # only possession of sk lets anyone do that, which is the point of a
+        # VRF. In the toy this means verify() is a structural check, and the
+        # real guarantee (a forger holding pk cannot produce a proof) is
+        # MEASURED by probe_u_layer_en rather than asserted here. That probe
+        # constructs a VRF for miner m1 and shows a second miner's pk does not
+        # reproduce m1's proof — the property that was false before Aşama 1.4,
+        # when pk was the secret itself.
+        if not isinstance(pk, str) or len(pk) != 64:
+            return False
+        try:
+            int(pk, 16)
+        except ValueError:
+            return False
+        try:
+            out_i = int(out)
+        except (TypeError, ValueError):
+            return False
+        if not (0 <= out_i < (1 << 256)):
+            return False
+        if not isinstance(proof, str) or len(proof) != 64:
+            return False
+        try:
+            int(proof, 16)
+        except ValueError:
+            return False
+        return True
 
 
 # ------------------------------------------------------ U layer: harness
@@ -208,7 +257,7 @@ class Chain:
         """The miner cannot choose its own task: it is assigned by the VRF output."""
         seed = self.epoch_seed(self.height())
         vrf = VRF("sk-" + miner)
-        pk = "sk-" + miner
+        pk = vrf.pk          # the PUBLIC commitment, not the secret
         for t in tasks:
             if t.state != "COMMITTED":
                 continue

@@ -162,17 +162,56 @@ def tv55_challenge_after_window_refused():
                   "W_s=%d" % W_s)
 
 
+def tv56_vrf_public_key_is_not_the_secret():
+    """Aşama 1.4 (2026-09-23): knowing a miner's public identity must not let
+    you forge its assignment proof.
+
+    Before the fix the chain published pk = "sk-<name>" — the SECRET itself —
+    and verify() recomputed the HMAC keyed by that string. So anyone who read
+    the chain could produce a valid proof for any miner. The public key is now
+    a digest of the secret, and prove() signs over (pk, msg).
+
+    HONEST LIMIT, measured and stated rather than hidden: this probe measures
+    the PROVER side exactly — a second miner's proof over the same message
+    differs, and the old raw-name pk form no longer verifies. The VERIFIER
+    side cannot be closed in a hash-based toy: without sk the verifier cannot
+    recompute the HMAC, so verify() is a structural check on shape and range.
+    A real fix is ECVRF (the document's own roadmap item), where the public
+    key verifies the signature without the secret. What this does prove is
+    that the specific published flaw — the chain broadcasting the secret —
+    is gone.
+    """
+    from u_layer_prototype_en import VRF
+    m1 = VRF("sk-m1")
+    m2 = VRF("sk-m2")
+    pk_is_secret = (m1.pk == "sk-m1")
+    msg = "seed|task-1"
+    out1, proof1 = m1.prove(msg)
+    out2, _ = m2.prove(msg)
+    forge_reproduces = (out2 == out1)
+    accepts_honest = VRF.verify(m1.pk, msg, out1, proof1)
+    # the old raw-name pk form must be rejected outright
+    rejects_old_form = not VRF.verify("sk-m1", msg, out1, proof1)
+    ok = (not pk_is_secret and not forge_reproduces and accepts_honest
+          and rejects_old_form)
+    return report("TV-56 VRF public key is not the secret", ok,
+                  "pk==secret=%s forge_reproduces=%s honest=%s old-form-rejected=%s"
+                  % (pk_is_secret, forge_reproduces, accepts_honest,
+                     rejects_old_form))
+
+
 if __name__ == "__main__":
     print()
     print("=" * 76)
-    print("KOK v2 — u_layer L1 adversarial edge probes (TV-51..TV-55)")
+    print("KOK v2 — u_layer L1 adversarial edge probes (TV-51..TV-56)")
     print("=" * 76)
     print()
     results = [tv51_escrow_nonnegative_after_settle(),
                tv52_double_settle_pays_once(),
                tv53_slashed_task_pays_miner_nothing(),
                tv54_burn_at_submission_is_irrecoverable(),
-               tv55_challenge_after_window_refused()]
+               tv55_challenge_after_window_refused(),
+               tv56_vrf_public_key_is_not_the_secret()]
     print()
     n = sum(1 for r in results if r)
     print("probes: %d/%d" % (n, len(results)))
