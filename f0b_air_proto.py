@@ -173,7 +173,15 @@ class TileAIR:
             a_paths.append(_merkle_open(flat_A, (i * self.r) * n + l * self.r))
             b_paths.append(_merkle_open(flat_B, (l * self.r) * n + j * self.r))
             trace.append(run)
-        # the honest trace must end exactly at the claimed accumulator
+        # CONTRACT, enforced rather than assumed (2026-09-23): the honest trace
+        # must end exactly at the claimed accumulator. An earlier version
+        # asserted this only in prose at this site and checked it only in
+        # verify — meaning a caller could build a proof against a wrong acc and
+        # learn it from the verifier instead of here. The prover is now the one
+        # that refuses.
+        if trace[-1] != acc % self.q:
+            raise ValueError("trace ends at %d, not the claimed acc %d"
+                             % (trace[-1], acc % self.q))
         return {"a": a_terms, "b": b_terms, "trace": trace,
                 "a_res": a_res, "b_res": b_res,
                 "a_paths": a_paths, "b_paths": b_paths}
@@ -1053,10 +1061,10 @@ def tv43_zero_knowledge():
     # probe TV-65 demonstrates the recovery. Hiding means the verifier's VIEW
     # is independent of the witness, not merely that the witness was not
     # pasted into the message. The distinction is why this function's third
-    # return value is named `transmitted_not_pasted` below, not `hidden`.
-    transmitted_not_pasted = not any(honest["trace"][t] in transmitted["trace"]
-                                      for t in range(len(honest["trace"])))
-    return v_honest, v_forged, transmitted_not_pasted
+    # return value is named `pasted` below, not `hidden`.
+    pasted = any(honest["trace"][t] in transmitted["trace"]
+                 for t in range(len(honest["trace"])))
+    return v_honest, v_forged, pasted
 
 
 if __name__ == "__main__":
@@ -1068,11 +1076,11 @@ if __name__ == "__main__":
     print("was sent in the clear. This is the step KW Remark 2.2 actually")
     print("promises, and the first file that can say 'verify without seeing'.\n")
 
-    vh, vf, transmitted_not_pasted = tv43_zero_knowledge()
+    vh, vf, pasted = tv43_zero_knowledge()
     print("  masked honest witness verifies          : %s" % vh)
     print("  masked forged witness rejected          : %s   <- must be False" % vf)
     print("  real trace value pasted into the message: %s   <- must be False"
-          % (not transmitted_not_pasted))
+          % pasted)
     # Soundness only. NOTE: an earlier version asserted that the witness was
     # HIDDEN here too. It is not — probe TV-65 showed the verifier can recover
     # every value, because the mask derives from a seed the verifier supplied.
