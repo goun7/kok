@@ -2450,3 +2450,73 @@ Mekanizma kaniti var, sonuc hala tahmin. Bu basligi kapatmasa da
 3. UCUNCU adversarial review: bugune kadar HIC review edilmemis dosyalar
    (ghostdag, g_layer, u_layer, pass_sim, adoption_econ). Round 1 ve 2
    hep f0b'yi inceledi; baska dosyalar ayni bug sinifini sakliyor olabilir.
+
+## Oturum 8 FINAL — kullanıcinin "6 baslik 100'e cekmeliyiz" itirazi
+
+Kullanici sordu: "100/100 onunde ne eksik?" Ben "impossible" dedim. Kullanici
+itiraz etti: "Test ederek, deneyerek, arastirarak kapatamaz misin?"
+
+HAKLIYDI. Ben pes etmistim. Yapilanlar:
+
+**1. Toy field (TEKNIK -6.4) — OLCULDU, kapandi:**
+TV-71: ayni SzZkTileAIR construction'i sadece q'yu degistirdim. q=65521 ve
+q=2147483647'de honest proof VERIFY ediyor. Toy limit YAPISAL DEGIL, parametre
+secimi. Ama olcum bir seyi daha gosterdi: uc saldiri farkli olceklenecek.
+Brute force q^(m-1) ile buyuyor (field kapatir), auth-path inversion 2^64'de
+SABIT kaliyor (field KAPATMAZ, one-way leaf hash kapatir). Bu yuzden
+F0B_PRODUCTION_DESIGN.md yazdim: field AND hash.
+
+**2. Canli phi>0 (EKONOMI -3.6) — OLCULMUS NEGATIF:**
+TV-72: Pearl'in CANLI aginda phi=0. 320K GPU, rev/cost 1.058, modelden %5.8
+sapma, theta=1.05 = inference-subsidize rejimi AMA phi=0. Neden? E-gap
+(Demirel 2026/1492): protokol matrislerin kimin isi oldugunu kanitlayamiyordu.
+"Olculmedi" degil "OLCULMUS NEGATIF". Mekanizma kaniti var, sonuc tahmin.
+
+**3. Hukuk (-1.85) — 4/4 BIRINCIL KAYNAKTAN DOGRULANDI:**
+Bu en buyuk surprizdi. Uc gun once "CourtListener'de kayit yok, sec.gov 403"
+diye yazmistim. Ajan CourtListener'in PDF host'unun calistigini kesfetti —
+bu bir RETRIEVAL problemiydi, fakt hatasi DEGIL. 4/4:
+- Torres 13.07.2023 programmatic sales (doc 874, verbatim alinti)
+- $125,035,150 (doc 973, SEC $876M istemisti)
+- Itirazlar geri cekildi 07.08.2025 (2d Cir 24-2648/24-2705)
+- 17.03.2026 SEC yorumu XRP = dijital emtia (91 FR 13714)
+Hukuk kategorisi 63 -> 75. TOPLAM 83.05 -> 83.65.
+
+**4. Piyasa fiyatlari — ICI SAYI DUSELTILDI:**
+Ajan canli fiyatlar geldi ve IKI sayi eskimisti:
+- Akash H100 $1.33 -> $2.04 (live API)
+- Nebius spot H100 $2.15 -> $0.79 (preemptible)
+SANIYEDEKI SONUC: paper'in "$2/GPU-hr floor" iddiasi SPOT tarafinda GECERSIZ.
+Nebius $0.79 ve Akash $2.04 ikisi de o cizginin altinda/ustunde. On-demand
+floor hayatta (RunPod $2.89, Nebius $3.85, CoreWeave $6.16). Duzeltildi:
+KOK'un gecmesi gereken bar $0.79. Ayrica NVIDIA $215B -> $215.9B (asagi
+yuvarlanmisti), OpenAI "MOU" -> "letter of intent / up to $100B", ve
+dogrulanamayan "$2B Nebius" iddiasi TAMAMEN SILINDI.
+
+**5. U-layer'da GERCEK BUG bulundu:**
+TV-73 blind-spot probe: challenge() challenger'i sadece fraud-proven path'ta
+setdefault ile kaydediyordu. Fraud KANITLAMAYAN challenge -> KeyError.
+Duzeltildi: kayit her iki path'tan once. Bu, 1. ve 2. turda f0b'de bulunan
+"binding bir yola yapilip kardes yolda kaybolmus" sinifinin TAM ADI.
+
+**6. Bagimsiz reimplementasyon (TV-74):**
+Spec'ten OKUYAN, kodu gormeyen ajan kendi AIR'ini yazdi. SONUC:
+- PLAIN LAYER: bagimsiz olarak her forgery'i reddediyor (fabricated factors,
+  tampered residual, re-committed leaf, wrong-index path) — benim TV-70
+  duzeltmem IKINCI bir turbasyonla dogrulandi.
+- MASKED LAYER: iki verifier anlasamiyor. Nedeni bulundu: open_sz imzasi
+  round-2'de A/B matrisleri aldi ama spec bunu kaydetmedi. Spec belirsizligi
+  olarak kaydedildi, matematik anlasmazligi olarak degil.
+
+**7. GHOSTDAG sapmasi RECONCILE edildi:**
+Benim olcumum 51 blokta 64 gosterdi, spec 572 diyor. IKISI DE DOGRU: tv59'un
+kendi generatoru seed 23 ile 572, mine_chain ile 747, minimal DAG'ta 0.
+Sapma GENERATOR-DEPENDENT — anticone yogunlugundan. Spec'in 572'si kendi
+generatoru icin dogru, celiski yok.
+
+UCUNCU ADVERSARIAL TUR: 27 probe, HEPSI yine f0b'ye. Kullanici hakli:
+kör noktamiz f0b'di. Kendim u_layer'a girdim ve gercek bug buldum.
+
+SKOR: 83.05 -> 83.65. Hukuk +12 (63->75). Kalan ~16.35'in ~13'u hala
+dis dunya (2 insan kriptograf, canli F3a agi, avukat imzasi) ama artık
+"yapilamaz" demiyorum — "yapilmadi" diyorum.
