@@ -78,7 +78,19 @@ def score_candidate(answers: dict) -> tuple:
     if evidence_missing:
         return score, "DEFER: promising but evidence missing for " + ", ".join(evidence_missing)
     if score >= 2.0:
-        return score, "PURSUE: a real candidate with both reasons evidenced"
+        # ROUND-4 FIX, 2026-09-24 (round-4 finding #27): the text asserted
+        # "both reasons evidenced", but has_reason requires only ONE of the
+        # two load-bearing criteria — the file's own worked example sets
+        # permissionlessness_matters=False and still printed "both reasons
+        # evidenced". The verdict now names which reasons are evidenced.
+        which = []
+        if answers.get("cheaper_for_existing_job") is True:
+            which.append("cheaper-for-existing-job")
+        if answers.get("permissionlessness_matters") is True:
+            which.append("permissionlessness-matters")
+        return (score,
+                "PURSUE: a real candidate, evidenced reason(s): "
+                + " + ".join(which))
     return score, "WATCH: a real reason but weak fit -- keep the door open"
 
 
@@ -131,17 +143,46 @@ def log_result(candidate: str, score: float, verdict: str, price: dict,
 
 
 def log_status():
-    """The honest summary: how many candidates, how many signed."""
+    """The honest summary: how many candidates, how many signed.
+
+    ROUND-4 FIX, 2026-09-24 (round-4 finding #28): every run of this file
+    appends an EXAMPLE-ILLUSTRATIVE row to the log, and log_status counted
+    those rows as interviews — so the "honest log" measured how many times
+    the file was RUN, not how many candidates were contacted. The worked
+    example is now counted separately and never as an interview, so the
+    interview count is the count of real outreach rows only.
+    """
     if not os.path.exists(LOG_FILE):
         return {"interviews": 0, "signed": 0, "status": "NOT STARTED"}
-    rows = [json.loads(l) for l in open(LOG_FILE, encoding="utf-8") if l.strip()]
-    signed = sum(1 for r in rows if r.get("letter_of_intent_signed"))
-    return {
-        "interviews": len(rows),
+    rows = []
+    for l in open(LOG_FILE, encoding="utf-8"):
+        l = l.strip()
+        if not l:
+            continue
+        try:
+            rows.append(json.loads(l))
+        except json.JSONDecodeError:
+            # ROUND-4 (round-4 finding #30): a corrupt line used to crash the
+            # whole status read. The log is the project's evidence record; it
+            # must tolerate a malformed line and report it rather than abort.
+            rows.append({"_corrupt": l[:80]})
+    real = [r for r in rows
+            if "EXAMPLE-ILLUSTRATIVE" not in str(r.get("candidate", ""))
+            and not r.get("_corrupt")]
+    corrupt = sum(1 for r in rows if r.get("_corrupt"))
+    signed = sum(1 for r in real if r.get("letter_of_intent_signed"))
+    out = {
+        "interviews": len(real),
+        "worked_examples_in_log": len(rows) - len(real) - corrupt,
         "signed": signed,
         "status": ("F0 COMPLETE" if signed >= 1 else
+                   "F0 NOT STARTED -- no real outreach recorded yet"
+                   if not real else
                    "F0 IN PROGRESS -- no signed letter of intent yet"),
     }
+    if corrupt:
+        out["corrupt_lines_skipped"] = corrupt
+    return out
 
 
 # ============================================================================

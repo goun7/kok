@@ -25,17 +25,41 @@ RUBRIC_KEYS = ["cheaper_for_existing_job", "workload_is_matmul_shaped",
 
 
 def score(answers):
+    # ROUND-4 FIX, 2026-09-24 (round-4 finding #34): the docstring above says
+    # candidates are "scored by the f0_demand_discovery.py rubric", but this
+    # copy DROPPED that rubric's DEFER path — the branch that returns DEFER
+    # when evidence is missing. Measured: 6/6 candidates got a different
+    # verdict class here than the real rubric returns; Flashback Labs got
+    # PURSUE with two UNKNOWN fields where the real rubric says DEFER. This
+    # is the project's recurring "binding at one site, lost at another"
+    # class, recurring inside one deliverable. The DEFER path is restored,
+    # and the verdicts now match the rubric the docstring names.
     w = {"cheaper_for_existing_job": 1.0, "workload_is_matmul_shaped": 0.8,
          "permissionlessness_matters": 1.0, "decision_maker_reachable": 0.6,
          "switching_cost_is_low": 0.5}
-    s = sum(w[k] for k, v in answers.items() if v is True)
+    s = 0.0
+    evidence_missing = []
+    for k in RUBRIC_KEYS:
+        v = answers.get(k)
+        if v is True:
+            s += w[k]
+        elif v is None:
+            evidence_missing.append(k)
     has_reason = (answers.get("cheaper_for_existing_job") is True
                   or answers.get("permissionlessness_matters") is True)
     if not has_reason:
-        return s, "REJECT"
+        return s, "REJECT: neither of the two real buying reasons applies"
+    if evidence_missing:
+        return (s, "DEFER: promising but evidence missing for "
+                + ", ".join(evidence_missing))
     if s >= 2.0:
-        return s, "PURSUE"
-    return s, "WATCH"
+        which = []
+        if answers.get("cheaper_for_existing_job") is True:
+            which.append("cheaper-for-existing-job")
+        if answers.get("permissionlessness_matters") is True:
+            which.append("permissionlessness-matters")
+        return (s, "PURSUE: evidenced reason(s): " + " + ".join(which))
+    return s, "WATCH: a real reason but weak fit"
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +169,14 @@ def report():
   histories. The rubric separates them cleanly:
     - Flashback Labs scores highest because it states a PRIVACY requirement
       and runs INFERENCE, which is exactly KOK's (a)+(b) intersection.
-    - Passage scores lowest despite the best cost data, because rendering is
+    - ROUND-4 FIX, 2026-09-24 (round-4 finding #33): an earlier line said
+      "Passage scores lowest despite the best cost data", but this file's own
+      scorer gives Passage 1.5 against Sigea Cloud Labs 1.0 and Witness Chain
+      1.0 — Passage is NOT the lowest. The observation that survives is the
+      real one: Passage has the best cost data but cannot be served, because
+      rendering is not MatMul; the two lowest scorers are low for the same
+      reason (no MatMul-shaped workload), not because of cost data.
+    - Passage cannot be served despite the best cost data, because rendering is
       not MatMul and KOK cannot serve it.
   That separation is the whole point of F0: it prevents a sales effort from
   chasing a company the protocol cannot actually serve.
