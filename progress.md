@@ -2359,3 +2359,53 @@ PAPER L529 ve SPEC TV-66 basligi downgrade edildi. "HIDING NOW DEMONSTRATED"
 SUBTRACTION". Skor 83'de kaldi.
 
 commit f2ee71f. 14/14 yesil.
+
+## Oturum 8 son — ikinci adversarial review roundu (11 bulgu)
+
+Ikinci round birincisinden SIDDIMLI daha cok bulgu dondurdu. En kritik
+dagilim su oldu: benim ilk roundda TileAIR.verify'e ekledigim input binding
+(E/F + Merkle residual) ustteki iki katmana GECIRILMEMISTI.
+
+- F1 (KRITIK): FriTileAIR.verify_low_degree hicbir input commitment'i
+  almıyor. "Verilen acc'de biten tutarli bir tile" ile "COMMITTED tile"
+  arasindaki farki yok. Fabrikasyon tile her challenge'da True.
+- F4 (KRITIK): ayni sey SzZkTileAIR.check_sz'de. Pad Merkle-bound ama
+  WITNESS degil. cross-term forger'in kendi carpanlarindan geldigi icin
+  her tutarli uclu gecer.
+- F2: quotient identity HICBIR forgery'de calismadi; c_domain check her
+  forgery'i once red ediyordu. "Low-degree test" iddiasi kodda yok.
+- F9: _merkle_check idx argumanini IGNORING ediyordu -> value binding, position
+  binding DEGIL. Duplicate leaf ile yanlis index'in path'i verify oluyordu.
+- F11 (yeni yon): brute force 912,673 pad "recovers" diyordu ama test ona
+  honest trace'i veriyordu. 200,000 aday pad'in TAMAMI her public check'i
+  gecti -> transcript pad'i iddia edildiginden DAHA IYI sakliyor.
+  Oracle-aided walk olarak yeniden etiketlendi.
+
+Duzeltmeler (commits bcd175d, c802531):
+- F1+F4: input binding her iki katmana gecirildi; binding olmadiginda
+  return False (silent degrade yok). tv42 3. donus degeri, tv66 6. check
+  ekledi, ikisi de assert'li. Fabrikasyon tile artik her z'de False.
+- F2: binding'i PRIMARY yaptim, c_domain kontrolunu onun ardina aldim.
+- F9: index'i leaf hash'ine domain separation olarak kattim (_merkle_layers
+  + _merkle_check). Yan etkisi: auth-path inversion saldirisi de KAPANDI
+  (once 107 hash trial'da recover ediyordu, simdi "nothing").
+- F3: verify_zk acc'yi HIC kontrol etmiyordu (parametre okunmuyordu) +
+  vacuous challenge set'te True donuyordu -> tested==0 guard + boundary.
+- F5: 7 yerde "degree 1" docstring'i duzeltildi (kod m-2 dogru).
+- F6: acc_shift olu 5 yil (?) boyunca "verifier needs this" yorumuyla
+  duruyordu, kimse okumamisti. Silindi.
+- F7: header "Merkle path elided" diyordu ama TV-40 check ediyor.
+- F8: tv40'in forgeries'leri Merkle check'e HIC ulasmiyordu (hepsi onceki
+  zayif checkte red). 2 yeni forgery eklendi: tampered residual + swapped
+  path. Ikisi de Merkle binding'i izole ediyor.
+- F10: 2b attack A artik varolmayan TV-65 mask ailesine saldiriyordu ->
+  "nothing found" bilgi tasimiyordu. Kaldirildi.
+
+Ozet: 11 findingin 9'u duzeltildi, 2'si SOFT LIMIT olarak belgelendi
+(q=97 toy field, _merkle_layers duplication). Skor 83'de KALDI (kullanici
+talimati). README'deki "hiding demonstrated at toy scale" ifadesi bile
+geri cekildi - artik "NOT a hiding proof at this scale, and not claimed
+as one".
+
+Iki round bir prototype uzerinde, her round oncekinin kacirdigi bir sinifi
+yakaladi. Bu, bu pratigin degerinin olcusu.
