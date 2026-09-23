@@ -2625,3 +2625,50 @@ kullanici bunu su an satin almayacagini netlestirdi. Kalemin geri kalan
 kismini TV-74 bagimsiz reimplementasyonu karsiliyor (o da hala
 "ayni siniftan ikinci implementasyon" = spec netligi kaniti, guvenlik
 kaniti degil).
+
+## Oturum 8 son eki — Demirel ret + F0b uretim alani insa edildi
+
+### Demirel cevabi ve kullanici karari
+Demirel $215/saat + "payment on an agreed schedule, independent of future
+funding and of the findings" istedi. Ayrica ZIP'te olmayan prototype'lar
+ve versioned file list istedi.
+
+Kullanici: "$215 benim saatte kazanmadigim bir para bu dis denetleme isi
+hikaye olur." Yani DIS DENETLEME SU AN ICIN YOK.
+
+Tesekkur maili yazdim (EPOSTA_DEMIREL_TESEKKUR.md): uc noktaya da onu
+hakli sayiyorum (fixed fee + after funding celiskisi, ZIP'te eksik
+prototipler), versioned file list'i RETRACTED/SOFT LIMIT isaretleriyle
+gonderiyorum, incelemeyi acik birakiyorum. Kullanici "AI kelimeleri
+olmasin, 4-5 kez denetle" dedi — 6 denetim gecisi yaptim: 'plain',
+'deliberate', 'very', 'the actual state of things' temizlendi, olcum
+yaptim (kelime sokma, cumle uzunlugu monotonlugu, filler zarf, yapay
+acilir kelimeler). MAILI KULLANICI GONDERECEK (SMTP yok, ben gonderemem).
+
+### F0b uretim alani (TV-76) — secilen yon
+Kullanici "F0b uretim alani" secenegi secti. F0B_PRODUCTION_DESIGN.md
+adim 1-2'yi GERCEKTEN insa ettim: f0b_prod_field_en.py
+
+OLCULDU:
+- 256-bit asal (secp256k1-style, isprime=True) ile ayni AIR calisiyor:
+  honest proof verify (acc 252 bit), tampered trace RED, wrong acc RED.
+- Schwartz-Zippel bound (m+1)/q = 4.318e-77 (q=97'de 5.2% idi).
+- Position binding 32-byte digest icinde hala calisiyor.
+
+OLUMSUZ SONUC (onemli olan bu): sibling-hash inversion bir PREIMAGE
+problemidir, FIELD problemi degil. Sadece field'i buyutmek KAPATMAZDI —
+toy'un 8-byte leaf'i her q'da 2^64 alana sahip olurdu. Digest genisligi
+kapatir, simdi 32 byte. Bu "field AND one-way leaf hash, not field alone"
+tahminini dogruladi ve "sadece daha buyuk field kullan" yanlis okumasini
+curuttu.
+
+ADIM 3 (FRI recursion) bilerek YOK — o gercek protocol is, parametre
+degisikligi degil.
+
+Skoru yukseltmedim (83.65): TV-66 gerekcesi hala gecerli — Demirel ret'i
+-16'nin acik oldugunu kanitladi. Ama rubrikte "toy field yapilsal limit"
+diyen yeri duzelttim: TV-71 parametre secti, TV-76 insa etti.
+
+### Round-3'un bug'larinin TV-58'i ortaya cikardigi yer
+ghostdag blue/red fix'i ikinci bir bug ortaya cikardi (blue_score
+mergeset-local, recursive olmali). Bu da TV-66 paterni.
