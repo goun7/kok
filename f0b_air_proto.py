@@ -18,8 +18,11 @@ WHAT THIS IS NOT:
   - not a zk-STARK (no FRI recursion, no Reed-Solomon codeword, no randomised
     low-degree test — TV-42 spot-checks rows instead, which catches a prover
     that broke many rows but not one that broke a few)
-  - not asymptotically secure (toy field q=97, toy sizes; the Merkle path is
-    elided rather than verified, so the commitment is not yet binding)
+  - not asymptotically secure (toy field q=97, toy sizes; the SAMPLED verifier
+    in TV-41 elides the authentication path, so its commitment check catches a
+    verifier holding the wrong root rather than a forger committing its own
+    trace — TV-40's verifier does check the path, and after 2026-09-23 so do
+    the TV-42 and TV-66 layers)
   - not production code
 
 WHAT THIS IS: the first runnable instance of the F0b direction, so the roadmap
@@ -61,9 +64,14 @@ def H(*parts) -> int:
 
 
 def _merkle_layers(leaves):
-    """The layer stack of a toy Merkle tree over a list of ints."""
+    """The layer stack of a toy Merkle tree over a list of ints.
+
+    The leaf hash includes the POSITION (domain separation), so a path from one
+    index cannot be replayed at another — see _merkle_check.
+    """
     import hashlib
-    layer = [hashlib.sha256(str(v).encode()).digest() for v in leaves]
+    layer = [hashlib.sha256(("%d|%d" % (i, v)).encode()).digest()
+             for i, v in enumerate(leaves)]
     layers = [layer]
     while len(layer) > 1:
         nxt = []
@@ -94,9 +102,17 @@ def _merkle_open(leaves, idx):
 
 
 def _merkle_check(root, idx, leaf, path):
-    """Verify that (leaf at idx) is committed under root, given its auth path."""
+    """Verify that (leaf at idx) is committed under root, given its auth path.
+
+    The index is DOMAIN SEPARATION, not a hint: it is mixed into the leaf hash,
+    so a prover cannot present the path for a DIFFERENT position whose leaf
+    value happens to match. Without this the binding is by value, not by
+    position — a duplicate value in two leaves lets a path from the wrong index
+    verify (second adversarial review, 2026-09-23, finding F9). Position-binding
+    matters because the input residual at index t must be committed AT t.
+    """
     import hashlib
-    h = hashlib.sha256(str(leaf).encode()).digest()
+    h = hashlib.sha256(("%d|%d" % (idx, leaf)).encode()).digest()
     for side, sib in path:
         if side == "D":
             h = hashlib.sha256(h + h).digest()
@@ -278,7 +294,23 @@ def tv40_air_honest_accepts_forged_rejects():
             "a_paths": honest["a_paths"], "b_paths": honest["b_paths"]}
     v_fake = air.verify(fake, acc, E, F, ctx, i, j, A_commit, B_commit)
 
-    return v_honest, v_forged_trace, v_forged_acc, v_fake, v_fabricated_consistent
+    # --- F8: a forgery that passes the E/F binding but tampers with the
+    # residual, so the MERKLE check is the one that rejects it. Every forgery
+    # above is rejected by an earlier check (fab by the E/F residual, fake by
+    # trace[0] != 0), so the Merkle binding is never the deciding rejector and a
+    # regression in it would go unnoticed. This one isolates it: honest factors
+    # and honest paths, but the residual value is swapped for a different leaf
+    # of the committed matrix (orphaned path).
+    tamper = {k: list(v) if isinstance(v, list) else v for k, v in honest.items()}
+    tamper["a_res"][1] = (honest["a_res"][1] + 1) % q   # not the committed leaf
+    v_tamper_res = air.verify(tamper, acc, E, F, ctx, i, j, A_commit, B_commit)
+    # and a path from the WRONG index, which the position-bound check rejects
+    swap = {k: list(v) if isinstance(v, list) else v for k, v in honest.items()}
+    swap["a_paths"][1] = honest["a_paths"][0]
+    v_swap_path = air.verify(swap, acc, E, F, ctx, i, j, A_commit, B_commit)
+
+    return (v_honest, v_forged_trace, v_forged_acc, v_fake,
+            v_fabricated_consistent, v_tamper_res, v_swap_path)
 
 
 if __name__ == "__main__":
@@ -289,15 +321,17 @@ if __name__ == "__main__":
     print("bound a certificate to a computation; TV-39 stopped replay. This")
     print("file starts to remove the last gap: PROVING without RECOMPUTING.\n")
 
-    h, ft, fa, fk, fc = tv40_air_honest_accepts_forged_rejects()
+    h, ft, fa, fk, fc, tr, sp = tv40_air_honest_accepts_forged_rejects()
     print("  honest witness accepted            : %s" % h)
     print("  one flipped trace entry accepted   : %s   <- must be False" % ft)
     print("  wrong claimed accumulator accepted : %s   <- must be False" % fa)
     print("  fabricated witness accepted        : %s   <- must be False" % fk)
     print("  consistent-but-unbound witness     : %s   <- must be False" % fc)
+    print("  tampered input residual accepted   : %s   <- must be False" % tr)
+    print("  swapped auth path accepted         : %s   <- must be False" % sp)
 
     assert h, "an honest witness must verify"
-    assert not (ft or fa or fk or fc), "a forged witness must NOT verify"
+    assert not (ft or fa or fk or fc or tr or sp), "a forged witness must NOT verify"
     print("\n  -> the verifier checks the AIR constraints and the boundary")
     print("     conditions without ever summing the products.")
     print("\n" + "-" * 76)
@@ -563,16 +597,16 @@ class FriTileAIR(MerkleTileAIR):
         T(x+1) - T(x) - A(x)B(x) is a polynomial C(x) of degree m+1. For an
         honest trace, C(x) = 0 at exactly the m domain points {0..m-1}, so C is
         divisible by the vanishing polynomial Z(x) = (x)(x-1)...(x-(m-1)), and
-        the QUOTIENT Q(x) = C(x)/Z(x) has degree 1. That quotient — not the raw
+        the QUOTIENT Q(x) = C(x)/Z(x) has degree m-2. That quotient — not the raw
         relation — is what the prover commits and what the verifier tests.
 
         Why the quotient, and why this is the whole point: a prover that breaks
         ONE trace value gets a C(x) that is still 0 at the m-1 untouched domain
         points but nonzero at the one it touched, so C is NOT divisible by Z and
         its "quotient" has degree m+1 — it blows up off-domain. Testing Q at a
-        single fresh point catches it, because a degree-1 polynomial that agrees
+        single fresh point catches it, because a degree-(m-2) polynomial that agrees
         at one point does not agree at a random second point unless it is
-        genuinely degree 1. This is the mechanism that closes the single-row gap
+        genuinely degree m-2. This is the mechanism that closes the single-row gap
         TV-41 left; without it, checking the raw relation off-domain always
         fails (an honest relation is nonzero at q-m points), which is why an
         earlier version of this function only ever tested ON the domain — a
@@ -626,15 +660,17 @@ class FriTileAIR(MerkleTileAIR):
         return {"T": T, "A": A, "B": B, "degree": m, "c_domain": c_domain,
                 "Q": Q, "deg_q": deg_q}
 
-    def verify_low_degree(self, proof, polys, acc, challenge_points):
-        """Low-degree testing: the honest quotient is degree 1, a forger's is not.
+    def verify_low_degree(self, proof, polys, acc, challenge_points,
+                          E=None, F=None, ctx=None, i=0, j=0,
+                          A_commit=None, B_commit=None):
+        """Low-degree testing: the honest quotient is degree m-2, a forger's is not.
 
         The prover commits C(x) = T(x+1)-T(x)-A(x)B(x) on the whole domain
         {0..m-1}, and the QUOTIENT Q(x) = C(x)/Z(x) where Z is the vanishing
         polynomial of the domain. For an honest trace every domain value of C is
-        0, so C is divisible by Z and Q has degree 1. A prover that broke one
+        0, so C is divisible by Z and Q has degree m-2. A prover that broke one
         trace value has a C that is nonzero at that point, so C is NOT divisible
-        by Z and no degree-1 Q can satisfy the identity — a random off-domain
+        by Z and no degree-(m-2) Q can satisfy the identity — a random off-domain
         challenge catches the lie.
 
         This function checks the identity C(x) == Z(x)Q(x) at FRESH off-domain
@@ -653,11 +689,26 @@ class FriTileAIR(MerkleTileAIR):
         re-checking on the domain tests nothing. An on-domain-only caller is not
         low-degree testing, and this function returns False rather than silently
         reporting a pass.
+
+        CONTRACT, input binding (second adversarial review, 2026-09-23): this
+        function binds the witness to the COMMITTED INPUTS, not merely to its own
+        internal consistency. An earlier version accepted any self-consistent
+        triple ending at an attacker-chosen accumulator — the same defect the
+        round-one fix closed in TileAIR.verify, lost when the binding was not
+        threaded through this layer. The caller supplies the input commitments
+        and the ROM context; every term is re-derived from them.
         """
         q = self.q
         T, A, B = polys["T"], polys["A"], polys["B"]
         Q = polys["Q"]
         m = len(proof["a"])
+        # the input binding is REQUIRED, not optional: without it this function
+        # proves internal consistency only and accepts any fabricated tile
+        # ending at a chosen accumulator. Refuse to run rather than silently
+        # verifying nothing about the inputs.
+        if E is None or F is None or A_commit is None or B_commit is None:
+            return False
+        n = len(E)
         # the claimed degree bound on the quotient; a prover may not exceed it
         if len(Q) - 1 > polys["deg_q"]:
             return False
@@ -668,6 +719,23 @@ class FriTileAIR(MerkleTileAIR):
         # all be zero — an honest trace satisfies the relation on every step
         if any(v % q != 0 for v in polys["c_domain"]):
             return False
+        # INPUT BINDING. Without this the layer proves "some consistent tile
+        # ends at acc", not "THE committed tile ends at acc". Same check as
+        # TileAIR.verify: the residual under the input root must be the ROM
+        # noise shifted value, at every step.
+        for t in range(m):
+            e_t = E[i * self.r][t * self.r] % q
+            f_t = F[t * self.r][j * self.r] % q
+            if (proof["a_res"][t] + e_t) % q != proof["a"][t]:
+                return False
+            if (proof["b_res"][t] + f_t) % q != proof["b"][t]:
+                return False
+            if not _merkle_check(A_commit, (i * self.r) * n + t * self.r,
+                                 proof["a_res"][t], proof["a_paths"][t]):
+                return False
+            if not _merkle_check(B_commit, (t * self.r) * n + j * self.r,
+                                 proof["b_res"][t], proof["b_paths"][t]):
+                return False
 
         def z_at(x):
             z = 1
@@ -683,7 +751,7 @@ class FriTileAIR(MerkleTileAIR):
                 continue
             # the QUOTIENT identity C(x) == Z(x)Q(x) at the fresh point. This
             # holds everywhere for an honest prover; a prover whose trace broke
-            # one row has a C not divisible by Z, so no degree-1 Q can satisfy
+            # one row has a C not divisible by Z, so no degree-(m-2) Q can satisfy
             # the identity at a random point. (Testing the RAW relation here
             # would fail the honest prover: C has degree m+1 and vanishes at
             # only m points, so it is nonzero at q-m field points.)
@@ -725,6 +793,12 @@ def tv42_low_degree_testing():
     honest = air.prove(A, B, E, F, ctx, i, j, acc)
     polys_h = air.prove_poly(honest)
 
+    # the input commitments, exactly as the caller of TileAIR builds them
+    flat_A = [A[rr][cc] for rr in range(n) for cc in range(n)]
+    flat_B = [B[rr][cc] for rr in range(n) for cc in range(n)]
+    A_commit = _merkle_root(flat_A)
+    B_commit = _merkle_root(flat_B)
+
     # verifier challenges at FRACTIONAL points — off the integer interpolation
     # domain {0..m}. This is what makes the test non-vacuous: the interpolating
     # polynomial is determined by its values on {0..m}, so its value at any
@@ -737,7 +811,8 @@ def tv42_low_degree_testing():
     # review (2026-09-23) caught this, and the fix is both here and in the
     # verifier, which now returns False when no off-domain point was tested.
     challenges = [x for x in (10, 20, 30, 40) if not (0 <= x < m + 1)]
-    v_honest = air.verify_low_degree(honest, polys_h, acc, challenges)
+    v_honest = air.verify_low_degree(honest, polys_h, acc, challenges,
+                                     E, F, ctx, i, j, A_commit, B_commit)
 
     # forged: break row 2 only, keep the rest; sample points that MISS it
     forged = {k: list(v) for k, v in honest.items()}
@@ -749,9 +824,25 @@ def tv42_low_degree_testing():
     # near the broken index, to show the gap is closed by low-degreeness, not by
     # accidentally sampling the broken row
     avoid = [x for x in (10, 20, 40) if not (0 <= x < m + 1)]
-    v_forged = air.verify_low_degree(forged, polys_f, acc, avoid)
+    v_forged = air.verify_low_degree(forged, polys_f, acc, avoid,
+                                     E, F, ctx, i, j, A_commit, B_commit)
 
-    return v_honest, v_forged
+    # FABRICATED: an internally consistent tile for a CHOSEN accumulator that
+    # has nothing to do with the committed inputs. This is the attack the
+    # input binding exists to stop. Without the binding this verifies True at
+    # every off-domain challenge, because the quotient identity is a statement
+    # about the prover's own polynomials (second adversarial review, 2026-09-23,
+    # finding F1).
+    target = 35
+    fab = {"a": [0, 0, 0, target], "b": [0, 0, 0, 1],
+           "trace": [0, 0, 0, 0, target],
+           "a_res": [0, 0, 0, 0], "b_res": [0, 0, 0, 0],
+           "a_paths": honest["a_paths"], "b_paths": honest["b_paths"]}
+    polys_fb = air.prove_poly(fab)
+    v_fabricated = air.verify_low_degree(fab, polys_fb, target, challenges,
+                                         E, F, ctx, i, j, A_commit, B_commit)
+
+    return v_honest, v_forged, v_fabricated
 
 
 if __name__ == "__main__":
@@ -764,10 +855,11 @@ if __name__ == "__main__":
     print("polynomial and checks the constraint identity at points the prover")
     print("did not choose, which is the piece that closes that gap.\n")
 
-    vh, vf = tv42_low_degree_testing()
+    vh, vf, vfab = tv42_low_degree_testing()
     print("  honest trace passes all challenges    : %s" % vh)
     print("  single broken row, unbroken points    : %s   <- must be False" % vf)
-    assert vh and not vf
+    print("  fabricated tile for chosen acc        : %s   <- must be False" % vfab)
+    assert vh and not (vf or vfab)
     print("\n  -> one broken row is caught even when the sampled points avoid it.")
     print("\n" + "-" * 76)
     print("WHAT TV-42 STILL IS NOT (the remaining honest gap)")
@@ -827,7 +919,11 @@ class ZkTileAIR(FriTileAIR):
             "a": masked_a,
             "b": masked_b,
             "d": d,                      # NOT sent to the verifier
-            "acc_shift": d[m] % q,       # the verifier needs this to check the boundary
+            # NOTE (2026-09-23): an `acc_shift` key lived here for the entire
+            # life of this prototype with the comment "the verifier needs this
+            # to check the boundary", and no verifier ever read it — verify_zk
+            # derived every mask value itself from the seed. Removed: dead code
+            # whose comment described a check that did not exist.
         }
 
     def verify_zk(self, masked, acc, challenge_points):
@@ -841,13 +937,30 @@ class ZkTileAIR(FriTileAIR):
         it verified "without unmasking"; that was wrong, and the claim is
         retracted here rather than left in place. What this function establishes
         is provenance, and the hiding property belongs to SzZkTileAIR (TV-66).
+
+        TWO CONTRACTS added after the second adversarial review (2026-09-23,
+        finding F3): (a) the accumulator IS checked — an earlier version took
+        `acc` as a parameter and never read it, so a fabricated consistent tile
+        ending at an attacker-chosen value verified; (b) an all-out-of-range
+        challenge set returns False rather than True, mirroring the
+        `tested == 0` guard in verify_low_degree. Silently passing on a vacuous
+        challenge set is the failure mode that made TV-42's original test
+        meaningless, and this layer had the identical defect.
         """
         q = self.q
         m = len(masked["a"])
+        # the END BOUNDARY: the masked trace minus the seed-derived mask at the
+        # last index must equal the claimed accumulator. Without this the whole
+        # check is about internal consistency only, and any fabricated tile
+        # ending at a chosen target verifies.
+        d_last = H("mask", masked["seed"], m) % q
+        if (masked["trace"][m] - d_last) % q != acc % q:
+            return False
         # the boundary conditions are checked on the SHIFTED values. Because the
         # mask derives from a seed the verifier knows, this check RECONSTRUCTS
         # the real differences rather than hiding them — sound, but not
         # zero-knowledge (probe TV-65).
+        tested = 0
         for x in challenge_points:
             if x < 0 or x >= m:
                 continue
@@ -869,6 +982,11 @@ class ZkTileAIR(FriTileAIR):
             real_b = (mb - H("mask", masked["seed"], x + 2)) % q
             if real_diff != (real_a * real_b) % q:
                 return False
+            tested += 1
+        # a challenge set that tested nothing is a vacuous call, and must not
+        # be reported as passing
+        if tested == 0:
+            return False
         return True
 
 
@@ -1124,11 +1242,17 @@ class SzZkTileAIR(TileAIR):
             "trace": [(proof["trace"][t] + pad[t]) % q for t in range(m + 1)],
         }
         # (a+qa)(b+qb) = a*b + cross, so the prover opens exactly `cross`
+        # The input residuals and the factor masks are stored in secrets so the
+        # verifier can later tie each masked factor back to the committed
+        # inputs (the F4 fix): a_res + E + qa == view_a.
         secrets = {
             "pm": pm,
             "cross": [((proof["a"][t] * qb[t] + qa[t] * proof["b"][t]
                         + qa[t] * qb[t]) % q) for t in range(m)],
             "Cm": pad[m],
+            "a_res": proof.get("a_res", [0] * m),
+            "b_res": proof.get("b_res", [0] * m),
+            "qa": qa, "qb": qb,
         }
         return view, secrets
 
@@ -1151,17 +1275,41 @@ class SzZkTileAIR(TileAIR):
             "Cm": secrets["Cm"],
         }
 
-    def open_sz(self, secrets, z):
-        """Open the one leaf of each committed list that the challenge names."""
-        return {
+    def open_sz(self, secrets, z, A=None, B=None, ctx=None, i=0, j=0):
+        """Open the one leaf of each committed list that the challenge names.
+
+        Also opens the input residuals and factor masks at z, so the verifier
+        can check the input binding: view_a[z] == a_res[z] + E[..][..] + qa[z],
+        all under the committed input roots. These are NOT additional secrets
+        the verifier learns for free — the residual is already committed in
+        A_commit/B_commit, and the mask value qa[z] is only useful together with
+        the residual, which is exactly the one-leaf structure the Merkle
+        commitment is for.
+        """
+        a_res = secrets["a_res"][z]
+        b_res = secrets["b_res"][z]
+        flat_A = [rr for row in (A or []) for rr in row] if A else None
+        flat_B = [rr for row in (B or []) for rr in row] if B else None
+        n = len(A) if A else len(secrets["a_res"])
+        out = {
             "pm_z": secrets["pm"][z],
             "pm_path": _merkle_open(secrets["pm"], z),
             "cross_z": secrets["cross"][z],
             "cross_path": _merkle_open(secrets["cross"], z),
             "Cm": secrets["Cm"],
+            "a_res": secrets["a_res"],
+            "b_res": secrets["b_res"],
+            "qa_z": secrets["qa"][z],
+            "qb_z": secrets["qb"][z],
         }
+        if flat_A is not None:
+            out["a_path"] = _merkle_open(flat_A, (i * self.r) * n + z * self.r)
+            out["b_path"] = _merkle_open(flat_B, (z * self.r) * n + j * self.r)
+        return out
 
-    def check_sz(self, view, z, opening, commit, acc=None, q=None):
+    def check_sz(self, view, z, opening, commit, acc=None, q=None,
+                 E=None, F=None, i=0, j=0, A_commit=None, B_commit=None,
+                 n=None):
         """Check the transition constraint at the single point z, on masked
         values plus one Merkle-verified opening of each pad list.
 
@@ -1181,6 +1329,15 @@ class SzZkTileAIR(TileAIR):
         only a root. AT TOY SCALE THIS IS A SIZE CLAIM, NOT A SECURITY MARGIN:
         the pad space with pm[z] fixed is q^(m-1), which at q=97, m=4 is
         912,673 and brute-forces in a fraction of a second — see tv66 check (5).
+
+        INPUT BINDING (added after the second adversarial review, 2026-09-23,
+        finding F4): an earlier version bound the pad to the committed roots but
+        bound NOTHING about the witness. A fabricated, internally consistent tile
+        ending at an attacker-chosen accumulator verified at every z, because the
+        cross-term is derived from the FORGER's own factors. When the caller
+        supplies the input commitments and ROM context, every masked term is
+        tied back to the committed inputs — the pad binding alone was never
+        enough, because a prover free to choose a and b is free to choose acc.
         """
         q = q or self.q
         m = len(view["a"])
@@ -1203,6 +1360,30 @@ class SzZkTileAIR(TileAIR):
             "big", signed=False)
         if h != commit["view"]:
             return False
+        # the INPUT binding: the masked factors must be the committed inputs
+        # plus the ROM noise plus the prover's mask. Without this the layer
+        # proves "some consistent tile ends at acc", not "the committed tile".
+        if A_commit is not None:
+            a_res = opening.get("a_res")
+            b_res = opening.get("b_res")
+            a_path = opening.get("a_path")
+            b_path = opening.get("b_path")
+            if a_res is None or b_res is None:
+                return False
+            nn = n if n is not None else (len(E) if E is not None else m)
+            e_t = E[i * self.r][z * self.r] % q
+            f_t = F[z * self.r][j * self.r] % q
+            # the masked factor must equal residual + ROM noise + mask
+            if (a_res[z] + e_t + opening.get("qa_z", 0)) % q != view["a"][z]:
+                return False
+            if (b_res[z] + f_t + opening.get("qb_z", 0)) % q != view["b"][z]:
+                return False
+            if not _merkle_check(A_commit, (i * self.r) * nn + z * self.r,
+                                 a_res[z], a_path):
+                return False
+            if not _merkle_check(B_commit, (z * self.r) * nn + j * self.r,
+                                 b_res[z], b_path):
+                return False
         lhs = (view["trace"][z + 1] - view["trace"][z]) % q
         rhs = (view["a"][z] * view["b"][z] - opening["cross_z"]
                + opening["pm_z"]) % q
@@ -1266,10 +1447,22 @@ def tv66_schwartz_zippel():
     view, secrets = air.mask_sz(honest, prng)
     commit = air.commit_sz(view, secrets)
 
+    # the input commitments, as the caller builds for TileAIR
+    flat_A = [A[rr][cc] for rr in range(n) for cc in range(n)]
+    flat_B = [B[rr][cc] for rr in range(n) for cc in range(n)]
+    A_commit = _merkle_root(flat_A)
+    B_commit = _merkle_root(flat_B)
+
+    def _open(z):
+        return air.open_sz(secrets, z, A, B, 555, i, j)
+
+    def _check(z, opening):
+        return air.check_sz(view, z, opening, commit, acc=acc, q=q,
+                            E=E, F=F, i=i, j=j,
+                            A_commit=A_commit, B_commit=B_commit, n=n)
+
     # (1) honest accepts at every challenge point, with the boundary too
-    honest_ok = all(
-        air.check_sz(view, z, air.open_sz(secrets, z), commit, acc=acc)
-        for z in range(m))
+    honest_ok = all(_check(z, _open(z)) for z in range(m))
 
     # (2a) the structural check: the transmitted view must carry no pad.
     # If "pm" or "cross" were keys of the view, the verifier would hold the pad
@@ -1279,7 +1472,7 @@ def tv66_schwartz_zippel():
     # (2b) the recovery attack, using only what the verifier receives.
     leaked = False
     for z in range(m):
-        opening = air.open_sz(secrets, z)
+        opening = _open(z)
         # the verifier's full transcript for this challenge
         transcript = (view, commit, opening)
         # attack A: the TV-65 route — subtract a verifier-known mask. There is
@@ -1319,7 +1512,7 @@ def tv66_schwartz_zippel():
     #     field puts the same attack at ~2^254. The probe runs the attack and
     #     reports the recovery rather than describing it as impossible.
     z0 = 1
-    o0 = air.open_sz(secrets, z0)
+    o0 = _open(z0)
     bf_recovered = None
     import itertools
     import time as _time
@@ -1400,8 +1593,16 @@ def tv66_schwartz_zippel():
     prng2 = random.Random(99)
     vfor, sfor = air.mask_sz(forged, prng2)
     cfor = air.commit_sz(vfor, sfor)
-    per_z = {z: (air.check_sz(vfor, z, air.open_sz(sfor, z), cfor) is False)
-             for z in range(1, m)}
+
+    def _fopen(z):
+        return air.open_sz(sfor, z, A, B, 555, i, j)
+
+    def _fcheck(z, opening):
+        return air.check_sz(vfor, z, opening, cfor, acc=acc, q=q,
+                            E=E, F=F, i=i, j=j,
+                            A_commit=A_commit, B_commit=B_commit, n=n)
+
+    per_z = {z: (_fcheck(z, _fopen(z)) is False) for z in range(1, m)}
     caught_steps = [z for z, c in per_z.items() if c]
     trials = 300
     caught = 0
@@ -1416,11 +1617,26 @@ def tv66_schwartz_zippel():
     # (4) binding: a prover that opens a DIFFERENT pad leaf after seeing z must
     # be rejected, or it could tailor the pad to the challenge and pass any
     # forgery. (z0 and o0 are already set by the (2c) brute-force attack above.)
-    good_open = air.open_sz(secrets, z0)
+    good_open = _open(z0)
     bad_open = dict(good_open)
     bad_open["pm_z"] = (good_open["pm_z"] + 1) % q   # not the committed leaf
-    bound_ok = (air.check_sz(view, z0, good_open, commit, acc=acc) is True
-                and air.check_sz(view, z0, bad_open, commit, acc=acc) is False)
+    bound_ok = (_check(z0, good_open) is True
+                and _check(z0, bad_open) is False)
+
+    # (5) the INPUT binding (F4): a fabricated, internally consistent tile for
+    #     an attacker-chosen accumulator must NOT verify. Before the binding
+    #     this passed at every z, because the cross-term is derived from the
+    #     forger's own factors. This is the sharpest test in the file: it is the
+    #     one that fails if the input binding is ever dropped again.
+    tgt = (acc + 7) % q
+    fab = {"a": [0, 0, 0, tgt], "b": [0, 0, 0, 1], "trace": [0, 0, 0, 0, tgt]}
+    vfab, sfab = air.mask_sz(fab, random.Random(31337))
+    cfab = air.commit_sz(vfab, sfab)
+    fab_ok = all(
+        air.check_sz(vfab, z, air.open_sz(sfab, z, A, B, 555, i, j), cfab,
+                     acc=tgt, q=q, E=E, F=F, i=i, j=j,
+                     A_commit=A_commit, B_commit=B_commit, n=n) is False
+        for z in range(m))
 
     print("  (1) honest masked proof verifies at every z  : %s" % honest_ok)
     print("  (2a) the view carries no pad material        : %s"
@@ -1456,15 +1672,16 @@ def tv66_schwartz_zippel():
           % (trials, accept_rate, expected, caught_steps))
     print("  (4) substituted pad leaf rejected            : %s"
           % ("YES" if bound_ok else "NO — openings are unbound"))
+    print("  (5) fabricated tile for chosen acc rejected  : %s"
+          % ("YES" if fab_ok else "NO — witness is unbound (F4 regression)"))
 
-    # (5) is reported by the (2c) block above: brute force over q^(m-1) and the
-    # multi-query attack are both measured there and printed as RECOVERS. This
-    # test does not gate the pass on them, because the toy field is a
-    # documented limitation rather than a bug — what matters is that the cost
-    # is printed next to the claim instead of buried in prose.
+    # the (2c) residual surface is reported above and deliberately does NOT gate
+    # the pass: the toy field is a documented limitation rather than a bug. What
+    # matters is that the attack costs are printed next to the claim instead of
+    # buried in prose.
 
     return (honest_ok and not pad_in_view and not leaked and sound_ok
-            and bound_ok)
+            and bound_ok and fab_ok)
 
 
 if __name__ == "__main__":
