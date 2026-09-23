@@ -757,6 +757,20 @@ the live security budget is what the model predicts, and that a real buyer will
 pay real money. Those are measurements, and no amount of reading substitutes
 for them.
 
+**The priced-but-unaffordable review, stated honestly.** Demirel declined on
+2026-09-23 at $215/hour, with the fee required to be independent of future
+funding and of the findings. Both conditions are correct on their own terms
+and incompatible with this project's position: a fee that cannot also wait
+for funding cannot be paid before funding, and a review whose payment depends
+on its findings is not the independent review the paper was asking for. The
+consequence is recorded rather than softened: the external cryptographic sign-off
+the rubric demands is a real, quoted obstacle and not a task on a to-do list.
+Any plan that defers it "until after funding" is circular, and this paper no
+longer makes that argument. What remains available is what the protocol
+discipline below describes — measurement, retraction, and independent
+reimplementation by the same author class, which is evidence about the
+algebra's clarity and not a substitute for a name.
+
 **The protocol, written down so it is actually followed.** While the human
 reviewers are unreachable:
 1. Every quantitative claim in the paper must be traceable to either a primary
@@ -767,10 +781,16 @@ reviewers are unreachable:
    probe that passes is a regression guard; a probe that fails is a finding.
 3. When code and prose disagree, **the code is the answer and the prose is
    corrected**, never the reverse. TV-60 (the escape threshold), TV-62/63 (the
-   theta interval) and TV-65 (zero-knowledge) were all resolved this way. Where
-   the deviation is a deliberate limit rather than a bug — the greedy mergeset —
-   it is measured, quoted with the number, and labelled as F3b work rather than
-   fixed quietly. The TV-65 case is also the clearest example of why this discipline
+   theta interval) and TV-65 (zero-knowledge) were all resolved this way. The
+   greedy mergeset was the counter-example that proves the rule: it was
+   measured as a deliberate limit for most of the project's life, quoted with
+   the number (572 order entries outside a block's own past on a 51-block
+   DAG), and labelled as F3b work rather than fixed quietly. It was then
+   closed in Stage 1.1 by intersecting the mergeset with `past(B)`, and the
+   probe that had guarded the deviation was inverted so that a nonzero count
+   now fails loudly. That is the discipline's test: the deviation was not
+   quietly removed, it was measured, then fixed, and the measurement's
+   direction reversed in the same commit. The TV-65 case is also the clearest example of why this discipline
    costs something twice: the retraction was correct, and so is its supersession by
    TV-66 — the same willingness to run the probe kept both the finding and the fix honest.
 4. A claim that turns out to be unsupported is **retracted in place**, with the
