@@ -43,8 +43,6 @@ HONEST LIMITS:
   this prototype PROPOSES it - it must be added to spec A.5.5.
 """
 
-import random
-import math
 
 
 # ============================================================
@@ -58,10 +56,18 @@ def censor_net(fee, bond, b_out, n_events, refill=True, slash_mode="capped"):
     cur = bond
     total_slash = 0.0
     for _ in range(n_events):
+        # ROUND-4 FIX, 2026-09-24 (round-4 finding #23): the mode dispatch was
+        # a silent catch-all — any string other than exactly "capped" selected
+        # FULL economics, so a one-character typo ("CAPPED", "capped ", "fulll",
+        # "") flipped the model with no error. The two modes are now checked
+        # explicitly and anything else raises.
         if slash_mode == "capped":
             slash = min(cur, fee)
-        else:
+        elif slash_mode == "full":
             slash = min(cur, bond)  # full: the entire bond (until depleted)
+        else:
+            raise ValueError("unknown slash_mode %r (want 'capped' or 'full')"
+                             % slash_mode)
         total_slash += slash
         cur -= slash
         if refill:
@@ -83,8 +89,19 @@ def critical_fee_capped(b_out):
 
 
 def critical_margin_full(fee, b_out):
-    """The smallest margin (bond - fee) that stops censorship in FULL mode."""
-    lo, hi = 0.0, b_out + 1.0
+    """The smallest margin (bond - fee) that stops censorship in FULL mode.
+
+    ROUND-4 FIX, 2026-09-24 (round-4 finding #25): when B_out < fee the true
+    critical margin is NEGATIVE (no margin is needed — the censor already
+    loses money at margin 0), but the bisection range [0, B_out+1] could not
+    represent a negative value, so 0.0 was returned and the caller could not
+    tell "no margin needed" from "margin zero is exactly enough". The range
+    now starts below zero, and a negative result is reported as such.
+    """
+    # the range must reach below zero so a "no margin needed" answer is
+    # representable; a negative answer means censorship is unprofitable
+    # even with zero margin, i.e. no bond above the fee is required.
+    lo, hi = -fee, b_out + 1.0
     for _ in range(60):
         mid = (lo + hi) / 2
         net = censor_net(fee, fee + mid, b_out, 1, refill=True, slash_mode="full")
