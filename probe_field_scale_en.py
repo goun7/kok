@@ -162,14 +162,26 @@ def main():
         else:
             v = "infeasible"
         print("%-12s %-16s %-16s %-12s %-14s" % (
-            name, q if q < 10 ** 6 else "2^%d" % q.bit_length(),
-            ("%.3e" % bf) if bf < 10 ** 18 else "2^%d" % (bf.bit_length() - 1),
-            ("%.1e" % ap) if ap < 10 ** 18 else "2^%d" % (ap.bit_length() - 1),
+            name, q if q < 10 ** 6 else "2^%d" % (q.bit_length() - 1),
+            # ROUND-4 FIX, 2026-09-24 (round-4 finding #7): bit_length()-1
+            # UNDERSTATES every power-of-2 field by one exponent — for
+            # q = 2^k - 1, bit_length() is k, so -1 prints 2^(k-1) for a
+            # value just under 2^k. The correct display for a value v ~ 2^k
+            # is bit_length() when v is exactly 2^k, or bit_length()-1 rounded
+            # up; using bit_length() alone is the conservative (larger) bound
+            # and matches the prose's ~2^768.
+            ("%.3e" % bf) if bf < 10 ** 18 else "2^%d" % bf.bit_length(),
+            ("%.1e" % ap) if ap < 10 ** 18 else "2^%d" % ap.bit_length(),
             v))
     print()
     print("Reading the table honestly:")
     print("  - BRUTE FORCE is closed by field growth: it is q^(m-1), so a")
-    print("    256-bit field puts it at ~2^254.")
+    # ROUND-4 FIX, 2026-09-24 (round-4 finding #9): an earlier line said "a
+    # 256-bit field puts it at ~2^254", which this same file contradicted two
+    # screens later with q^(m-1) = (2^256)^3 ~ 2^768. No value of m makes
+    # q^(m-1) = 2^254 at q ~ 2^256; the figure was ~2^514 too small. The two
+    # statements now agree.
+    print("    256-bit field puts it at (2^256)^3 = ~2^768 at m=4.")
     print("  - AUTH-PATH INVERSION is NOT closed by field growth. Its cost is")
     print("    the leaf hash's preimage space, which is 8 bytes here = 2^64")
     print("    regardless of q. Making the field bigger does not help unless")
@@ -182,19 +194,29 @@ def main():
 
     print()
     print("-" * 76)
-    print("MEASURED, not asserted: the toy field's actual walking time")
+    print("MEASURED, not asserted: the toy field's actual hashing time")
     print("-" * 76)
+    # ROUND-4 FIX, 2026-09-24 (round-4 findings #17/#18): an earlier version
+    # timed `for _ in range(912673): n += 1` — pure integer increments, ZERO
+    # sha256 calls — and printed "leaf hashes walked" at that increment rate.
+    # The measured rate was therefore not a hashing rate at all, and the
+    # derived "years at the measured rate" was computed from counting, not
+    # hashing. The loop now performs an actual leaf-hash computation per
+    # iteration, and the clamp max(1e-6, per_iter) that silently replaced the
+    # real ~7e-8 s/iter with a 1e-6 floor (shrinking the headline ~13x) is
+    # removed: the real rate is used, even when it is fast.
+    import hashlib
     t0 = time.time()
-    n = 0
-    for _ in range(912673):
-        n += 1
+    for i in range(912673):
+        _leaf = hashlib.sha256(("%d|%d" % (i, i % 97)).encode()).digest()
     t1 = time.time()
-    print("  912,673 leaf hashes walked in %.3fs" % (t1 - t0))
+    per_iter = (t1 - t0) / 912673
+    print("  912,673 leaf hashes computed in %.3fs (%.2e s/hash, measured)"
+          % (t1 - t0, per_iter))
     print("  at the toy field this is the whole pad space; at 2^256 the same")
     print("  loop would need q^(m-1) = (2^256)^3 ~ 2^768 iterations, i.e. %.1e"
-          % ((2 ** 768 / max(1e-6, (t1 - t0) / 912673))
-             / (365.25 * 86400)))
-    print("  years at the measured rate — the toy's '0.1 seconds' is a")
+          % ((2 ** 768 * per_iter) / (365.25 * 86400)))
+    print("  years at the measured rate — the toy's fast walk is a")
     print("  statement about q=97, not about the construction.")
     print()
     print("CONCLUSION (stated for the record, not for the score): the toy")
@@ -207,11 +229,18 @@ def main():
     print("THE DECISIVE EXPERIMENT: does the SAME construction run at a real q?")
     print("-" * 76)
     print("  If yes, 'toy field' is a parameter choice, not a structural limit.")
-    for label, q, ok in construction_scales():
+    results = list(construction_scales())
+    for label, q, ok in results:
         print("  %-14s honest proof verifies at every z : %s   pad space %s"
               % (label, ok,
                  ("%.2e" % (q ** 3)) if q ** 3 < 1e300
-                 else "2^%d" % ((q ** 3).bit_length() - 1)))
+                 else "2^%d" % ((q ** 3).bit_length())))
+    # ROUND-4 FIX, 2026-09-24 (round-4 finding #19): "RESULT: SOUND" was
+    # unfalsifiable — main() returned True unconditionally and the per-q
+    # verification result above was printed but never checked. A probe whose
+    # verdict cannot fail measures nothing, so the verdict now depends on
+    # every q verifying.
+    all_ok = all(ok for _, _, ok in results)
     print()
     print("  Reading: the construction is parameterized on q and the honest")
     print("  proof still verifies at 2^31. The toy limit is therefore NOT a")
@@ -220,7 +249,7 @@ def main():
     print("  scales, and what does NOT scale with q is the 8-byte leaf hash,")
     print("  which is why the recommendation is field AND hash, not field alone.")
 
-    return True
+    return all_ok
 
 
 if __name__ == "__main__":
