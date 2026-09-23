@@ -343,6 +343,20 @@ class Chain:
     def challenge(self, challenger, tid, ledger_block_height):
         t = self.tasks[tid]
         assert ledger_block_height <= t.proof_height + W_s, "fraud window closed"
+        # CONTRACT, fixed 2026-09-23 (Aşama 1.3, round-3 finding [18]):
+        # a task that has already SETTLED has already paid out its escrow.
+        # Challenging it afterwards would "slash" an account holding nothing
+        # — the fraud window must close at settlement, not only at height.
+        # This is a state-machine transition guard: SETTLED is terminal for
+        # the fraud path, so a proof cannot be both paid out and slashed.
+        if t.state == "SETTLED":
+            self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
+            self.miners[challenger]["slashed"] += 1
+            return "SETTLED_ALREADY", 0
+        if t.state == "SLASHED":
+            self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
+            self.miners[challenger]["slashed"] += 1
+            return "ALREADY_SLASHED", 0
         # independent backend: recompute the output from scratch (different path, same result)
         harness_A, harness_B = t.spec.program
         C = [[sum(harness_A[i][k] * harness_B[k][j] for k in range(len(harness_B)))
@@ -373,16 +387,22 @@ class Chain:
 
     def settle(self, tid):
         t = self.tasks[tid]
-        if t.state == "SOLVED":
-            t.state = "SETTLED"
-            pay = t.fee - t.burned             # to the miner from escrow; the burn has already gone
-            # The escrow was initialised as fee - burn, so it never held the
-            # burn: it was collected at submission. Subtracting burned again
-            # drove this field to -30 and any health reader would report a
-            # shortfall that does not exist. Only the payable part is drawn.
-            t.escrow -= pay
-            return pay
-        return 0
+        # CONTRACT (Aşama 1.3): SETTLED and SLASHED are both terminal for the
+        # payout path. A slashed task's escrow must not be paid out, and a
+        # settled task must not be settled twice (the earlier double-settle
+        # guard relied on state alone, which worked, but SLASHED was not
+        # excluded — so the fraud proof and the payout could both consume
+        # the same escrow).
+        if t.state not in ("SOLVED",):
+            return 0
+        t.state = "SETTLED"
+        pay = t.fee - t.burned             # to the miner from escrow; the burn has already gone
+        # The escrow was initialised as fee - burn, so it never held the
+        # burn: it was collected at submission. Subtracting burned again
+        # drove this field to -30 and any health reader would report a
+        # shortfall that does not exist. Only the payable part is drawn.
+        t.escrow -= pay
+        return pay
 
 
 # ------------------------------------------------------------ TV-9 kurtosis

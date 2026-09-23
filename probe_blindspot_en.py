@@ -117,13 +117,53 @@ def probe_late_challenge():
         print("  after  late challenge: escrow=%s burned=%s state=%s"
               % (after[0], after[1], task.state))
         print("  challenger registered: %s" % ("bob" in ch.miners))
-        if before == after and out[0] == "CHALLENGE_REJECTED":
+        if before == after and out[0] in ("CHALLENGE_REJECTED", "SETTLED_ALREADY"):
             print("  -> late challenge is REJECTED and the books do not move:")
             print("     the terminal state is guarded on the challenge path.")
-            print("     Before the fix this raised KeyError — the challenger")
-            print("     was never registered on the non-fraud path.")
+            print("     Aşama 1.3 (2026-09-23): the guard now has a named")
+            print("     outcome, SETTLED_ALREADY, and the fraud path closes at")
+            print("     settlement rather than only at block height. Before")
+            print("     the fix this raised KeyError — the challenger was")
+            print("     never registered on the non-fraud path.")
             return True
         print("  -> late challenge MOVED THE BOOKS on a settled task.")
+        return False
+    except Exception as e:
+        print("  could not construct the corner: %s: %s"
+              % (type(e).__name__, e))
+        return None
+
+
+def probe_slash_then_settle():
+    """Aşama 1.3 (2026-09-23), the reverse order of corner 2: a task whose
+    fraud was PROVEN must not then be paid out. Before the fix, settle()
+    only excluded the SETTLED state, so SLASHED was still payable — the
+    fraud proof and the payout could both consume the same escrow."""
+    ul = _load()
+    print("CORNER 2b: settle() a task whose fraud was already proven")
+    print("-" * 60)
+    try:
+        ch, t = _drive(ul)
+        task = ch.tasks[t.tid]
+        # make the stored result wrong so a challenge proves fraud
+        task.result = [[0]]
+        out_c = ch.challenge("bob", t.tid, ch.height())
+        if out_c[0] != "SLASHED":
+            print("  challenge did not prove fraud as expected: %s" % (out_c,))
+            return None
+        before = _task_books(task)
+        pay = ch.settle(t.tid)
+        after = _task_books(task)
+        print("  after fraud proven:    escrow=%s burned=%s state=%s"
+              % (before[0], before[1], task.state))
+        print("  settle() then paid    : %s" % pay)
+        print("  after settle attempt : escrow=%s burned=%s state=%s"
+              % (after[0], after[1], task.state))
+        if pay == 0 and before == after and task.state == "SLASHED":
+            print("  -> a slashed task pays out nothing. The escrow is not")
+            print("     consumed by both the fraud proof and the payout.")
+            return True
+        print("  -> a SLASHED task was paid out. Double-consumption of escrow.")
         return False
     except Exception as e:
         print("  could not construct the corner: %s: %s"
@@ -253,6 +293,8 @@ def main():
     print()
     r2 = probe_late_challenge()
     print()
+    r2b = probe_slash_then_settle()
+    print()
     r3 = probe_fraud_challenge_registration()
     print()
     probe_ghostdag_minimal_deviation()
@@ -266,6 +308,9 @@ def main():
     print("  late challenge       : %s"
           % ("GUARDED" if r2 is True else
              "BOOKS MOVED — FINDING" if r2 is False else "could not drive"))
+    print("  slash then settle    : %s"
+          % ("GUARDED" if r2b is True else
+             "PAID OUT — FINDING" if r2b is False else "could not drive"))
     print("  challenger register  : %s"
           % ("REGISTERED" if r3 is True else
              "NOT REGISTERED — FINDING" if r3 is False else "could not drive"))
