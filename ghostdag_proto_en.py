@@ -153,13 +153,22 @@ class GHOSTDAG:
         sp = max(scored, key=lambda x: (x[0], -int(x[1], 16)))[1]
         self.selected[bid] = sp
 
-        # step 2: mergeset = mergeset(sp) U (anticone(sp) ∩ mergeset)
-        # greedy: start from mergeset(sp), add anticone
+        # step 2: mergeset = mergeset(sp) U (anticone(sp) ∩ past(B))
+        # CONTRACT, fixed 2026-09-23 (Aşama 1.1, TV-59):
+        # The definition is mergeset = m(sp) U (anticone(sp) INTERSECT past(B)).
+        # The intersection with past(B) is the part that was previously DROPPED:
+        # an earlier version added ALL of anticone(sp) up to the limit, which
+        # admits blocks B does not know about — a block that references only
+        # one fork can absorb a sibling from the other fork. TV-59 measured
+        # the consequence: 572-578 order entries outside a block's own past
+        # on a 51-block DAG, so two blocks' orderings can disagree on work
+        # neither references. The intersection is now computed, so the
+        # mergeset only contains work B actually knows.
         ms = set(self.mergesets.get(sp, set()))
         ac_sp = self._anticone(sp)
-        # mergeset = m(sp) U (ac(sp) ∩ m(B)) -- since ∩ m(B) is unknown, use the
-        # greedy approach: add ac(sp) entries not in the mergeset, up to the limit
-        for cand in sorted(ac_sp, key=lambda x: int(x, 16)):
+        past_b = self._past(bid)
+        ac_in_past = ac_sp & past_b
+        for cand in sorted(ac_in_past, key=lambda x: int(x, 16)):
             if len(ms) >= MERGESET_SIZE_LIMIT:
                 break
             ms.add(cand)
@@ -414,15 +423,15 @@ def main():
     print("    - _future() is O(n^2); tracked incrementally in production.")
     print("    - THE MERGESET IS A GREEDY APPROXIMATION, AND IT OVER-INCLUDES. The")
     print("      definition is mergeset(sp) U (anticone(sp) INTERSECT past(B)); the")
-    print("      intersection with past(B) is dropped because past(B) is not known")
-    print("      at compute time. Consequence, measured by probe TV-56/TV-59: a")
-    print("      block that references only one fork can still absorb a sibling it")
-    print("      does not know about, so the ordering can sequence work outside")
-    print("      past(B). On a 51-block DAG this put 572 order entries outside the")
-    print("      block's own past. The orderings of two blocks are therefore NOT")
-    print("      guaranteed to agree on work neither references. This is the single")
-    print("      largest gap between this file and ePrint 2018/104; F3b must")
-    print("      compute the true mergeset before the ordering is used for anything.")
+    print("    - CLOSED 2026-09-23 (Aşama 1.1): the mergeset now intersects")
+    print("      anticone(sp) with past(B), so it only contains work B knows.")
+    print("      Before the fix, on a 51-block DAG this put 572 order entries")
+    print("      outside a block's own past, so two blocks' orderings could")
+    print("      disagree on work neither references — the largest gap between")
+    print("      this file and ePrint 2018/104. TV-59 now requires 0. What")
+    print("      remains a toy limit: the mergeset CAP is still admitted by")
+    print("      ascending hash when it binds (not by a GHOSTDAG criterion),")
+    print("      and the ordering itself is still not a total order.")
     print()
     print("  RESULT:", "ALL PASSED" if allpass else "SOME FAILED")
     return 0 if allpass else 1

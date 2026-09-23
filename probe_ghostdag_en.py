@@ -39,12 +39,14 @@ def _exact_mergeset(g, bid):
 
 
 def tv56_mergeset_deviation_measured():
-    """The greedy mergeset can include blocks outside past(B).
+    """The mergeset must only include work B knows: mergeset(sp) U (anticone(sp)
+    ∩ past(B)).
 
-    The definition is mergeset(sp) U (anticone(sp) ∩ past(B)). The prototype,
-    not knowing past(B) at compute time, adds anticone(sp) entries without the
-    intersection. Build a fork where that makes a measurable difference, then
-    report how far off the greedy answer is from the reference.
+    Aşama 1.1, 2026-09-23: this probe used to ACCEPT the deviation (X was
+    over-included by the greedy approximation). The intersection with past(B)
+    is now computed, so the probe has inverted: it verifies the FIX holds,
+    not that the bug persists. A block that references A only must NOT absorb
+    X, its sibling fork.
     """
     g = GHOSTDAG(k=GHOSTDAG_K)
     gen = Block("A", [], 0)
@@ -59,12 +61,11 @@ def tv56_mergeset_deviation_measured():
     greedy_ms = g.mergesets[b.bid]
     exact_ms = _exact_mergeset(g, b.bid)
     extra = greedy_ms - exact_ms
-    # the deviation is expected (the approximation is documented), so ACCEPT if
-    # X is the only over-included block and it is NOT in past(B)
+    # FIXED: X is a sibling B does not reference and must NOT be absorbed
     x_not_in_past = x.bid not in g._past(b.bid)
-    ok = (x_not_in_past and extra == {x.bid}
-          and x.bid in greedy_ms)
-    return report("TV-56 greedy mergeset deviation measured", ok,
+    ok = (x_not_in_past and x.bid not in greedy_ms
+          and extra == set())
+    return report("TV-56 mergeset stays within past(B)", ok,
                   "greedy=%d exact=%d over-included={%d}" %
                   (len(greedy_ms), len(exact_ms), len(extra)))
 
@@ -129,13 +130,13 @@ def tv58_blue_score_does_not_decrease_along_selected_chain():
 def tv59_order_lives_within_past_plus_self():
     """Every block in order(B) must be in past(B) or be B itself.
 
-    The ordering is meant to be a topological linearisation of the block's past.
-    Because the greedy mergeset pulls in blocks B does not reference, the order
-    sequences work B does not know about. This probe measures the deviation
-    rather than assuming it is harmless, and the count it finds is quoted in the
-    file's own TOY LIMITS output. ACCEPT here means the deviation was measured
-    and is the documented one, not that it is correct GHOSTDAG — the true
-    mergeset is F3b work.
+    Aşama 1.1, 2026-09-23: the mergeset now intersects with past(B), so the
+    deviation this probe measured (572-578 entries outside past on a 51-block
+    DAG) is CLOSED. The probe's assertion has therefore inverted: it used to
+    ACCEPT a nonzero count as "measured and documented", and it now FAILS on
+    any nonzero count, because the gap it guarded is gone. Kept rather than
+    deleted so that a future regression reintroducing the greedy mergeset
+    fails loudly here.
     """
     import random
     g = GHOSTDAG(k=GHOSTDAG_K)
@@ -155,13 +156,11 @@ def tv59_order_lives_within_past_plus_self():
         for x in g.order(bid):
             if x not in legit:
                 outside.append((bid, x))
-    # the deviation is expected and now documented in TOY LIMITS; the probe's job
-    # is to keep the number honest and to fail loudly if it ever drops to zero
-    # without the mergeset being fixed (which would mean the limit was quietly
-    # removed rather than closed)
-    ok = len(outside) > 0
-    return report("TV-59 order deviation measured, not hidden", ok,
-                  "outside=%d (documented as the greedy-mergeset gap)" % len(outside))
+    # CLOSED: zero is now the requirement. Any nonzero count is a regression
+    # back to the greedy mergeset.
+    ok = len(outside) == 0
+    return report("TV-59 order stays within past(B)", ok,
+                  "outside=%d (0 required; was 572 before Aşama 1.1)" % len(outside))
 
 
 if __name__ == "__main__":
