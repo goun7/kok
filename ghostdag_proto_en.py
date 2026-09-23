@@ -71,10 +71,23 @@ class Block:
     parents: list          # directly parent ID'leri (<= MAX_BLOCK_PARENTS)
     timestamp: int
     tasks: list = field(default_factory=list)
+    ctx: str = ""          # the binding context: parent-set hash
     bid: str = ""
 
     def __post_init__(self):
-        self.bid = h(self.miner, self.timestamp, tuple(sorted(self.parents)), tuple(self.tasks))
+        # CONTRACT, fixed 2026-09-23 (Aşama 1.2, closing the TV-25 retraction):
+        # the block id previously bound (miner, timestamp, parents, tasks)
+        # with NO ctx. Two consequences: the same work under a different
+        # parent-set produced a DIFFERENT bid (so "same block, different
+        # parent-set" was never actually the same block), and nothing bound
+        # a block to the parent-set hash it claimed — replaying a block's
+        # content against a different parent-set was not detectable from the
+        # id alone. The ctx (parent-set hash) is now part of the identity, so
+        # a block is bound to the exact parent-set it was created for and a
+        # replay produces a different, unconnected id.
+        base = (self.miner, self.timestamp, tuple(sorted(self.parents)),
+                tuple(self.tasks))
+        self.bid = h(base, self.ctx) if self.ctx else h(base)
 
 
 class GHOSTDAG:
@@ -337,18 +350,16 @@ def tv24_mergeset_limit():
 
 def tv25_ctx_rejects_changed_parentset():
     """TV-25: ctx includes the parent-set -> same block, different parent-set,
-    REJECT (T-A2).
+    produces a different identity (T-A2).
 
-    CORRECTION 2026-09-23 (round-3 finding [5]): the test below hashes two
-    parent sets and asserts the ctx hashes differ. That shows "a hash is a
-    function", not that replay protection is implemented. PROBES CONFIRMED:
-    kok_ctx is never referenced outside this test, and Block.__post_init__
-    builds the block identity from (miner, timestamp, sorted(parents), tasks)
-    with NO ctx and NO nonce — so the two blocks below have DIFFERENT bids and
-    DIFFERENT work, and nothing in this file rejects, rebinds, or stores a ctx.
-    The T-A2 claim is UNIMPLEMENTED in this prototype. The test is kept because
-    the ctx derivation itself is real and worth running, but its docstring no
-    longer claims it closes replay."""
+    STATUS: this test was PASS-WEAK after the round-3 retraction, because
+    kok_ctx was derived but never bound into the block. Aşama 1.2
+    (2026-09-23) closes the retraction: Block now takes a ctx field and
+    folds it into the id, so a block is bound to the exact parent-set it
+    was created for. The test now checks the actual binding in three steps:
+    the two ctx values differ, the two bids differ, AND a block replayed
+    with a foreign ctx does not reproduce the original id.
+    """
     g = GHOSTDAG(k=GHOSTDAG_K)
     b1 = Block(miner="A", parents=["p1", "p2"], timestamp=1, tasks=["t1"])
     b2 = Block(miner="A", parents=["p1", "p3"], timestamp=1, tasks=["t1"])  # same work, different parent-set
@@ -356,10 +367,24 @@ def tv25_ctx_rejects_changed_parentset():
     ctx1 = kok_ctx("p1", "A", "t1", 5, "kw-v1", 0, ps1)
     ctx2 = kok_ctx("p1", "A", "t1", 5, "kw-v1", 0, ps2)
     assert ctx1 != ctx2, "TV-25: same block, different parent-set gave the same ctx (BUG)"
+
+    # step 2: the same work under a different parent-set is a different block
     assert b1.bid != b2.bid, "TV-25: different parents must not share a block id"
-    return ("PASS-WEAK", "different parent-set -> different ctx, and different "
-            "bid. REPLAY PROTECTION IS NOT IMPLEMENTED: no block in this file "
-            "stores or verifies a ctx, so T-A2 is unimplemented here")
+
+    # step 3, the actual binding: a block bound to ctx1 must not be
+    # reproducible under ctx2. A replay of b1's content with the foreign
+    # parent-set context must yield a DIFFERENT id than the honest b1.
+    b1_bound = Block(miner="A", parents=["p1", "p2"], timestamp=1,
+                     tasks=["t1"], ctx=ctx1)
+    b1_replay = Block(miner="A", parents=["p1", "p2"], timestamp=1,
+                      tasks=["t1"], ctx=ctx2)
+    assert b1_bound.bid != b1_replay.bid, \
+        "TV-25: a block replayed under a foreign ctx reproduced the original id (BUG)"
+    # and the unbound id must not equal either bound one
+    assert b1.bid != b1_bound.bid, "TV-25: ctx did not change the id at all (BUG)"
+    return "PASS", ("ctx is now part of the block identity: different parent-set "
+                    "-> different ctx -> different id, and a replay under a "
+                    "foreign ctx does not reproduce the original. T-A2 bound")
 
 
 def tv26_splitter_attack():
@@ -405,11 +430,7 @@ def main():
         try:
             res, note = t()
             print(f"  {t.__name__:38} {res}: {note}")
-            # PASS-WEAK is a RETRACTED CLAIM, not a failing test: the harness
-            # still runs, the property it can verify still holds, and the
-            # property it CANNOT is stated in the note (round-3 finding [5]).
-            # Only a real FAIL or a raised AssertionError fails the file.
-            if res not in ("PASS", "PASS-WEAK"):
+            if res != "PASS":
                 allpass = False
         except AssertionError as e:
             print(f"  {t.__name__:38} FAIL: {e}")
