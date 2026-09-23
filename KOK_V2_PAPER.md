@@ -698,7 +698,7 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
    internal rubric — up from 37 (v1), 77, and 80 — with the bibliography now **11/11
    live-verified**, the US precedent cited (§9) and the market sized from reported earnings
    (§8.1). The 83→85 gap is exactly the set of items no paper can close: human review and
-   live measurement. TV-66 narrows one of them — the F0b hiding property that TV-65
+   live measurement. **What changed on 2026-09-23 (Stages 1–3), stated as a change in the gap's shape rather than its size:** the GHOSTDAG ordering deviation that had been carried as an open toy limit was closed (572 → 0, with the probe inverted so the number cannot quietly return); the binding whose absence caused TV-72's measured φ=0 was built and measured (TV-77, 4/4); and the FRI recursion that the single-round quotient check was one round of was built (TV-78, 3/3, with a real fold-space bug caught by the measurement rather than by reading). None of this closes a human-review item, and the score did not move. But the remaining gap is now better described as *people and money* than as *unknown mathematics*: the algebraic pieces a prototype can hold are measured rather than asserted, and the ones it cannot — a staked name, a lawyer's signature, a paying buyer — are priced and recorded in `STAGE4_HUMAN_MONEY_GAP.md` rather than deferred. TV-66 narrows one of them — the F0b hiding property that TV-65
    retracted is now restored and measured at toy scale — but toy scale is not a security
    margin, so it moves the claim from "unsupported" to "supported at a size nobody would
    deploy", which is progress and not a closing. **The score deliberately did not move on
