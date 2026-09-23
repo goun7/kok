@@ -1198,7 +1198,10 @@ F0b (real AIR)         ─┘
 ```
 
 - **F0 and F0b are both unblocked today.** Neither waits on a cryptographer, a lawyer or an
-  investor. F0 is a sales exercise (10 interviews, one letter of intent); F0b is an engineering
+  investor. F0 is a sales exercise (10 interviews, one letter of intent — the *goal*, and as of
+  2026-09-24 the honest log status is **0 interviews conducted, 0 letters signed**, because the
+  tool was counting its own worked examples as outreach; round-4 corrected the counting and the
+  status is recorded as NOT STARTED, not IN PROGRESS); F0b is an engineering
   one (one real AIR for one MatMul task). They can run in parallel with the Demirel review.
 - **F3a cannot start without F0** — an economy testnet with no demand measures nothing, which is
   the precise error Pearl's years of running made.
