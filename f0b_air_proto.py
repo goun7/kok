@@ -1068,20 +1068,31 @@ class SzZkTileAIR(TileAIR):
     receives the masked view plus two Merkle ROOTS; it never sees the leaves
     except the one it challenges.
 
-    THE HONEST LIMIT, measured rather than assumed (2026-09-23, second
-    verification round): the transcript hides the pad from a bounded attacker,
-    but the toy field makes the residual space SMALL ENOUGH TO BRUTE FORCE.
-    With q=97 and m=4, once pm[z] is opened the remaining m-1 pad entries have
-    q^(m-1) = 912,673 possibilities, and a script walks all of them in about
-    0.12 seconds, recovering the full trace. Opening at every z (a verifier
-    that may ask more than once) also recovers it. So the claim this class
-    supports is: the pad is not TRANSMITTED, and the transcript is not trivially
-    invertible the way the earlier version was — the leak requires a search,
-    not a subtraction. At production scale (a 256-bit field, m large) the same
-    search is 2^254-ish and the claim becomes a real one. At q=97 it is a
-    statement about the size of the search space, not a security margin. The
-    probe measures and prints this rather than leaving it in prose, because a
-    caveat in a comment is not a measurement.
+    THE HONEST LIMIT, measured rather than assumed (2026-09-23, second and
+    third verification rounds): at q=97 this construction DOES NOT HIDE. Three
+    attacks recover the full witness, and the probe measures all three:
+      - brute force over q^(m-1) = 912,673 pads: ~0.2 seconds.
+      - AUTH-PATH SIBLING INVERSION, the cheaper one and the one that does NOT
+        go away when the field grows. The Merkle path hands the verifier raw
+        sibling leaf hashes; the leaf domain is {0..q-1}, so each is invertible
+        in q hash trials with no search. At z=1 that recovered pm[0] directly,
+        and Cm pinned the rest: ~291 trials, roughly 3000x cheaper than the
+        brute force. Growing the field does not close this — HASH PREIMAGE
+        RESISTANCE closes it. Real STARKs are safe because leaves are codeword
+        symbols under a one-way hash; the toy uses a small-domain hash and is
+        therefore invertible by enumeration, regardless of field size.
+      - UNIQUENESS: the set of pad vectors consistent with both committed roots
+        plus the opened leaf has size exactly 1, and it is the true pad. The
+        transcript is an EXACT DESCRIPTION of the witness at this scale, not a
+        one-in-912673 lucky guess. Hiding here is ~log2(97^2) = 13 bits before
+        the auth path, and 0 after it.
+    So the claim this class supports is exactly: the pad is not TRANSMITTED, and
+    the leak costs an attack rather than a subtraction. That is a real
+    structural difference from the earlier version (which handed the pad over),
+    and it is not a hiding proof at any scale. The property becomes a claim only
+    under a large field AND a properly one-way leaf hash. The probe measures and
+    prints all three rather than leaving them in prose, because a caveat in a
+    comment is not a measurement.
     """
 
     def mask_sz(self, proof, prng):
@@ -1330,6 +1341,42 @@ def tv66_schwartz_zippel():
     bf_cost = _time.time() - _t0
     bf_space = q ** (m - 1)
 
+    # (iii) AUTH-PATH SIBLING INVERSION — the cheaper attack, and the one that
+    #       does NOT close when the field grows. The Merkle path hands the
+    #       verifier raw sibling leaf hashes; the leaf domain is {0..q-1}, so
+    #       each hash is invertible by at most q trials with no search. Growing
+    #       the field does not help — HASH PREIMAGE RESISTANCE is what closes
+    #       this, and the toy hash has a tiny preimage space.
+    import hashlib as _hl
+    ap_trials = 0
+    ap_leaves = []
+    for side, sib in o0["pm_path"]:
+        if side == "D" or sib is None:
+            continue
+        for v in range(q):
+            ap_trials += 1
+            if _hl.sha256(str(v).encode()).digest() == sib:
+                ap_leaves.append(v)
+                break
+
+    # (iv) UNIQUENESS — the strongest form of the honest admission. Count the
+    #      pad vectors consistent with both committed roots, Cm, and the one
+    #      opened leaf. If the count is 1, the transcript is an EXACT
+    #      DESCRIPTION of the witness at this scale, not a lucky guess, and
+    #      "hiding" is ~0 bits rather than a small search probability.
+    uniq_count = 0
+    uniq_pad = None
+    _last = _others[-1]
+    for combo in itertools.product(range(q), repeat=len(_others) - 1):
+        guess = [0] * m
+        guess[z0] = o0["pm_z"]
+        for _idx, _v in zip(_others[:-1], combo):
+            guess[_idx] = _v
+        guess[_last] = (secrets["Cm"] - sum(guess) % q) % q
+        if _merkle_root(guess) == commit["pm"]:
+            uniq_count += 1
+            uniq_pad = list(guess)
+
     # (ii) multi-query. Answering m openings — one per pad entry — reveals the
     #      entire pad and therefore the entire trace. This is a PROTOCOL
     #      requirement, not an algebraic defect: one challenge point per
@@ -1384,10 +1431,26 @@ def tv66_schwartz_zippel():
           % (bf_space,
              "RECOVERS the trace" if bf_recovered is not None else "safe",
              bf_cost))
+    print("       auth-path sibling inversion          : %s (%d hash trials,"
+          " ~%.0fx cheaper than brute force)" %
+          ("RECOVERS pad leaves" if ap_leaves else "nothing",
+           ap_trials, bf_space / max(1, ap_trials)))
+    print("       uniqueness of the consistent pad set : %d vector(s)"
+          " <- 1 means the transcript is an exact description" % uniq_count)
+    if uniq_pad:
+        _run, _chk = 0, []
+        for _t in range(m + 1):
+            _chk.append((view["trace"][_t] - _run) % q)
+            if _t < m:
+                _run = (_run + uniq_pad[_t]) % q
+        print("       pad recovered uniquely               : %s"
+              % ("MATCHES the honest trace" if _chk == honest["trace"]
+                 else "no match"))
     print("       multi-query (open at every z)         : %s"
           % ("RECOVERS the trace" if mq_leaked else "safe"))
-    print("       -> hiding is information-theoretic only in a LARGE field, and")
-    print("          needs one challenge point per commitment, fresh seed per proof")
+    print("       -> hiding is information-theoretic only in a LARGE field with a")
+    print("          properly one-way leaf hash, needs one challenge point per")
+    print("          commitment, and a fresh masking seed per proof")
     print("  (3) forged acceptance over %d random z        : %.4f "
           "(expected %.4f, caught at z=%s)"
           % (trials, accept_rate, expected, caught_steps))
