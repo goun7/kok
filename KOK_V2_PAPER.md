@@ -694,7 +694,7 @@ There is no dishonest 100/100 claim; this document acknowledges the following:
 6. **The paper's ceiling is ~85/100.** The remaining ~15 points **are proofs**: the criteria of
    F3–F6, the live security budget, real paying task demand, independent audits. **A perfect
    paper is not equal to a running chain** — this is written at the top of the document so
-   that the perfectionism is honest. **Current standing (2026-09-23): ≈83/100** by the
+   that the perfectionism is honest. **Current standing (2026-09-23): ≈83.65/100** by the
    internal rubric — up from 37 (v1), 77, and 80 — with the bibliography now **11/11
    live-verified**, the US precedent cited (§9) and the market sized from reported earnings
    (§8.1). The 83→85 gap is exactly the set of items no paper can close: human review and
