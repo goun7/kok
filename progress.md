@@ -2672,3 +2672,64 @@ diyen yeri duzelttim: TV-71 parametre secti, TV-76 insa etti.
 ### Round-3'un bug'larinin TV-58'i ortaya cikardigi yer
 ghostdag blue/red fix'i ikinci bir bug ortaya cikardi (blue_score
 mergeset-local, recursive olmali). Bu da TV-66 paterni.
+
+## Oturum 9 — Aşama 1-4 planlandı ve gerçekleştirildi (2026-09-23)
+
+Kullanici: "aşama 1, 2, 3, 4 bizim yapabileceğimiz aşamaların hepsi
+planlanıp gerçekleştirilmeli."
+
+### AŞAMA 1 — güvenlik (kod ile kapatıldı)
+- 1.1 mergeset sapması: mergeset artık `anticone(sp) ∩ past(B)` ile
+  kesişiyor. TV-59: **572 → 0** ihlal. TV-56/TV-59 probeları tersine
+  çevrildi (sapma beklenen değil, hata oldu; sıfır başarı, sıfırdan
+  farklı başarısızlık).
+- 1.2 replay: ctx artık blok kimliğinin parçası. TV-25 geri çekmesi
+  KAPANDI — PASS-WEAK → PASS, "T-A2 bound". Üç adımlı ölçüm: iki ctx
+  farklı, iki bid farklı, yabancı ctx ile replay orijinal id'yi
+  üremiyor.
+- 1.3 settle-then-slash: her iki sıra GUARDED. challenge() SETTLED ve
+  SLASHED durumlarını reddediyor (SETTLED_ALREADY / ALREADY_SLASHED);
+  settle() yalnız SOLVED'dan geçiyor. Yeni CORNER 2b: slash'lanmış
+  task ödeme yapmıyor (pay=0).
+- 1.4 VRF: pk artık sk'nin digest'i (yayınlanan isim değil). TV-56
+  ACCEPT. **Dürüst limit dosyada yazılı:** hash-tabanlı toy verify()
+  sk olmadan HMAC'i doğrulayamaz, gerçek çözüm ECVRF; probun ölçtüğü
+  taraf prover tarafı (yabancı pk orijinal proof'u üremiyor, eski
+  raw-name form reddediliyor).
+
+### AŞAMA 2 — E-gap sertifikasyonu (TV-77)
+TV-72'nin ölçtüğü φ=0'ın nedeni: matrislerin birinin işi olduğu
+sertifikalanamıyordu. Round-3 [21] aynı boşluğu prototipte buldu:
+validate_block A,B'yi ÇAĞIRANDAN alıyordu. `egap_cert_en.py` bağlamayı
+inşa etti, **4/4 ölçüldü**: yabancı matrisler reddediliyor, kendi
+matrisleri geçiyor, task'ler arası replay reddediliyor, commitment
+içeriğe bağlı. **Ne kanıtlamadığı dosyada yazılı:** φ>0 bir prototip
+tarafından ölçülemez, F0/F3a işi; TV-72'nin negatif sonucu bu bağlama
+ile cevaplanıyor, çürütülmüyor.
+
+### AŞAMA 3 — FRI recursion (TV-78)
+`f0b_fri_en.py`: tek-tur quotient check'in özyinelemeli hali.
+**Ölçüm sırasında GERÇEK hata yakalandı:** ilk fold x-uzayındaydı,
+burada çift kısım kendi derecesini koruyor (x²+3x+7 → x²+7+3α, hala
+derece 2). Özyineleme dereceleri azalan raporlarken verify_round
+17 uyuşmazlık buldu. Dereceyi yarıya indiren kompozisyon u=x²
+uzayında; hem fold hem verifier oraya taşındı. Derece interpolasyonu
+da kendi round-trip'ini bozuyordu, artık assert ediyor. **3/3,
+dereceler 3→1→0.**
+
+### AŞAMA 4 — insan/para (kayıt altına alındı, yapılmadı)
+`STAGE4_HUMAN_MONEY_GAP.md`: Demirel $215/saat + funding'den bağımsız
+ödeme → dairesel, kapatıldı. Makale artık "ertelemek" yerine fiyatı
+ve koşulları söylüyor. Legal: 4/4 atıf doğrulandı ama TAVSİYE yok,
+"yapılmadı" kaydedildi. Canlı ağ (F3a/F3b): başlanmadı, yasak.
+
+### Skor
+83.65'de TUTULDU. Aşama 1-3 kod ve ölçümdür, adı veya parası
+riskte olan bir taraf tarafından yapılmadı — puan
+artırılmayacak (kullanıcı kararı). TV-66/TV-76 için de aynı.
+
+### Commitler
+e80095d (1.1), d035c3e (1.2), 601fdfd (1.3), 41ffe0c (1.4),
+f28d341 (audit clean), 466b483 (Stage 2), 377a419 (Stage 3),
+43db54b (Stage 3 u=x² fix), a7548de (Stage 4), 21e7e40 (README).
+Tam suite 13/13 rc=0, audit CLEAN.
