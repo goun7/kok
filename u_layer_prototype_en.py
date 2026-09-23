@@ -316,7 +316,12 @@ class Chain:
             self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
             t.state = "SLASHED"
             return "SLASHED", FRAUD_REWARD
-        # a malicious challenge
+        # a malicious challenge. The challenger is registered here, not only
+        # on the fraud-proven path above: an earlier version registered the
+        # challenger with setdefault at line 316 and then read it here, so a
+        # legitimate challenge that did NOT prove fraud raised KeyError
+        # instead of being counted. The registration must precede both paths.
+        self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
         self.miners[challenger]["slashed"] += 1
         return "CHALLENGE_REJECTED", 0
 
