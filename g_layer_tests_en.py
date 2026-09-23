@@ -81,15 +81,23 @@ class KWKernel:
             if not (isinstance(tile, (tuple, list)) and len(tile) == 3):
                 return False
             i, j, val = tile
-        m = self.n // self.r
+        # ROUND-4 FIX, 2026-09-23 (the [11]-[14] g_layer cluster): verify()
+        # used the KERNEL's constant self.n, but prove() derives n from the
+        # INPUT matrix (n = len(A)). On a matrix of any other size verify()
+        # recomputed a tile over the wrong coordinates and either accepted a
+        # mismatched certificate or raised IndexError. MEASURED before the
+        # fix: a 6x6 proof with m=3 made verify() index A at row 8 and raise
+        # IndexError. The size now comes from the input, as prove() does.
+        n = len(A)
+        m = n // self.r
         if not (0 <= i < m and 0 <= j < m):
             return False
         # recompute the tile the way prove() does: the full stride sum over the
         # noisy factors, then the hash-under-target test
-        E = [[(H("E", ctx, a, b) % self.q) for b in range(self.n)]
-             for a in range(self.n)]
-        F = [[(H("F", ctx, a, b) % self.q) for b in range(self.n)]
-             for a in range(self.n)]
+        E = [[(H("E", ctx, a, b) % self.q) for b in range(n)]
+             for a in range(n)]
+        F = [[(H("F", ctx, a, b) % self.q) for b in range(n)]
+             for a in range(n)]
         acc = 0
         for l in range(m):
             acc = (acc +
