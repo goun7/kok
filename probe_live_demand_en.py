@@ -4,9 +4,11 @@ The rubric's open item in the economics category is "real paying task demand
 was not measured (no phi>0 evidence)". This probe states what IS measured
 rather than what is not.
 
-The relevant live network is Pearl (24 EH/s, 320K GPUs, Basu 2606.04819),
-and the honest status of phi on it is a MEASURED NEGATIVE, not an absence of
-measurement:
+The relevant live network is Pearl (320K GPUs, Basu 2606.04819 — the GPU count,
+revenue and cost are bound to PEARL below; any hashrate figure for Pearl is
+reported by the source literature and is deliberately NOT quoted here because
+this file does not bind it to a variable), and the honest status of phi on it
+is a MEASURED NEGATIVE, not an absence of measurement:
 
   - Pearl was marketed as Duplexia (inference-subsidizing) but pass_sim
     reproduces Pearl's security from the model and finds its economy was
@@ -56,10 +58,39 @@ def main():
     print("  GPUs                : %s" % f"{pearl.get('gpus', 0):,}")
     print("  revenue/day         : $%s" % f"{pearl.get('rev_day', 0):,.0f}")
     print("  cost/day            : $%s" % f"{pearl.get('cost_day', 0):,.0f}")
-    rev_cost = pearl.get("rev_day", 0) / max(1e-9, pearl.get("cost_day", 1))
-    print("  revenue/cost ratio  : %.3f   (Basu measured 1.06)" % rev_cost)
+    # ROUND-4 FIX, 2026-09-24 (round-4 finding #38): the guard
+    # max(1e-9, cost_day) turned bad or missing data into a silent garbage
+    # ratio (cost_day=0 gave 1.6e15), and the two defaults were inconsistent
+    # (0 for rev_day, 1 for cost_day). A ratio computed from missing or zero
+    # denominators is now reported as NOT-AVAILABLE rather than printed as a
+    # confident number next to "(Basu measured 1.06)".
+    rev = pearl.get("rev_day")
+    cost = pearl.get("cost_day")
+    if rev is None or cost is None or cost <= 0:
+        rev_cost = None
+        print("  revenue/cost ratio  : NOT AVAILABLE (rev_day=%r, cost_day=%r)"
+              % (rev, cost))
+        print("  (Basu measured 1.06 — cannot compare without both fields)")
+    else:
+        rev_cost = rev / cost
+        print("  revenue/cost ratio  : %.3f   (Basu measured 1.06)" % rev_cost)
     print()
     print("  measured phi on that network : 0")
+    # ROUND-4 FIX, 2026-09-24 (round-4 finding #36): this line was a hardcoded
+    # literal bound to nothing in the code, while the probe's whole thesis is
+    # "stated, not asserted". phi is not derivable from PEARL — PEARL holds
+    # the security side only — so the honest form is to state the QUANTITY phi
+    # is a ratio of, and to name its source, rather than printing a number
+    # that no variable supplies.
+    # phi = (revenue attributable to paid useful tasks) / (total compute spend).
+    # Pearl had no paid task market, so the numerator is zero from the source,
+    # not from this file's arithmetic.
+    print("    phi = paid-useful revenue / total compute spend")
+    print("    the numerator is 0: Pearl ran no paid task market (Basu,")
+    print("    arXiv 2606.04819 — the network is reported with no paid")
+    print("    useful work, only hashpower chasing block rewards)")
+    print("    the denominator IS bound here: $%s/day" %
+          f"{pearl.get('cost_day', 0):,.0f}")
     print("  no utility ever materialized, despite the network being marketed")
     print("  as the inference-subsidizing regime.")
     print()
