@@ -2520,3 +2520,46 @@ kör noktamiz f0b'di. Kendim u_layer'a girdim ve gercek bug buldum.
 SKOR: 83.05 -> 83.65. Hukuk +12 (63->75). Kalan ~16.35'in ~13'u hala
 dis dunya (2 insan kriptograf, canli F3a agi, avukat imzasi) ama artık
 "yapilamaz" demiyorum — "yapilmadi" diyorum.
+
+## Duzeltme: TV-74 "masked layer anlasmiyor" YANLIS cikti
+
+Bagimsiz reimplementasyon ajaninin SON raporu geldi ve benim onceki
+sonucumun yanlis oldugunu gosterdi:
+
+- /tmp/crosscheck.py: 25/25 MATCH, 0 divergence.
+- Benim yazdigim crosscheck script'i ajanin SELF-TEST'indeki "UNEXPECTED"
+  satirlarini okumustu. O satirlar ajanin kendi implementasyonundaki
+  3 hata icin kendi kendine yazdigi test ciktilariymis — ajan bunlari
+  duzeltmis (polydiv tam bolmuyordu T'yi m+1 nokta uzerine interpolasyon
+  yapinca duzeldi; Merkle sibling/level hatasi; pad-leak string check'i
+  tek haneli degerleri substring olarak sayiyordu).
+- Duzeltme sonrasi masked layer DAHA MATCH: substituted pad leaf her ikisi
+  tarafindan reddedildi, fabricated tile her ikisinde her z'de reddedildi,
+  ve tampered masked trace 167/300 ile IKISI tarafindan ayni oranda
+  yakalandi (reference 0.3200 raporlamisti, analitik 0.3333).
+
+SPEC'e duzelti yazdim: TV-74 "masked layer does not agree" diye basliyordu,
+ artik "25/25 MATCH, 0 divergences" diyor. Ayrica TV-74A olarak 13
+ SPEC AMBIGUITY eklendi — bunlar gercek spec hatalari:
+ A1 HMAC key H hic verilmemis (iki implementasyonun noise'u farkli STATEMENT)
+ A2 a[t]/b[t] AIR'de tanimli degil
+ A3 boundary constraints (trace[0]=0, trace[m]=acc) spec'te yazmadi
+ A4 interpolation domain verilmemis
+ A5 hangi m+1 nokta T'yi tanimliyor — EN KESKIN: yanlis m'de HONEST proof
+    quotient testinde FAIL oluyor; sadece {0..m} deg(Q)=m-2 veriyor
+ A6 cross-term algebra sadece kod yorumunda
+ A7 pad structure (cumulative) sadece TV-66 retraction text'inde
+ A8 ZK layer end boundary mekanizmasi
+ A9 input binding'in mask'ten gecisi hic tanimli degil
+ A10 TV-41 sampling rate yok (reviewer exhaustive gitti, reference 3/m)
+ A11 leaf-hash domain separation formati
+ A12 toy PoW TARGET hic verilmemis
+ A13 challenge z nasil derive edilir
+
+Ajan referansta BUG BULAMADI. Gordugu 3 divergence'in 3'u de kendi
+adapterindeydi.
+
+PAPER'a da bu ucuncu asamayi yazdim: "the spec pins the ALGEBRA
+unambiguously enough that two independent derivations agree on every
+accept/reject decision tested, while leaving the construction details to
+inference." Bu tam olarak dogru: algebra net, wire format degil.
