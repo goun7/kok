@@ -1067,6 +1067,21 @@ class SzZkTileAIR(TileAIR):
     value (probe TV-67 in probe_f0b_zk_en.py demonstrates it). Here the verifier
     receives the masked view plus two Merkle ROOTS; it never sees the leaves
     except the one it challenges.
+
+    THE HONEST LIMIT, measured rather than assumed (2026-09-23, second
+    verification round): the transcript hides the pad from a bounded attacker,
+    but the toy field makes the residual space SMALL ENOUGH TO BRUTE FORCE.
+    With q=97 and m=4, once pm[z] is opened the remaining m-1 pad entries have
+    q^(m-1) = 912,673 possibilities, and a script walks all of them in about
+    0.12 seconds, recovering the full trace. Opening at every z (a verifier
+    that may ask more than once) also recovers it. So the claim this class
+    supports is: the pad is not TRANSMITTED, and the transcript is not trivially
+    invertible the way the earlier version was — the leak requires a search,
+    not a subtraction. At production scale (a 256-bit field, m large) the same
+    search is 2^254-ish and the claim becomes a real one. At q=97 it is a
+    statement about the size of the search space, not a security margin. The
+    probe measures and prints this rather than leaving it in prose, because a
+    caveat in a comment is not a measurement.
     """
 
     def mask_sz(self, proof, prng):
@@ -1152,7 +1167,9 @@ class SzZkTileAIR(TileAIR):
         What the verifier learns: one product a[z]*b[z] and the final
         accumulator. It does not learn the factors, and it does not learn any
         trace value, because recovering T[t] requires pad[t], of which it holds
-        only a root.
+        only a root. AT TOY SCALE THIS IS A SIZE CLAIM, NOT A SECURITY MARGIN:
+        the pad space with pm[z] fixed is q^(m-1), which at q=97, m=4 is
+        912,673 and brute-forces in a fraction of a second — see tv66 check (5).
         """
         q = q or self.q
         m = len(view["a"])
@@ -1376,6 +1393,12 @@ def tv66_schwartz_zippel():
           % (trials, accept_rate, expected, caught_steps))
     print("  (4) substituted pad leaf rejected            : %s"
           % ("YES" if bound_ok else "NO — openings are unbound"))
+
+    # (5) is reported by the (2c) block above: brute force over q^(m-1) and the
+    # multi-query attack are both measured there and printed as RECOVERS. This
+    # test does not gate the pass on them, because the toy field is a
+    # documented limitation rather than a bug — what matters is that the cost
+    # is printed next to the claim instead of buried in prose.
 
     return (honest_ok and not pad_in_view and not leaked and sound_ok
             and bound_ok)
