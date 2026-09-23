@@ -69,35 +69,43 @@ def _eval(p, x, q):
 
 
 def _interpolate(points, q):
-    """Lagrange interpolation. points = [(x, y), ...]. Returns coeffs."""
+    """Lagrange interpolation. points = [(x, y), ...]. Returns coeffs.
+
+    Stage 3 fix, 2026-09-23: an earlier version had the basis-polynomial
+    loop nested INSIDE the coefficient loop with a misplaced `continue`,
+    so the basis was built once from the wrong indices and the result did
+    not pass through its own interpolation points. Caught by a round-trip
+    check (evaluate the result at the inputs and compare), which is now
+    an assertion in the file itself.
+    """
     n = len(points)
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
     out = [0] * n
     for i in range(n):
-        num = ys[i]
-        den = 1
-        for j in range(n):
-            if i == j:
-                continue
-            num = num * (0 - xs[j]) % q
-            den = den * (xs[i] - xs[j]) % q
-        inv = pow(den, -1, q)
-        term = num * inv % q
-        # add the Lagrange basis polynomial for point i, evaluated as a
-        # build-up of the product (x - xs[j])
+        # the Lagrange basis polynomial for point i, as a coefficient list
         basis = [1]
         for j in range(n):
             if i == j:
                 continue
-                # multiply basis by (x - xs[j])
+            # multiply basis by (x - xs[j])
             nb = [0] * (len(basis) + 1)
             for k, c in enumerate(basis):
                 nb[k] = (nb[k] - c * xs[j]) % q
                 nb[k + 1] = (nb[k + 1] + c) % q
             basis = nb
+        # the scalar: y_i / prod_{j != i} (x_i - x_j)
+        den = 1
+        for j in range(n):
+            if i == j:
+                continue
+            den = den * (xs[i] - xs[j]) % q
+        term = ys[i] * pow(den, -1, q) % q
         for k, c in enumerate(basis):
             out[k] = (out[k] + term * c) % q
+    # round-trip assertion: the result must pass through its own points
+    for x, y in points:
+        assert _eval(out, x, q) == y, "interpolation round-trip failed"
     return out
 
 
@@ -115,64 +123,77 @@ class FriRecursive:
 
     Each round: the prover has a polynomial P of claimed degree d. The
     verifier sends a challenge alpha. The prover folds
-        F(x) = (P(x) + P(-x))/2 + alpha * (P(x) - P(-x))/(2x)
-    which for an even+odd decomposition is the standard FRI folding: the
-    even part scaled by 1 and the odd part scaled by alpha, with the x
-    divided out. F has degree d/2. Repeat until the claim is constant.
+        F(u) = (P(x) + P(-x))/2 + alpha * (P(x) - P(-x))/(2x),  u = x^2
+    The even part of P, as a polynomial in u = x^2, has degree d/2, and the
+    odd part divided by x has degree d/2 - 1. So F has degree d/2 and the
+    recursion genuinely shrinks. Repeat until the claim is constant.
+
+    Stage 3 correction, 2026-09-23: an earlier version built F as a
+    polynomial in x, where the even part KEEPS its own degree (P(x) = x^2+3x+7
+    folds to x^2 + 7 + 3*alpha, still degree 2). That is why the recursion
+    reported [2, 1, 0, 0] while verify_round found 17 mismatches: the fold
+    was not the FRI fold. The composition that halves the degree must be
+    in u = x^2 space.
     """
 
     def __init__(self, q):
         self.q = q
 
     def fold(self, P, alpha):
-        """One FRI folding round. Returns F with degree ceil(deg/2)."""
+        """One FRI folding round, in u = x^2 space. Returns F of degree d/2."""
         q = self.q
         d = _deg(P)
-        new_deg = max(0, (d + 1) // 2)
-        # fold on a symmetric domain and interpolate exactly new_deg+1 points,
-        # so the folded polynomial has the claimed degree and not larger
+        new_deg = max(0, d // 2)
         pts = []
-        seen = set()
+        seen_u = set()
         for x in range(1, q):
-            if x in seen or (q - x) % q in seen:
+            u = (x * x) % q
+            if u in seen_u:
                 continue
-            seen.add(x)
+            seen_u.add(u)
             mx = (-x) % q
             pv = _eval(P, x, q)
             mv = _eval(P, mx, q)
             num = (pv + mv) % q * pow(2, -1, q) % q
             odd = (pv - mv) % q * pow(2, -1, q) % q
-            fx = (num + alpha * odd * pow(x, -1, q)) % q
-            pts.append((x, fx))
+            fu = (num + alpha * odd * pow(x, -1, q)) % q
+            pts.append((u, fu))
             if len(pts) == new_deg + 1:
                 break
         return _interpolate(pts, q)
 
     def recursive_prove(self, P, rounds, rng):
-        """Run the recursion, returning the full transcript."""
+        """Run the recursion, returning (transcript, alphas)."""
         tr = [P]
+        alphas = []
         cur = P
         for _ in range(rounds):
             alpha = rng.randrange(1, self.q)
+            alphas.append(alpha)
             cur = self.fold(cur, alpha)
             tr.append(cur)
-        return tr
+        return tr, alphas
 
     def verify_round(self, P, alpha, F):
-        """Check that F is a valid folding of P under alpha.
+        """Check that F is a valid folding of P under alpha, in u = x^2 space.
 
-        The verifier samples a point and checks the folding identity
-        directly: F(x) == (P(x)+P(-x))/2 + alpha*(P(x)-P(-x))/(2x).
+        For a domain point x with u = x^2, F(u) must equal
+            (P(x) + P(-x))/2 + alpha * (P(x) - P(-x))/(2x).
         """
         q = self.q
+        seen_u = set()
         for x in range(1, q):
+            u = (x * x) % q
+            if u in seen_u:
+                continue
+            seen_u.add(u)
             mx = (-x) % q
             pv = _eval(P, x, q)
             mv = _eval(P, mx, q)
             num = (pv + mv) % q * pow(2, -1, q) % q
             odd = (pv - mv) % q * pow(2, -1, q) % q
             want = (num + alpha * odd * pow(x, -1, q)) % q
-            if _eval(F, x, q) != want:
+            if _eval(F, u, q) != want:
                 return False
         return True
 
@@ -187,13 +208,15 @@ def probe_honest_survives_all_rounds():
     rng = random.Random(2026)
     # an honest degree-4 polynomial over {0..4}
     P = _interpolate([(t, (t * t + 3 * t + 7) % q) for t in range(5)], q)
-    tr = fri.recursive_prove(P, 3, rng)
+    tr, alphas = fri.recursive_prove(P, 3, rng)
     ok = True
     for r in range(len(tr) - 1):
-        alpha = None  # the alpha is inside the recursion; recompute below
+        # every round must verify against its own alpha, and the degree
+        # must not increase
+        ok = ok and fri.verify_round(tr[r], alphas[r], tr[r + 1])
         ok = ok and _deg(tr[r]) >= _deg(tr[r + 1])
     print("  degrees across rounds: %s" % [_deg(p) for p in tr])
-    print("  non-increasing degree: %s" % ok)
+    print("  every round verifies:  %s" % ok)
     return ok
 
 
@@ -204,12 +227,11 @@ def probe_tampered_fails():
     fri = FriRecursive(q)
     rng = random.Random(7)
     P = _interpolate([(t, (t * t + 3 * t + 7) % q) for t in range(5)], q)
-    tr = fri.recursive_prove(P, 3, rng)
-    # tamper the LAST folded polynomial
+    tr, alphas = fri.recursive_prove(P, 3, rng)
+    # tamper the LAST folded polynomial: the round check must fail
     bad = list(tr[-1])
     bad[0] = (bad[0] + 1) % q
-    alpha = rng.randrange(1, q)
-    ok = fri.verify_round(tr[-2], alpha, bad)
+    ok = fri.verify_round(tr[-2], alphas[-1], bad)
     print("  tampered final fold verifies: %s (must be False)" % ok)
     return not ok
 
@@ -221,7 +243,7 @@ def probe_rounds_halve_the_degree():
     fri = FriRecursive(q)
     rng = random.Random(11)
     P = _interpolate([(t, (t * t * t + 2) % q) for t in range(8)], q)
-    tr = fri.recursive_prove(P, 3, rng)
+    tr, alphas = fri.recursive_prove(P, 3, rng)
     degs = [_deg(p) for p in tr]
     halving = all(degs[i + 1] <= max(0, (degs[i] + 1) // 2) for i in range(len(degs) - 1))
     print("  degrees: %s" % degs)
