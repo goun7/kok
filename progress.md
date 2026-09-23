@@ -2329,3 +2329,33 @@ Simdi: honest passes True, broken row caught True, rc=0. TV-41/42 artik
 gercek low-degree testing'in cekirdegi, vacuous degil.
 
 14/14 yesil. commit 485ec98.
+
+## Oturum 8 eki 12 — ucuncu dogrulama: auth-path inversion + uniqueness
+
+Ikinci verification subagent'i (3908ec8a) iki YENI bulgu dondurdu ve ben
+ikisini de bagimsiz olarak olctum:
+
+1. **Auth-path sibling inversion.** Merkle auth path kardes leaf HASH'lerini
+veriyor. Leaf domain {0..96} oldugu icin her hash 97 denemede invert ediliyor.
+z=1'de pm[0]=9 dogrudan. ~107-291 deneme vs 912,673. ~8530x daha ucuz. ONEMLI:
+bu saldiri field buyumesiyle KAPANMIYOR — hash preimage resistance kapatior.
+Gercek STARK'lar guvenli cunku leaf'ler codeword symbol + one-way hash. Toy
+hash'in kucuk preimage space'i var. "Field'i buyut" yanlis tavsiye.
+
+2. **Uniqueness.** (root, Cm, pm_z) ile uyumlu pad vektor sayisi TAM 1 ve o da
+gercek pad [9,70,82,93]. Yani transcript bu olcekte witness'in EXACT
+DESCRIPTION'i, "1/912673 sansli tahmin" degil. Hiding ~13 bit (auth path
+once), sonra 0 bit. Bu daha guclu bir itiraf.
+
+Benim bagimsiz olcumum dbg66.py ile: level-0 sibling 9 recover edildi,
+consistent pad sayisi 1, trace [0,41,85,84,28] MATCH. Subagent hakli.
+
+Docstring ve (2c) bloku uc saldiriyi da olcup basiyor. Claim su hale geldi:
+"pad TRANSMITTED degil, leak bir saldiri gerektirir (cikarma degil)". Bu
+gercek bir yapisal fark, ama hicbir olcekte hiding proof degil.
+
+PAPER L529 ve SPEC TV-66 basligi downgrade edildi. "HIDING NOW DEMONSTRATED"
+-> "THE PAD IS NO LONGER TRANSMITTED, AND THE LEAK COSTS A SEARCH, NOT A
+SUBTRACTION". Skor 83'de kaldi.
+
+commit f2ee71f. 14/14 yesil.
