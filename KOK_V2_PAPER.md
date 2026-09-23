@@ -368,15 +368,27 @@ that AI compute runs on. NVIDIA's revenue, from its own reported figures:
 |---|---|---|
 | 2023 | 26.9 | 4.3 |
 | 2024 | 60.9 | 29.7 |
-| 2025 | 130 | 72.8 |
-| **2026** | **215** | **120** |
+| 2025 | 130.5 | 72.8 |
+| **2026** | **215.9** | **120.1** |
+
+*(Live-verified 2026-09-23 against NVIDIA's own releases: FY2026 results of 25 Feb 2026 give
+full-year revenue of $215,938M and net income $120,067M; FY2025 was $130,497M. An earlier draft
+rounded these to $215B and $130B — both round DOWN, which flatters no claim here but is still
+less precise than the reported numbers, so the exact figures stand.)*
 
 That is **an 8× increase in three years**, and it is still accelerating: Q2 FY2027 revenue was
 **$96.2B, +106% year-over-year** (from $46.7B). The build-out is equally visible in commitments:
-NVIDIA's memorandum of understanding to invest **$100B in OpenAI** carries an undertaking to build
-new AI data centers of **at least 10 GW** of system power; NVIDIA also invested **$2B** in the AI
-cloud provider Nebius (2026). *(Source: NVIDIA's reported figures as compiled in the cited
-secondary record, 2026-09-21; each figure is re-checkable against NVIDIA's own earnings releases.)*
+NVIDIA's **letter of intent** (22 Sep 2025) to invest **up to $100B in OpenAI**, progressively as
+each gigawatt is deployed, carries an undertaking to build new AI data centers of **at least 10 GW**
+of system power, with the first GW targeted for H2 2026 on Vera Rubin. NVIDIA is also a rack partner
+of the AI cloud provider Nebius. *(Sources, live-verified 2026-09-23 against NVIDIA's own releases:
+FY2026 results of 25 Feb 2026, Q2 FY2027 results of 26 Aug 2026, and the OpenAI partnership
+announcement of 22 Sep 2025. Each figure above is quoted from those releases. NOTE: an earlier
+draft of this passage said "memorandum of understanding" and carried an unconditional "$100B";
+the release is a letter of intent for "up to" that amount, contingent on deployment, and the
+wording is corrected here rather than left looser than the source. A "$2B in Nebius" figure that
+appeared in an earlier draft is REMOVED — no NVIDIA release the verification pass could fetch
+confirms it, so the claim is dropped rather than left unsourced.)*
 
 **What this evidence does NOT establish, and the paper does not claim:**
 1. It is **not** the total AI market — it excludes energy, facilities, integration and labour,
@@ -460,23 +472,34 @@ and we intend to measure it rather than to assume it."**
   not the anonymous issuer.
 
 - **★ 2026-09-21: the US side is no longer an internal analysis — the case law is now cited.**
+  **2026-09-23: every date, number and holding in the sequence below was LIVE-VERIFIED against
+  primary sources (4/4), not search snippets.** sec.gov is 403-blocked and CourtListener's HTML
+  docket pages are intermittently 403, but CourtListener's PDF host and search API are not, which
+  is why an earlier pass reported this sequence as partly unretrievable — that was a retrieval
+  problem, not a factual one. The dockets, for the record: SDNY 1:20-cv-10832 (docket 19857399)
+  and 2d Cir. 24-2648 / 24-2705 (docket 69230851).
   The SEC v. Ripple record was retrieved and the sequence is material to this design:
 
-  - **13 July 2023 — Judge Analisa Torres, summary judgment.** The court **distinguished the asset
+  - **13 July 2023 — Judge Analisa Torres, summary judgment (Doc 874).** The court **distinguished the asset
     from the circumstances of its sale**: Ripple's *institutional* sales were unregistered
     investment contracts, but its **programmatic sales on exchanges were not**, because purchasers
     on an exchange did not reasonably expect profits derived from the efforts of others.
-  - **7 August 2024 — final judgment:** civil penalty of **$125,035,150** for the institutional
-    sales, plus an injunction.
+    *Verified verbatim: "the Court concludes that Ripple's Programmatic Sales of XRP did not
+    constitute the offer and sale of investment contracts"; programmatic sales were "<1% of the
+    global XRP trading volume."*
+  - **7 August 2024 — final judgment (Doc 973):** civil penalty of **$125,035,150** for the institutional
+    sales, plus an injunction. *(The SEC had asked $876,308,712.)*
   - **2025 — the parties asked to dissolve the injunction and cut the penalty to $50M; the court
-    refused**, finding no exceptional circumstances. On **7 August 2025 both sides withdrew their
-    appeals. The case is closed.**
-  - **17 March 2026 — the SEC issued a new interpretation** (with CFTC guidance; published in the
-    Federal Register 23 March 2026) identifying **XRP alongside bitcoin, ether, solana and stellar
+    refused** (Torres, 26 June 2025, Doc 989: "The request is DENIED"), finding no exceptional
+    circumstances. On **7 August 2025 both sides withdrew their appeals** (2d Cir. entry 64, FRAP 42
+    stipulation with prejudice, so-ordered 22 Aug 2025). **The case is closed.**
+  - **17 March 2026 — the SEC issued a new interpretation** (with CFTC guidance; **91 FR 13714**,
+    SEC Releases 33-11412 and 34-105020; dated 17 March, published 23 March 2026) identifying **XRP alongside bitcoin, ether, solana and stellar
     as digital commodities**, whose value derives from *functioning crypto systems and supply and
     demand* rather than from expectations of profit from others' managerial efforts. It also said
     explicitly that **a crypto-asset which is not itself a security can still be offered or sold as
-    part of an investment contract, depending on the circumstances of the transaction.**
+    part of an investment contract, depending on the circumstances of the transaction.** *(The full
+    list names 16 assets; the four named above are a correct subset.)*
 
   **What this means for KÖK v2 (the legal reason for the fair-launch):** the 2023 holding and the
   2026 interpretation both support the position that a token distributed by mining and sold on
@@ -880,10 +903,13 @@ at all. Three findings, each from a live source:
   is emission**, not sales. **So the exact combination KÖK proposes — PoW security plus
   compute sales — has no proven predecessor.** That is simultaneously the opportunity and
   the warning.
-- **Verified prices set the bar.** H100 spot is $2.15/GPU-hr (Nebius preemptible) and
-  DeepSeek V4-Pro is $1.32/M-token at peak. KÖK's compute must beat *these* numbers, and
-  TV-37's crossover ($2.64 at launch rewards, $66.00 at the tail) says it can — while the
-  token stays cheap.
+- **Verified prices set the bar, and the bar moved (live-verified 2026-09-23).** H100 on-demand
+  runs $2.89–6.16/GPU-hr (RunPod PCIe $2.89, Nebius $3.85, CoreWeave $6.16 on an 8-GPU node),
+  CoreWeave spot is $2.46, **Nebius preemptible H100 is now from $0.79/GPU-hr — below the
+  $2.15 this line quoted earlier** — and DeepSeek V4-Pro is $1.32/M-token at peak. The
+  on-demand floor survives; the spot floor does not. KÖK's compute must beat **$0.79**, and
+  TV-37's crossover ($2.64 at launch rewards, $66.00 at the tail) is a claim about the token
+  subsidizing that gap, not about the gap being absent.
 
 **The strategic consequence:** the market is real (Aethir), the specific combination is
 unproven (Qubic/Dynex/Bittensor), and the price bar is measurable (not a guess). That is
@@ -1289,8 +1315,8 @@ externally purchased.
 The scale question is where this gets uncomfortable, and it was answered in an earlier research
 pass (`arastirma/pazar_ve_rekabet_2026.md`). **Almost nobody in this field publishes real USD
 revenue.** Aethir is the exception at $127.8M for 2025 and $166M ARR. Akash's $5M is all-time,
-cumulative, small against that, and small against the $2/GPU-hr floor the pricing survey found —
-H100 on-demand runs $2.89–6.16, spot $2.15–2.46, and Akash itself lists $1.33. The two other live
+cumulative, small against that, and small against the on-demand GPU-hour floor the pricing
+survey found — H100 on-demand runs $2.89–6.16 (RunPod PCIe $2.89, Nebius $3.85, CoreWeave $6.16/GPU-hr on an 8-GPU node at $49.24/hr) and **Akash's live API lists H100 from $2.04/hr, not the $1.33 an earlier snapshot showed**. The two other live
 PoUW chains, Qubic and Dynex, publish no compute revenue at all, and **Dynex is cancelling its
 utility token (February 2026)**. Bittensor's revenue is roughly 88% emission. So the honest
 statement is not "demand exists" but "demand is mostly either undisclosed, inflation-funded, or
