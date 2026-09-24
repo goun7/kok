@@ -18,6 +18,21 @@ gap IN THE MODEL, which is the only place it can be closed right now:
   proves must be a tile OF THE TASK'S OWN MATRICES — verified through the
   public input commitment, not through caller-supplied matrices.
 
+  ROUND-5 CORRECTION, 2026-09-24 (round-5 finding E1): the last sentence
+  overstates what this file checks. The certificate binds the tile's
+  IDENTITY — (task_id, program_commit, ctx, tile) — and the verifier derives
+  the program commitment from the task, so a cert over any other program no
+  longer verifies. But nothing here checks that the tile VALUE is the one the
+  committed matrices actually produce: the miner supplies (i, j, value) and
+  the certificate only hashes them. Measured by the round-5 probe: a cert over
+  a bogus accumulator (the real tile acc is 36) verifies True for values 37,
+  999999, 0, -1 and 42424242, and a cert at tile coordinates (12345, 67890)
+  on a 2x2 program verifies True as well. The identity binding exists; the
+  WORK binding does not, and the work binding is what the G layer's own AIR
+  supplies (spec A12 puts tile correctness on the AIR, not on this
+  certificate). So the honest statement is: this file closes the WHICH-TASK
+  gap, and the IS-THE-TILE-CORRECT gap is closed by the AIR, not here.
+
 Before this, `validate_block(blk, A, B)` took A and B FROM THE CALLER and
 passed the same pair to prove and verify. Round-3 finding [21] measured
 the consequence: a G-cert over [5,6;7,8] validated ACCEPT while the task's
@@ -43,7 +58,8 @@ binding; it is answered by one.
 """
 
 import hashlib
-import random
+# ROUND-5 FIX, 2026-09-24 (round-5 finding E3): `import random` was dead
+# code — the module never called it (verified by grep before deletion).
 
 
 def H(*parts) -> int:
@@ -211,13 +227,26 @@ def probe_commitment_is_content_bound():
     A = [[2, 3], [4, 5]]
     B = [[6, 7], [8, 9]]
     A2 = [[2, 3], [4, 6]]      # one entry differs
+    # ROUND-5 FIX, 2026-09-24 (round-5 finding E2): the first check used to be
+    # `program_commit(A,B) == program_commit(A,B)` — the same expression on
+    # both sides, a comparison of a value to itself that cannot fail, which is
+    # why the probe reported PASS over an untested property. The falsifiable
+    # version recomputes the commitment from a separately-held copy of the
+    # matrices, so the check fails if the function is not a function of its
+    # inputs.
     pc1 = program_commit(A, B)
-    pc2 = program_commit(A, B)
     pc3 = program_commit(A2, B)
-    same_content_same_pc = (pc1 == pc2)
+    # a second, INDEPENDENTLY-BUILT matrix that is supposed to equal A; if
+    # commitment depends on anything but the content this diverges
+    A_again = [[2, 3], [4, 5]]
+    B_again = [[6, 7], [8, 9]]
+    pc_recomputed = program_commit(A_again, B_again)
+    same_content_same_pc = (pc1 == pc_recomputed)
     diff_content_diff_pc = (pc1 != pc3)
-    print("  identical matrices -> identical commitment: %s" % same_content_same_pc)
-    print("  one entry changed   -> different commitment: %s" % diff_content_diff_pc)
+    print("  independently-built identical matrices -> identical commitment: %s"
+          % same_content_same_pc)
+    print("  one entry changed                     -> different commitment: %s"
+          % diff_content_diff_pc)
     return same_content_same_pc and diff_content_diff_pc
 
 
