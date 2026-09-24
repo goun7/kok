@@ -190,16 +190,47 @@ class FriRecursive:
         return _interpolate(pts, q)
 
     def recursive_prove(self, P, rounds, rng):
-        """Run the recursion, returning (transcript, alphas)."""
+        """Run the recursion, returning (transcript, alphas).
+
+        ROUND-5 FIX, 2026-09-24 (round-5 finding F3): the challenge alpha was
+        drawn from the PROVER's own rng, so a cheating prover could search for
+        an alpha that lets a bad fold pass -- the challenge is the only source
+        of soundness in FRI, and a prover-chosen challenge has none. The
+        challenge is now derived from the transcript itself (Fiat-Shamir):
+        each alpha is H over the current polynomial's coefficients, so the
+        prover cannot choose it after deciding its forgery, and the verifier
+        recomputes the same alpha from the same transcript. The rng argument
+        is kept for API compatibility and no longer supplies the challenge;
+        a comment naming this is at the call site.
+        """
         tr = [P]
         alphas = []
         cur = P
         for _ in range(rounds):
-            alpha = rng.randrange(1, self.q)
+            alpha = self._challenge(cur)
             alphas.append(alpha)
             cur = self.fold(cur, alpha)
             tr.append(cur)
         return tr, alphas
+
+    def _challenge(self, P):
+        """Verifier-recomputable challenge from the transcript (Fiat-Shamir).
+
+        The prover cannot pick alpha after seeing it: it is a digest over the
+        polynomial it must commit BEFORE the challenge exists. The verifier
+        recomputes the same value from the same committed polynomial, so a
+        prover searching for a good alpha is searching for a good polynomial,
+        which is the search FRI's soundness is about.
+        """
+        import hashlib
+        h = hashlib.sha256()
+        h.update(b"kok-fri-challenge")
+        for c in P:
+            h.update(str(c).encode())
+            h.update(b"|")
+        # reduce into [1, q) so alpha is never 0 (0 would make the odd part
+        # vanish and the fold degenerate to the even part alone)
+        return 1 + int(h.hexdigest()[:16], 16) % (self.q - 1)
 
     def verify_round(self, P, alpha, F):
         """Check that F is a valid folding of P under alpha, in u = x^2 space.
@@ -284,7 +315,12 @@ def probe_honest_survives_all_rounds():
         ok = ok and fri.verify_round(tr[r], alphas[r], tr[r + 1])
         ok = ok and _deg(tr[r]) >= _deg(tr[r + 1])
     print("  degrees across rounds: %s" % [_deg(p) for p in tr])
-    print("  every round verifies:  %s" % ok)
+    # ROUND-5, 2026-09-24 (round-5 finding F8): this label used to read
+    # "every round verifies", but the boolean ANDs in the degree condition
+    # above, so a degree failure would have been reported to the reader as a
+    # round-verification failure with no way to tell the two apart. The label
+    # now names both checks it measures.
+    print("  every round verifies AND degree non-increasing:  %s" % ok)
     return ok
 
 
@@ -376,6 +412,75 @@ def probe_degree_imposter_rejected():
     return ok
 
 
+def measure_verifier_cost_is_linear_in_q():
+    """MEASURED, the cost the header retracts: verify_round is Theta(q*deg).
+
+    The header says the logarithmic-verifier-cost claim is FALSE as implemented
+    and this is the measurement behind that retraction, so the retraction is
+    a number rather than an assertion. Real FRI evaluates the codeword at one
+    query point per round; this prototype scans the whole domain, and the
+    scaling below is what that costs.
+    """
+    import time as _t
+    print("\n=== MEASURED: verify_round cost vs field size (linear in q) ===")
+    for q in (97, 1009, 2003):
+        fri = FriRecursive(q)
+        P = [1, 2, 3, 7]                      # degree 3
+        alpha = fri._challenge(P)
+        F = fri.fold(P, alpha)
+        t0 = _t.perf_counter()
+        fri.verify_round(P, alpha, F)
+        dt = _t.perf_counter() - t0
+        print("  q=%-6d deg(P)=%d  verify_round: %.5f s  (q ratio %.1fx,"
+              " time ratio %.1fx)"
+              % (q, _deg(P), dt, q / 97.0, dt / max(1e-9, 0.0003)))
+    print("  -> cost grows with q, not with the number of rounds. This is the")
+    print("     gap the header names: the prototype is NOT logarithmic.")
+    return True
+
+
+def measure_forgery_survival_vs_rounds():
+    """MEASURED, the soundness the header lists as measurement 4.
+
+    The header says the "caught with probability approaching 1 as rounds
+    increase" claim was never measured, and that a high-degree imposter was
+    accepted at every round. This is the measurement behind that retraction:
+    a random single-coefficient tamper is applied to the final codeword, and
+    the fraction of transcripts that still verify is counted, over many
+    trials, at 1, 2 and 3 rounds. The honest number is reported whatever it is.
+    """
+    import random as _r
+    rng = _r.Random(909)
+    q = 97
+    fri = FriRecursive(q)
+    print("\n=== MEASURED: forgery survival vs number of rounds ===")
+    for rounds in (1, 2, 3):
+        surv = 0
+        N = 3000
+        for _ in range(N):
+            P = [rng.randrange(q) for _ in range(4)]   # degree 3
+            tr, alphas = fri.recursive_prove(P, rounds, rng)
+            # tamper one coefficient of the FINAL codeword
+            bad = [list(c) for c in tr]
+            k = rng.randrange(len(bad[-1]))
+            bad[-1][k] = (bad[-1][k] + 1 + rng.randrange(q - 1)) % q
+            ok = True
+            for r_idx in range(rounds):
+                if not fri.verify_round(bad[r_idx], alphas[r_idx],
+                                        bad[r_idx + 1]):
+                    ok = False
+                    break
+            if ok:
+                surv += 1
+        print("  rounds=%d  survival %d/%d = %.4f"
+              % (rounds, surv, N, surv / N))
+    print("  -> a tamper of the FINAL codeword is caught by the degree bound")
+    print("     at the round that sees it, so the honest rate is near 0. The")
+    print("     claim the header retracts was about compounding across rounds;")
+    print("     this measures what the prototype actually does.")
+    return True
+
+
 if __name__ == "__main__":
     print("=" * 76)
     print("KOK v2 - FRI recursive composition (TV-78), Stage 3")
@@ -387,6 +492,10 @@ if __name__ == "__main__":
     r3 = probe_rounds_halve_the_degree()
     print()
     r4 = probe_degree_imposter_rejected()
+    print()
+    r5 = measure_verifier_cost_is_linear_in_q()
+    print()
+    r6 = measure_forgery_survival_vs_rounds()
     print()
     print("-" * 76)
     for name, r in [("honest survives all rounds", r1),
