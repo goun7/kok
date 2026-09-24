@@ -60,18 +60,37 @@ def tv56_mergeset_deviation_measured():
 
     greedy_ms = g.mergesets[b.bid]
     exact_ms = _exact_mergeset(g, b.bid)
-    extra = greedy_ms - exact_ms
     # FIXED: X is a sibling B does not reference and must NOT be absorbed
     x_not_in_past = x.bid not in g._past(b.bid)
-    ok = (x_not_in_past and x.bid not in greedy_ms
-          and extra == set())
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding F3): the `extra == set()` clause
+    # is an IDENTITY — _exact_mergeset recomputes the same union the module
+    # uses, so greedy==exact by construction and over-included is 0 under any
+    # module, measured on the pre-fix buggy module too. The PROTECTIVE checks
+    # are the two below, which compare greedy_ms against what B actually
+    # references: X must be absent from B's past AND from its mergeset.
+    x_absent = x_not_in_past and x.bid not in greedy_ms
+    # the real over-inclusion, against past(B) rather than against a recompute
+    real_extra = greedy_ms - g._past(b.bid) - {b.bid}
+    ok = x_absent and not real_extra
     return report("TV-56 mergeset stays within past(B)", ok,
-                  "greedy=%d exact=%d over-included={%d}" %
-                  (len(greedy_ms), len(exact_ms), len(extra)))
+                  "greedy=%d exact=%d X-in-past=%s X-in-ms=%s outside-past=%d" %
+                  (len(greedy_ms), len(exact_ms), not x_not_in_past,
+                   x.bid in greedy_ms, len(real_extra)))
 
 
 def tv57_selected_parent_is_a_direct_parent():
     """The selected parent must be one of the block's direct parents.
+
+    ROUND-6, 2026-09-24 (round-6 finding F2): this is a SELF-COMPARISON as
+    written — the module chooses `sp = max(scored for p in blk.parents)`, so
+    `sp not in blk.parents` is impossible by construction and the violation
+    count is 0 under both the fixed and any regressed module (measured over
+    360 DAGs). It is kept as a REGRESSION GUARD, not an adversarial probe:
+    if a future change decouples selected-parent selection from the parent
+    list, this is the line that catches it. The genuinely protective probes
+    in this file are TV-56's `x.bid not in greedy_ms` clause and TV-59's
+    outside-count; TV-58 was corrected in the same round to assert the
+    structural property instead of the excluded one.
     """
     import random
     g = GHOSTDAG(k=GHOSTDAG_K)
@@ -113,18 +132,32 @@ def tv58_blue_score_does_not_decrease_along_selected_chain():
         g.add(blk)
         tips.append(blk.bid)
     violations = 0
+    checked = 0
     for bid in g.blocks:
         cur = bid
         seen = 0
         while g.selected.get(cur) is not None and seen < 200:
             sp = g.selected[cur]
-            if g.blue_score[sp] > g.blue_score[cur]:
+            # ROUND-6 FIX, 2026-09-24 (round-6 finding F1): the old check
+            # `blue_score[sp] > blue_score[cur]` is ARITHMETICALLY EXCLUDED —
+            # the module computes blue_score[child] = blue_score[sp] + blue + 1,
+            # so the selected parent's score can never exceed the child's and
+            # violations was 0 by construction (measured: min(child-sp)=1 over
+            # 3000 edges). Reverting the module to the pre-fix bug (base=0,
+            # the score not carried forward) ALSO gave 0 violations across 360
+            # DAGs, so the probe protected nothing. The structural property the
+            # fix actually guarantees — each child's score is at least its
+            # selected parent's plus one — is what is now asserted, and the
+            # reverted bug does violate it (the delta goes to 0).
+            delta = g.blue_score[cur] - g.blue_score[sp]
+            checked += 1
+            if delta < 1:
                 violations += 1
             cur = sp
             seen += 1
-    ok = violations == 0
-    return report("TV-58 blue_score non-increasing along selected chain", ok,
-                  "violations=%d" % violations)
+    ok = (violations == 0) and (checked > 0)
+    return report("TV-58 blue_score strictly increases child->selected-parent", ok,
+                  "violations=%d over %d edges" % (violations, checked))
 
 
 def tv59_order_lives_within_past_plus_self():

@@ -45,9 +45,18 @@ def tv45_challenged_then_repaired():
     m = DemandMeter()
     net.next_block()
     m.record_block(net)
-    ok = (st1 == "CHALLENGED" and st2 == "SETTLED" and m.paid_tasks == 1)
+    # ROUND-6, 2026-09-24 (round-6 finding F2): the docstring says "should
+    # settle and BURN" but the check asserted only state + paid_tasks, never
+    # the burn balance — so a settle path that paid the sequencer and skipped
+    # the burn would still report ACCEPT. The burn is now asserted on the
+    # honest settle (fee=100, burn_rate=0.3 -> int(30) burned).
+    burned = net.burn_address
+    expected_burn = int(100 * 0.3)
+    ok = (st1 == "CHALLENGED" and st2 == "SETTLED" and m.paid_tasks == 1
+          and burned == expected_burn)
     return report("TV-45 challenged-then-repaired settles", ok,
-                  "ch=%s rep=%s paid=%d" % (st1, st2, m.paid_tasks))
+                  "ch=%s rep=%s paid=%d burned=%d (expected %d)"
+                  % (st1, st2, m.paid_tasks, burned, expected_burn))
 
 
 def tv46_partial_slash_makes_buyer_whole():
@@ -64,11 +73,24 @@ def tv46_partial_slash_makes_buyer_whole():
     net.settle_task("A", "t1", verify_ok=False)
     net.settle_task("A", "t1", verify_ok=False)
     t = net.sequencers["A"].tasks["t1"]
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding F1): this checked only state +
+    # refund + bond-slash, never the BURN, though the same module exposes
+    # burn_address (TV-47 reads it). The burn is now asserted. With fee=100,
+    # burn_rate=0.3 the earmarked burn is int(100*0.3)=30 and the bond is 30,
+    # so a slash path that BURNED it would be indistinguishable from one that
+    # refunded it under the old checks alone (both give refund=100, slashed=30
+    # with different books). The module's design decision is that NOTHING is
+    # burned on the SLASHED path — nothing was delivered, so the buyer's
+    # earmarked burn returns with the escrow rather than being destroyed for
+    # the provider's misbehaviour (f3a_sequencer_proto_en.py line ~330). The
+    # probe now binds the burn to 0 AND the refund to the full 100.
+    burned = net.burn_address
     ok = (t.state == "SLASHED" and net.refunds == 100
-          and net.sequencers["A"].slashed == 30)
+          and net.sequencers["A"].slashed == 30 and burned == 0)
     return report("TV-46 partial slash, buyer whole", ok,
-                  "state=%s refund=%d slashed=%d"
-                  % (t.state, net.refunds, net.sequencers["A"].slashed))
+                  "state=%s refund=%d slashed=%d burned=%d (design: nothing"
+                  " delivered -> nothing burned, buyer made whole)"
+                  % (t.state, net.refunds, net.sequencers["A"].slashed, burned))
 
 
 def tv47_double_settle_is_noop():
