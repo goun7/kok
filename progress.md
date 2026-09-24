@@ -3061,3 +3061,26 @@ olduğu koddaydı — yani bir prob'un PASS'i kesinleşmişse hiçbir şey test 
 - **R6-4**: _en prob dosyalarinda Türkçe harf YOK.
 
 ### TAM SUITE: 33/33 rc=0, audit CLEAN, working tree clean.
+
+### BLOK 8 — PAPER-CLAIM AUDIT + TEST DÖNGÜ HATASI BULUNDU (düzeltildi)
+Paper'in sayisal iddialarini kodla çapraz kontrol ettim:
+- **TV-78 "3/3" STALE'MİŞ** — f0b_fri_en.py artik **4/4** (round-5a'nin
+  degree-imposter check'i). Paper'da düzeltildi. 8/8 olan ayri probe
+  dosyası (probe_round5a_fri_en.py).
+- TV-77 4/4, TV-82 Arm B 4/4, spec re-derive 4/4, g_layer 4/4 — hepsi MATCH.
+- field scale N/M yazdirmiyor (RESULT: SOUND + üç q degeri), format farkli
+  ama iddia DOĞRULANDI.
+
+**TEST DÖNGÜ HATASI (önemli metodolojik bulgu):** "33/33 rc=0" raporum
+yanlişti çünkü listem fp8_noise_proto_en.py ve audit_en_output.py'yi
+içermiyordu. İkisi de bilinçli rc=1 döndürüyor:
+- **fp8_noise_proto_en.py**: tv28 "FAIL-FOR-KOK" — düsük entropi saldirisi
+  BAŞARIYOR, noise floor ZORUNLU. Bu NEGATIVE sonuç dosyanın kendi tasarımı;
+  rc=1 "spec güncellenmeli" demek. HATA DEĞIL.
+- **audit_en_output.py**: kendi self-testi; bir Türkçe kelime buldu —
+  "gorev" bond_margin_proto.py'de. Ama o dosya `_en` DEĞIL, audit kapsami
+  DIŞINDA. Kapsamdaki tüm *_en dosyalari CLEAN.
+
+**DERS: rc=0 saymak yeterli degil.** Bir dosyanın rc=1 döndürmesi, bir hata
+olduğunu değil, bir NEGATIVE sonuç bildirdiğini söyleyebilir. Bundan sonra
+suite raporu her dosyanın kendi RESULT satırini okuyacak.
