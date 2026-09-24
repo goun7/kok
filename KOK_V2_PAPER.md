@@ -997,14 +997,22 @@ market to escape the dead state. Two findings, both stated plainly:
    programme creates a buyer who has a job. The seed is brought by someone who already pays
    for compute. **This is why F0 (demand discovery) is now the first roadmap phase, ahead of
    the formal spec's successor phases.**
-2. **Below a cross-subsidy ratio of about 0.79, the dead state is absorbing** —
-   no seed escapes. When the ratio is below roughly 0.79 — the chain's compute
-   earning less than about four-fifths of what the market pays for it — the
-   model's arrival term cannot outrun churn at any seed below the liquidity
-   barrier, so the empty-block state is inescapable from inside. Above that
-   threshold a seed of about **0.02% of the network's compute** (D₀ ≥ 0.0002)
-   escapes and reaches roughly 40% of the addressable market. The threshold is
-   measured by binary search over the model, not assumed to sit at break-even:
+2. **Below a cross-subsidy ratio of about 0.79, the seeded cold start fails** —
+   the test seed D₀ = 0.0002 does not escape within the 400-step horizon. When the ratio is
+   below roughly 0.79 — the chain's compute earning less than about four-fifths of what the
+   market pays for it — the model's arrival term cannot outrun churn at that seed below the
+   liquidity barrier, so the empty-block state is inescapable for it. **CORRECTION
+   (round-3 [28], restated round-5 TV-85): "absorbing for every seed" is an overstatement.**
+   The dynamics have a **repelling** fixed point at D*, not an absorbing state: seeds above D*
+   still grow below 0.79, and over the 199 sub-barrier seeds at ratio 0.5 a measured **184
+   escape**. The all-seed absorbing threshold is about **0.08–0.10**, not 0.79; 0.79 is where
+   the test seed's growth is fast enough to cross the 0.15 visibility line within 400 steps,
+   and it is a property of (this file's constants, that one seed, that horizon) — sweeping
+   CHURN_DEAD 0.04→0.02 moves it to 0.50 and the horizon 400→20000 moves it to 0.7554. Above
+   the threshold a seed of about **0.02% of the network's compute** (D₀ ≥ 0.0002)
+   escapes and saturates at the model's hardcoded **40% ceiling (1−D_alt with D_alt = 0.60 —
+   a cap, not an outcome)**. The threshold is measured by binary search over the model under
+   one configuration, not assumed to sit at break-even:
    escape begins before parity, which is the one piece of good news the model
    offers, and it does not change the conclusion. The chain cannot subsidise its
    way to adoption if its compute costs more than the market's; the cross-subsidy
@@ -1245,7 +1253,7 @@ F0b (real AIR)         ─┘
 | Consensus | **GHOSTDAG (BlockDAG)**, ~10 BPS target | **Bitcoin fork: UTXO + linear longest-chain, 194 s blocks (NO GHOSTDAG)** | single chain | single chain | **GHOSTDAG** |
 | Difficulty | **window + median filter** (RT-1..3 verified) | **WTEMA** (per-block EMA, 7-day decay) | deterministic | "—" | classical |
 | Cryptography | **PQ suite mandatory** (TV-10) + Lean/ZEBRA + agility + emergency fallback | Plonky2 ZK (input privacy!); **XMSS reserved but disabled**; P2MR | re-exec | SNARK | hash |
-| Economy | **tail emission (R_∞ floor)** + 5% treasury + Pass simulation | S=2.1M; **1/t² polynomial (no halving, R(t)→0 — NO tail)**; 24 EH/s, 1.06× revenue/cost | — | marketplace | **exhausted** (96.5%) |
+| Economy | **tail emission (R_∞ floor)** + 5% treasury + Pass simulation | S≈2.1M GPUs (Pearl's own published figure; note the project's model-implied count from the same revenue data is 338,707 GPU-op/block, so the two figures describe different quantites — the 2.1M is not reproduced by this project's code and is reported as Pearl's claim, not as a measurement here); **1/t² polynomial (no halving, R(t)→0 — NO tail)**; 24 EH/s, 1.06× revenue/cost | — | marketplace | **exhausted** (96.5%) |
 | Task market | **escrow + bond + burn + C_FEE anti-agg + VRF + W_s=100** | **NONE** — marketplace in §1 as future vision | — | exists | none |
 | **Novel** | **baking the E-gap into the architecture: security ≠ utility** | **first KW implementation; its own business model is effectively the G/U separation** (inference platform + chain) | PoI consensus | PoUW + binding | GHOSTDAG |
 

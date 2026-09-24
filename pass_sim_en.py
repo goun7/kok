@@ -354,6 +354,12 @@ for b in [0.0, 0.25, 0.5, 1.0]:
 print("  Heterogeneous cost lowers total security, but the attack cost is still PR/2 (flow cost).")
 print("  Stock effects (hardware resale value) are ABSENT from this model — the limitation Pass acknowledges.")
 
+# ROUND-6, 2026-09-24: compute Pearl's endogenous theta here so section 8's
+# summary reports the SOLVED value (1.657) instead of the stale literal 1.05.
+p_pearl = Params(e=PEARL["e"], P=PEARL["rpl_usd"], R=PEARL["rpl_block"],
+                 alpha=1.3, gamma=1.3)
+theta_pearl = solve(p_pearl).theta
+
 h("8. SUMMARY")
 print(f"""
   - The Pass model is solved in closed form; it is consistent with Theorem 1 (zero-profit
@@ -362,7 +368,7 @@ print(f"""
   - CALIBRATION: Pearl's measured network is reproduced from the model's Tullock full-payment
     condition eS=PR: S=PR/e={338707:,} vs the measured {PEARL['gpus']:,} GPUs (5.8% deviation);
     revenue/cost ratio {PEARL['rev_day']/PEARL['cost_day']:.3f} vs the 1.06 Basu measured.
-  - Pearl's real PR level gives endogenous theta=1.05 => the pure Duplexia regime. That is,
+  - Pearl's real PR level gives endogenous theta={theta_pearl:.3f} => the pure Duplexia regime.
     PEARL'S ECONOMY WAS ALREADY IN THE REGIME WHERE INFERENCE MUST BE SUBSIDIZED — yet the
     measured phi=0: no utility ever materialized. The cause is the E-gap (Demirel 2026/1492):
     the protocol could not certify that the matrices were anyone's job. Pearl behaved like
@@ -436,8 +442,6 @@ if __name__ == "__main__":
     # returned equilibrium's P*R differed from the input PR by exactly the
     # factor (1+theta), the signature of the off-by-one exponent, and no
     # prior round saw it because the residual checker is an identity.
-    p_pearl = Params(e=PEARL["e"], P=PEARL["rpl_usd"], R=PEARL["rpl_block"],
-                     alpha=1.3, gamma=1.3)
     eq_pearl = solve(p_pearl)
     pr_err, _ = eq_pearl.input_consistency(p_pearl)
     print(f"    ROUND-5 endogenous PR consistency: implied PR reproduces the"

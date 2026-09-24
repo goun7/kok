@@ -4,7 +4,7 @@ TV-82: WHY PEARL'S phi WAS ZERO — the E-gap mechanism, demonstrated.
 
 Stage 2's claim (A2) is that the E-gap is what killed utility on a live
 network that otherwise had all the demand-side ingredients: Pearl ran at
-theta=1.05 (the inference-subsidizing regime) with a revenue/cost ratio of
+theta=1.657 (corrected from 1.05 by spec TV-84; the inference-subsidizing regime) with a revenue/cost ratio of
 1.058 reproducing Basu's measured 1.06, and still measured phi=0.
 
 This file demonstrates the MECHANISM rather than restating the claim. The
@@ -186,7 +186,7 @@ def probe_binding_is_what_makes_cheating_detectable():
         print("  miner's preferred one. phi counts as useful only what the")
         print("  protocol can attribute, so on a network without this binding")
         print("  phi=0 is the CORRECT measurement even when hashrate, difficulty")
-        print("  and the price ratio are all real. Pearl's theta=1.05 with")
+        print("  and the price ratio are all real. Pearl's theta=1.657 (TV-84) with")
         print("  phi=0 is therefore not a paradox: the missing ingredient was")
         print("  attributability, not demand.")
         return True

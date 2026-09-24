@@ -4,7 +4,7 @@ E-gap certification (TV-77) — the cause of the measured phi=0.
 WHAT THIS FILE IS
 -----------------
 TV-72 measured Pearl's live network (320K GPUs, revenue/cost 1.058 vs
-Basu's 1.06) running at theta=1.05 — the inference-subsidizing regime —
+Basu's 1.06) running at theta=1.657 (corrected from 1.05 by TV-84) — the inference-subsidizing regime —
 and found phi = 0. The cause is the E-gap (Demirel 2026/1492): the
 protocol could not certify the matrices were anyone's job. Useful work and
 the security budget were never connected, so the network ran as pure PoW

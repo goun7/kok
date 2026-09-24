@@ -67,7 +67,9 @@ ANCHORS = {
     # VERIFIED 2026-09-21, official pages (ARASTIRMA_SONUCLARI.md):
     "deepseek_v4pro_peak_usd_per_Mtoken_in": 1.32,   # api-docs.deepseek.com
     "deepseek_v4pro_offpeak_usd_per_Mtoken": 0.66,   # half of peak
-    "h100_spot_usd_per_gpu_hr": 2.15,               # Nebius preemptible
+    "h100_spot_usd_per_gpu_hr": 2.15,      # ROUND-6: SUPERSEDED quote —
+    # KOK_V2_PAPER.md:949 now records Nebius preemptible at $0.79/GPU-hr;
+    # this line is kept as the earlier quote, not a current price.
     "h100_ondemand_usd_per_gpu_hr": 3.85,           # Nebius
     # the one network that publishes real compute revenue
     "aethir_2025_revenue_usd":  127_800_000.0,      # their own blog

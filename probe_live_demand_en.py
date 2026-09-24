@@ -12,7 +12,7 @@ is a MEASURED NEGATIVE, not an absence of measurement:
 
   - Pearl was marketed as Duplexia (inference-subsidizing) but pass_sim
     reproduces Pearl's security from the model and finds its economy was
-    already in the regime where inference must be subsidized (theta=1.05),
+    already in the regime where inference must be subsidized (theta=1.657, corrected from 1.05 by TV-84),
     while the measured phi = 0: no utility ever materialized.
   - The cause is the E-gap (Demirel 2026/1492): the protocol could not
     certify the matrices were anyone's job. Pearl behaved like Bitconia and

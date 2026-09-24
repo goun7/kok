@@ -346,7 +346,11 @@ if __name__ == "__main__":
     print("-" * 76)
     print("""  1. No FRI, no Merkle commitment, no low-degree testing. The 'commitment'
      here is a hash standing in for a Merkle root; a real STARK needs
-     Reed-Solomon + FRI so the verifier is logarithmic, not linear.
+     Reed-Solomon + FRI so the verifier is logarithmic, not linear (ROUND-6,
+     2026-09-24: that refers to REAL STARKs, not this prototype — this file's
+     own verifier is O(m), see item 4 below, and f0b_fri_en's implemented
+     verify_round is Theta(q*deg); the log cost is a design aim, not
+     something either prototype measures).
   2. Not zero-knowledge. The witness is in the clear. The zk extension — the
      part KW Remark 2.2 says 'the prover can use a zkSNARK' — is a masking
      layer on top of exactly these constraints, not a different construction.

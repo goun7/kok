@@ -173,7 +173,8 @@ System date: 19 September 2026.
 
 **Bitcoin — refreshed 2026-09-21 via the blockchain.info open API** (each value is an
 instantaneous query; source `https://blockchain.info/q/*`):
-hashrate **956,911,537,880 TH/s ≈ 957 EH/s**, price **$81,162.26**, difficulty
+hashrate **956,911,537,880 GH/s ≈ 957 EH/s** (the blockchain.info/q/hashrate endpoint returns
+GH/s; labelled "TH/s" before round-6, a 1000× unit error), price **$81,162.26**, difficulty
 **1.3276×10¹⁴**, block height **967,912**. (A repeated query gave 963.5 EH/s — ordinary
 variance; treat the hashrate as ~957–964 EH/s.)
 
