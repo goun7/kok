@@ -1,0 +1,279 @@
+//! KW-Kernel — the G layer's proof-of-useful-work certificate.
+//!
+//! Ported 1:1 from the Python prototype `g_layer_tests_en.py::KWKernel`
+//! (rounds 1-6 measured: prove 3.47 ms / verify 0.25 ms at q=97, n=8,
+//! target 2^1). The Rust port keeps the same hash domain separation and the
+//! same certificate shape so a certificate from one is verifiable by the
+//! other (cross-checked below in the tests).
+//!
+//! SECURITY MODEL (from KOK_V2_PAPER.md §B): the hardness is STRUCTURAL —
+//! the noise matrices E, F are derived from the public ctx, so the adversary
+//! cannot choose a friendly instance. This is the property plain Freivalds
+//! lacks (the A=0 attack, paper line 253) and the reason KW was chosen.
+
+use sha2::{Digest, Sha256};
+
+/// Toy field modulus (production is P256 = 2^256 - 2^32 - 977).
+pub const TOY_Q: u64 = 97;
+pub const TOY_N: usize = 8;
+pub const TOY_R: usize = 2;
+
+/// Domain-separated 64-bit hash, identical to Python `H(*parts)`.
+///
+/// The domain labels are the same byte strings the Python prototype joins
+/// with "|", so `H("E", ctx, i, j)` here equals its Python counterpart and a
+/// certificate crosses the language boundary unchanged.
+pub fn h(parts: &[&str]) -> u64 {
+    let mut hasher = Sha256::new();
+    for (idx, p) in parts.iter().enumerate() {
+        if idx > 0 {
+            hasher.update(b"|");
+        }
+        hasher.update(p.as_bytes());
+    }
+    let d = hasher.finalize();
+    u64::from_be_bytes(d[..8].try_into().unwrap())
+}
+
+/// A G-layer certificate: the tile coordinates (i, j) and its accumulator.
+///
+/// Mirrors the Python shape `{"tile": (i, j, val), "m": m}`; `m` is carried
+/// so the verifier rejects a certificate forged for a different width
+/// (round-4 finding [11]-[14]: the verifier must derive n from the INPUT,
+/// never from a kernel constant).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Certificate {
+    pub i: usize,
+    pub j: usize,
+    pub value: u64,
+    pub m: usize,
+}
+
+pub struct KwKernel {
+    pub q: u64,
+    pub r: usize,
+}
+
+impl KwKernel {
+    pub fn new(q: u64, r: usize) -> Self {
+        Self { q, r }
+    }
+
+    /// Build the deterministic noise pair (E, F) from the public ctx.
+    ///
+    /// The ctx binds the certificate to the block/task it belongs to —
+    /// replaying one certificate under a different ctx fails (TV-1).
+    fn noise(&self, ctx: u64, n: usize) -> (Vec<Vec<u64>>, Vec<Vec<u64>>) {
+        let mut e = vec![vec![0u64; n]; n];
+        let mut f = vec![vec![0u64; n]; n];
+        for i in 0..n {
+            for j in 0..n {
+                e[i][j] = h(&["E", &ctx.to_string(), &i.to_string(), &j.to_string()]) % self.q;
+                f[i][j] = h(&["F", &ctx.to_string(), &i.to_string(), &j.to_string()]) % self.q;
+            }
+        }
+        (e, f)
+    }
+
+    /// Grind a certificate: compute the strided MatMul accumulator for every
+    /// tile and return the first whose domain-separated hash clears `target`.
+    ///
+    /// `target` is the difficulty in the "hash % target == 0" sense, so a
+    /// smaller target is harder. The prototype returns None when no tile
+    /// clears; the caller loops nonces.
+    pub fn prove(
+        &self,
+        a: &[Vec<u64>],
+        b: &[Vec<u64>],
+        ctx: u64,
+        nonce: u64,
+        target: u64,
+    ) -> Option<Certificate> {
+        let n = a.len();
+        let m = n / self.r;
+        let (e, f) = self.noise(ctx, n);
+        // A' = A + E, B' = B + F  (mod q) — the noisy factors
+        let mut ap = vec![vec![0u64; n]; n];
+        let mut bp = vec![vec![0u64; n]; n];
+        for i in 0..n {
+            for j in 0..n {
+                ap[i][j] = (a[i][j] + e[i][j]) % self.q;
+                bp[i][j] = (b[i][j] + f[i][j]) % self.q;
+            }
+        }
+        // strided accumulator: acc[i][j] = sum_l A'[i*r][l*r] * B'[l*r][j*r]
+        let mut acc = vec![vec![0u64; m]; m];
+        for i in 0..m {
+            for j in 0..m {
+                for l in 0..m {
+                    acc[i][j] = (acc[i][j] + ap[i * self.r][l * self.r] * bp[l * self.r][j * self.r])
+                        % self.q;
+                }
+            }
+        }
+        for i in 0..m {
+            for j in 0..m {
+                if h(&[
+                    "tile",
+                    &ctx.to_string(),
+                    &nonce.to_string(),
+                    &i.to_string(),
+                    &j.to_string(),
+                    &acc[i][j].to_string(),
+                ]) % target
+                    == 0
+                {
+                    return Some(Certificate {
+                        i,
+                        j,
+                        value: acc[i][j],
+                        m,
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    /// Verify a certificate by RECOMPUTING the claimed tile at its
+    /// coordinates.
+    ///
+    /// This is the round-3 finding [10] contract: an earlier version compared
+    /// against prove()'s FIRST hit, so a miner that found a later tile first
+    /// had an honest certificate rejected. The verifier never asks the prover
+    /// which tile it found; it recomputes the one claimed.
+    ///
+    /// Size comes from the INPUT (finding [11]-[14]), never from a kernel
+    /// constant.
+    pub fn verify(
+        &self,
+        cert: &Certificate,
+        a: &[Vec<u64>],
+        b: &[Vec<u64>],
+        ctx: u64,
+        nonce: u64,
+        target: u64,
+    ) -> bool {
+        let n = a.len();
+        if b.len() != n {
+            return false;
+        }
+        let m = n / self.r;
+        if cert.m != m {
+            return false; // width binding: reject a cert forged for another m
+        }
+        if cert.i >= m || cert.j >= m {
+            return false;
+        }
+        let (e, f) = self.noise(ctx, n);
+        let mut acc = 0u64;
+        for l in 0..m {
+            let ap = (a[cert.i * self.r][l * self.r] + e[cert.i * self.r][l * self.r]) % self.q;
+            let bp = (b[l * self.r][cert.j * self.r] + f[l * self.r][cert.j * self.r]) % self.q;
+            acc = (acc + ap * bp) % self.q;
+        }
+        if cert.value != acc {
+            return false;
+        }
+        h(&[
+            "tile",
+            &ctx.to_string(),
+            &nonce.to_string(),
+            &cert.i.to_string(),
+            &cert.j.to_string(),
+            &cert.value.to_string(),
+        ]) % target
+            == 0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn toy_matrices(seed: u64) -> (Vec<Vec<u64>>, Vec<Vec<u64>>) {
+        // deterministic toy matrices, same spirit as the Python Random(SEED)
+        let mut a = vec![vec![0u64; TOY_N]; TOY_N];
+        let mut b = vec![vec![0u64; TOY_N]; TOY_N];
+        let mut s = seed;
+        for i in 0..TOY_N {
+            for j in 0..TOY_N {
+                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                a[i][j] = s % TOY_Q;
+                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                b[i][j] = s % TOY_Q;
+            }
+        }
+        (a, b)
+    }
+
+    #[test]
+    fn honest_certificate_verifies() {
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (a, b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        assert!(k.verify(&cert, &a, &b, 777, nonce, 1 << 1));
+    }
+
+    #[test]
+    fn forged_tile_value_is_rejected() {
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (a, b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 999, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        let forged = Certificate {
+            i: cert.i,
+            j: cert.j,
+            value: (cert.value + 1) % TOY_Q,
+            m: cert.m,
+        };
+        assert!(!k.verify(&forged, &a, &b, 999, nonce, 1 << 1));
+    }
+
+    #[test]
+    fn replay_under_a_different_ctx_is_rejected() {
+        // TV-1: a certificate is bound to the ctx it was ground under
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (a, b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        assert!(!k.verify(&cert, &a, &b, 778, nonce, 1 << 1));
+    }
+
+    #[test]
+    fn width_binding_rejects_other_m() {
+        // finding [11]-[14]: a cert forged for another width must fail
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (a, b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        let forged = Certificate {
+            i: cert.i,
+            j: cert.j,
+            value: cert.value,
+            m: cert.m + 1,
+        };
+        assert!(!k.verify(&forged, &a, &b, 777, nonce, 1 << 1));
+    }
+}

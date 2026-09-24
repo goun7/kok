@@ -1,0 +1,21 @@
+[package]
+name = "kok-node"
+version = "0.1.0"
+edition = "2021"
+description = "KOK Network v2 sovereign L1 node - two-layer PoUM (G=MatMul PoW, U=fee-paid verifiable compute)"
+license = "MIT"
+
+[dependencies]
+sha2 = "0.10"
+hex = "0.4"
+
+[lib]
+name = "kok_node"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kok-node"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3

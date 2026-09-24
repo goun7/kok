@@ -1,0 +1,1224 @@
+                Pearl Floating Point Scheme Specification
+                                       Pearl Research Team
+                                          September 2026
+
+                                               Abstract
+    This whitepaper specifies the proof-of-useful-work protocol of the Pearl blockchain, in which the unit
+of mining work is FP8 matrix multiplication on GPUs, extending the integer matrix-multiplication proof
+of useful work of Komargodski and Weinstein [4]. At a high level, the main idea is that post-noise
+(non-linear) quantization removes the low-rank shortcut, so tickets can hash output tiles directly. For
+verification purposes, the verifier recovers the bit-exact computation using the technique of Badash et
+al. [5]. Security rests on the hardness of multiplying quantized, low-rank-noised matrices faster than
+generically. An extension of the protocol to mixture-of-experts multiplication is also described.
+
+
+
+
+                           © 2026 Pearl Research Labs. All rights reserved.                                  1
+Contents
+1 Introduction                                                                                                    3
+
+2 The abstract protocol                                                                                           3
+
+3 Preliminaries                                                                                                   4
+
+4 Plaintext verifier                                                                                              5
+  4.1 Verifier overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     5
+  4.2 Public parameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       6
+  4.3 Tile computation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      6
+  4.4 Proof contents . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      6
+  4.5 Acceptance rule . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     7
+  4.6 Verifier rationale . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .    8
+
+5 Jackpot policy                                                                                                  9
+  5.1 Policy checks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     9
+      5.1.1 Entry liveness . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     10
+      5.1.2 Noise floor . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      10
+      5.1.3 Tamed products . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         10
+      5.1.4 Unpredictable summands . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .           11
+  5.2 Attack vectors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     11
+
+6 Useful miner overview                                                                                          12
+
+7 Known mining speedups                                                                                          13
+
+A Mixture-of-experts verifier                                                                                    14
+
+B Zero-knowledge verifier                                                                                        15
+
+C Verifier arithmetic specifications                                                                         16
+  C.1 Floating point arithmetic . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+  C.2 E4M3FN matrix multiplication . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+  C.3 Noise-line sampler . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+  C.4 Noisy quantization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+  C.5 Unpredictability specification . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+  C.6 Commit type (FP10) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+
+
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                                  2
+1     Introduction
+Proof-of-work consensus makes block production costly by design [1, 2], but classical implementations require
+repeated hashings that have no value outside the protocol. A proof of useful work (PoUW) replaces the
+artificial puzzle with a computation someone already wants performed [3]. The obstacle is permissionlessness:
+the miner chooses its own inputs, so the protocol must guarantee that no choice of inputs, however degenerate,
+makes valid tickets cheaper than the prescribed amount of work.
+    This whitepaper specifies a proof-of-useful-work protocol whose unit of work is FP8 matrix multiplication
+on GPUs. A miner multiplies matrices of its own choosing, for instance the operands of an AI training or
+inference workload, and every tile of the product doubles as a lottery ticket for block production. The protocol
+covers ordinary matrix multiplication. An optional extension covers mixture-of-experts multiplications, in
+which routing is conceptually part of the left operand (Appendix A). It is the consensus layer of the Pearl
+blockchain: the same multiplications that serve AI workloads secure the network.
+    The starting point of this document is the PoUW of Komargodski and Weinstein [4] for arbitrary integer
+matrix multiplication, whose blockchain this protocol instantiates. Their protocol perturbs the operands
+with low-rank noise derived from a public seed, computes the noised product, and applies a random oracle
+to the transcript of the computation. The low-rank structure lets an honest party remove the noise from
+the output at negligible cost, giving a useful protocol with 1 + o(1) multiplicative overhead. The analysis
+is set over exact arithmetic in the random-oracle model, where, under their direct-product conjecture, even
+the all-zeroes matrices are as hard to multiply as any other pair. This document describes an alternative to
+the protocol of [4] that supports floating-point matrix multiplications. Verification requires the verifier to
+recompute a selected output tile bit-for-bit. This is made possible because the arithmetic of the whitelisted
+GPUs is deterministic and reproducible via the technique of Badash et al. [5].
+
+Organization. Section 2 presents the abstract protocol (low-rank noising plus quantization) and the core
+hardness assumption in its cleanest setting. Section 3 fixes notation, hashing, and the work model. Section 5
+specifies the jackpot policy. Section 4 specifies the plaintext verifier, Section 6 the honest useful miner,
+and Section 7 the known classes of mining speedups. The appendices specify the mixture-of-experts and
+zero-knowledge verifiers and the bit-exact arithmetic, sampling, and quantization procedures.
+
+
+2     The abstract protocol
+Let
+                                 A ∈ Rm×k ,       B ∈ Rn×k ,      C := AB T .
+In a common application, the user chooses A and B at higher precision than the hardware format used for
+multiplication. If Q denotes quantization into that format, the user would ordinarily approximate C by
+Q(A) Q(B)T .
+   The protocol replaces this by the following procedure. Derive random rank-r noise matrices NA ∈ Rm×k
+and NB ∈ Rn×k and compute
+                                       e := Q(A + NA ) Q(B + NB )T .
+                                       C                                                             (1)
+Each noise matrix is chosen unpredictably after the corresponding input has been committed. The product
+Ce determines the proof-of-work lottery. Because the noise has low rank, it also yields a useful output after
+the cheap correction
+                                    C     e − ANBT − NA B T − NA NBT .
+                                     b := C
+
+Without quantization, C  b = C. With it, the protocol is configured so that C
+                                                                            b approximates C with accuracy
+                                               T
+comparable to the baseline product Q(A) Q(B) . Because r is small, the three subtracted terms are efficient
+to compute.
+    While the low-rank structure would create a shortcut if it survived quantization, entrywise quantization
+is nonlinear in general:
+                                       Q(A + NA ) ̸= Q(A) + Q(NA ).
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                              3
+Although NA has rank r, its entrywise-quantized image Q(NA ) can have much higher rank. The central
+hardness premise is that this destroys the exploitable structure: the resulting product cannot be computed
+accurately with substantially less work than a generic quantized product. This premise depends on the data
+type and quantizer, so the protocol whitelists both.
+   Setting A = B = 0 reduces the lottery product to
+                                             e0 = Q(NA ) Q(NB )T ,
+                                             C
+
+which isolates the hardness premise.
+Assumption 1 (Informal quantized-subspace hardness). For every admissible k, there is an r ≪ k with the
+following property. With high probability over random r-dimensional subspaces UA , UB ⊂ Rk , the following
+holds. Draw the rows of NA , NB randomly from UA , UB , respectively. On average, computing
+
+                                                Q(NA ) Q(NB )T
+
+is not substantially easier than computing
+                                                  Q(A) Q(B)T ,
+where A, B have generic random rows in Rk . The same protocol-approved Q is used in both products. Both
+computations require work comparable to roughly mnk multiply-accumulate operations.
+   Concretely, the protocol uses r = 32 for k ≤ 216 . The assumption compares computational difficulty, not
+the two input distributions.
+
+Relation to the transcript-unpredictability assumption. Assumption 1 is the floating-point ana-
+logue of the transcript-unpredictability assumption of [4]. There, low-rank noise makes the output of an
+adversarially chosen product cheap (for A = B = 0 the noised product is just NA NBT ), so hardness must
+rest on the transcript of the computation. Here, quantization blocks the output shortcut, and hardness can
+rest on the output tiles themselves. A miner controls A and B and can try to plant structure that survives
+noising and quantization. Section 5 specifies the policy checks that rule out such structure.
+
+
+3    Preliminaries
+Notation.     Let A ∈ Rm×k and B ∈ Rn×k be matrices over the reals. Their useful product is
+
+                                              C := AB T ∈ Rm×n .
+
+Both operands are stored as collections of row vectors. Thus Cij is the inner product of row i of A with
+row j of B, which accounts for the transpose on B. For selected row-index sets IA and IB , write AIA and
+BIB for the corresponding strips of rows. An index set contains no repetitions, and its strip is arranged in
+increasing index order. All row and column indices start at zero. The seeds noise seedA and noise seedB
+determine the noised operands A e and e
+                                      B. Write
+
+                                             C
+                                             eI ,I := A   eI )T
+                                                      eI (B
+                                               A B      A   B
+
+
+
+for the noised tile that the verifier recomputes. IA indexes the rows of e  C, and IB indexes its columns. The
+ticket digest is a keyed function Ticket from tiles to {0, 1}λ , with λ = 256. Let PA and PB be the patterns
+that tile the rows of A and of B, hence the rows and columns of C        e (e.g., a periodic tiling into blocks of
+consecutive rows and columns). Each tile is one (IA , IB ) pair, and the patterns also fix how the tile’s entries
+are grouped and ordered for hashing. We then use a randomness-extraction function Extract to efficiently
+compress a tile into a consensus 64-byte encoding that depends on every entry:
+                                                                                           
+                     Ticket(CeI ,I ) := H“jackpot” Extract(CeI ,I , PA , PB ); noise seedA .
+                               A B                            A B
+
+
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                                4
+Blockchain state and the state window. A proof of work must be bound to the blockchain state, so
+that work cannot be prepared before the state is known or reused across blocks. In the basic setting the
+miner binds its commitments to the block header it is proposing, and the proposed header in turn commits
+to the current tip.
+    We index headers by depth relative to the proposed block. Write σ0 = σ  b for the proposed header, σ1 for
+its parent (the current tip), σ2 for its grandparent, and so on. The context Σ carries these headers.
+    Consensus relaxes the basic setting by a state window of depth D (e.g., D = 3), allowing the miner to
+bind its commitment to B to any one of the D headers σ0 , . . . , σD−1 in the window. The commitment to A
+remains bound to σ  b.
+
+Domain-separated hashes. Let q be a 32-byte parent key and let ℓ be a domain-separation string, e.g.
+“jackpot”. For readability, each label displayed in this paper omits an implicit protocol-version component.
+The concrete label includes both the protocol version and the displayed role. BLAKE3 accepts one key, so
+q occupies its key slot. Derive the key for role ℓ by hashing the string under q:
+
+                                     Subkey(q, ℓ) := BLAKE3(ℓ; key = q).
+
+Then
+                                 Hℓ (x; q) := BLAKE3(x; key = Subkey(q, ℓ)).
+When no transcript-derived parent key is available, use unkeyed BLAKE3(ℓ) rather than Subkey. That is,
+
+                                  Hℓ (x) := BLAKE3(x; key = BLAKE3(ℓ)).
+
+This preserves the domain-separation interface, without key unpredictability.
+
+Work model.      We measure work in multiply-accumulate operations (MACs). The direct cost of the selected
+tile is
+                                            Ttile := |IA | · |IB | · k.
+We count MACs for concreteness only. Any model of computation serves, with Ttile read as the corresponding
+tile cost in that model. The MAC count only fixes the scale. It intentionally excludes the work required for
+quantization, noise generation, hashing, commitment verification, and memory movement.
+
+
+4      Plaintext verifier
+4.1     Verifier overview
+The verifier checks one tile of the matmul, never the whole product. The proof names that tile and carries
+only the data the tile reads. Appendix A gives the optional MoE verifier, in which routing is conceptually
+part of A. Appendix B gives the zero-knowledge verifier for either mode.
+
+    1. Receive the strips. The proof carries the selected rows of A and B. The selected B rows become
+       columns of the output tile.
+    2. Check the trees, derive the seeds. The strips arrive with minimal Merkle multi-proofs. The
+       verifier recomputes the roots of A and B from the strips and their proofs, and rejects a mismatch. It
+       derives noise seedB from the root of B and the chain state, then noise seedA from noise seedB
+       and the root of A. The seeds follow the commitments, so the miner cannot pick its noise.
+    3. Noise the strips, compute the tile. The seeds expand into the noise of the two strips, giving A    e
+                                            T
+       and B. The verifier computes C = A(B) with the kernel the miner ran, so both tiles agree bit for bit.
+           e                        e   e e
+
+
+
+
+                               © 2026 Pearl Research Labs. All rights reserved.                            5
+  4. Check the difficulty. The verifier computes the ticket digest Ticket(C),e a 32-byte value keyed by
+     a domain-separated derivative of noise seedA . The tile wins if this value is at or below the effective
+     target, which scales the network target by Ttile .
+  5. Check the strips. The verifier runs the jackpot policy on the two strips, either approving or
+     rejecting the tile as a rich-enough matmul work.
+
+4.2    Public parameters
+The dimensions m, n, k are public. The proof also supplies a noise rank r, a Quant, a Device, operand hash
+identifiers hash idA , hash idB , and miner-chosen periodic partitions PA , PB . Each hashing identifier selects
+the precise way hashing is done, and is chosen from a consensus-allowed list. Notably, it controls the chunk
+size internal to BLAKE3. Each partition divides an operand’s rows into strips, thus breaking the entire A · B
+matmul deterministically into many independent matmuls each consisting of a fixed number of rows of A
+and a fixed number of rows of B. A partition is periodic: it is described by a short pattern that repeats
+along the axis, so every strip has the same shape and the strips never overlap. The pattern is encoded in a
+few bytes, and a base is valid only if it lies on the pattern’s grid.
+    Device and Quant are enumerations, each chosen from a consensus-allowed list. Device names the GPU
+architecture, and Quant names the quantization scheme. This document specifies one such quantization
+scheme: the FP10 commit type of Appendix C.6 together with the noisy quantization of Appendix C.4.
+Finally, e is the number of experts of the mixture-of-experts extension (Appendix A). Ordinary matrix
+multiplication sets e := 0.
+    The public parameter tuples for the two operands are
+
+                                pB := (n, k, r, Quant, Device, hash idB , PB , e),
+                                                                                                               (2)
+                                pA := (m, hash idA , PA ).
+
+4.3    Tile computation
+After both seeds exist, the miner chooses one strip from each partition, identified by bases tA , tB . Write
+
+                                 IA := Rows(PA , tA ),         IB := Rows(PB , tB )                            (3)
+
+for the selected rows, that is, the rows of the strip based at tA (resp. tB ), in increasing order. The partitions
+also determine how Extract arranges tile values into the 64-byte input to the jackpot hash: they split the tile
+into 16 subtiles, and Extract folds the FP32 bit patterns of each subtile into one 32-bit word using a mixing
+step, so that every tile entry influences the digest. E.g., over the subtile’s entries x,
+
+                                      w ← rotl13 w · c + bits(x) mod 232 ,
+                                                                 
+
+
+with c an odd constant and bits(x) the 32-bit encoding of x.
+
+4.4    Proof contents
+The blockchain context supplies
+                                             Σ := (b
+                                                   σ , σ1 , . . . , σD−1 ),
+where σj is the authenticated depth-j ancestor header. The headers σ
+                                                                   b, σj omit the proof commitment. The
+verifier rejects a proof whose carried σd is not a member of Σ.
+    The proof carries:
+  1. the selected ancestor header σd .
+
+  2. the public parameter tuples pA , pB .
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                                6
+  3. tile bases tA , tB for the two periodic partitions.
+  4. openings πA , πB with the leaves covering the clean A and B strips, respectively, and their Merkle
+     sibling hashes.
+The proof omits the roots HA , HB , the noise seeds, noise factors, noised strips, product tile, extractor output,
+and jackpot hash.
+
+4.5    Acceptance rule
+We now specify the verifier’s logical acceptance rule in detail (byte encoding and proof serialization are not
+specified). Appendix A replaces only the rules needed for mixture-of-experts.
+   The verifier rejects unless every operation below succeeds.
+
+  1. Validate the context and public arguments.
+      Run
+                                       CheckPublic(Σ, σd , pA , pB , tA , tB , πA , πB ).                      (4)
+      CheckPublic verifies that the parent of the proposed header σb connects it to the blockchain, authenti-
+      cates the carried σd against the context Σ, and validates the header’s remaining chain fields. It also
+      sanity checks pA and pB , and requires e = 0. In particular,
+
+                                1 ≤ m, n ≤ 224 ,       1024 ≤ k ≤ 216 ,     r = 32,       32 | k.              (5)
+
+      For IA , IB defined in (3), it requires
+
+                                    IA ⊆ {0, . . . , m − 1},       IB ⊆ {0, . . . , n − 1}.                    (6)
+
+      Let bA × bB , as determined by PA , PB , be the shape of the 32-bit word array produced by Extract. Its
+      output is 64 bytes, so the verifier requires
+
+                       bA · bB = 16,      |IA | ≥ 4,       |IB | ≥ 16,          256 ≤ |IA | · |IB | ≤ 2048.    (7)
+
+      For performance, the private instance is furthermore bounded as
+
+                                                  k · (|IA | + |IB |) ≤ 222 .                                  (8)
+
+  2. Verify the openings.
+      With σ0 := σ
+                 b, derive
+                                                  keyB := H“key-B” (σd ),
+                                                  keyA := H“key-A” (b
+                                                                    σ ).
+      For each X ∈ {A, B}, compute
+
+                                    (HX , XIX ) := VerifyOpenX (πX ; keyX , pX , IX ).                         (9)
+
+      VerifyOpenX checks that πX opens exactly IX . It uses keyX as the key for hash idX . It requires the
+      unique minimal set of leaves and sibling hashes for the operand shape and hash idX . It reconstructs
+      the Merkle roots and returns the aggregate root HX and clean strip XIX . Opened values must use
+      the encoding specified by Quant, and XIX is returned in that encoding. Decoding it is the first step of
+      NoisyQuantizepX in step 4. It rejects NaN or infinity. It accepts subnormal values.
+  3. Derive the noise seeds.
+      Compute
+                               noise seedB := H“seed-B” (HB , keyB , pB ),
+                                                                                                              (10)
+                               noise seedA := H“seed-A” (HA , noise seedB , keyA , pA ).
+
+                                 © 2026 Pearl Research Labs. All rights reserved.                               7
+  4. Recompute the ticket.
+      The verifier uses one consensus map SampleLine for all E and F lines. Given a seed noise seedX , an
+      operand X ∈ {A, B}, a factor Z ∈ {E, F}, and a line index ℓ, it returns a length-r line of FP8E4M3FN
+      values. The map is deterministic and does not depend on draw order: each line is addressed by (X, Z, ℓ)
+      alone. Each output line has approximate Euclidean norm 256. The construction is in Appendix C.3.
+      For X ∈ {A, B} and sX := noise seedX , compute
+                                  EX [ℓ, :] := SampleLine(sX , X, E, ℓ),       ℓ ∈ IX ,
+                                  FX [u, :] := SampleLine(sX , X, F, u),       0 ≤ u < k.
+
+      Stacking the lines gives per-operand factors EX ∈ FP8|IX |×r and FX ∈ FP8k×r , so each strip receives
+                             T
+      the rank-r noise EX FX   expanded on exactly the opened rows. Then compute
+                                         eI := NoisyQuantizep (AI , EA , FA ),
+                                         A A                 A   A
+
+
+                                         B
+                                         eI := NoisyQuantizep (BI , EB , FB ),
+                                           B                 B   B
+
+
+                                           T := MatMulDevice (A
+                                                              eI , B
+                                                                A
+                                                                   eI ),
+                                                                     B
+
+                                           z := Extract(T, PA , PB ),
+                                           J := H“jackpot” (z; noise seedA ).
+
+      Appendix C.4 specifies NoisyQuantize. Every intermediate result of the specified floating-point opera-
+      tions must be finite. The verifier rejects a NaN or positive or negative infinity.
+  5. Apply the policy and target.
+      Let τ be the target difficulty as specified in σ
+                                                     b. Accept exactly when
+                         JackpotPolicy(IA , AIA , IB , BIB ; σ
+                                                             b, σd , pA , pB , HA , HB ) = approve        (11)
+      as specified in Section 5.1, and
+                                            uint256LE (J) ≤ τ · |IA | · |IB | · k.                        (12)
+
+4.6    Verifier rationale
+Openings. The verifier interprets each root under one operand shape, hash id, and key. A minimal
+Merkle proof has one expected set of leaves and sibling hashes. This rule prevents proof padding and bounds
+the input before arithmetic starts. An opening authenticates only the disclosed rows. It does not prove
+knowledge of the undisclosed matrix entries.
+    Opened values use the encoding selected by Quant. Rejecting NaN and infinity removes exceptional
+arithmetic inputs.
+
+State window. The B commitment can use any header σd in the state window. Relative to using only
+σ0 , this gives at most a D-fold opportunity to preprocess the B side. For a useful miner, the same window
+gives up to D − 1 block intervals to replace its matrices after the blockchain tip changes. It need not replace
+them immediately. The A commitment uses and binds the proposed header.
+
+Challenge order. The seed chain fixes the intended Fiat–Shamir order. The miner fixes B and pB before
+it obtains noise seedB . It can then choose A, but it must fix A and pA before it obtains noise seedA .
+This order allows A to depend on the first challenge without allowing it to depend on the second challenge.
+    Including pX in each seed hash binds the operand dimensions, noise rank, Quant, Device, hash identifiers,
+and partition to that noise challenge. These bindings do not prevent transcript grinding or shared work
+across commitments and depths. The batched and grinding security definitions must account for those
+choices.
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                             8
+Hash domains. The labels “key-A”, “key-B”, “seed-A”, and “seed-B” separate operand roles and tran-
+script stages. The sampler uses a seed-derived key and the typed address (X, Z, ℓ) as its message. This
+design gives deterministic random access and makes draw order irrelevant. The seed already binds k and r,
+so the address does not repeat them.
+    The “noise-line” and “jackpot” labels derive different keys from the same seed.
+
+Arithmetic and extraction. Quant fixes the commit type, the quantized type, the quantization algo-
+rithm, and roundBF16→BF16 . Device fixes the remaining arithmetic. This distinction is necessary because
+E4M3FN operands alone do not determine a bit-exact result on all devices. Reproducing a GPU matmul
+exactly requires pinning down rounding direction, subnormal handling, and accumulation order. Badash,
+Boneh, Komargodski, and Srivastava [5] characterize these behaviors across NVIDIA architectures and pre-
+cisions, including FP8, and reproduce them off the GPU. The protocol uses the specified floating-point
+operations, not ideal real-number arithmetic. A non-finite intermediate result therefore causes verification
+failure.
+
+Difficulty and eligibility. Scaling the target by |IA | · |IB | · k makes the expected number of wins pro-
+portional to the direct MAC cost of the checked tile. The upper tile bound limits verifier work. The lower
+bounds ensure that Extract is fed with sufficient entropy.
+   The policy in Section 5.1 and the target have different purposes. The policy determines tile eligibility.
+The target sets the win rate for eligible tiles.
+
+
+5     Jackpot policy
+Beyond the idealized setting of Section 2, the protocol must stay secure when the matrices A, B are not
+zero and the arithmetic is a concrete floating-point format. This opens an attack surface, which the verifier
+addresses by a pointwise set of checks that either accept or reject a single lottery tile. We call it the jackpot
+policy.
+
+5.1    Policy checks
+The policy approves exactly when every check below passes. It runs after the verifier has rejected Infin-
+ity/NaN inputs or intermediate results.
+    Let i ∈ IA index a row of A, let j ∈ IB index a row of B, and let u, with 0 ≤ u < k, index a column.
+Write A and B for A and B after each row is normalized into quantized units. The per-row noise scales are
+                                      1
+                               δ :=     ,   σiA := δ ℓ2 (Ai ),    σjB := δ ℓ2 (B j ).
+                                      2
+Each row thus receives noise whose scale is the fixed fraction δ of that row’s ℓ2 scale, so the expected noise-
+to-signal ratio is the same for every row (cf. Appendix C.4). The noise N X for operand X ∈ {A, B} is a
+                                                                   X       X
+rank-r matrix, already carrying the per-row
+                   X                   X 2
+                                            scale, so that ℓ2 (Ni ) ∼ σi ℓ2 (X i ). The entrywise marginal
+distribution of Niu is roughly N 0, (σi ) , and its exact definition is specified in Appendix C.4. Let Q be
+the quantization into FP8 map (cf. Appendix C.4). The operands of the matmul are
+                                              A                              B
+                                                                               
+                              eiu := Q Aiu + Niu
+                              A                    ,        B
+                                                            eju := Q B ju + Nju   .
+
+   Let cij,t be the FP32 accumulator after the first t groups of Appendix C.2, and let G be the number of
+groups (k/32). The replay magnitude is
+                                                                       
+                              Mij := max max |Aiu Bju |, max |cij,t | .
+                                                      e  e
+                                                0≤u<k            1≤t≤G
+
+
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                               9
+Thus Mij replays the accumulation of cell (i, j) and records the largest magnitude that appears in it, either
+as a single summand or as a partial accumulator, and ulpDevice (Mij ) is the spacing of the accumulation grid
+at that magnitude. The unpredictability of the iju summand is defined as
+                                               2            2             
+                                              Aiu + (σiA )2 B ju + (σjB )2
+                                      viju :=                                .                                (13)
+                                                           221
+                                                                                                            A
+Up to the fixed denominator, the numerator multiplies the second moments of the two noised entries Aiu +Niu
+             B
+and B ju +Nju  , so viju tracks how widely the iju summand spreads as the noise seeds vary. The unpredictable-
+summands check below compares this spread against the accumulator grid the summand meets.
+   The policy uses the following constants:
+
+                                   τidle := 8,       εidle := 1/64,     σmin := 1,
+                                  τtame := 256,     εtame := 1/64,      εpred := 1/16.
+
+All checks in this section are phrased as if arithmetic is happening in the real numbers, but the verifier
+implementation is authoritative.
+
+5.1.1   Entry liveness
+For each side, define its set of idle entries:
+
+                                        DA := (i, u) : |Aiu | ≥ τidle σiA ,
+                                             
+
+                                        DB := (j, u) : |B ju | ≥ τidle σjB .
+                                             
+
+An idle entry exceeds its row’s noise scale by the factor τidle , so the injected noise has standard deviation at
+most a 1/τidle fraction of the entry’s magnitude, and the quantized value of the entry is largely predictable.
+The check requires
+                                   |DA | ≤ εidle |IA |k,  |DB | ≤ εidle |IB |k.
+
+5.1.2   Noise floor
+The check requires
+                               σiA ≥ σmin    (∀i ∈ IA ),        σjB ≥ σmin    (∀j ∈ IB ).
+The scales are expressed in the quantized units of A and B, so the floor requires every opened row to carry
+at least one quantized unit of noise.
+
+5.1.3   Tamed products
+Let ufpDevice (x) = ulpDevice (x) · 2WDevice be the largest power of 2 not exceeding |x|. Define the portion of the
+tile with unusually high Mij :
+                                    n                              √        o
+                            U := (i, j) : ufpDevice (Mij ) > τtame kσiA σjB ⊆ IA × IB .
+      √
+Here kσiA σjB is the natural scale of a length-k dot product whose summands carry independent noise of
+scales σiA and σjB . A cell that exceeds it by the factor τtame indicates an unusually coherent pair of rows, in
+whose product the noise accounts for an unusually small relative share. The check requires
+
+                                                  |U| ≤ εtame |IA ||IB |.
+
+
+
+
+                                 © 2026 Pearl Research Labs. All rights reserved.                               10
+5.1.4   Unpredictable summands
+Using ulpDevice as defined in Appendix C.5, let
+
+                                   S := (i, j, u) : viju < ulpDevice (Mij )2 .
+                                       
+                                                                                                                (14)
+
+The check requires the tile-wide bound
+                                               |S| ≤ εpred k|IA ||IB |.
+   Our verifier’s implementation slightly deviates from (14). We replace viju with an approximate lower
+bound of it, correspondingly making the policy slightly stricter. Appendix C.5 includes the full details.
+
+5.2     Attack vectors
+The protocol as instantiated in Sections 5 and 4 carries a considerable amount of detail, mainly because the
+permissionless setting leaves the miner many directions in which to attack. The paragraphs below describe
+each direction and the mechanism that answers it.
+
+Degenerate arithmetic. On NaN or infinite values, device arithmetic stops resembling arithmetic over
+R: a NaN propagates through every later operation, and an infinity absorbs every further finite summand. A
+tile driven into a non-finite state therefore collapses to a value predictable from few of its inputs. The verifier
+forbids NaN and infinity in the input operands and in every intermediate result, which keeps accepted tiles
+inside the regime that the checks of Section 5.1 model.
+
+Noise seed grinding. The seeds are unpredictable, but a miner can grind them, hunting for structure in
+the noise factors that admits a faster multiplication. For this reason, structure in FA , EB , or FB that yields
+a meaningful speedup must be rare enough that the expected cost of grinding for it is impractical. The lower
+bound k ≥ 1024 and |IB | ≥ 16 serve this requirement. Structure in EA tolerates a looser threshold, as EA
+is derived from both A and B’s commitments while FA , EB , or FB are derived from B’s commitment alone.
+This asymmetry is why some checks treat the two sides differently.
+    For example, if grinding makes two rows of EB in the same IB identical, the jackpot for IA × IB may
+cost k|IA |(|IB | − 1) rather than k|IA ||IB |. Nevertheless, the multiplicative speedup, |IB |/(|IB | − 1) < 1.1, is
+acceptable given the nontrivial grinding required: SampleLine has about 150 bits of min-entropy. Similarly,
+for B = 1, quantization leaves Q(B + EB FBT )ij = Bij in roughly 10% of entries. With k ≥ 1024, grinding
+for a substantially larger fraction across a whole tile is impractical.
+
+No-noise entries. A miner can commit operands whose entries dwarf the per-row noise scale. Quan-
+tization then absorbs most of the noise: such an entry’s quantized value ranges over only a few adjacent
+FP8 codes, so large parts of Ae and B,e and of every tile they produce, are predictable before the seeds are
+known. The entry-liveness check bounds the fraction of these entries on each side. Note that the proportion
+of noise-agnostic entries can be upper-bounded a priori as a function of δ alone, with no check at all, but
+the resulting estimates are generally looser.
+
+Low local entropy. A miner can commit rows whose peak entry dwarfs their typical entry. The row
+normalization of Appendix C.4 must leave room for the peak, which compresses the rest of the row, noise
+included, toward zero, until the quantized noise takes only a handful of small FP8 values. Operands with so
+little local entropy invite specialized hardware: a circuit built for a reduced alphabet of values can multiply
+faster than a general FP8 kernel, breaking the premise that a multiply-accumulate costs what the work
+model charges for it. The noise-floor check removes this option by requiring every opened row to carry noise
+of scale at least σmin in quantized units.
+
+
+
+
+                                 © 2026 Pearl Research Labs. All rights reserved.                                 11
+Coherent dot products. When a row of A aligns with a row of B, their dot product concentrates:   √            the
+replay magnitude Mij grows with the coherence while the noise stays near its natural scale kσiA σjB . The
+accumulation grid follows the largest magnitude in the cell, so in a coherent cell the noise affects fewer of the
+retained bits, and more of the cell’s exact bits become predictable from the signal alone. The tamed-products
+check caps the fraction of such cells. τtame is chosen so that typical AI workloads easily fit this bound.
+
+Unpredictability. The unpredictable-summands check is motivated by a mining strategy where the mat-
+mul is arranged so that the device accumulation truncates the noise, up to fast low-rank correction terms.
+                       X             X       X     eiu − S X . We can expand
+For X ∈ {A, B} write Siu  = X iu + Niu and Tiu := X       iu
+
+                                       k−1
+                                       X                   k−1
+                                                           X
+                                             eiu · B               A     A     B     B
+                               C
+                               eij =         A     eju =         (Siu + Tiu )(Sju + Tju ).
+                                       u=0                 u=0
+
+If the miner chooses A and B of low rank, then the matrices S A and S B have low rank too, since the noise
+contributes rank at most r. Every term of the expansion with a low-rank factor is cheap, so the only part of
+Ceij that is expensive to compute is
+                                               k−1
+                                               X
+                                                    A     B
+                                                   Tiu · Tju .                                         (15)
+                                                    u=0
+                                                                                       A
+For entries Aiu which are not much larger than ℓ2 (Ai ), the marginal distribution of Tiu has variance that
+                      2
+linearly scales with Aiu + (σi ) when letting the noise seeds vary, with a constant around 2−10.5 . The
+                              A 2
+
+unpredictable-summands check ensures that all but a small proportion of the summands in (15) survive the
+device’s truncation and affect the eventual dot product C
+                                                        eij .
+
+
+6     Useful miner overview
+This section describes the intended workflow of an honest miner: one that mines with multiplications it
+wants computed anyway. The miner holds a queue of jobs, each a pair A, B of R matrices whose useful
+product is C = AB T , and interleaves the following steps with ordinary workload.
+
+    1. Prequantize. Encode A, B in the commitment format (FP10). The protocol does not mandate the
+       encoding procedure. A recommended construction appears in Appendix C.6.
+    2. Commit. Hash B under hash idB keyed by a recent blockchain header, and derive noise seedB .
+       Then commit A under the proposed header and derive noise seedA .
+    3. Noise and quantize. Derive EX , FX from the seeds and compute X e = NoisyQuantizep (X, EX , FX )
+                                                                                         X
+       for X ∈ {A, B}. This costs O((m + n)kr) MACs and one pass over the operands.
+    4. Multiply. Run MatMulDevice once on the full noised operands. This is the dominant cost, mnk MACs,
+       and it is the same kernel the job would run without the protocol, applied to perturbed operands.
+    5. Scan for winners. Cut the output into the tiles induced by PA , PB . For each tile compute the
+       extractor output and the jackpot hash, and compare against the scaled target. Each tile wins with
+       probability proportional to its cost Ttile , so the expected number of wins per job is proportional to its
+       total MAC count. Losing tiles are discarded and reveal nothing.
+
+    6. Open on a win. For a winning tile, authorized by the jackpot policy, assemble the proof of Section 4.4.
+
+
+
+
+                                 © 2026 Pearl Research Labs. All rights reserved.                             12
+Recovering the useful product. The above description computes C          e = AeBe T , not C. The two differ
+by terms the miner can reconstruct cheaply once the seeds are known: the signal–noise cross terms carry a
+rank-r factor and cost O((mn + mk + nk)r) MACs, and the per-row descaling induced by the quantization.
+What cannot be removed, namely the terms involving the quantization errors (15), is of the same order as
+the error that directly quantizing A and B to FP8 would introduce. The miner therefore recovers the useful
+product at FP8-level accuracy for the cost of the noised product plus lower-order corrections.
+
+Overhead accounting. Beyond the product itself, the miner pays for hashing the operands, noising,
+scanning for winning tiles, and, rarely, assembling a proof. Each of these is O((mn + mk + nk)r) MACs or
+a single hashing pass over A, B or C,
+                                    e against mnk for the product, so the total overhead is a 1 + o(1) factor
+when m, n, k ≫ r. When B is fixed in advance, its hashing and noising need only be refreshed every few
+blockchain-tip changes. This preprocessing improves the concrete efficiency.
+
+
+7    Known mining speedups
+If we drop the usability requirement, a miner may gain a speedup relative to a useful miner. The purpose
+of this section is not to specify the guardrails that mitigate these speedups, but to record which high-level
+speedup classes were in scope when the protocol was designed.
+
+Input crafting. A miner that does not need the product can choose operands for speed rather than for
+use: low-rank matrices, rows dominated by a few peaks, rows whose noise quantizes away, or operand pairs
+with strongly correlated rows. The jackpot policy of Section 5.1 is the defense, imposing statistical properties
+that ensure unpredictability.
+
+Precision shortcuts. The device arithmetic of Appendix C.2 truncates summands below the accumulation
+grid, so a miner can skip any summand it knows will round away and save its MACs. The unpredictable-
+summands check in Section 5.1 caps the fraction of skippable summands at εpred , and the tamed-products
+check keeps cells out of the magnitude regime where whole groups of summands round away at once.
+
+Seed and commitment grinding. A miner can retry commitments to search for favorable noise: ex-
+ploitable structure in the factors (Section 5.2) or otherwise favorable transcripts. Each discarded attempt
+costs a commitment and a seed derivation, so this class is bounded by the usual Fiat–Shamir grinding
+argument.
+
+Work reuse. A miner can try to extract several tickets from one multiplication: chaining instances by
+resubmitting noised outputs as fresh inputs, or amortizing shared operands, noise, or preprocessing across
+a batch of jobs. These attacks succeed only if revealing a noised tile makes the clean tile’s ticket cheaper to
+predict.
+
+Better kernels and hardware. A miner with a faster bit-exact implementation of MatMulDevice , through
+better scheduling or better silicon, outpaces other miners, but this is the same advantage an honest miner
+gains and is not an attack on the protocol: the work model charges everyone in the same units.
+
+
+References
+[1] Cynthia Dwork and Moni Naor. Pricing via processing or combatting junk mail. In CRYPTO, volume
+    740 of Lecture Notes in Computer Science, pages 139–147. Springer, 1992.
+
+[2] Satoshi Nakamoto. Bitcoin: A peer-to-peer electronic cash system. 2008.
+
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                             13
+[3] Marshall Ball, Alon Rosen, Manuel Sabin, and Prashant Nalini Vasudevan. Proofs of useful work. IACR
+    Cryptology ePrint Archive, page 203, 2017.
+[4] Ilan Komargodski and Omri Weinstein. Proofs of useful work from arbitrary matrix multiplication.
+    arXiv:2504.09971; IACR Cryptology ePrint Archive, Report 2025/685, 2025.
+[5] Erez Badash, Dan Boneh, Ilan Komargodski, and Megha Srivastava. Hawkeye: Reproducing GPU-level
+    non-determinism. arXiv:2603.20421, 2026. To appear in MLSys 2026.
+[6] Jack O’Connor, Jean-Philippe Aumasson, Samuel Neves, and Zooko Wilcox-O’Hearn. BLAKE3: one
+    function, fast everywhere. Specification, 2020. https://github.com/BLAKE3-team/BLAKE3-specs.
+
+
+A     Mixture-of-experts verifier
+This appendix specifies the mixture-of-experts extension as changes to the plaintext verifier.
+
+Expert matmuls. An MoE job with activation matrix A has e ≥ 1 experts, with each expert having
+η := n/e rows in its right operand. For an expert w let B (w) ∈ Rη×k be its right operand matrix, R[w] be
+the sorted list of rows of A routed to that expert, sw := |R[w]|, and left operand
+                                            (w)
+                                          Ai      := AR[w][i] ,     0 ≤ i < sw .
+The useful expert matmul is thus
+                                           C (w) := A(w) (B (w) )T ∈ Rsw ×η .
+A token may occur in several routing lists or in none.
+
+Protocol encoding.        The protocol stacks the expert matrices as
+                                                  (0) 
+                                                    B
+                                                  .. 
+                                           B :=  .  ∈ Rn×k .
+                                                         B (e−1)
+This complete stack is committed and noised as one matrix, so HB covers all experts. We remind the reader
+that e is part of pB (as in (2)). The A-side public parameter tuple (see (2)) is extended to
+                                  pA := (m, hash idA , PA , hash idR , hash idO )
+as detailed below:
+                                                                                             1
+                                                                                     P
+  1. Encode the routing-list lengths by O = (O0 , . . . , Oe−1 ) with Oi :=          w≤i sw .
+
+  2. Define
+                                                  Rflat := R[0] ∥ · · · ∥ R[e − 1]
+     where ∥ denotes concatenation. Note: |Rflat | = Oe−1 , and more generally the partition of Rflat to lists
+     is pinned by O.
+  3. Using keyA , hash idR hashes Rflat to HR , and hash idO hashes O to HO .
+
+Proof contents.      In addition to Section 4.4, the proof includes:
+  1. Winning expert w and the complete cumulative-count list O.
+  2. Opening πR with the leaves covering the complete list R[w] and their Merkle sibling hashes.
+The roots HR , HO are omitted, and w, tA , tB are miner-selected after both noise seeds exist.
+  1 Throughout, O
+                 −1 := 0, so that |R[w]| = Ow − Ow−1 and the interval [Ow−1 , Ow ) are defined for w = 0 as well.
+
+
+
+                                  © 2026 Pearl Research Labs. All rights reserved.                                  14
+Verifier changes
+    1. Validate the context and public arguments.
+      CheckPublic accepts the extended pA , receives w, O, πR , and replaces e = 0 with
+
+                                       1 ≤ e ≤ 1024,       e | n,     0 ≤ w < e.
+
+      It requires
+                        |O| = e,      0 ≤ O0 ≤ · · · ≤ Oe−1 ,       |R[w]| = Ow − Ow−1 = sw ,
+      and R[w] must increase strictly in [0, m). No other routing list is validated. Both patterns are expressed
+      in expert-local coordinates:
+
+                             UA := Rows(PA , tA ) ⊆ {0, . . . , sw − 1},   IA := R[w][UA ],
+                             UB := Rows(PB , tB ) ⊆ {0, . . . , η − 1},    IB := wη + UB .
+
+      These definitions replace the original selected rows (see (3)). Partition-base and extraction-layout
+      checks use UA , UB , while global row bound checks use IA , IB . The maps preserve cardinality, so the
+      existing tile-shape bounds are unchanged.
+
+    2. Verify the openings.
+      The verifier interprets Rflat as containing exactly Oe−1 token indices. Under keyA and hash idR , πR
+      minimally opens [Ow−1 , Ow ) of Rflat and reconstructs HR , using the same minimal-opening rule as
+      πA , πB . It hashes the supplied O under hash idO and keyA to obtain HO . It then verifies πA , πB
+      against IA , IB .
+
+    3. Derive the noise seeds.
+      Keep the B-side equation in (10) and replace the A-side equation with
+
+                         noise seedA := H“seed-A” (HA , HR , HO , noise seedB , keyA , pA ).
+
+      Thus e is fixed through pB before noise seedB . After that seed, A, the extended pA , HR , and HO
+      are fixed before noise seedA .
+    4. Recompute the ticket.
+      For i ∈ UA and j ∈ UB , the verifier samples
+
+                             EA [R[w][i], :] := SampleLine(noise seedA , A, E, R[w][i]),
+                             EB [wη + j, :] := SampleLine(noise seedB , B, E, wη + j).
+
+      Because the E-lines depend only on global indices and the F -lines only on the k dimension, the noise is
+      globally canonical: the miner may noise and quantize A once and reuse it across experts. The existing
+      NoisyQuantize, MatMulDevice , Extract, and finiteness checks then apply unchanged.
+    5. Apply the policy and target.
+      Apply the existing jackpot policy (11) and target difficulty checks (12).
+
+
+B      Zero-knowledge verifier
+Together, the outer verifier and ZK verification circuit enforce the acceptance rule of Section 4, including the
+changes in Appendix A when e ≥ 1. Every plaintext condition remains unchanged. This appendix specifies
+only witness exposure and the ZK wrapper.
+
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                             15
+Disclosure boundary
+Public inputs. Let pZK contain all public parameters specific to the ZK proof system. The common
+public-input tuple is
+                          XZK := (pZK , σ
+                                        b, σd , pB , pA , HB , HA , tB , tA , J).
+For e ≥ 1, append
+                                      (HR , HO , w, Ow−1 , Ow , Oe−1 , IA ).
+For e = 0, append nothing.
+    Derived values are omitted. For non-MoE proofs, derive IA , IB using (3). For MoE proofs, derive
+η, sw , UA , UB , IB using Appendix A. Both modes also derive the keys, noise seeds, noise values, and target.
+
+Private witness. The witness contains AIA , BIB and the complete minimal openings πA , πB . An MoE
+witness also contains all of O and R[w], and πR with every leaf of R[w] and its sibling hashes. The noised
+strips, product tile, extractor output, and jackpot-policy intermediates are also private.
+
+Differences from plaintext verification
+    1. Bind the statement. The outer verifier rejects disallowed pZK values and selects the corresponding
+       verification circuit. Define
+                                        Hpub := H“zk-public” (XZK ).
+      The ZK Fiat–Shamir transcript absorbs Hpub before its first challenge.
+
+    2. Split verification. The outer verifier authenticates the proof-carried σd is in the blockchain con-
+       text Σ and performs every public-input check. It performs all protocol-level Fiat–Shamir derivations,
+       computes the noise, and applies the target check (12) before verifying the ZK proof. The verification
+       circuit performs every check that depends on private data and constrains the public J to the jackpot
+       hash computed from that data.
+
+    3. Parameterize hidden MoE openings. For MoE, Ow−1 , Ow identify the opened interval of Rflat ,
+       while Oe−1 fixes its total length. The public IA fixes the opened rows of A, and w, tB determine the
+       opened rows of B. The verification circuit checks O against HO and against the public Ow−1 , Ow , Oe−1 .
+       Furthermore, it checks R[w], πR against HR , and enforces consistency with the public values, including
+       IA = R[w][UA ].
+
+
+C      Verifier arithmetic specifications
+We provide specifications for all the relevant routines and arithmetic operations in the verifier:
+
+    1. Floating point arithmetic: arithmetic operations and casting on FP32, BF16, and FP8, by which we
+       always mean E4M3FN (Appendix C.1), and E4M3FN matrix multiplication (Appendix C.2).
+    2. Quantization procedure (Appendix C.4) and the commit type (FP10, see Appendix C.6).
+
+    3. Noise-line sampler (Appendix C.3).
+    4. Unpredictability specification (Appendix C.5)
+
+    The matrix multiplication operation in item (1) is device-specific hence determined by the committed
+hardware, item (2) depends on the Quant specification, and items (3-4) are routines based on the operations
+(1).
+
+
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                            16
+C.1     Floating point arithmetic
+We start with the arithmetic operations on FP32, BF16, and FP8 excluding the matrix multiplication. These
+are element-wise operations with no accumulation order, so they are identical on every Device. The verifier
+rejects NaN or infinite operands and rejects any operation whose result is not finite, i.e. whose rounded result
+is the infinity or NaN encoding of the destination type (FP32 or BF16). The test is applied after rounding,
+so a value just below the largest finite magnitude that rounds up to infinity is rejected. Consequently a NaN
+encoding is never produced.
+
+   • Casting: Promoting to FP32 is straightforward as BF16 and E4M3FN are exactly representable
+     in FP32. For downcasting we use RNET , round-to-nearest, ties-to-even, to the target type T ∈
+     {BF16, FP8}. In case of E4M3FN, results with |x| > 464, which would round to magnitude 480 or
+     more, saturate to the largest finite magnitude 448.0 (code 0x7E). The tie |x| = 464 rounds to 448
+     under ties-to-even. In case of BF16, overflow is rejected.
+   • Binary operations: Mul and Div are computed in FP32 according to the IEEE 754-2019 standard and
+     downcasted.
+                                                          
+                   MulBF16 (a, b) := RNEBF16 RNEFP32 (ab) ,
+                                                            
+                    DivBF16 (a, b) := RNEBF16 RNEFP32 (a/b) ,
+                                      (                                   (
+                                        a, a ≤ b,                          a, a ≥ b,
+                   MinBF16 (a, b) :=                    MaxBF16 (a, b) :=
+                                        b, otherwise,                      b, otherwise.
+
+   • Min and Max: Min and Max compare exactly and return one of their operands unchanged, so they
+     never round. On equal values, including +0 and −0, they return the first operand.
+   • Clamp: for a bound Q > 0,
+                                                                             
+                                clamp(x, −Q, Q) := MaxBF16 MinBF16 (x, Q), −Q .
+
+   • Fused multiply–add: FMABF16 (a, b, c) := RNEBF16 ((a × b) + c), a single rounding of the exact value
+     directly to BF16 (IEEE 754-2019 fusedMultiplyAdd with destination BF16). Unlike Div, it is not
+     computed in FP32 and downcast.
+
+C.2     E4M3FN matrix multiplication
+We now describe in detail the E4M3FN matrix multiplication based on [5]. For E4M3FN operands U ∈
+FP8a×k and V ∈ FP8b×k , the opcode MatMulDevice (U, V ) accumulates the FP32 matrix U V T into an FP32 ac-
+cumulator. Recall that a nonzero finite E4M3FN code x has sign s ∈ {−1, 1}, exponent field e ∈ {0, . . . , 15},
+and fraction m ∈ {0, 1/8 . . . , 7/8}. Its value and stored exponent ε(x) are
+                                 (                                     (
+                                   s · m 2−6 ,       e = 0,              −6,    e = 0,
+                        x=                      e−7
+                                                                ε(x) =
+                                   s · (1 + m) 2 , e > 0,                e − 7, e > 0.
+
+For a nonzero FP32 value the stored exponent is likewise its exponent field minus the bias, ε(c) = ⌊log2 |c|⌋
+for normal c and −126 for subnormal c. A zero carries no exponent and is skipped in the maximum below.
+The matrix multiplication is then determined by how dot-products are computed
+                                                  31
+                                                  X
+                                                       Ui,u Vj,u
+                                                 u=0
+
+and how they are accumulated to an FP32 accumulator (in a bit-exact manner). In [5] it is established that
+this computation is carried out as follows:
+
+
+                                © 2026 Pearl Research Labs. All rights reserved.                             17
+   1. Products Ui,u Vj,u are computed exactly.
+   2. Accumulator: has internal precision (mantissa bits) that is architecture dependent (e.g. 13 for Hopper
+      and 25 for Blackwell), and exponent in range [−126, 127]. Throughout, mantissa excludes the implicit
+      leading 1 and significand includes it, so a 14-bit (Hopper) or 26-bit (Blackwell) significand corresponds
+      to WDevice = 13 or 25 mantissa bits, and FP32 has 23.
+
+   3. Summation: performed in groups of fixed size (architecture dependent, e.g. 32 for Hopper and Black-
+      well) via shifting the exponent of the products and the accumulator (see below), rounding-towards-zero
+      to the accumulator’s internal precision, adding to the accumulator, and rounding-towards-zero again
+      to the accumulator precision.
+
+   4. Exponent shift: the exponent of every product is the sum of the stored exponents of the operands.
+      The exponent shift is the maximum stored exponent over the nonzero products in the group and the
+      accumulator. Products are kept un-normalized with stored exponent, e.g. 1.5 × 1.5 = 2.25 keeps expo-
+      nent 0 + 0 = 0 rather than re-normalizing to exponent 1. Also, subnormal inputs are not renormalized
+      (stored exponent −6).
+
+   5. The output is rounded-towards-zero to FP32 if necessary, i.e. if WDevice > 23 (Blackwell requires
+      rounding, but Hopper does not due to its lower accumulator precision).
+   In pseudocode: let WDevice be the internal accumulator precision and let Trunc(x, u) be truncation toward
+zero to a multiple of u. Each group of 32 products, a, b ∈ FP832 , is accumulated into the running FP32
+accumulator c (which is +0 before the first group) as:
+
+input:                 a, b ∈ FP832 , c ∈ FP32                                               (accumulator so far)
+products:              pi ← ai bi for i = 0, . . . , 31                                      (exact)
+                                 
+exponent shift:        η ← max ε(c), maxi {ε(ai ) + ε(bi )}
+                                                      P31
+summation:             S ← Trunc(c, 2η−WDevice ) + i=0 Trunc(pi , 2η−WDevice )               (exact)
+zero canonicalization: if S = 0 : return + 0                                                 (all-zero group or exact cancellation)
+                       c ← Trunc S, 2⌊log2 |S|⌋−WDevice
+                                                        
+rounding:                                                                                    (internal precision)
+                       if WDevice > 23 : c ← Trunc c, 2⌊log2 |c|⌋−23
+                                                                     
+output:                                                                                      (FP32 has 23 mantissa bits)
+return                 c
+
+A zero result is always +0: an exactly zero sum is canonicalized, and a nonzero sum never rounds to zero as
+the entries are E4M3FN.
+
+C.3     Noise-line sampler
+Let r be the noise rank, X ∈ {A, B} the operand, Z ∈ {E, F} the factor, and ℓ the line.
+
+                                noise keyX := Subkey(noise seedX , “noise-line”).
+
+The line’s r bytes are drawn from the BLAKE3 extendable output2
+
+                       (b0 , . . . , br−1 ) := BLAKE3-XOF((X, Z, ℓ); key = noise keyX )[0 : r].
+
+Each byte bu ∈ {0, . . . , 255} is split into its top bit su ∈ {0, 1} and its low seven bits mu ∈ {0, . . . , 127}, read
+as an unsigned integer, so that bu = 128 su + mu . The line entry is
+
+                                                xu := (−1)su (1 + mu ),
+   2 BLAKE3 [6] is an extendable-output function (XOF): besides its default 256-bit digest it can emit an output stream of
+
+arbitrary length, whose first 32 bytes coincide with the default digest.
+
+
+
+                                  © 2026 Pearl Research Labs. All rights reserved.                                     18
+which is uniform on ±{1, . . . , 128}.
+                                             r−1
+                                                         !
+                                             X
+                                         2
+                                                   x2u
+                                                                                               
+                        q := isqrt 32                        ,   γ := DivBF16 8192, RNEBF16 (q) ,
+                                             u=0
+                                                                  pP
+where isqrt is the integer floor of the square root. Since q ≈ 32       2
+                                                                     u xu , multiplying by γ = 8192/q rescales
+the line to Euclidean norm approximately 8192/32 = 256 before the final rounding to FP8. We write c := 256
+for this target norm.
+                                                                                       
+                       SampleLine(noise seedX , X, Z, ℓ)u := RNEFP8 MulBF16 (xu , γ) ,
+
+where the integer xu is exactly representable in BF16.
+
+C.4     Noisy quantization
+Let X ∈ BF16s×k be an operand strip, decoded from the committed FP10 matrix as specified in Ap-
+pendix C.6, with noise factors E ∈ FP8s×r and F ∈ FP8k×r . This appendix defines
+                                                                e ∈ FP8s×k .
+                                    NoisyQuantizep (X, E, F ) = X
+
+It also fixes the per-row scale αt and floored norm ℓb2 (Xt ) that Section 5.1 uses, via X t = αt Xt and σtX =
+δ αt ℓb2 (Xt ). The scales αt , βt are also what a miner needs to peel the noise and recover the useful product,
+but that recovery is not part of the protocol.
+
+Overview.      The quantization is row-wise. Each row t of X and its noise row Nt := (EF T )t are scaled and
+added,
+                                                         et ≈ αt Xt + βt Nt ,
+                                                         X
+and the result is rounded to FP8. The scales αt , βt > 0 are chosen so that
+   1. every entry of αt Xt + βt Nt lies within the FP8 range [−Q, Q], and
+   2. the noise row has Euclidean norm δ times that of the scaled row, ∥βt Nt ∥2 = δ ∥αt Xt ∥2 .
+
+The noise lines have Euclidean norm √ c (Appendix C.3), so |Ntu | ≤ c2 and, since the lines are random, Nt
+                                    2
+has root-mean-square entry about c / r. Writing ℓ2 (Xt ) for the root-mean-square entry of Xt and ℓ∞ (Xt )
+for its largest magnitude, requirement (2) gives
+                                                             √
+                                           βt = αt ℓ2 (Xt ) δ r/c2 ,
+
+and requirement (1) then becomes
+                                                            √          
+                                             αt ℓ∞ (Xt ) + δ r ℓ2 (Xt ) ≤ Q,
+
+which fixes αt by taking equality. Two caveats:
+   • The norm of Nt is never measured, so (2) holds only approximately and with high probability.
+
+   • Requirement (1) holds in exact arithmetic, but rounding can push an entry slightly past Q, which the
+     clamp in the definition below handles.
+
+
+
+
+                                 © 2026 Pearl Research Labs. All rights reserved.                            19
+Definition. Let t be a row index. The norms ℓ2 (Xt ), ℓ∞ (Xt ) ∈ BF16 are computed from the committed
+representation of X rather than from its BF16 decoding,
+                                                    √ as specified in Appendix C.6. Note that ℓ2 (Xt ) is
+the root-mean-square entry of the row, so ∥Xt ∥2 = k ℓ2 (Xt ). It is not the Euclidean norm, which is the
+quantity used for the noise lines in Appendix C.3. Floor the norms at 2−32 :
+
+                       ℓb2 (Xt ) := max{ℓ2 (Xt ), 2−32 },        ℓb∞ (Xt ) := max{ℓ∞ (Xt ), 2−32 }.
+
+Fix Q := 448 and δ := 1/2, and let c = 256 be the line norm of Appendix C.3. In exact arithmetic the scales
+and the output are
+                                                           √
+                         Q                                δ r                                 
+          αt =             √ b         ,  βt = αt ℓ2 (Xt ) 2 ,
+                                                   b               X
+                                                                   et = RNEFP8 αt Xt + βt Nt ,
+               ℓ∞ (Xt ) + δ r ℓ2 (Xt )
+               b                                           c
+
+where N := EF T .
+
+Bit-exact computation.          Let
+
+                                              √                                      δ · √r 
+                             dr := RNEBF16 δ · r ,               er := RNEBF16                     ,
+                                                                                         c2
+rounded from the exact real values.3 Every operation below is the BF16 operation of Appendix C.1, so each
++, ·, and / rounds its result to BF16. Parentheses fix the order of evaluation, and an unparenthesized a · b + c
+is the fused multiply–add FMABF16 (a, b, c) with a single rounding.
+
+                                         zt := dr · ℓb2 (Xt ) + ℓb∞ (Xt ),
+                                         αt := Q/zt ,
+                                                             
+                                         βt := αt · ℓb2 (Xt ) · er ,
+                                                                         
+                                        N := RNEBF16 MatMulDevice (E, F ) ,
+                                                                 
+                                       ytu := αt · Xtu + βt · Ntu ,
+                                                                       
+                                       etu := RNEFP8 clamp(ytu , −Q, Q) .
+                                       X
+
+Here Q = 448 is the largest finite E4M3FN magnitude, so the clamp keeps every quantized value repre-
+sentable.
+
+C.5     Unpredictability specification
+We recall the quantities of Section 5.1. Mij is the replay magnitude of cell (i, j), the largest magnitude
+appearing in its accumulation. At magnitude x, the accumulation grid of Appendix C.2 has spacing
+
+                               ulpDevice (x) := 2⌊log2 |x|⌋−WDevice ,        ulpDevice (0) := 0.
+
+Summand (i, j, u) has unpredictability (13)
+                                                2            2             
+                                               Aiu + (σiA )2 B ju + (σjB )2
+                                       viju :=                                .
+                                                            221
+Finally, the unpredictable-summands check counts the set
+
+                                S := (i, j, u) : viju < ulpDevice (Mij )2 .
+                                     
+
+   3 The implementation evaluates them in double precision and rounds through FP32. For every rank r ≤ 4096 this agrees
+
+with a single rounding of the exact value.
+
+
+
+                                  © 2026 Pearl Research Labs. All rights reserved.                                  20
+For efficiency, the verifier decides this inequality in the log2 domain with fixed-point integers. It computes,
+for each of the two factors of viju ,
+                                             Λ(x, σ) ≈ log2 x2 + σ 2
+                                                                     
+
+that is a lower bound accurate to within 0.016. Then
+
+                                       Λiju := Λ(Aiu , σiA ) + Λ(B ju , σjB ) − 21
+
+satisfies Λiju ≤ log2 viju < Λiju + 0.032, the −21 being log2 221 , and the check counts
+
+                                   Sb := (i, j, u) : Λiju < log2 ulpDevice (Mij )2
+                                                                                  
+
+
+in place of S. Since Λiju is a lower bound, Sb ⊇ S, and a summand lies in Sb \ S only when
+
+                                  ulpDevice (Mij )2 ≤ viju < 20.032 · ulpDevice (Mij )2 .
+
+The estimate Λ(x, σ). Let x be a scaled entry (Aiu or B ju ) and σ > 0 its row’s noise scale.4 First take
+out the larger exponent,
+
+                                                      x = 2e mx ,     σ = 2e mσ ,
+                                                   
+                      e := max ⌊log2 |x|⌋, ⌊log2 σ⌋ ,
+
+so that the larger of |mx |, mσ lies in [1, 2) and the other in [0, 2), and
+
+                               x2 + σ 2 = 22e m2x + m2σ ,        m2x + m2σ ∈ [1, 8).
+                                                          
+
+
+Next compute the sum of squared significands as an integer with 13 fractional bits,
+                                  j                          k
+                            κ := ⌊230 m2x ⌋ + ⌊230 m2σ ⌋ /217 ∈ [213 , 216 ),
+                                                        
+
+
+so that κ is m2x + m2σ rounded down onto the grid of spacing 2−13 , up to a negligible error:
+
+                             213 m2x + m2σ − 1 + 2−16 < κ ≤ 213 m2x + m2σ .
+                                                                           
+
+
+Finally, take the logarithm with 6 fractional bits:
+                                                                     
+                                        Λ(x, σ) := 2e − 13 + 64 log2 κ /64.
+
+Accuracy.      Since κ/213 ≤ m2x + m2σ ,
+
+                                 Λ(x, σ) ≤ 2e + log2 m2x + m2σ = log2 x2 + σ 2 .
+                                                                             
+
+
+In the other direction, the truncation of κ loses less than log2 1 + 2−13 (1 + 2−16 ) < 2−12 and the final floor
+                                                                                     
+
+loses less than 2−6 , for a total below 2−6 + 2−12 < 0.016. Hence
+
+                                log2 x2 + σ 2 − 0.016 < Λ(x, σ) ≤ log2 x2 + σ 2 .
+                                                                               
+
+
+Adding the two estimates and subtracting 21 gives the bound on Λiju stated above.
+                                          b2 ≥ 2−32 and hence σ > 0, so x = σ = 0 cannot occur and the estimate is always
+   4 The norm floor of Appendix C.4 gives ℓ
+
+well defined.
+
+
+
+
+                                  © 2026 Pearl Research Labs. All rights reserved.                                    21
+C.6    Commit type (FP10)
+An operand with n rows is committed as two matrices, with k a multiple of 8:
+
+              V ∈ {−128, . . . , 127}n×k    (integer values),            Σ ∈ BF16n×k/8     (block scales).
+
+Each block of 8 consecutive entries of a row shares one scale, and entry (t, u) represents the real number
+
+                                                      Vtu · Σt,⌊u/8⌋ .
+
+The format spends 8 bits per entry plus 16 bits per block of 8, i.e. 10 bits per entry, hence the name.
+   This appendix defines the decoding
+
+                                           X := Open(V, Σ) ∈ BF16n×k
+
+whose opened rows Appendix C.4 takes as input, and the row norms ℓ2 (Xt ) and ℓ∞ (Xt ) it uses.
+
+Commitment. Each matrix is committed separately as a Merkle tree over its rows, under the key and
+hash identifier of Section 4. A row of V is its k bytes, each value in two’s complement. A row of Σ is its 2k/8
+bytes, each scale as a little-endian BF16 code. Scales that are NaN or infinite are rejected. The aggregate
+root HX is a hash of the two roots RV , RΣ together with the shapes of their matrices.
+
+Decoding.                                                           
+                                       Xtu := RNEBF16 Vtu · Σt,⌊u/8⌋ .
+The product has at most 15 significant bits, 7 from the integer and 8 from the BF16 significand, so it is
+exact in FP32 and Xtu carries a single rounding.
+
+Row norms. The norms are computed from V and Σ directly rather than from X, so that the per-block
+reductions below are exact. All arithmetic in this paragraph is FP32, each operation rounding its result to
+FP32, and parentheses fix the order of evaluation. For row t and block b ∈ {0, . . . , k/8 − 1} let
+                                           8b+7
+                                           X
+                                                    2
+                                 Stb :=           Vtu ,     Atb :=       max     |Vtu |,
+                                                                     8b≤u≤8b+7
+                                           u=8b
+
+both integers with Stb ≤ 8 · 1272 < 217 , so both are exact in FP32. The row’s sum of squares is accumulated
+in block order,
+                                                  st,b+1 := st,b + Stb · Σ2tb ,
+                                                                             
+                                   st,0 := 0,
+where Σ2tb has 16 significant bits and is exact. Let st := st,k/8 be the resulting sum of squares, computed in
+FP32 arithmetic. A non-finite st is rejected. Then
+                                         p                                               
+               ℓ2 (Xt ) := Grid RNEBF16      st /k ,      ℓ∞ (Xt ) := RNEBF16 max Atb · Σtb .
+                                                                                           b
+
+Here Grid rounds away the two lowest mantissa bits of a non-negative BF16, to nearest with ties going up,
+a carry propagating into the exponent.
+
+
+
+
+                               © 2026 Pearl Research Labs. All rights reserved.                              22
+

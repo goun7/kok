@@ -1,0 +1,227 @@
+
+========================================================================
+0. PEARL CALIBRATION — model parameters from measured data
+========================================================================
+  gpus         320000
+  usd_hr       0.2
+  block_s      108
+  blocks_day   800
+  rpl_block    2674
+  rpl_usd      0.76
+  e            0.006
+  PR_block     2032.24
+  cost_day     1536000.0
+  rev_day      1625792.0
+
+  Model-implied S (GPU-op/block) = PR/e = 338,707
+  Measured GPU count             = 320,000
+  Deviation: 5.8%  -> the model reproduces the live network from first principles (Tullock: eS=PR full payment)
+  Revenue/cost ratio: 1.058 (Basu: 1.06)
+
+========================================================================
+1. THEOREM 1 VERIFICATION — regime map over theta
+========================================================================
+  alpha=gamma=1.3 -> Delta=+0.5385 (>0, duplex efficient)
+  theta_low=alpha-1=0.30 ; theta_high=1/(gamma-1)=3.33
+
+    theta regime                          M          L          D          S     p/e  act-resid inact-viol
+     0.05 Fortessia (D+L)                 0      83333      21667      16667   1.000   0.00e+00   0.00e+00
+     0.20 Fortessia (D+L)                 0      33333      86667      66667   1.000   0.00e+00   0.00e+00
+     0.30 Duplexia (pure D)               0          0     130000     100000   1.000   0.00e+00   0.00e+00
+     0.35 Duplexia (pure D)               0          0     140192     107840   0.963   0.00e+00   0.00e+00
+     0.50 Duplexia (pure D)               0          0     173077     133136   0.867   0.00e+00   0.00e+00
+     1.00 Duplexia (pure D)               0          0     307692     236686   0.650   0.00e+00   0.00e+00
+     2.00 Duplexia (pure D)               0          0     692308     532544   0.433   0.00e+00   0.00e+00
+     3.43 Duplexia (M+D)              33333          0    1444444    1144444   0.300   8.67e-19   0.00e+00
+     5.00 Duplexia (M+D)             555556          0    1444444    1666667   0.300   8.67e-19   0.00e+00
+     5.00 Duplexia (M+D)             555556          0    1444444    1666667   0.300   8.67e-19   0.00e+00
+    10.00 Duplexia (M+D)            2222222          0    1444444    3333333   0.300   8.67e-19   0.00e+00
+
+  Acceptance criterion: active residuals < 1e-9, inactive violations = 0, market clearing < 1e-6
+  ROUND-5 addition: on the ENDOGENOUS path the solver's implied PR must
+  reproduce the input PR to < 1e-9 (checked in section 9, where PR is input)
+  ENFORCED: worst active=8.67e-19, inactive=0.00e+00, market=0.00e+00 -> all within criterion.
+
+========================================================================
+2. BITCONIA REFERENCE (hypothetical Bitcoin-economy at the same theta)
+========================================================================
+  theta=0.25: PR=$150.00, S^Bitconia=25,000 GPU-op/block, Q=100,000
+  (Note: same theta => same PR; this is Pass's apples-to-apples comparison.)
+
+========================================================================
+3. FORTESSIA: same useful output, higher security
+========================================================================
+  theta=0.05 Fortessia (D+L)      S=      16,667 vs Bitconia        5,000 -> security x3.33 ; Q same=100,000 ; p=e=0.00600
+  theta=0.15 Fortessia (D+L)      S=      50,000 vs Bitconia       15,000 -> security x3.33 ; Q same=100,000 ; p=e=0.00600
+  theta=0.25 Fortessia (D+L)      S=      83,333 vs Bitconia       25,000 -> security x3.33 ; Q same=100,000 ; p=e=0.00600
+  theta=0.29 Fortessia (D+L)      S=      96,667 vs Bitconia       29,000 -> security x3.33 ; Q same=100,000 ; p=e=0.00600
+
+  Theory: S_F/S_B = 1/(gamma*(1-1/alpha)) = 1/(gamma - gamma/alpha) = 3.333 (gamma=alpha=1.3)
+  => Theorem 1's result 'Fortessia: security rises, useful output unchanged' is confirmed.
+
+========================================================================
+4. DUPLEXIA: inference price falls, supply expands, attack cost = PR/2
+========================================================================
+  theta=0.50 Duplexia (pure D)    p=0.00520 (e=0.00600, 0.87x) Q=     133,136 (x1.33) attack=$173
+  theta=1.00 Duplexia (pure D)    p=0.00390 (e=0.00600, 0.65x) Q=     236,686 (x2.37) attack=$462
+  theta=3.40 Duplexia (M+D)       p=0.00180 (e=0.00600, 0.30x) Q=   1,111,111 (x11.11) attack=$3,400
+  theta=5.00 Duplexia (M+D)       p=0.00180 (e=0.00600, 0.30x) Q=   1,111,111 (x11.11) attack=$5,000
+  p = alpha*e/(1+theta) < e: token rewards subsidize inference (Theorem 3).
+  Mixed Duplexia (theta>3.33): p = alpha*e*(1-1/gamma) is pinned; M is active again.
+
+========================================================================
+5. TAIL EMISSION: P fixed (monetarist solution), security budget vs R
+========================================================================
+  In this solution theta is FREE: P comes from the money market, PR = P*R. (Pass S6/Theorem 4 case)
+  year        R        PR$   theta regime                     S(gpu)    attack$
+     0   2674.0    2032.24   1.657 Duplexia (pure D)         417,770    1016.12
+     2   1890.8    1437.01   1.334 Duplexia (pure D)         322,338     718.51
+     4   1337.0    1016.12   1.066 Duplexia (pure D)         252,506     508.06
+     6    945.4     718.51   0.844 Duplexia (pure D)         201,238     359.25
+     8    668.5     508.06   0.662 Duplexia (pure D)         163,493     254.03
+    10    472.7     359.25   0.514 Duplexia (pure D)         135,649     179.63
+    12    334.2     254.03   0.395 Duplexia (pure D)         115,092     127.02
+    14    236.4     179.63   0.299 Fortessia (D+L)            99,792      89.81
+    16    167.1     127.02   0.212 Fortessia (D+L)            70,564      63.51
+    30     14.8      11.23   0.019 Fortessia (D+L)             6,237       5.61
+    60      2.0       1.52   0.003 Fortessia (D+L)               844       0.76
+
+  Kaspa: emission exhausted (96.5% of the max supply mined) -> the security budget goes to zero.
+  KOK: floored at R_inf=2 PRL: the attack cost never drops below $0.76.
+  (In the theta-free solution PR falls as R falls but never reaches zero — that is the purpose of tail emission.)
+
+========================================================================
+6. ZERO-DEMAND SCENARIO: U-layer shut down, the network still lives (Demirel Thm 2)
+========================================================================
+  Model: K -> 0 (the inference demand curve collapses). theta=PR/(p*Q) -> infinity.
+  K=  3.6000: theta=        1.66 Duplexia (pure D)    S=     417,770 Q= 417769.90 attack=$ 1016.12
+  K=  0.3600: theta=       10.16 Duplexia (M+D)       S=     338,707 Q= 111111.11 attack=$ 1016.12
+  K=  0.0036: theta=     1016.12 Duplexia (M+D)       S=     338,707 Q=   1111.11 attack=$ 1016.12
+
+  Even as Q -> 0, S -> PR/e (pure-PoW): the chain lives, security stays Bitcoin-equivalent.
+  Demirel Thm 2 is met at the construction level. UTILITY IS ZERO but SECURITY is not —
+  this is the admission that KOK v2's 'useful work = security' promise DOES NOT hold.
+
+========================================================================
+7. HETEROGENEOUS COST (Pass S7): upward-sloping supply e(s)=e0*(1+b*(s/S_ref))
+========================================================================
+  Bitconia-type solution: e(S)*S = PR is solved by fixed-point iteration.
+  b=0.00: S=     338,707 GPU-op (b=0: 338,707), marginal cost $0.00600/op, attack=PR/2=$1,016.12
+  b=0.25: S=     280,594 GPU-op (b=0: 338,707), marginal cost $0.00724/op, attack=PR/2=$1,016.12
+  b=0.50: S=     247,950 GPU-op (b=0: 338,707), marginal cost $0.00820/op, attack=PR/2=$1,016.12
+  b=1.00: S=     209,332 GPU-op (b=0: 338,707), marginal cost $0.00971/op, attack=PR/2=$1,016.12
+  Heterogeneous cost lowers total security, but the attack cost is still PR/2 (flow cost).
+  Stock effects (hardware resale value) are ABSENT from this model — the limitation Pass acknowledges.
+
+========================================================================
+8. SUMMARY
+========================================================================
+
+  - The Pass model is solved in closed form; it is consistent with Theorem 1 (zero-profit
+    residuals < 1e-9, inactive-activity violations = 0, market-clearing error < 1e-6;
+    asserted in section 1, worst active=8.67e-19 inactive=0.00e+00 market=0.00e+00).
+  - CALIBRATION: Pearl's measured network is reproduced from the model's Tullock full-payment
+    condition eS=PR: S=PR/e=338,707 vs the measured 320,000 GPUs (5.8% deviation);
+    revenue/cost ratio 1.058 vs the 1.06 Basu measured.
+  - Pearl's real PR level gives endogenous theta=1.657 => the pure Duplexia regime.
+    PEARL'S ECONOMY WAS ALREADY IN THE REGIME WHERE INFERENCE MUST BE SUBSIDIZED — yet the
+    measured phi=0: no utility ever materialized. The cause is the E-gap (Demirel 2026/1492):
+    the protocol could not certify that the matrices were anyone's job. Pearl behaved like
+    Bitconia and was marketed like Duplexia.
+  - FORTESSIA: at the same theta security rises by exactly 1/(gamma*(1-1/alpha))=3.33x, utility unchanged.
+  - TAIL EMISSION: as halvings drive R down, the economy descends from Duplexia to Fortessia
+    (around year 14) and the attack cost settles at the R_inf=2 PRL floor of $0.76.
+    Unlike Kaspa it does NOT go to zero.
+  - ZERO DEMAND: with K->0 we get Q->0 but S->PR/e; the chain lives as pure-PoW (Demirel Thm 2 ✓).
+    This is the formal admission that the "useful work = security" promise DOES NOT HOLD:
+    security is demand-independent, while utility exists only in the U-layer's fee market.
+  - HETEROGENEOUS COST: upward-sloping supply lowers S (b=1 -> a 38% decrease) but the flow
+    attack cost is still PR/2; stock effects (as Pass notes) lie outside this model.
+
+
+========================================================================
+9. F3a CALIBRATION HOOK (regression test, V2 10.1)
+========================================================================
+  With Pearl data (regression guard):
+    S predicted=338,706.6666666667 vs measured=320,000 -> %5.8 deviation; Theorem1 consistent=True
+    ROUND-5 endogenous PR consistency: implied PR reproduces the input to 2.24e-16
+  With hypothetical F3a data (small testnet, tail regime):
+    S predicted=167 vs measured=1,200 -> %86.1 deviation; Theorem1 consistent=True
+
+  THE HOOK WORKS: the model can be re-calibrated with measurement
+  data arriving from F3a; the regression guard (Pearl 5.8%) is preserved.
+
+  *** HONEST NEGATIVE RESULT (small-network deviation) ***
+  For the hypothetical small testnet (S=1200) the model gives a deviation of 86%.
+  REASON: the Pass model assumes a COMPETITIVE equilibrium (Thm 2: cost=PR/2
+  'in any competitive equilibrium'); in small networks fixed costs
+  (infrastructure, opex) dominate marginal costs -> the equilibrium breaks.
+  Pass's own calibration rests on a $30B inference market and 52,560
+  blocks/year. KOK's F3a (1200 miners) lies OUTSIDE that scale.
+  => CONCLUSION: pass_sim_en.py is valid for MAIN-network (mainnet) calibration;
+     it CANNOT be re-calibrated with F3a's small-network data; F3a data
+     measures only U-layer demand (phi>0), not the Pass model.
+  => The V2 10.1 claim that 'pass_sim is re-calibrated with F3a data'
+     must be corrected WITH THIS HONEST LIMITATION.
+
+========================================================================
+10. CENSORSHIP-RESISTANCE ECONOMICS (closing f3a TV-17's open debt)
+========================================================================
+
+  Question: is the bond level sufficient to STOP censorship?
+  In f3a TV-16/17 every censorship event slashes bond = min(bond, fee). The
+  IN-PROTOCOL return from censoring is zero (refund + exit). So in a one-shot
+  game a rational sequencer avoids censoring. BUT in a repeated game, if
+  OUT-OF-GAME utility exists (a rival business model, tokenize-market pressure,
+  social engineering), the bond may prove INSUFFICIENT. Below we compute the threshold.
+
+  Parameters: fee=100, burn_rate=0.3, bond={50,100,200}, n_censor=10
+
+  (A) BOND IS REFILLED (governance tops it up after each event):
+    bond  side_ben     total_slash      net  deterrence
+      50         0             500      150  SUFFICIENT
+      50        40             500     -250 INSUFFICIENT
+      50       120             500    -1050 INSUFFICIENT
+     100         0            1000      300  SUFFICIENT
+     100        40            1000     -100 INSUFFICIENT
+     100       120            1000     -900 INSUFFICIENT
+     200         0            1000      300  SUFFICIENT
+     200        40            1000     -100 INSUFFICIENT
+     200       120            1000     -900 INSUFFICIENT
+
+  (B) BOND DEPLETES (no refill) — the actual behavior of the toy f3a:
+    bond  side_ben     total_slash      net   bond_left  deterrence
+      50         0              50       15           0  SUFFICIENT
+      50        40              50     -385           0 INSUFFICIENT
+     100         0             100       30           0  SUFFICIENT
+     100        40             100     -370           0 INSUFFICIENT
+     200         0             200       60           0  SUFFICIENT
+     200        40             200     -340           0 INSUFFICIENT
+
+  *** HONEST RESULT (found via a modelling error) ***
+  My first analysis assumed the bond was constant — that was WRONG. Once corrected:
+  1. With refill (A): the deterrent slashes the fee amount at each event -> linear
+     deterrence. Threshold: bond > out-of-game utility.
+  2. With depletion (B): the bond is consumed on the FIRST event (bond_left=0), and the
+     following 9 censorship events are FREE. That is, the deterrent is ONE-SHOT.
+     *** f3a TV-16/17's "censorship has negative return" result holds only for a
+     SINGLE censorship event. ***
+  => This is the TOY limit of the f3a prototype: TV-16/17 validates the mechanism
+     but does NOT validate the economics of the REPEATED game.
+  *** POLICY RESULT (added to spec A.5.5) ***
+  Two requirements emerged:
+  (1) REFILL IS MANDATORY: after every censorship event the bond must be
+      AUTOMATICALLY topped back up to the fee level (governance mechanism).
+      Otherwise, per table (B): after a single event censorship is FREE. This
+      was MISSING from the f3a prototype — a real implementation gap that must be
+      fixed not only in the economic model but in the PROTOCOL.
+  (2) DYNAMIC BOND: bond = fee + margin, where margin = the estimated out-of-game
+      utility (governance, measured in F3a). If out-of-game utility is 40, bond=50
+      suffices (net +100); if 120, even bond=200 is insufficient (net -200) — without
+      measuring the margin, a fixed bond cannot be SET.
+  => The fixed bond=50/100 toy values in f3a are INSUFFICIENT for production;
+     the toy validates the mechanism, not its CALIBRATION (this was already stated
+     in the f3a toy-limits list; it is now also PROVEN economically).
+
+RESULT: PASS_SIM SOLVED — the equilibrium is an identity, input_consistency is the check that can fail
+
