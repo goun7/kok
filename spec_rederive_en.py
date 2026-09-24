@@ -137,11 +137,39 @@ class SpecAIR:
                 "a_paths": a_paths, "b_paths": b_paths,
                 "A_commit": A_commit, "B_commit": B_commit}
 
-    def verify(self, proof, acc, E, F, ctx, i, j):
+    def verify(self, proof, acc, E, F, ctx, i, j, A_commit=None, B_commit=None):
         """The verifier recomputes the noise from the ctx-seeded ROM and adds
-        it to the committed residual before checking the transition (A2, A9)."""
+        it to the committed residual before checking the transition (A2, A9).
+
+        ROUND-5 FIX, 2026-09-24 (round-5 finding S2): an earlier version read
+        A_commit/B_commit from the PROOF dict itself, so the 'input binding'
+        of A9 bound the prover to the prover's own roots and a fabricated tile
+        for an attacker-chosen accumulator verified True. Measured by the
+        round-5 probe: fabricated residuals [3,1,4,1]/[5,9,2,6] (the real
+        strided A-row is [1,3,5,7]) verified True at acc=43; and for a chosen
+        acc=42 the residual x=20 mod q was solved and the proof verified True
+        reaching exactly 42. The caller now supplies the task's commitments
+        and the proof's own roots must MATCH them, so the binding is to
+        something external to the proof.
+        """
         q = self.q
-        m = self.m
+        # ROUND-5 FIX, 2026-09-24 (round-5 finding S4): m used to be read from
+        # INSTANCE state set by the last prove(), so a proof built at one tile
+        # size was verified against the width of a different one. Measured:
+        # after prove(n=8) then prove(n=4), self.m became 2 and a forged n=8
+        # proof verified True with the stale m=2, leaving two of four
+        # transitions and the true end boundary unchecked; a fresh instance
+        # with no prior prove even raised TypeError instead of returning
+        # False. The checked width now comes from the PROOF itself, so a proof
+        # is verified by what it claims to be.
+        m = len(proof["a_res"])
+        # ROUND-5 (S2): the commitments are the caller's, not the proof's. A
+        # proof whose roots disagree with the task's is rejected before any
+        # arithmetic runs.
+        if A_commit is not None and proof.get("A_commit") != A_commit:
+            return False
+        if B_commit is not None and proof.get("B_commit") != B_commit:
+            return False
         a_res = proof["a_res"]
         b_res = proof["b_res"]
         trace = proof["trace"]
@@ -223,7 +251,16 @@ def probe_honest_agrees():
 
 def probe_forgery_rejected():
     """MEASURED: a fabricated tile for a chosen accumulator is rejected by
-    the spec-derived verifier."""
+    the spec-derived verifier.
+
+    ROUND-5, 2026-09-24 (round-5 finding S2): the probe used to fabricate a
+    tile whose trace was ARITHMETICALLY INCONSISTENT, so it was rejected by
+    the transition check for the wrong reason. The round-5 probe instead built
+    a SELF-CONSISTENT fabrication over the prover's OWN commitments and it
+    verified True, because verify read A_commit from the proof dict. The
+    probe now drives both shapes: the inconsistent fabrication, and a
+    consistent one whose commitments do not match the TASK's.
+    """
     print("=== TV-79 2: fabricated tile rejected by the spec derivation ===")
     q, r, n = 97, 2, 8
     mine = SpecAIR(q, r)
@@ -240,11 +277,40 @@ def probe_forgery_rejected():
     # paths must be real for the commitment checks to pass at all
     fab["a_paths"] = [merkle_path([0, 0, 0, tgt], t) for t in range(4)]
     fab["b_paths"] = [merkle_path([0, 0, 0, 1], t) for t in range(4)]
-    mine.m = 4
     ok = mine.verify(fab, tgt, E, F, "ctx-2", 0, 0)
-    print("  fabricated tile for a chosen accumulator accepted: %s"
-          " (must be False)" % ok)
-    return not ok
+    print("  inconsistent fabricated tile accepted: %s (must be False)" % ok)
+    # ROUND-5 (S2): the binding test. A SELF-CONSISTENT fabrication built over
+    # commitments that do not match the task's must be rejected -- before the
+    # fix it verified True because the commitments came from the proof itself.
+    acc = sum(((A[0][2*t] + E[0][2*t]) % q)
+              * ((B[2*t][0] + F[2*t][0]) % q) for t in range(4)) % q
+    honest = mine.prove(A, B, E, F, "ctx-2", 0, 0, acc)
+    # This derivation reads A14 as commitments over the m RESIDUALS (the
+    # reference reads them over the flattened n*n matrices); both are
+    # defensible readings of the pre-A14 spec, and the point of this file is
+    # to report which one it chose. So the task's commitments are the
+    # residual list the proof's own derivation produces.
+    task_A = merkle_root(honest["a_res"])
+    task_B = merkle_root(honest["b_res"])
+    fab2 = dict(fab)
+    # a consistent fabrication reaching a chosen acc over ITS OWN commitments
+    chosen = 43
+    fab2 = {"a_res": [3, 1, 4, 1], "b_res": [5, 9, 2, 6],
+            "trace": [0, 15, 33, 41, 43],
+            "a_paths": [merkle_path([3, 1, 4, 1], t) for t in range(4)],
+            "b_paths": [merkle_path([5, 9, 2, 6], t) for t in range(4)],
+            "A_commit": merkle_root([3, 1, 4, 1]),
+            "B_commit": merkle_root([5, 9, 2, 6])}
+    bound = mine.verify(fab2, chosen, E, F, "ctx-2", 0, 0,
+                        A_commit=task_A, B_commit=task_B)
+    print("  self-consistent fabrication, foreign commitments: %s"
+          " (must be False)" % bound)
+    # and the honest proof must still verify when the task's commitments match
+    honest_ok = mine.verify(honest, acc, E, F, "ctx-2", 0, 0,
+                            A_commit=task_A, B_commit=task_B)
+    print("  honest proof with the task's commitments: %s (must be True)"
+          % honest_ok)
+    return (not ok) and (not bound) and honest_ok
 
 
 def probe_index_binding():
@@ -274,7 +340,15 @@ def probe_pinned_values_present():
     print("=== TV-79 4: F.5's pinned constructions match the reference ===")
     ref = _reference()
     parts = ["abc", 7, "xyz"]
-    # join the same way the reference does, so the comparison is exact
+    # ROUND-5 FIX, 2026-09-24 (round-5 findings S6/S7): the A1 check used to
+    # compare `mine_joined` to `ref_joined`, both built by the SAME expression
+    # "|".join(str(p) for p in parts) in this function, so it was a comparison
+    # of a value to itself and could not fail; and the comment above claimed
+    # "H(parts) joins the single list element", which is false of the code --
+    # measured: H(parts) == ref.H(*parts) == 13802697722000204385, both join
+    # all three parts. The falsifiable comparison is the spec-derived H()
+    # against the reference's H() and against the inlined formula, and that is
+    # what the probe now checks.
     mine_h = H(parts)
     try:
         ref_h = ref.H(*parts)
@@ -282,17 +356,19 @@ def probe_pinned_values_present():
         print("  the reference's hash function has a different name; "
               "reporting as a spec-report defect")
         return None
-    # H(parts) joins the single list element; H(*parts) joins all three. To
-    # compare byte-for-byte, compare the JOINED STRINGS the spec pins.
-    mine_joined = "|".join(str(p) for p in parts)
-    ref_joined = "|".join(str(p) for p in parts)
-    a1_ok = (mine_joined == ref_joined)
-    print("  A1 joined string over %s: spec == reference -> %s"
-          % (parts, a1_ok))
-    # and confirm both hashes are SHA256 of that string truncated to 8 bytes
+    # the spec-derived H must equal the reference's H -- a real cross-check,
+    # since the two functions live in different modules
+    a1_cross = (mine_h == ref_h)
+    # and confirm both are SHA256 of the joined string truncated to 8 bytes
+    joined = "|".join(str(p) for p in parts)
     expect = int.from_bytes(
-        hashlib.sha256(mine_joined.encode("utf-8")).digest()[:8], "big")
+        hashlib.sha256(joined.encode("utf-8")).digest()[:8], "big")
     a1_byte = (ref_h == expect)
+    a1_mine = (mine_h == expect)
+    a1_ok = a1_cross and a1_byte and a1_mine
+    print("  A1 H(parts): spec-derived == reference: %s" % a1_cross)
+    print("  A1 reference == inlined SHA256[:8]    : %s" % a1_byte)
+    print("  A1 spec-derived == inlined SHA256[:8] : %s" % a1_mine)
     print("  A1 byte-level: reference hash == spec-pinned SHA256[:8] -> %s"
           % a1_byte)
     # A11/A9: root agreement. The reference's _merkle_root returns an INT
