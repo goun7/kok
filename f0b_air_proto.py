@@ -924,7 +924,18 @@ class ZkTileAIR(FriTileAIR):
         """Produce a masked trace plus the openings the verifier needs.
 
         The mask d(x) is derived from a seed the verifier supplies, so the
-        prover cannot pick it, but the full polynomial stays secret.
+        prover cannot pick it.
+
+        ROUND-5/6, 2026-09-24: the sentence "the full polynomial stays secret"
+        is FALSE as long as the verifier can recompute the mask from that same
+        seed — and it can, by construction: d[t] = H("mask", seed, t) % q needs
+        only public values, so the verifier unmask exactly. The probe
+        probe_f0b_zk_en.py::tv65 demonstrates it by unmasking with the seed it
+        already holds, recovering the full witness (leaked=True) while the
+        proof still verifies. Zero-knowledge is therefore ABSENT in this
+        prototype; the honest position is stated here instead of in a comment
+        further down, and the retracted sentence is kept above crossed out
+        rather than deleted.
         """
         q = self.q
         m = len(proof["a"])
