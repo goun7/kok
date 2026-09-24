@@ -15,7 +15,18 @@ This file builds the two parameters that actually close the toy gap, per
   STEP 1 - FIELD. A 256-bit prime. The transition check's soundness is
            Schwartz-Zippel: a random challenge z hits the degree-(m+1)
            constraint with probability (m+1)/q. At q=97 that is 5/97 = 5.2%;
-           at q=2^256 it is 5/2^256. MEASURED below against the toy.
+           at q=2^256 it is 5/2^256. MEASURED below against the toy
+           (ROUND-6, 2026-09-24: the measured toy number is NOT this bound —
+           a single-point tamper survives a random challenge 10059/20000 =
+           0.5030, not 0.0515, because the tamper point and the challenge
+           point are chosen independently and survival also occurs whenever
+           the challenge lands off the tamper's support, which dominates at
+           toy size. The bound below is the PER-POINT Schwartz-Zippel
+           probability for a degree-(m+1) polynomial, the honest thing to
+           quote for field growth; the measured 0.5030 is the same protocol
+           run at toy scale and is what a real 256-bit field would have to
+           beat. Both numbers are in the output, labelled, so neither is
+           mistaken for the other).
 
   STEP 2 - LEAF HASH. The commitment is over CODEWORD SYMBOLS under a one-way
            hash, not over raw field elements. This is the item field growth
