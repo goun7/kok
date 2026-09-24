@@ -3006,3 +3006,44 @@ commitment string'ini bagliyordu. TV-82 olarak spec'e kaydedildi.
 178ede1, 7015ff8 (FRI Fiat-Shamir), b4df4c8 (**E-gap computation binding
 — KRITIK**), f13657c (TV-82), 5908469, 69f86de, 570bdef.
 **Tam suite 28/28 rc=0, audit CLEAN.**
+
+### BLOK 4 — ROUND-5D/5E/5F (6. adversarial tur, kalan tüm dosyalar)
+- **u_layer 3/3**: cert (ctx,nonce,i,j,value) baglar, verifier tile'i KENDI
+  A,B'sinden yeniden hesaplar (E-gap bug sinifi YOK); double settle no-op;
+  duplicated u_proofs **REJECT:fee-total-mismatch** (phi replay ile sisirilemez).
+- **ghostdag+pass_sim 3/3**: mergeset sapmasi **34 seed'in 68 generator
+  çalişmasinda 0** (572'den 0'a düzeltme sadece bir seed'de değil);
+  blue_score DAG'in fonksiyonu, varis sirasindan degil; pass_sim residuals
+  identity VE round-5'in ekledigi input_consistency (fail edebilen kontrol)
+  mevcut ve çalişiyor.
+- **f3a 3/3**: refill bir DEPLETED bond'u floor'a geri yüklüyor (deterrent
+  TEKRARLANABILIR — iki migration'da toplam slash 200); migration task'i
+  honest sequencer'a tasiyor ve censor'u cezalandiriyor; slash-before-settle
+  için per-task challenge hook YOK ("could not drive").
+- **f0b_air_proto 3/3**: **commitment baglamasi GERÇEK** — kendi içinde
+  tutarli sahte bir proof farkli bir ROOT yeniden hesapliyor ve eski root
+  sahteyi REDDEDIYOR (E-gap bug sinifi burada YOK); her iki boundary ucu
+  kontrol ediliyor; dosya kendi sinirini belirtiyor.
+
+### BLOK 5 — ROUND-4 KALAN BULGULAR KAPANDI
+- **#29 (ZeroDivisionError)**: `price_is_competitive` flops_per_s=0'da
+  çöküyordu. Artik crossover'un TANIMSIZ oldugini dürüstçe belirtiyor
+  ("missing datum, not a verdict").
+- **#32 (1e14 sabiti)**: FLOPs/Mtoken artik PARAMETRE (50B senaryo default);
+  1T model için caller kendi degerini geçiyor.
+- **#31 (truthy-not-True)**, **#35 (unknown criterion KeyError)**,
+  **#14 (E5M2 dead config)**: CONTROL EDİLDİ — zaten düzeltilmiş veya
+  geçersiz (`answers.get()` + `is True`, E5M2 canli ve ulasilabilir).
+
+### BLOK 6 — DOKÜMAN GÜNCELLEMELERI
+- Paper FIFTH STEP: FRI challenge + E-gap computation binding, ölçülmüş
+  before-state ile. TV-77 referansi düzeltildi.
+- Spec TV-77 satırı: kendi binding'inin TV-82'ye kadar commitment string'i
+  bagladigini belirtiyor (4/4 daha zayif özelligi ölçüyordu).
+- README: FRI Fiat-Shamir, E-gap TV-82, round-5 probe satırları.
+- DEGERLENDIRME_100.md: round-5 kapanışları kaydedildi, **puan 83.65'de
+  TUTULDU (kullanıcı kararı)**.
+
+### Tam suite: 32/32 rc=0, audit CLEAN.
+Commitler: 69f86de, 570bdef, 5a3f877, 98d7ac6, 846e7bc, c47adf4, dea3b04,
+6697ef5, abfad80, 76654ef, d904a20, f48183c.
