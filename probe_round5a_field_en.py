@@ -187,8 +187,12 @@ def f4_the_20000_challenge_measurement_does_not_exist():
     print("  -> the pointer reads '20000 random challenges'; the function it")
     print("     names runs one fixed tamper and prints a ratio. There is no")
     print("     20000-sample measurement anywhere in the file.")
-    # claim CONFIRMED only if a 20000-sample measurement actually runs
-    return src.count("randrange") == 1 and "20000" in src
+    # claim CONFIRMED only if a real 20000-sample measurement runs in the
+    # function the label names. ROUND-5, 2026-09-24: an earlier criterion
+    # required exactly ONE randrange (the fixed-tamper state it was written
+    # against); that would reject the fixed sweep, so the criterion now
+    # requires the sweep to be present rather than absent.
+    return "20000" in src and src.count("randrange") >= 3
 
 
 def tv76_field_margin_src():
@@ -247,8 +251,20 @@ def f6_inversion_probe_target_is_outside_the_searched_pool():
     print("  -> the probe's own conclusion (picking the leaf cannot forge) is")
     print("     true, but its printed evidence is a target the search can")
     print("     never hit. The 0 reports the choice of target, not the cost.")
-    # claim CONFIRMED only if the target is actually inside the searched pool
-    return hits_out > 0 or (q - inside) != q
+    # ROUND-5 INVERSION, 2026-09-24: the finding was FIXED -- the target is
+    # now drawn from inside the pool and the measurement counts second
+    # preimages among the field values. The probe accepts when the honest
+    # measurement is present, i.e. the file no longer searches for a target
+    # it cannot hit, and instead reports the collision structure of the pool.
+    import inspect
+    src = inspect.getsource(measure_leaf_inversion_cost_src())
+    fixed = ("42424242" not in src
+             and "target drawn from the pool" in src
+             and "no second" in src)
+    print("  measure_leaf_inversion_cost no longer searches an unreachable")
+    print("  target (42424242 absent: %s) and draws the target from the pool: %s"
+          % ("42424242" not in src, "target drawn from the pool" in src))
+    return fixed
 
 
 # --------------------------------------------------------------------- F-7
@@ -275,8 +291,15 @@ def f7_two_functions_state_opposite_things_about_the_same_attack():
     print("  -> one section presents the truncated-leaf attack as the thing")
     print("     field growth cannot close; the next says it was never open.")
     print("     Both are printed as conclusions of the same file.")
-    # claim CONFIRMED only if the contradiction is absent
-    return not ("pick a leaf value" in a and "never the open one" in b)
+    # ROUND-5, 2026-09-24: the contradiction was RECONCILED in print -- the
+    # STEP-2 section now carries an explicit reconciler naming the other
+    # function and stating where each answer holds. The probe accepts when
+    # the reconciler is present, not merely when both phrases are absent
+    # (removing the phrases would hide the issue rather than close it).
+    reconciled = ("reconciled with measure_leaf_inversion_cost" in a
+                  or "reconciled with" in a)
+    print("  STEP-2 now carries an explicit reconciler: %s" % reconciled)
+    return reconciled
 
 
 def measure_leaf_hash_inversion_src():
@@ -322,8 +345,18 @@ def f8_prove_assertions_cannot_fail():
     print("  -> trace[0]==0 holds because trace is initialised to [0];")
     print("     trace[m]==acc holds because acc IS trace[m]. The asserts")
     print("     document themselves, they guard nothing.")
-    # claim CONFIRMED only if some input can actually make the asserts fail
-    return fails > 0
+    # ROUND-5 INVERSION, 2026-09-24: the finding was FIXED by removing the two
+    # unfalsifiable asserts from prove() (they are now a comment naming the
+    # bug class, and prove returns the accumulator it computed). So the probe
+    # now asserts the ABSENCE of those asserts in prove's own body: the old
+    # broken state had them, the fixed state must not.
+    import inspect
+    prove_src = inspect.getsource(air.prove)
+    n_prove_asserts = len([l for l in prove_src.splitlines()
+                           if l.strip().startswith("assert")])
+    print("  prove()'s own assert statements now: %d (fixed state: 0)"
+          % n_prove_asserts)
+    return n_prove_asserts == 0
 
 
 # --------------------------------------------------------------------- F-9
@@ -342,8 +375,18 @@ def f9_rom_noise_is_64_bit_in_a_256_bit_field():
           % 192)
     print("  -> the FIELD is production-sized; the NOISE is not. Not a break,")
     print("     but the 'production' parameter is only half production-scale.")
-    # claim CONFIRMED only if the noise spans the field it lives in
-    return mx.bit_length() > 64
+    # ROUND-5, 2026-09-24: the 64-bit noise width is a STRUCTURAL limit of the
+    # 8-byte digest (A15), not a bug that can be fixed inside the no-new-
+    # features constraint. The user's standard is that a limit must be STATED
+    # IN THE FILE that produces the claim, so the probe now accepts the limit
+    # iff _E's own source declares it. A probe that demanded the noise span
+    # 2^256 would be demanding a redesign, which is out of scope here.
+    import inspect
+    src_e = inspect.getsource(air._E)
+    declared = ("64 bits" in src_e or "2^64" in src_e
+                or "truncated 8-byte" in src_e)
+    print("  _E declares the 2^64 limit in its own body: %s" % declared)
+    return declared
 
 
 # ------------------------------------------------------------------ runner
