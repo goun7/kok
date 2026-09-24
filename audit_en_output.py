@@ -260,7 +260,13 @@ def main():
     # necessarily contains Turkish words -- it is the auditor, not an
     # audited module, and auditing it reports its own data table.
     py_en = [f for f in os.listdir(here)
-             if f.endswith("_en.py") and f != "audit_turkish_en.py"]
+             if f.endswith("_en.py") and f != "audit_turkish_en.py"
+             # ROUND-6, 2026-09-24: suite_gate_en.py runs every other file in
+             # this directory, so auditing its RUNTIME output means running
+             # the whole suite recursively (40+ minutes). Its SOURCE is still
+             # audited; only the runtime capture is skipped, and the skip is
+             # stated here rather than silent.
+             and f != "suite_gate_en.py"]
     problems = 0
     print("=" * 72)
     print("KOK v2 EN-PACKAGE AUDIT (aksansiz Turkce yakalayici)")

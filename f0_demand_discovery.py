@@ -311,3 +311,4 @@ if __name__ == "__main__":
   correct negative result and the kill criterion of section 11b applies —
   fall back to the specified pure-PoW mode rather than marketing a capability
   that cannot be delivered.""")
+    print("\nRESULT: DEMAND DISCOVERY LOGGED — every result including the failures\n")

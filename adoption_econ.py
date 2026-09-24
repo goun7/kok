@@ -561,3 +561,4 @@ if __name__ == "__main__":
     print("D. That loop is deliberately absent here, because closing it requires a")
     print("supply-side calibration this project does not have. Stated rather than")
     print("hidden, so no conclusion drawn from this file is read as including it.")
+    print("\nRESULT: STATED — the supply-side calibration this project does not have is named here rather than assumed\n")

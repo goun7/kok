@@ -320,7 +320,6 @@ def tv40_air_honest_accepts_forged_rejects():
     return (v_honest, v_forged_trace, v_forged_acc, v_fake,
             v_fabricated_consistent, v_tamper_res, v_swap_path)
 
-
 if __name__ == "__main__":
     print("=" * 76)
     print("KOK v2 — F0b PROTOTYPE: a real AIR for one MatMul tile (TV-40)")
@@ -1791,3 +1790,4 @@ if __name__ == "__main__":
     ok83 = tv83_degree_bound_is_not_self_declared()
     assert ok83, "TV-83 failed: a raised-degree quotient was accepted."
     print("\n  -> reason (b) has running code behind it again.")
+    print("\nRESULT: AIR + ZK LAYERS PASS — reason (b) has running code behind it; toy q=97, no FRI recursion in this file (that is f0b_fri_en.py)\n")

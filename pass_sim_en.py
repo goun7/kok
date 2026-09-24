@@ -579,3 +579,4 @@ if __name__ == "__main__":
   => The fixed bond=50/100 toy values in f3a are INSUFFICIENT for production;
      the toy validates the mechanism, not its CALIBRATION (this was already stated
      in the f3a toy-limits list; it is now also PROVEN economically).""")
+    print("\nRESULT: PASS_SIM SOLVED — the equilibrium is an identity, input_consistency is the check that can fail\n")

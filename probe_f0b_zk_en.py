@@ -88,7 +88,6 @@ def tv65_zero_knowledge_is_absent():
     ok_acc = air.verify_zk(transmitted, acc, list(range(m)))
     return (leaked and ok_acc), leaked, ok_acc
 
-
 if __name__ == "__main__":
     print()
     print("=" * 76)
@@ -114,3 +113,4 @@ if __name__ == "__main__":
     print("  NOT demonstrate zero-knowledge, even at toy scale. The paper's")
     print("  reason (b) (prove a result without revealing the inputs) has no")
     print("  prototype support until the mask is made verifier-unknowable.")
+    print("\nRESULT: ZK PROBES RUN — the hiding property is measured, not asserted\n")

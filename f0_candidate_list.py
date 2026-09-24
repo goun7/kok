@@ -187,6 +187,6 @@ def report():
     - No enterprise 'provenance market' size, because the earlier research
       found no evidence for it and it stays BULUNAMADI.""")
 
-
 if __name__ == "__main__":
     report()
+    print("\nRESULT: CANDIDATE SCORER RUNS — unresolved items stay BULUNAMADI\n")

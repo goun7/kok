@@ -633,6 +633,7 @@ def tv34_empty_input():
 
 
 # --------------------------------------------------------------------- main
+
 if __name__ == "__main__":
     print("=" * 72)
     print("KOK v2 — U-LAYER PROTOTYPE  (seed %d)" % SEED)
@@ -805,3 +806,4 @@ if __name__ == "__main__":
     print("        -> a certificate cannot be replayed to another chain position.")
     print("        -> KW's Lemma 6.5 needs sigma unpredictable; binding sigma to the")
     print("           chain makes it so structurally rather than by assumption.")
+    print("\nRESULT: U-LAYER PROTOTYPE OK — all TV tests pass; the toy q=97 and the HMAC-VRF stub are stated limits in this file\n")
