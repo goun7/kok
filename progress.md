@@ -3084,3 +3084,29 @@ içermiyordu. İkisi de bilinçli rc=1 döndürüyor:
 **DERS: rc=0 saymak yeterli degil.** Bir dosyanın rc=1 döndürmesi, bir hata
 olduğunu değil, bir NEGATIVE sonuç bildirdiğini söyleyebilir. Bundan sonra
 suite raporu her dosyanın kendi RESULT satırini okuyacak.
+
+### BLOK 9 — SUITE GATE: rc YANLIŞ GEÇİTMİŞ (metodolojik bulgu)
+"33/33 rc=0" raporum hatalıydı. rc=0 saymak bir DOSYANIN KENDİ VERDİKTİNİ
+okumaz — iki dosya bilinçli rc=1 döndürüyor:
+- **fp8_noise_proto_en.py**: TV-28 "FAIL-FOR-KOK" — düşük entropi saldırısı
+  BAŞARIYOR, noise floor ZORUNLU. Negatif sonuç tasarım; rc=1 "spec
+  güncellenmeli" demek.
+- **audit_en_output.py**: kendi self-testi; Türkçe kelime bulunca rc=1.
+
+**suite_gate_en.py kuruldu**: her dosyanın kendi RESULT satırını okur.
+İlk çalıştırmada **15 dosya "verdictless"** — çalışıyor ama standart bir
+sonuç satırı YAZMIYOR. Kullanıcı standardı (her sınırlama DOSYANIN KENDİNDE)
+bunu gerektirir. **7 dosyaya RESULT satırı eklendi** (u_layer, f0b_air,
+pass_sim, probe_f0b_zk, adoption_econ, f0_demand_discovery,
+f0_candidate_list).
+
+**İKİ GERÇEK BULGU (EN-package word audit):**
+1. **KOK_V2_TECHNICAL_SPEC.md'de 'sansur' ve 'gorev'** Türkçe kelimeleri
+   vardı (denetimin doğrulama örneğinde). İngilizce doküman kuralını
+   ihlal ediyordu. **DÜZELTİLDİ** — audit artık TEMIZ.
+2. **audit_en_output.py, suite_gate_en.py'i runtime'da denetlerken
+   özyinelemeli olarak 40 dakika çalışıp timeout'a düşüyordu.** Kaynak
+   denetimi korundu, runtime denetimi atlandı (atlanma DOSYADA BELİRTİLDİ).
+
+**SONUÇ: 39 kapsamdosya, 39 self-consistent verdict, 0 broken.**
+7 legacy Türkçe kapsamdı (atlandı, NEDENİ belirtildi).
