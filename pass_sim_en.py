@@ -125,6 +125,32 @@ def _theta_from_PR(prm: Params) -> float:
 
 def solve(prm: Params, theta_target: float | None = None) -> Eq:
     """If theta_target is given, P follows from it; otherwise theta is endogenous (P from the money market)."""
+    # ROUND-6 FIX, 2026-09-24 (round-5 finding F9): this function divided by
+    # prm.e and by (1-theta) without validating either, so a Params built with
+    # e=0 or eps outside (0,1) produced a silent inf/nan that propagated into
+    # the printed tables as plausible-looking numbers. The preconditions the
+    # model needs are now checked at the boundary, and the failure names the
+    # quantity rather than surfacing as ZeroDivisionError downstream.
+    if not (prm.e > 0):
+        raise ValueError("Params.e must be > 0, got %r (division by e below)" % prm.e)
+    if not (prm.eps > 0.0):
+        # ROUND-6 NOTE: eps > 1 is LEGITIMATE in this model (the dataclass
+        # default is 2.0, a long-run elasticity). The exponent pair is
+        # (1-eps) on p and (eps-1) on (1+theta), which are both correct for
+        # any eps > 0; rejecting eps > 1 would have broken the default run.
+        # Only the degenerate eps <= 0 is excluded: it makes Q rise with price
+        # and theta_high/theta_low meaningless.
+        raise ValueError("Params.eps must be > 0 (demand law Q = K*p^-eps), "
+                         "got %r" % prm.eps)
+    if prm.K <= 0 or prm.P <= 0 or prm.R <= 0:
+        raise ValueError("Params money side must be positive (K=%r P=%r R=%r)"
+                         % (prm.K, prm.P, prm.R))
+    if prm.alpha <= 1.0 or prm.gamma <= 1.0:
+        # theta_low = alpha-1 and theta_high = 1/(gamma-1) are undefined at or
+        # below 1; the regime map in section 1 would divide by zero.
+        raise ValueError("Params.alpha and gamma must be > 1 "
+                         "(alpha=%r gamma=%r): theta_low=alpha-1 and "
+                         "theta_high=1/(gamma-1) need both" % (prm.alpha, prm.gamma))
     e = prm.e
     Q_B = prm.K * e ** (-prm.eps)
 
@@ -224,6 +250,16 @@ def h(t): print(f"\n{'='*72}\n{t}\n{'='*72}")
 h("0. PEARL CALIBRATION — model parameters from measured data")
 for k, v in PEARL.items(): print(f"  {k:12s} {v}")
 S_implied = PEARL["PR_block"] / PEARL["e"]
+# ROUND-6, 2026-09-24 (round-5 finding F4, closed as a disclosed limit): the
+# calibration headline S = PR/e comes from the Tullock full-payment condition
+# eS = PR, which assumes the WHOLE block reward is spent on compute. That
+# assumption belongs to the Fortessia branch of the model, while Pearl's own
+# theta (1.657, section 8) puts it in the pure-Duplexia regime, where a share
+# of revenue is the inference subsidy rather than security spending. The
+# number is therefore a FIRST-PRINCIPLES ORDERING check, not a prediction:
+# 5.8% agreement against a measured GPU count is closer than the model
+# deserves given the assumption it rests on, and the honest reading is that
+# the two agree to within the regime mismatch rather than to within 5.8%.
 print(f"\n  Model-implied S (GPU-op/block) = PR/e = {S_implied:,.0f}")
 print(f"  Measured GPU count             = {PEARL['gpus']:,}")
 # ROUND-5 FIX, 2026-09-24 (round-5 finding F5): the format string put a
