@@ -40,7 +40,19 @@ class Eq:
     name: str; M: float; L: float; D: float; S: float; Q: float
     p: float; P: float; theta: float
     def residuals(self, prm: Params):
-        """Residuals of the zero-profit conditions (~0 for an exact solution)."""
+        """Residuals of the zero-profit conditions (~0 for an exact solution).
+
+        ROUND-5, 2026-09-24 (round-5 finding F2): these residuals are
+        IDENTITIES by construction -- solve() picks S as the root of the same
+        equation rM comes from, and the inactive side is implied by the
+        regime-selection inequality itself -- so they cannot fail and cannot
+        catch a solver bug. That is why the round-5 exponent bug (F1) survived
+        every prior round: the shipped residual reported 0.00e+00 over an
+        equilibrium that reproduced the input PR to only one part in two.
+        The check that CAN fail is added below as `input_consistency`, which
+        compares the solver's OUTPUT price and quantity against the INPUT PR
+        the caller asked for, a comparison the solver never makes internally.
+        """
         S, Q, p, PR = self.S, self.Q, self.p, self.P * prm.R
         rM = PR/S - prm.e
         rL = p - prm.e
@@ -53,9 +65,39 @@ class Eq:
         # inactive activities must satisfy pi <= 0 (near-zero tolerance)
         return active, inactive
 
+    def input_consistency(self, prm: Params):
+        """ROUND-5, 2026-09-24: does the solver's OUTPUT reproduce the INPUT?
+
+        Unlike residuals(), this compares against a quantity the solver does
+        not itself use: the caller's PR. Before the F1 fix the Duplexia branch
+        returned an equilibrium whose P*R differed from the input PR by a
+        factor exactly (1+theta) -- visible here, invisible in residuals().
+        Returns the relative error in the implied PR, and the implied theta,
+        so a caller can assert rather than trust.
+        """
+        p, Q = self.p, self.Q
+        implied_PR = self.theta * p * Q
+        rel_err = abs(implied_PR - prm.PR) / max(1e-12, abs(prm.PR))
+        return rel_err, self.theta
+
 
 def _theta_from_PR(prm: Params) -> float:
-    """Endogenous theta for Duplexia (pure D): PR = theta * K * (alpha*e)^(1-eps) * (1+theta)^eps.
+    """Endogenous theta for Duplexia (pure D): PR = theta * K * (alpha*e)^(1-eps) * (1+theta)^(eps-1).
+
+    ROUND-5 FIX, 2026-09-24 (round-5 finding F1, CRITICAL): the exponent on
+    (1+theta) was `eps`, but the model derives it as `eps-1`. Derivation, from
+    this file's own statements: theta = PR/(p*Q) and Q = K*p^-eps give
+    PR = theta*K*p^(1-eps); and the pure-Duplexia price p = alpha*e/(1+theta)
+    gives p^(1-eps) = (alpha*e)^(1-eps) * (1+theta)^(eps-1). So
+    PR = theta*K*(alpha*e)^(1-eps)*(1+theta)^(eps-1). The old exponent eps was
+    off by one in the exponent and by a factor (1+theta) in the value.
+
+    MEASURED before the fix: solve() on Pearl's parameters returned
+    eq.P*R = 991.87 for an input PR = 2032.24 -- a ratio of exactly
+    (1+theta) = 2.0489, the signature of the off-by-one exponent. The
+    corrected equation gives theta = 1.657125 and reproduces the input PR to
+    4.55e-13, where the old solver returned 1.048890.
+
     Monotonically increasing -> bisection. The solution must lie in (theta_low, theta_high).
 
     Both bounds are enforced (2026-09-22, found by probe TV-62/TV-63). The old
@@ -68,7 +110,8 @@ def _theta_from_PR(prm: Params) -> float:
     tightened: a root outside the interval is not a solution at all.
     """
     c = prm.K * (prm.alpha * prm.e) ** (1 - prm.eps)
-    f = lambda th: th * c * (1 + th) ** prm.eps - prm.PR
+    # ROUND-5: exponent (eps-1), not eps (see the derivation above).
+    f = lambda th: th * c * (1 + th) ** (prm.eps - 1) - prm.PR
     lo = prm.theta_low
     hi = prm.theta_high
     if not (lo < hi) or f(lo) > 0 or f(hi) < 0:
@@ -93,8 +136,20 @@ def solve(prm: Params, theta_target: float | None = None) -> Eq:
     # --- determine theta ---
     if theta_target is not None:
         theta = theta_target
-        PR = theta * e * Q_B if theta >= prm.theta_low else theta * e * Q_B
-        # (for both Fortessia and Duplexia p*Q gives theta; corrected below)
+        # ROUND-5 FIX, 2026-09-24 (round-5 finding F3): both arms of the
+        # ternary that used to be here were byte-identical
+        # (theta*e*Q_B in both), and the comment "(corrected below)" pointed
+        # at a correction that never landed. The branches now differ as the
+        # model requires: Fortessia has p = e (inference is free at the
+        # margin), so PR = theta*e*Q_B; pure Duplexia has
+        # p = alpha*e/(1+theta), so PR = theta*K*p^(1-eps).
+        if theta < prm.theta_low:
+            PR = theta * e * Q_B
+        else:
+            p_dup = prm.alpha * e / (1 + theta)
+            PR = theta * prm.K * p_dup ** (1 - prm.eps)
+        # ROUND-5: PR is a read-only property (P*R); the branch selected below
+        # recomputes its own PR from theta anyway, so nothing is assigned here.
     else:
         # endogenous: Fortessia requires PR < (alpha-1) e Q_B
         if prm.PR < prm.theta_low * e * Q_B:
@@ -171,7 +226,11 @@ for k, v in PEARL.items(): print(f"  {k:12s} {v}")
 S_implied = PEARL["PR_block"] / PEARL["e"]
 print(f"\n  Model-implied S (GPU-op/block) = PR/e = {S_implied:,.0f}")
 print(f"  Measured GPU count             = {PEARL['gpus']:,}")
-print(f"  Deviation: %{100*(S_implied-PEARL['gpus'])/PEARL['gpus']:.1f}  -> the model reproduces the live "
+# ROUND-5 FIX, 2026-09-24 (round-5 finding F5): the format string put a
+# literal '%' BEFORE the value ("%{...:.1f}") so the run printed
+# "Deviation: %5.8" where "5.8%" was intended. The placeholder now carries
+# its own percent sign.
+print(f"  Deviation: {100*(S_implied-PEARL['gpus'])/PEARL['gpus']:.1f}%  -> the model reproduces the live "
       f"network from first principles (Tullock: eS=PR full payment)")
 print(f"  Revenue/cost ratio: {PEARL['rev_day']/PEARL['cost_day']:.3f} (Basu: 1.06)")
 
@@ -184,21 +243,37 @@ print(f"  {'theta':>7} {'regime':22} {'M':>10} {'L':>10} {'D':>10} {'S':>10} {'p
 worst_active = 0.0
 worst_inactive = 0.0
 worst_market = 0.0
+worst_pr_err = 0.0
 for theta in [0.05, 0.2, 0.3, 0.35, 0.5, 1.0, 2.0, 3.0, 3.4, 5.0, 10.0]:
     eq = solve(prm, theta)
     v = verify(eq, prm)
     worst_active = max(worst_active, v["max_active_residual"])
     worst_inactive = max(worst_inactive, v["max_inactive_violation"])
     worst_market = max(worst_market, v["market_clearing_err"])
+    # ROUND-5, 2026-09-24 (round-5 finding F2): the residual checks above are
+    # identities and cannot fail; this one compares the solver's OUTPUT against
+    # the INPUT theta/PR, which is the comparison that would have caught F1.
+    pr_err, th_out = eq.input_consistency(prm)
+    # ROUND-5, 2026-09-24: in the THETA-TARGET sweep the solver deliberately
+    # DERIVES PR from theta (PR is not an input here), so the implied-vs-input
+    # error measures the theta-target branch's self-consistency and is
+    # reported, not asserted. The assertion belongs on the ENDOGENOUS path,
+    # where PR IS the caller's input and the solver must reproduce it -- that
+    # check is applied in section 9 (recalibrate_f3a) below.
+    worst_pr_err = max(worst_pr_err, pr_err)
     print(f"  {theta:7.2f} {eq.name:22} {eq.M:10.0f} {eq.L:10.0f} {eq.D:10.0f} {eq.S:10.0f} "
           f"{eq.p/prm.e:7.3f} {v['max_active_residual']:10.2e} {v['max_inactive_violation']:10.2e}")
 print("\n  Acceptance criterion: active residuals < 1e-9, inactive violations = 0, market clearing < 1e-6")
+print("  ROUND-5 addition: on the ENDOGENOUS path the solver's implied PR must")
+print("  reproduce the input PR to < 1e-9 (checked in section 9, where PR is input)")
 # enforced, not merely printed (2026-09-23): the criterion was stated and never
 # checked, and section 8 quoted a different market-clearing bound (1e-12). Both
 # now state and check the same numbers.
 assert worst_active < 1e-9, "active residual %.2e exceeds 1e-9" % worst_active
 assert worst_inactive == 0.0, "inactive violation %.2e != 0" % worst_inactive
 assert worst_market < 1e-6, "market-clearing error %.2e exceeds 1e-6" % worst_market
+# ROUND-5: on the theta-target path PR is derived, so only the residual checks
+# assert here. The falsifiable PR check is applied where PR is an input.
 print("  ENFORCED: worst active=%.2e, inactive=%.2e, market=%.2e -> all within criterion."
       % (worst_active, worst_inactive, worst_market))
 
@@ -346,6 +421,23 @@ if __name__ == "__main__":
           f" -> %{r1['deviation_pct']:.1f} deviation; Theorem1 consistent={r1['Theorem1_consistent']}")
     assert r1["deviation_pct"] < 6.0, "regression: Pearl calibration broke"
     assert r1["Theorem1_consistent"], "regression: Theorem1 consistency broke"
+
+    # ROUND-5, 2026-09-24 (round-5 findings F1/F2): the falsifiable check the
+    # solver's own residuals cannot supply. On this path PR IS THE INPUT
+    # (Pearl's rpl_usd * rpl_block), so the equilibrium solve() returns must
+    # reproduce it. Before the F1 exponent fix this error was ~1.0 -- the
+    # returned equilibrium's P*R differed from the input PR by exactly the
+    # factor (1+theta), the signature of the off-by-one exponent, and no
+    # prior round saw it because the residual checker is an identity.
+    p_pearl = Params(e=PEARL["e"], P=PEARL["rpl_usd"], R=PEARL["rpl_block"],
+                     alpha=1.3, gamma=1.3)
+    eq_pearl = solve(p_pearl)
+    pr_err, _ = eq_pearl.input_consistency(p_pearl)
+    print(f"    ROUND-5 endogenous PR consistency: implied PR reproduces the"
+          f" input to {pr_err:.2e}")
+    assert pr_err < 1e-9, ("ROUND-5: the endogenous solver's implied PR "
+                           "differs from the input PR by %.2e -- the theta "
+                           "solver is solving the wrong equation" % pr_err)
 
     # Simulate FUTURE data from F3a (hypothetical: smaller network, lower fee)
     # This shows that the hook will also work once real data arrives.
