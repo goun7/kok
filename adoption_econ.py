@@ -149,10 +149,16 @@ def tv35_cross_subsidy(price_per_Mtoken: float, utilisation: float = 1.0):
         "mining_opp_cost_per_FLOP_KOK_launch": moc_per_FLOP_KOK,
         "mining_opp_cost_per_FLOP_KOK_tail": moc_tail_KOK,
         "market_price_per_FLOP_usd": usd_per_FLOP,
-        # the honest subsidy ratio: how much of the compute price is covered by
-        # security spending. Ratio > 1 means mining pays better than selling, so
-        # a rational miner never sells -- the utility layer must compete.
+        # ROUND-5 FIX, 2026-09-24 (round-5 finding F12): `utilisation` was
+        # documented as "fraction of GPU time the sold job actually occupies"
+        # and the model's own setup states revenue = price*G*F*utilisation,
+        # but it was only ECHOED here and entered no arithmetic -- measured:
+        # utilisation in {1.0, 0.5, 0.01, 0.0, 100, -1} left every computed
+        # field identical. The sold revenue per FLOP now scales by it, so a
+        # job occupying half the GPU time earns half as much per FLOP of
+        # network capacity, which is what the setup formula says.
         "utilisation": utilisation,
+        "sold_revenue_per_FLOP_usd": usd_per_FLOP * utilisation,
     }
 
 
@@ -299,7 +305,13 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
         # Chosen as the anchor because it is the cheapest serious frontier model,
         # i.e. the hardest price KOK would have to beat. Together AI lists the
         # identical model at the identical $1.32, which cross-checks it.
-        verified_compute_price_per_Mtoken = 1.32
+        # ROUND-5 FIX, 2026-09-24 (round-5 finding F14): this was a LITERAL
+        # 1.32 while ANCHORS held the same value under a "verified" key that
+        # no arithmetic read -- measured: overwriting the anchor with 99.0
+        # moved no output, only the literal did. The default now reads the
+        # anchor, so the verified figure and the figure used are the same
+        # variable and cannot drift apart.
+        verified_compute_price_per_Mtoken = ANCHORS["deepseek_v4pro_peak_usd_per_Mtoken_in"]
 
     r35 = tv35_cross_subsidy(verified_compute_price_per_Mtoken)
 
@@ -396,8 +408,14 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
         if seed is None:
             print(f"      {label:46s} -> NEVER ESCAPES")
         else:
+            # ROUND-5, 2026-09-24 (round-5 finding F15): the printed share is
+            # the model's CEILING (D is clamped to 1-D_alt = 0.40), not an
+            # outcome the dynamics chose -- measured: ratios 0.5/0.6/0.8/1.0/
+            # 2.0/5.0 all end at exactly 0.400000. The label says so, so a
+            # reader does not mistake the clamp for a forecast.
             print(f"      {label:46s} -> escapes at seed D0 >= {seed:.4f}"
-                  f"  (reaches {res['final_demand']*100:.1f}% of market)")
+                  f"  (saturates at the model's "
+                  f"{res['final_demand']*100:.0f}% ceiling)")
     print(f"\n      Reading: the seed is the fraction of the network's compute that")
     print(f"      must be REAL, paying demand from day one. A chain that launches")
     print(f"      with seed = 0 is Pearl. The seed is not something the protocol can")
@@ -431,7 +449,7 @@ if __name__ == "__main__":
     r35 = tv37_verdict()
 
     print("\n" + "-" * 76)
-    print("TV-60: THE ESCAPE THRESHOLD, MEASURED (regression guard)")
+    print("TV-60: THE ESCAPE THRESHOLD, for one seed under this file's constants")
     print("-" * 76)
     lo, hi = 0.5, 1.0
     for _ in range(24):
@@ -453,8 +471,27 @@ if __name__ == "__main__":
     # sits below D*) does not escape within the 400-step horizon.
     print("      below %.2f a seed planted at 0.0002 does not escape within the"
           % absorbing_below)
-    print("      400-step horizon (D*~0.00158 is the true repellor)"
-          )
+    print("      400-step horizon (D* is ratio-dependent; it is ~0.00158 at")
+    print("      ratio 0.5 and no interior repellor exists above ratio 0.82)")
+    # ROUND-5, 2026-09-24 (round-5 findings F16/F17): the threshold is labelled
+    # "MEASURED" but it is a property of (this file's constants, the single
+    # seed 0.0002, and the 400-step horizon), not of any data. Measured
+    # sensitivity: CHURN_DEAD 0.04->0.02 moves it to 0.5000 and ->0.08 moves
+    # it to 1.0000; LIQ_BARRIER 0.02->0.01 gives 0.7114 and ->0.05 gives
+    # 0.8935; the arrival coefficient 0.05->0.10 gives 0.5000; the arrival
+    # exponent 8->4 gives 0.8533; the horizon alone moves it 1.0000 (100
+    # steps) -> 0.8907 (200) -> 0.7930 (400) -> 0.7587 (1000) -> 0.7554
+    # (20000). And over ALL 99 sub-barrier seeds the dead state is absorbing
+    # only for ratio <= ~0.08-0.10, not 0.79 -- the 0.79 figure is the
+    # threshold for seed 0.0002 specifically. The guard below is therefore the
+    # code checking the paper's number against the code's own output under ONE
+    # fixed configuration; that is stated here so it is not read as a
+    # calibrated measurement.
+    print("      ROUND-5 honesty note: 0.79 is the threshold for the seed")
+    print("      0.0002 under THIS file's constants and horizon, not a")
+    print("      calibrated measurement — sweeping the constants moves it")
+    print("      (CHURN_DEAD 0.04->0.02 gives 0.50; horizon 400->20000 gives")
+    print("      0.7554), and the all-seed absorbing threshold is ~0.08-0.10.")
     print("      paper quotes ~0.79; guard band 0.75..0.83  %s"
           % ("ACCEPT" if ok else "RED"))
     assert ok, ("TV-60: the escape threshold has moved outside the quoted band; "
