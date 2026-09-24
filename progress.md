@@ -3110,3 +3110,42 @@ f0_candidate_list).
 
 **SONUÇ: 39 kapsamdosya, 39 self-consistent verdict, 0 broken.**
 7 legacy Türkçe kapsamdı (atlandı, NEDENİ belirtildi).
+
+## OTOURUM 11 — SONUÇ (10 saat otonom)
+
+### KRITIK BULGULAR (2 tane — 4 turun kaçırdığı)
+1. **FRI CHALLENGE PROVER'IN KENDI RNG'SİNDEN GELİYORDU** — FRI'nin tek
+   seslenme kaynağı seslenen taraftan. Seslenme = SIFIR. **Fiat-Shamir
+   yapıldı** (alpha, prover'ın meydan öncesi commit etmek zorunda olduğu
+   polinomun SHA-256 digest'i; verifier aynısını yeniden hesaplar).
+2. **E-GAP BAĞLAMASI COMMITMENT STRING'İNİ BAĞLIYORDU, COMPUTATION'I DEĞİL**
+   — bu makalenin TV-72 cevabının TEMELİ. ÖLÇÜM: commissioned [[2,3],[4,5]]
+   (tile 26), madenci [[2,3],[4,6]] (tile 30) → VERIFY ACCEPT. **TV-82
+   olarak düzeltildi**: verifier committed programdan tile değerini tek
+   referans hesaplamasıyla türetiyor.
+
+### ADVERSARIAL TUR SONUÇLARI (toplam 21/21 yeni probe)
+- f0b_prod_field 9/9, f0b_fri 8/8, egap 5/5, rederive 3/3, g_layer 4/4,
+  edges+blindspot 3/3, u_layer 3/3, ghost+pass_sim 3/3, f3a 3/3, air 3/3,
+  **meta-probes 4/4, paper-claim audit 2/2**.
+
+### METODOLOJİK BULGULAR (en değerlileri)
+- **rc=0 saymak yanlış geçişmiş**: fp8 bilinçli rc=1 (negatif sonuç),
+  audit'ler self-test rc=1. **suite_gate_en.py** kuruldu: her dosyanın
+  KENDİ verdict'ini okur → **39/39 self-consistent, 0 broken**.
+- **7 dosya verdict satırı yazmıyordu** → RESULT satırları eklendi
+  (kullanıcı standardı: sınırlama DOSYADA).
+- **Spec'te 'sansur'/'gorev' Türkçe kelimeleri** → EN-package kuralını
+  ihlal → temizlendi, audit artık TEMIZ.
+- **Paper'in TV-78 "3/3" iddiası stale'miş** → dosya 4/4 yazdırıyor.
+- **1 swallowed exception** R5B-12'de → sayılıp rapor ediliyor.
+- **Mergeset sapması 34 seed'in 68 koşusunda 0** — düzeltme tek seed'de değil.
+
+### DOKÜMANLAR
+- Paper: FIFTH STEP (2 kritik bug, ölçülmüş before-state), TV-77/TV-78
+  düzeltmeleri.
+- Spec: TV-77 kendi zayıflığını belirtiyor, TV-82 eklendi.
+- README, DEGERLENDIRME_100.md: kapanışlar kaydedildi, **puan 83.65'de
+  TUTULDU (kullanıcı kararı)**.
+
+### Commitler: 92 bu oturumda. Working tree clean.
