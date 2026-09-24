@@ -345,12 +345,23 @@ with pinned test vectors.
 - **Attack cost:** **PR/2** in every regime (Pass Thm). *Measurement:* with heterogeneous cost
   (b=1), even though total S drops 38%, the current attack cost is still **PR/2 = $1,016** —
   stock effects (hardware resale value) are outside the model, an open limitation of Pass.
-- **The bitter lesson from Pearl:** Pearl's real PR level implies an endogenous **θ = 1.05 → a
-  pure Duplexia** regime; that is, its economy was in the regime where it **should have
-  subsidized inference** — yet the measured **φ = 0**: no utility ever materialized. The reason
-  is the **E-gap** (Demirel 2026/1492): the protocol could not certify that the matrices were
-  anyone's job. **Pearl behaved like Bitconia and was marketed as Duplexia.** KÖK v2 bakes
-  this gap into the architecture via the G/U separation (§3.2).
+- **The bitter lesson from Pearl:** Pearl's real PR level implies an endogenous
+  **θ = 1.657 → a pure Duplexia** regime; that is, its economy was in the regime where it
+  **should have subsidized inference** — yet the measured **φ = 0**: no utility ever
+  materialized. The reason is the **E-gap** (Demirel 2026/1492): the protocol could not
+  certify that the matrices were anyone's job. **Pearl behaved like Bitconia and was
+  marketed as Duplexia.** KÖK v2 bakes this gap into the architecture via the G/U separation
+  (§3.2).
+  **CORRECTION (2026-09-24, round-5 adversarial review of `pass_sim_en.py`, spec TV-84):**
+  this paragraph previously said θ = 1.05. The endogenous solver solved the wrong equation
+  — the exponent on (1+θ) was ε where the model derives ε−1 — so the equilibrium it returned
+  reproduced Pearl's input PR to only one part in 2.0489, the error being exactly the factor
+  (1+θ). The corrected solver gives **θ = 1.6571** and reproduces the input PR to 2.24e-16.
+  The qualitative claim is untouched — 1.657 is still inside (θ_low=0.30, θ_high=3.33), so
+  Pearl is still pure Duplexia, the regime that should have subsidized inference — but the
+  number was wrong, and a residual checker that is an identity by construction is why no
+  earlier round caught it; the file now carries a falsifiable input-consistency check where
+  PR is the input.
   **Demonstrated, not just stated (2026-09-24, `tv72_egap_mechanism_en.py`, spec TV-82):** a
   two-arm comparison on a mock G layer measures the mechanism directly. Under the pre-binding
   acceptance rule (verify the PoW target only) a certificate over matrices the miner prefers is
