@@ -186,6 +186,15 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
                     miner_take: float = 0.5, steps: int = 400):
     """Simulate the two-sided market and report whether it escapes the dead state.
 
+    ROUND-5 FIX, 2026-09-24 (round-5 finding F21): this function accepted
+    anything for its inputs -- measured: negative seed_demand returned
+    final_demand 0.0 (silently clamped), a ratio of -1.0 silently produced
+    a NEGATIVE price advantage (arrivals NEGATIVE, churn positive, so D
+    decayed faster than the ratio-0 case and looked like a stronger dead
+    state), and non-numeric or NaN inputs propagated NaN through every
+    threshold and produced a plausible-looking number. Inputs are now
+    validated, so a nonsense parameter is an error rather than a result.
+
     seed_demand:          initial fraction of the network's compute that is
                           actually SOLD (D(0)). The parameter we sweep.
     cross_subsidy_ratio:  market compute price / mining opportunity cost. >1
@@ -206,11 +215,27 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
     # market is liquid (a job can be served immediately). Below the barrier the
     # arrival rate is NEGATIVE -- buyers churn out because the market is dead,
     # exactly as [Basu] measured. Above it, network effects take over.
-    M = 1.0                     # normalised: the network exists from day 1
     D = seed_demand             # the thing we are solving for
     D_alt = 0.60                # SCENARIO: the incumbent cloud captures the rest
     LIQ_BARRIER = 0.02          # SCENARIO: the critical-mass threshold (2% of market)
     CHURN_DEAD = 0.04           # buyers leave a market that cannot serve them
+
+    # ROUND-5 FIX, 2026-09-24 (round-5 finding F21): validate the inputs. A
+    # negative ratio silently produced a negative price advantage (arrivals
+    # NEGATIVE, D decaying FASTER than the ratio-0 case and masquerading as a
+    # stronger dead state); NaN propagated through every threshold into a
+    # plausible-looking number. These are now errors.
+    if not (0.0 <= seed_demand <= 1.0):
+        raise ValueError("seed_demand must lie in [0,1], got %r" % (seed_demand,))
+    if not math.isfinite(cross_subsidy_ratio):
+        raise ValueError("cross_subsidy_ratio must be finite, got %r"
+                         % (cross_subsidy_ratio,))
+    if cross_subsidy_ratio < 0.0:
+        raise ValueError("a negative cross_subsidy_ratio inverts the price "
+                         "advantage and is meaningless here, got %r"
+                         % (cross_subsidy_ratio,))
+    if not (0.0 <= miner_take <= 1.0):
+        raise ValueError("miner_take must lie in [0,1], got %r" % (miner_take,))
 
     # the price advantage KOK offers a buyer, from TV-35
     price_adv = min(cross_subsidy_ratio, 2.0)        # capped: no infinite advantage
@@ -230,12 +255,14 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
             # the model offers; below 0.79 no seed below the barrier escapes.
             # CORRECTION 2026-09-23 (round-3 finding [28]): "below 0.79 no
             # seed escapes" is an OVERSTATEMENT — this file's own section [6]
-            # refutes it, and a probe sweeping ratio 0.5 found 5 of 9 sub-barrier
-            # seeds (0.0016 and above) DO escape. The dynamics have a REPELLING
-            # fixed point at D*~0.00158, not an absorbing state: seeds below D*
-            # decay and seeds above it grow, and 0.79 is where the growth is
-            # fast enough to cross the 0.15 visibility line within the test's
-            # 400 steps. Restated below rather than left overclaiming.
+            # refutes it. ROUND-5, 2026-09-24 (round-5 finding F19): "5 of 9"
+            # matched no count this file performs; the measured count is 184
+            # of 199 sub-barrier seeds (0.0001..0.0199 at ratio 0.5) escape.
+            # The dynamics have a REPELLING fixed point at D*, not an absorbing
+            # state: seeds below D* decay and seeds above it grow, and 0.79 is
+            # where the growth is fast enough to cross the 0.15 visibility line
+            # within the test's 400 steps. Restated below rather than left
+            # overclaiming.
             # Arrivals come from the price advantage alone (a buyer who finds a
             # genuinely cheaper supplier switches regardless of liquidity), plus a
             # small term from the market that already exists. Churn is the cost of
@@ -250,13 +277,15 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
         D = D + arrive - churn
         D = max(0.0, min(1.0 - D_alt, D))           # never exceeds the addressable share
 
-        # miners grow if mining OR selling is profitable; the subsidy ratio decides
-        # which one dominates. When selling pays less, miners stay but do not serve.
-        M = M * (1.0 + 0.001 * (1.0 + cross_subsidy_ratio))
-        M = min(M, 4.0)
-
-    escaped = D > 0.15          # 15% of the addressable market served = alive
-    return {"final_demand": D, "escaped_dead_state": escaped, "final_miners": M}
+        escaped = D > 0.15          # 15% of the addressable market served = alive
+    # ROUND-5, 2026-09-24 (round-5 finding F20): this loop used to grow a
+    # normalised miner count M = M*(1+0.001*(1+ratio)), but M never entered
+    # the D dynamics and `final_miners` was never read downstream, so the
+    # miner side was INERT -- measured: removing the two M lines leaves D
+    # bit-identical for all 36 (ratio, seed) combinations. The dead state is
+    # reported as DEMAND-only, and miner growth is out of scope here; if a
+    # future version needs miner feedback it must be wired into D or reported.
+    return {"final_demand": D, "escaped_dead_state": escaped}
 
 
 def tv36_find_critical_seed(cross_subsidy_ratio: float):
@@ -328,6 +357,22 @@ def tv37_verdict(verified_compute_price_per_Mtoken=None, token_price_usd=0.10):
     print(f"\n  [3] What the same FLOP is worth on the AI market:")
     print(f"      ${r35['market_price_per_FLOP_usd']:.3e} / FLOP at the VERIFIED")
     print(f"      ${verified_compute_price_per_Mtoken:.2f}/Mtoken (DeepSeek V4-Pro peak).")
+
+    # ROUND-5, 2026-09-24 (round-5 finding F13): ANCHORS holds verified figures
+    # for GPU rental and Aethir revenue (h100_spot/ondemand per GPU-hour,
+    # aethir_2025_revenue, aethir_arr_q3_2025, deepseek_offpeak) that this
+    # verdict's ARITHMETIC never reads -- measured: overwriting each with 99.0
+    # moved no computed field. They are kept as the file's citation record, and
+    # reported here as UNUSED-ARITHMETIC anchors rather than being presented as
+    # inputs the conclusion depends on.
+    unused = ["deepseek_v4pro_offpeak_usd_per_Mtoken",
+              "h100_spot_usd_per_gpu_hr",
+              "h100_ondemand_usd_per_gpu_hr",
+              "aethir_2025_revenue_usd",
+              "aethir_arr_q3_2025_usd"]
+    print(f"      ROUND-5 anchor audit: {len(unused)} verified figures are")
+    print(f"      citation-only (GPU rental, Aethir revenue, off-peak price) and")
+    print(f"      enter no arithmetic in this file; only the peak price does.")
 
     # THE CROSS-OVER PRICE: the token price at which mining one FLOP is worth
     # exactly what selling that FLOP is worth on the AI market. Above it, mining

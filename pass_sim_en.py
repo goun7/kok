@@ -244,7 +244,14 @@ worst_active = 0.0
 worst_inactive = 0.0
 worst_market = 0.0
 worst_pr_err = 0.0
-for theta in [0.05, 0.2, 0.3, 0.35, 0.5, 1.0, 2.0, 3.0, 3.4, 5.0, 10.0]:
+# ROUND-5, 2026-09-24 (round-5 finding F6): the sweep points used to be bare
+# literals unbound to the regime bounds, so a change to theta_low/theta_high
+# silently left the sweep outside its own interval. The named sweep now derives
+# its boundary points from the SAME properties the solver's regime selection
+# uses, so the table cannot drift from the model.
+THETA_SWEEP = [0.05, 0.2, prm.theta_low, prm.theta_low + 0.05, 0.5, 1.0, 2.0,
+               prm.theta_high + 0.1, prm.theta_high * 1.5, 5.0, 10.0]
+for theta in THETA_SWEEP:
     eq = solve(prm, theta)
     v = verify(eq, prm)
     worst_active = max(worst_active, v["max_active_residual"])
@@ -484,23 +491,38 @@ def censorship_economics(fee, burn_rate, bond, n_censor, side_benefit=0.0,
     *** IMPORTANT MODELLING: the bond DEPLETES. The first event slashes the bond
     by min(bond,fee); once the bond hits 0, SUBSEQUENT censorship events are FREE. ***
     If refilling the bond is not part of the protocol in production,
-    the deterrent is ONE-SHOT."""
+    the deterrent is ONE-SHOT.
+
+    ROUND-5 FIX, 2026-09-24 (round-5 finding F7): `burn_rate` was an accepted
+    parameter that entered NO computation -- measured: burn_rate in
+    {0.0, 0.5, 1.0, 99.0} left every returned field identical. It now carries
+    the fraction of the fee that is BURNED rather than recovered, which is the
+    economic meaning the f3a design attaches to the word: only the burned part
+    is a real cost to the sequencer, the rest is recovered. burn_rate=1.0
+    reproduces the pre-round-5 numbers exactly.
+    """
     cur = bond
     slashed_total = 0
+    burned_total = 0.0
     for _ in range(n_censor):
         slash = min(cur, fee)
         slashed_total += slash
+        burned_total += slash * burn_rate    # ROUND-5: the irrecoverable cost
         cur -= slash
         if refill:
             cur = bond           # governance tops the bond back up to the fee level
     gross_benefit = side_benefit * n_censor
+    # ROUND-5: the deterrent is the BURNED share. With burn_rate<1 the sequencer
+    # recovers (1-burn_rate)*slash at slash-release, so net_cost falls.
+    net = burned_total - gross_benefit
     return {
         "n_censor": n_censor,
         "first_slash": min(bond, fee),
         "total_slashed": slashed_total,
+        "total_burned": burned_total,     # ROUND-5: the economically relevant cost
         "side_benefit_total": gross_benefit,
-        "net_cost": slashed_total - gross_benefit,
-        "deterrence_sufficient": (slashed_total - gross_benefit) > 0,
+        "net_cost": net,
+        "deterrence_sufficient": net > 0,
         "remaining_bond": cur,      # the value left if there is no refill
     }
 
