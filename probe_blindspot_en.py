@@ -7,9 +7,15 @@ drives the blind spot by RUNNING the state machine, not by reading it.
 
 The U-layer contract is the fee invariant:
     fees_in == fees_refunded + fees_burned + fees_paid
-The covered paths are submit, settle, timeout. This probe drives the corners
-the tests may not cover, by actually constructing a task, settling it, and
-then re-driving the terminal state.
+ROUND-6, 2026-09-24 (round-6 finding F2): this invariant is STATED HERE but
+MEASURED NOWHERE in this file — the target module has no timeout path and no
+such counters (0 occurrences of timeout/refund/expire/fees_in), and every
+probe compares only the tuple (task.escrow, task.burned) before and after.
+The sentence is kept as the invariant the corners are *consistent with*, not
+as something this probe verifies. The covered paths are submit, settle,
+challenge — the timeout path does not exist in the module yet. This probe
+drives the corners the tests may not cover, by actually constructing a task,
+settling it, and then re-driving the terminal state.
 """
 
 import sys
@@ -30,16 +36,8 @@ def _task_books(task):
     return task.escrow, task.burned
 
 
-def _smallest_task(ul, q=97, n=8):
-    """Build the smallest honest task the module accepts, following the shape
-    the module's own tests use."""
-    import random
-    rnd = random.Random(11)
-    A = [[rnd.randrange(q) for _ in range(n)] for _ in range(n)]
-    B = [[rnd.randrange(q) for _ in range(n)] for _ in range(n)]
-    spec = ul.TaskSpec("mm", (A, B), 64, 1000)
-    return spec, A, B
-
+# ROUND-6, 2026-09-24 (round-6 finding F5): _smallest_task was
+# defined and never called anywhere in the repo; removed.
 
 def _drive(ul, seed=11):
     """Build the smallest honest task, mining enough empty blocks first that
@@ -88,6 +86,17 @@ def probe_double_settle():
         print("  -> second settle MOVED THE BOOKS: the fee invariant can be")
         print("     broken by a double transition.")
         return False
+    except KeyError as e:
+        # ROUND-6 FIX, 2026-09-24 (round-6 finding F4): this used to be a bare
+        # `except Exception` that returned None, so the regression this corner
+        # documents (KeyError 'carol' — the challenger never registered on the
+        # non-fraud path) was swallowed and the process exited 0. The KeyError
+        # is now the EXPECTED signal of that regression, so it is reported as
+        # a finding rather than swallowed.
+        print("  FINDING: the challenger failed to register (KeyError %s) —"
+              % (e,))
+        print("  the pre-2026-09-23 bug this corner documents is present.")
+        return False
     except Exception as e:
         print("  could not construct the corner: %s: %s"
               % (type(e).__name__, e))
@@ -117,7 +126,12 @@ def probe_late_challenge():
         print("  after  late challenge: escrow=%s burned=%s state=%s"
               % (after[0], after[1], task.state))
         print("  challenger registered: %s" % ("bob" in ch.miners))
-        if before == after and out[0] in ("CHALLENGE_REJECTED", "SETTLED_ALREADY"):
+        # ROUND-6 FIX, 2026-09-24 (round-6 finding F3): the accepted set used
+        # to include "CHALLENGE_REJECTED", which is what the PRE-fix code
+        # returns when the SETTLED_ALREADY short-circuit is removed — so the
+        # probe passed over the exact regression it guards. The named outcome
+        # the fix introduced is now the required one.
+        if before == after and out[0] == "SETTLED_ALREADY":
             print("  -> late challenge is REJECTED and the books do not move:")
             print("     the terminal state is guarded on the challenge path.")
             print("     Stage 1.3 (2026-09-23): the guard now has a named")
@@ -232,6 +246,7 @@ def probe_ghostdag_minimal_deviation():
               % (n, len(g.blocks), tot_cnt, tot_out))
     print()
     # TV-59's own generator, replicated from probe_ghostdag_en.py
+    tv59_outside = []
     for seed in (23, 20260920):
         g = gd.GHOSTDAG(gd.GHOSTDAG_K)
         rng = random.Random(seed)
@@ -249,6 +264,7 @@ def probe_ghostdag_minimal_deviation():
             out = g.order(bid)
             past = g._past(bid)
             tot += sum(1 for b in out if b not in past and b != bid)
+        tv59_outside.append(tot)
         print("      tv59 generator seed=%-10d blocks=51 outside=%d"
               % (seed, tot))
     print()
@@ -270,9 +286,27 @@ def probe_ghostdag_minimal_deviation():
     print("      n=12 blocks=%-3d entries=%-4d outside_own_past=%d"
           % (len(g.blocks), tot_cnt, tot_out))
     print()
-    print("  -> the deviation is zero on a maximal-anticone minimal DAG at")
-    print("     n=12, and small at n<=20 under mine_chain, but it is NOT")
-    print("     zero under tv59's own generator at 51 blocks (572 at seed 23).")
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding F1): the prose below asserted
+    # "NOT zero under tv59's own generator (572 at seed 23)" as a HARDCODED
+    # literal, but every outside= value the code computes is 0 (six of them),
+    # so the printed conclusion contradicted its own measurement. The prose
+    # now derives from the computed list instead of restating an old number.
+    dev_any = any(v != 0 for v in tv59_outside)
+    if dev_any:
+        print("  -> the deviation is zero on a maximal-anticone minimal DAG at")
+        print("     n=12, and small at n<=20 under mine_chain, but it is NOT")
+        print("     zero under tv59's own generator at 51 blocks (%d at seed 23)."
+              % tv59_outside[0])
+    else:
+        print("  -> ROUND-6: the deviation is ZERO in every configuration this")
+        print("     probe measures, including tv59's own generator at 51 blocks")
+        print("     (%d at seed 23, %d at seed 20260920). The earlier prose said"
+              % (tv59_outside[0], tv59_outside[1]))
+        print("     'NOT zero' and quoted 572 as a literal; the code computes")
+        print("     zero, so the claim is RETRACTED. The Stage-1.1 fix (anticone")
+        print("     intersected with past(B)) closed the deviation this probe")
+        print("     was set up to measure, which is why the counts are zero")
+        print("     now and were not when the prose was written.")
     print("     The reconciliation: the deviation is driven by anticone")
     print("     DENSITY, which depends on the generator, and tv59's generator")
     print("     produces far more of it than mine_chain does. The spec's 572")
