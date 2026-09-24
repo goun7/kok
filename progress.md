@@ -3047,3 +3047,17 @@ commitment string'ini bagliyordu. TV-82 olarak spec'e kaydedildi.
 ### Tam suite: 32/32 rc=0, audit CLEAN.
 Commitler: 69f86de, 570bdef, 5a3f877, 98d7ac6, 846e7bc, c47adf4, dea3b04,
 6697ef5, abfad80, 76654ef, d904a20, f48183c.
+
+### BLOK 7 — ROUND-6: METODU KENDİNE ÇEVİRDİK (meta-probes 4/4)
+Beş adversarial tur aynı koddan geçtikten sonra soru: **yeni probelar eskilerden
+daha iyi mi?** FRI challenge ve E-gap bug'ları 4 tur boyunca GEÇEN probellerin
+olduğu koddaydı — yani bir prob'un PASS'i kesinleşmişse hiçbir şey test etmiyor.
+
+- **R6-1**: 10 prob dosyasının hepsi FINDING ve PASS yazabiliyor.
+- **R6-2 (BULGU — DÜZELTİLDİ)**: `probe_round5b_glayer_en.py` R5B-12'de
+  `except Exception: pass` bir peak degerini SESSEZCE atliyordu. Artik
+  sayiliyor ve rapor ediliyor.
+- **R6-3**: 10 dosya da rc=0 ve probe count yaziyor.
+- **R6-4**: _en prob dosyalarinda Türkçe harf YOK.
+
+### TAM SUITE: 33/33 rc=0, audit CLEAN, working tree clean.
