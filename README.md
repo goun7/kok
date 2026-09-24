@@ -66,6 +66,25 @@ Every prototype says this in its own header; we say it here too:
 - Negative results are recorded, not hidden: TV-28 confirms the FP8 low-entropy
   reversal (the attack succeeds without a noise floor), TV-30 corrects DELTA
   0.5 → 0.06, TV-31 shows the f3a slash is fee-capped.
+- **Round-5 (2026-09-24) adversarial review of six never-probed files found two
+  bugs that survived every earlier round because the check that would have
+  caught each was an identity** (spec TV-84/TV-85): the endogenous theta solver
+  solved the wrong equation — Pearl's theta is 1.657, not the 1.05 the paper
+  quoted, and the equilibrium reproduced its input PR to one part in two —
+  while the file's residual checker compares the solver to the equation it
+  itself solved; and FRI's `verify_round` accepted any degree-(q-1)/2
+  polynomial, 9/9, because it checked a fold relation every such polynomial
+  satisfies. Both are fixed with probes that can fail, and both files now carry
+  falsifiable input-consistency checks. Pearl's regime claim is untouched
+  (1.657 is still pure Duplexia); the number was wrong.
+- Round-5 also removed claims the code does not measure: FRI's "logarithmic
+  verifier cost" (the implemented check is Θ(q·deg) — real FRI achieves log cost
+  by evaluating at one query point per round, which this prototype does not)
+  and "probability approaching 1" (no repeated-forgery sampling exists); and it
+  corrected the EN-package audit's ~50 false positives, which were ordinary
+  English words ending in a Turkish two-letter suffix (margin, caller, produce,
+  tolerance, encode, governance, ...). Turkish prose is still detected when
+  injected.
 
 **A perfect paper is not equal to a running chain.** The paper ceiling is ~85/100;
 the remaining ~15 points are empirical and cannot be won on paper.

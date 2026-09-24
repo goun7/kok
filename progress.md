@@ -2864,3 +2864,79 @@ b08f2d6 (probe_live_demand #36/#37/#38),
 f29b31f (fp8 #12/#13/#15),
 TV-80 row yeniden yazildi.
 **Tam suite 21/21 rc=0, audit CLEAN.**
+
+---
+## ROUND-5 ADVERSARIAL REVIEW — 2026-09-24 (6 dosya, ilk kez derin incelendi)
+
+Alt dosya bugune kadar hic derin incelenmemisti: f0b_fri_en, f0b_prod_field_en,
+egap_cert_en, spec_rederive_en, pass_sim_en, adoption_econ. Round-5 bu altisini
+probladi ve her bulguyu olcerek duyurdu. Kapananlar:
+
+**KRITIK (2 tane, ikisi de onceki tum turlardan kacti cunku onlari yakalayacak
+kontrol bir OZDESLIKTI):**
+1. pass_sim F1 — endojen theta cozucusu YANLIS denklemi cozmus. (1+theta)
+   uzerindeki ust eps olmali ama eps-1 olmali. Olculu: cozucunun dondurdugu
+  denge girilen PR'yi sadece 2.0489'da bire (tam = (1+theta)) tekrar uretiyordu.
+   DUZELTILDI: Pearl'in thetasi 1.6571 ve girilen PR 2.24e-16 ile tekrar uretiliyor.
+   **Paper'in "theta=1.05" iddiasi 1.657 olarak duzeltilidi** (spec TV-84);
+   NITEL iddia ayakta (1.657 hala pure Duplexia, theta_low 0.30 theta_high 3.33).
+   Neden onceki turlar goremadi: dosyanin residual checker'i, cozucunun cozdugu
+   denklemin aynisi uzerinden hesaplandigi icin hep 0.00e+00 veriyor — fail
+   edemeyen bir kontrol hicbir seyi korumaz. Dosyaya input_consistency() eklendi:
+   cozucunun CIKTISINI giris PR'siyle karsilastiriyor ve endojen yolda assert
+   ediyor (2.24e-16).
+2. f0b_fri F1 — verify_round'da HIC derece siniri yoktu. q=97'de butun 48
+   quadratic residue'da sifirlanan derece-48 bir sahte, gercek bound 1/2/3
+   olan bir P icin 9/9 KABUL ediliyordu. DUZELTILDI: derece siniri kontrol
+   ediliyor + verify_transcript final sabitligini zorunlu kiliyor + fold()
+   kucuk alanlarda under-interpolation'i hata veriyor. Probe 4/4.
+
+**Diger kapananlar (her biri olculu):**
+- spec_rederive S2: verify matrix commitment'lari PROOF'tan okuyordu, yani
+  saldirganin sectigi bir accumulator icin kendine-tutarli bir uydurma tile
+  True dogruluyordu. Task'in commitment'lari artik cagrictan geliyor.
+- spec_rederive S4: kontrol edilen genislik son prove()'dan kalan instance
+  durumdan geliyordu; n=8 icin yapilmis bir forgery, m=2 ile True dogruluyordu.
+  Artik genislik proof'un kendisinden geliyor.
+- egap_cert E1: docstring "task'in kendi matrislerinden bir tile" iddia
+  ediyordu; cert sadece tile KIMLIGINI bagliyor (bogus acc 37/999999/-1 hepsi
+  True). spec A12'ye gore tile dogrulugu AIR'in isi — dosyada duzeltildi.
+- adoption F12/F14/F15/F16/F17/F19/F20/F21: utilisation aritmetige girmiyordu
+  (artik giriyor); "dogrulanmis" fiyat anchor'u literal'di (artik ayni
+  degisken); %40 cikis degil modelin tavani (etiketlendi); 0.79 "MEASURED"
+  degil (bir seed + bu dosyanin sabitleri + 400 adimin ozelligi; duyarlilik
+  basildi); "5 of 9" hicbir sayiya uymuyordu (olculu 184/199); miner M-loop
+  inert'ti (36/36 bit-identik); input validation yoktu (negatif ratio sessizce
+  negatif fiyat avantaji uretiyordu).
+- pass_sim F3/F5/F6/F7: byte-identik ternary ("corrected below" asili
+  yorumuyla) duzeltildi; "%5.8" format bug'i "5.8%" oldu; theta sweep
+  theta_low/theta_high'dan turetiliyor; burn_rate aritmetige girmiyordu (artik
+  yakilan pay, burn_rate=1.0 eski sayilari veriyor).
+- f0b_fri F4: "logarithmic verifier cost" iddiasi kaldirildi —
+  verify_round Theta(q*deg) (olculu: 0.0003s @q=97 .. 0.0685s @q=10007/deg 64).
+  Gercek FRI log maliyeti her turde tek sorgu noktasindan degerlendirme yapar,
+  bu prototip onu yapmiyor. "Approaching 1" de olculmedi (tekrarli forgery
+  orneklemi yok).
+- spec_rederive S6/S7: A1 kontrolu bir degeri kendisiyle karsilastiriyordu
+  (ayni ifade iki tarafda) — gercek cross-check eklendi; mine_h dead code.
+
+**Audit araci duzeltildi:** audit_en_output.py 50 yalanci pozitif veriyordu —
+hepsi Turkce iki-harfli bir ek ile biten siradan Ingilizce kelimeler (margin,
+caller, produce, tolerance, encode, governance, sequence, ... ~40 tane).
+Belirsiz 2-harfli ekler kaldirildi ve ek kurali artik bir Turkce kok gerekiyor;
+Turkce yazili enjekte edilince hala yakaliyor (dogrulandi: sansur, gorev) ve
+artik TEMIZ raporluyor. Iki kasitli-Turkce hedef (EPOSTA_SOK taslagi ve kelime
+listesini tutan audit_turkish_en.py) dislandi.
+
+**Tam suite 33/35 rc=0.** Kalan 2 exit-1 fp8_noise'un KASITLI TV-28 NEGATIF
+SONUCU (throw-direction pass'leri basarisiz olunca 1 donuyor) — bu bir
+bulgu, bir hata degil.
+
+**Aşama 2 (TV-72 φ=0 nedenini kanıtlama): KAPANDI** — tv72_egap_mechanism_en.py
+(TV-82) iki-kollu gosterimle E-gap mekanizmasini olctu. Arm A (oncesi): 5/5
+kabul, tespit edilebilirlik 0. Arm B (sonrasi): 4/4 ret + commission'lanan
+cift kabul. φ=0 artik bir paradoks degil, mekanizmi olculmus bir olcum.
+
+Commitler (yeniden eski): a5b4c6f (TV-85), a5a58cf (audit tooling),
+8af8c36 (F6/F7 + adoption kalan), 140441b (egap), 57a7289 (spec_rederive),
+4ab9bdd (f0b_fri), 4528c69 (adoption), 850ae3f (TV-84), 023d035 (pass_sim F1).
