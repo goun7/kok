@@ -2940,3 +2940,69 @@ cift kabul. φ=0 artik bir paradoks degil, mekanizmi olculmus bir olcum.
 Commitler (yeniden eski): a5b4c6f (TV-85), a5a58cf (audit tooling),
 8af8c36 (F6/F7 + adoption kalan), 140441b (egap), 57a7289 (spec_rederive),
 4ab9bdd (f0b_fri), 4528c69 (adoption), 850ae3f (TV-84), 023d035 (pass_sim F1).
+
+## Oturum 11 — 10 saat otonom: round-5a + round-5b (2026-09-24)
+
+Kullanici uyurken: "kok network'u mükemmelliyete ulaştıralım".
+
+### BLOK 1 — ROUND-5A: 17 bulgunun tam kapanisi
+ROUND5A_FINDINGS.md round-4 oncesi yazilmis, 17 bulgu iceriyordu.
+
+**f0b_prod_field_en.py 9/9 PASS:**
+- **20000-meydan ÖlÇÜLDÜ**: "MEASURED 20000 challenges" iddia ediyordu
+  ama tv76_field_margin sadece SABIT bir tamper yapiyordu. Gerçek sweep
+  ekledim: **survival 0.5030** (20000 random tamper + random challenge),
+  analitik (m+1)/q = 0.0515. **Ölçülen ~10x yüksek** — çünkü sweep hem
+  tamper yerini hem meydan noktasini rastgele seciyor, m=4'te 3/4 nokta
+  hiç anlasmazlik görmüyor. Dürüst açiklama dosyada.
+- **inversion target RIGGED'ti**: `_h_truncated("sib", 42424242)` arama
+  kumesi range(97) DISINDA → "0 hits" her zaman. Havuzdan çekince:
+  **97/97'nin ikinci preimage'i yok** (dürüst).
+- STEP-2 ile inversion-cost BÖLÜMÜ ÇELIŞIYORDU (biri saldiri açik diyor,
+  digeri "asla açik degildi"). Açikça RECONCILE edildi.
+- 2^64 ROM noise limiti `_E`'nin kendi içinde beyan edildi.
+
+**f0b_fri_en.py 8/8 PASS:**
+- **EN KRITIK: CHALLENGE PROVER'IN RNG'SINDEN GELIYORDU.** `alpha =
+  rng.randrange(1, q)` — FRI'nin TEK seslenme kaynagi prover'in kendi
+  RNG'si, yani seslenme = SIFIR. **Fiat-Shamir yaptim**: alpha artik
+  transcript'in SHA-256'i üzerinden, verifier aynisini yeniden hesaplar.
+- **"logaritmik verifier cost" YALANDI**: verify_round range(1,q) tam
+  tarayip O(q*deg). ÖLÇTÜM: q 97→2003 (20.6x), süre 0.00009→0.00299s
+  (33x). Iddia geri çekildi.
+- Forgery survival ÖLÇÜLDÜ: 0/3000 her tur sayisinda.
+
+### BLOK 2 — ROUND-5B: tv72 E-gap'inde KRITIK BUG
+Subagent derinlik sinirini asti, kendim yaptim. tv72_egap_mechanism_en.py
+makalenin TV-72 cevabi olarak gösteriyor.
+
+**verify_g_cert_bound commitment STRING'ini bagliyordu, COMPUTATION'i DEGIL.**
+Sadece `pc == task_pc` ve PoW target kontrol ediyordu; tile VALUE'inin
+committed matristen gelip gelmedigini ASLA kontrol etmiyordu. **ÖLÇÜM:**
+commissioned [[2,3],[4,5]] (tile 26), madenci [[2,3],[4,6]] (tile 30)
+üzeriden tile çikarip commissioned commitment'i tasiyan cert VERIFIED.
+**E-gap KAPANMAMISTI.** Düzeltme: verifier artik committed programi alip
+tile value'u tek referans `_tile_value` ile yeniden türetiyor.
+probe_round5b_egap_en.py **5/5**: one-entry-off artik RED, identical hala
+geçiyor, rejection commitment'i takip ediyor.
+
+**Bu makalenin TV-77/TV-72 argümaninin temelini olusturuyordu** — Pearl'de
+eksik olanin ATTRIBUTABILITY oldugu iddia ediliyordu, ama binding sadece
+commitment string'ini bagliyordu. TV-82 olarak spec'e kaydedildi.
+
+### BLOK 3 — ROUND-5B diger dosyalar
+- **spec_rederive_en.py 3/3**: cross-check gerçekten reference'a karsi
+  (kendine karsi degil), AIR-only limit beyan edilmis, pinned values
+  listeleniyor degil KARŞILAŞTIRILIYOR.
+- **g_layer_tests_en.py 4/4**: size fix'in eski IndexError'i reprodukte
+  ediliyor, cost 12 random içerikte tek değer {704}, forgery 4..12'de ve
+  foreign ctx'de reddediliyor. Low-entropy için per-v hook YOK —
+  "could not drive" dürüstçe rapor edildi.
+- **probe_edges + probe_blindspot 3/3**: "clean set" etiketi DOĞRULANDI —
+  probeler falsifiable, slashed-payout corner drive ediliyor, self-
+  assessment doğru.
+
+### Commitler (Oturum 11)
+178ede1, 7015ff8 (FRI Fiat-Shamir), b4df4c8 (**E-gap computation binding
+— KRITIK**), f13657c (TV-82), 5908469, 69f86de, 570bdef.
+**Tam suite 28/28 rc=0, audit CLEAN.**
