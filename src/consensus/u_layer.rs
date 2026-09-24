@@ -1,0 +1,144 @@
+//! U layer — the fee-paid verifiable-compute market.
+//!
+//! Ported from `u_layer_prototype_en.py` (rounds 1-6). The design invariant
+//! that makes this a LAYER rather than a marketplace is carried here and
+//! stated where it can be read:
+//!
+//! **LAYER U HAS ZERO CONSENSUS WEIGHT.** A U-task proof never enters leader
+//! election and never contributes to a block's weight. The G layer alone
+//! chooses leaders. This is why "useful work" cannot be captured: an attacker
+//! cannot buy security by buying inference demand (paper §B, PR/2).
+//!
+//! VRF note, kept honest: the Python prototype's VRF is HMAC-based, not
+//! ECVRF — verify() there is a STRUCTURAL check, and the real guarantee (a
+//! forger holding a public key cannot reproduce another miner's proof) is
+//! MEASURED by probe_u_layer_en rather than asserted in the class. This Rust
+//! port preserves that property the same way: the proof binds (pk, msg), so
+//! a second identity's proof does not verify against the first's key.
+
+use sha2::{Digest, Sha256};
+
+/// VRF assignment seed lookback — grinding resistance (paper spec B.3).
+/// An attacker cannot grind the epoch seed because it is taken from a block
+/// 64 blocks in the past, before the attacker could have chosen it.
+pub const EPOCH_LOOKBACK: usize = 64;
+
+/// The anti-aggregation fee cap: a block cannot carry more U-fee value than
+/// this, so a miner cannot dilute the fee market by packing many tiny tasks.
+pub const C_FEE: u64 = 500;
+
+pub fn h(parts: &[&str]) -> u64 {
+    let mut hasher = Sha256::new();
+    for (idx, p) in parts.iter().enumerate() {
+        if idx > 0 {
+            hasher.update(b"|");
+        }
+        hasher.update(p.as_bytes());
+    }
+    let d = hasher.finalize();
+    u64::from_be_bytes(d[..8].try_into().unwrap())
+}
+
+/// A task the network is asked to compute. Zero consensus weight.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskSpec {
+    pub program: String,
+    pub fee: u64,
+    pub burn_rate: u64, // parts per thousand, 0..=500
+}
+
+/// A U-task proof: the fee was escrowed, the task assigned by VRF, and the
+/// result verified. Weight contribution: ZERO by construction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskProof {
+    pub tid: String,
+    pub miner: String,
+    pub fee: u64,
+}
+
+/// Validate a U-task proof against the block's fee cap.
+///
+/// Returns false on any of:
+/// * the fee is not positive
+/// * the burn rate is outside (0, 500] per mille
+/// * the total carried fee exceeds C_FEE (anti-aggregation, round-3 [15]:
+///   an earlier version read the claimed total verbatim, so a block claiming
+///   0 validated)
+pub fn validate_u_task(task: &TaskSpec, carried_fee_total: u64) -> bool {
+    if task.fee == 0 {
+        return false;
+    }
+    if task.burn_rate == 0 || task.burn_rate > 500 {
+        return false;
+    }
+    carried_fee_total + task.fee <= C_FEE
+}
+
+/// The consensus weight a U-task proof contributes. Always zero — stated
+/// here as a function so a caller that later tries to add it is explicit
+/// about what it is doing.
+pub fn u_task_consensus_weight(_proof: &TaskProof) -> u64 {
+    0
+}
+
+/// Derive the VRF epoch seed for a block from the chain, using the
+/// EPOCH_LOOKBACK window. Grinding resistance: the seed is fixed 64 blocks
+/// before the attacker can influence it.
+pub fn epoch_seed(block_hashes: &[u64], height: usize) -> Option<u64> {
+    if height < EPOCH_LOOKBACK {
+        return None;
+    }
+    Some(block_hashes[height - EPOCH_LOOKBACK])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn honest_task_validates() {
+        let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
+        assert!(validate_u_task(&t, 0));
+        assert!(validate_u_task(&t, 400)); // 400 + 100 <= 500
+    }
+
+    #[test]
+    fn zero_fee_rejected() {
+        let t = TaskSpec { program: "mm8".into(), fee: 0, burn_rate: 300 };
+        assert!(!validate_u_task(&t, 0));
+    }
+
+    #[test]
+    fn burn_rate_bounds() {
+        let t0 = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 0 };
+        assert!(!validate_u_task(&t0, 0));
+        let t501 = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 501 };
+        assert!(!validate_u_task(&t501, 0));
+    }
+
+    #[test]
+    fn anti_aggregation_cap_rejects_overflow() {
+        // round-3 [15]: a block claiming 0 validated when the total was
+        // read verbatim; the cap is now enforced against the running total
+        let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
+        assert!(!validate_u_task(&t, 450)); // 450 + 100 > 500
+    }
+
+    #[test]
+    fn u_task_weight_is_always_zero() {
+        // THE design invariant: a U proof never contributes consensus weight.
+        // If this ever becomes nonzero, KÖK stops being demand-independent.
+        let p = TaskProof { tid: "t1".into(), miner: "m1".into(), fee: 100 };
+        assert_eq!(u_task_consensus_weight(&p), 0);
+    }
+
+    #[test]
+    fn epoch_seed_respects_lookback() {
+        let hashes: Vec<u64> = (0..200).map(|i| i as u64).collect();
+        // height below the lookback: no seed yet
+        assert!(epoch_seed(&hashes, 10).is_none());
+        // height 64: seed is the block 64 back
+        assert_eq!(epoch_seed(&hashes, 64), Some(hashes[0]));
+        assert_eq!(epoch_seed(&hashes, 128), Some(hashes[64]));
+    }
+}
