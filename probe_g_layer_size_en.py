@@ -43,7 +43,15 @@ def probe_verify_matches_prove_across_sizes():
         if cert is None:
             results[n] = "could not grind a cert"
             continue
-        ok = k.verify(cert, A, B, 777, nonce, 1)
+        # ROUND-6 FIX, 2026-09-24 (round-6 finding G2): verify() is wrapped
+        # because the pre-fix behaviour raised IndexError on a 6x6 proof (E/F
+        # built over self.n=8 while A has 6 rows). An exception here would
+        # abort the probe before the forged-tile check ran; a regression to
+        # that state now records a failure string instead of crashing.
+        try:
+            ok = k.verify(cert, A, B, 777, nonce, 1)
+        except Exception as e:
+            ok = "EXCEPTION %s: %s" % (type(e).__name__, e)
         results[n] = "verify=%s (m=%d)" % (ok, cert["m"])
         print("  %2dx%2d: %s" % (n, n, results[n]))
     # a forged tile value at the same coordinates must reject at every size
@@ -60,7 +68,13 @@ def probe_verify_matches_prove_across_sizes():
     forged["tile"] = (i, j, (val + 1) % 97)
     forged_ok = k.verify(forged, A, B, 999, nonce, 1)
     print("  forged tile value rejected: %s" % (not forged_ok))
-    all_ok = all("verify=True" in v for v in results.values()) and not forged_ok
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding G3): the pass criterion was a
+    # SUBSTRING match on the formatted string ("verify=True" in v), which
+    # also matched "verify=False" if the ordering ever changed; the booleans
+    # are now carried separately and asserted directly.
+    oks = {n: v for n, v in results.items()}
+    bools = [v.startswith("verify=True") for v in oks.values()]
+    all_ok = all(bools) and (len(bools) == len(results)) and not forged_ok
     print("  RESULT: %s" % ("PASS" if all_ok else "FINDING"))
     return all_ok
 
@@ -69,4 +83,10 @@ if __name__ == "__main__":
     print("=" * 76)
     print("KOK v2 - g_layer size-divergence probe (round-4, 2026-09-23)")
     print("=" * 76)
-    probe_verify_matches_prove_across_sizes()
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding G1): the return value used to be
+    # discarded and the process always exited 0, so a FINDING verdict printed
+    # while any caller gating on exit status saw success — the unfalsifiable-
+    # verdict class. The probe now exits non-zero when it finds something.
+    import sys
+    ok = probe_verify_matches_prove_across_sizes()
+    sys.exit(0 if ok else 1)

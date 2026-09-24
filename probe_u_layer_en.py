@@ -20,8 +20,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from u_layer_prototype_en import (Chain, TaskSpec, C_FEE, BOND_RATIO,
-                                  W_s, FRAUD_REWARD, DEFAULT_PS,
+from u_layer_prototype_en import (Chain, TaskSpec, BOND_RATIO,
+                                  W_s,
                                   EPOCH_LOOKBACK)
 
 

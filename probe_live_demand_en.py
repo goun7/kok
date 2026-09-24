@@ -75,13 +75,12 @@ def main():
         rev_cost = rev / cost
         print("  revenue/cost ratio  : %.3f   (Basu measured 1.06)" % rev_cost)
     print()
-    print("  measured phi on that network : 0")
-    # ROUND-4 FIX, 2026-09-24 (round-4 finding #36): this line was a hardcoded
-    # literal bound to nothing in the code, while the probe's whole thesis is
-    # "stated, not asserted". phi is not derivable from PEARL — PEARL holds
-    # the security side only — so the honest form is to state the QUANTITY phi
-    # is a ratio of, and to name its source, rather than printing a number
-    # that no variable supplies.
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding L1): the line below printed a
+    # hardcoded "0" while the ROUND-4 comment right beneath it said the fix
+    # was to stop printing a number no variable supplies. phi is not a
+    # variable anywhere in this file (PEARL holds the security side only), so
+    # the honest form is the ratio definition and its source, not a literal.
+    print("  measured phi on that network : NOT AVAILABLE as a number here")
     # phi = (revenue attributable to paid useful tasks) / (total compute spend).
     # Pearl had no paid task market, so the numerator is zero from the source,
     # not from this file's arithmetic.
@@ -89,8 +88,13 @@ def main():
     print("    the numerator is 0: Pearl ran no paid task market (Basu,")
     print("    arXiv 2606.04819 — the network is reported with no paid")
     print("    useful work, only hashpower chasing block rewards)")
-    print("    the denominator IS bound here: $%s/day" %
-          f"{pearl.get('cost_day', 0):,.0f}")
+    # ROUND-6 (round-6 finding L3): the denominator sentence is gated on the
+    # SAME condition as the ratio above, so this file never asserts a bound
+    # in the case its own guard just called unavailable.
+    if rev is not None and cost is not None and cost > 0:
+        print("    the denominator IS bound here: $%s/day" % f"{cost:,.0f}")
+    else:
+        print("    the denominator is NOT available in this configuration")
     print("  no utility ever materialized, despite the network being marketed")
     print("  as the inference-subsidizing regime.")
     print()
@@ -118,6 +122,17 @@ def main():
     print("     deliberately not started).")
     print("  2. Measure phi on that deployment.")
     print("  3. Anything less is a prediction, and is labelled as one here.")
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding L2): this used to return True
+    # unconditionally, so RESULT could never be FAIL and the verdict guarded
+    # only an import lookup — the unfalsifiable-verdict class. It now returns
+    # True only when the quantities the probe's own thesis rests on are
+    # actually present: the revenue and cost figures PEARL must supply. If
+    # either is missing the verdict is FAIL, which is the honest output for
+    # "the data this probe needs is not here".
+    if rev is None or cost is None or not (cost > 0):
+        print("  ROUND-6: FAIL — the revenue/cost figures this probe's thesis")
+        print("  needs are not present, so the ratio cannot be stated")
+        return False
     return True
 
 
