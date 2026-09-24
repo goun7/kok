@@ -3232,3 +3232,45 @@ iddiası geri çekildi (verifier tohumu tutuyor, probe TV-65 leaked=True).
 ### Commitler: 108 bu oturumda (92 round-6 öncesi + 16 round-6).
 Çalışma ağacı temiz. Tüm suite rc=0 (20/20 probe + 14/14 modül +
 suite_gate 39/39), iki denetim TEMIZ.
+
+---
+
+## F3 — RUST L1 İSKELETİ (2026-09-24, Orkestratör görevi)
+
+**Önceki durum:** sıfır Rust. 47 .py, 0 .rs, 0 Cargo.toml. Şartname PROJE 3
+egemen L1 ister; repoda L1'in **matematiği** kanıtlanmıştı, kendisi yoktu.
+
+### ADIM 1 — DURUM DOĞRULANDI
+git b2f4dde → 6f3cf22, tree clean, Rust 1.98.1 mevcut.
+
+### ADIM 2 — G KATMANI (src/consensus/poum.rs)
+KwKernel, g_layer_tests_en.py'den **1:1 port**. Hash domain separation
+korundu → bir sertifika Python/Rust sınırını geçer.
+- `cargo build --release` **rc=0**
+- `cargo test` **4/4**: honest kabul; forged tile value, ctx replay (TV-1),
+  width-mismatched cert REDDED
+- **ÖLÇÜLEN q=97 n=8 target 2^1: prove 0.072 ms (Python 3.47 ms, 48×),
+  verify 0.211 ms (Python 0.25 ms, 1.2×)**
+- Verify hızlanmadı: SHA256 baskın, her ikisi aynı 256 hash. Prove 48×:
+  MatMul döngüsü vektörize edildi.
+
+### ADIM 3 — FRI (src/consensus/fri.rs)
+verify_round + verify_transcript, f0b_fri_en.py'den port. Round-5'in iki
+kritik özelliği taşındı:
+- **degree bound ilişkiden ÖNCE** (q=97 degree-48 sahtesi 9/9 kabul
+  ediliyordu; kontrol öncesi)
+- **terminal-constant check** (degree-6'da biten transcript geçiyordu)
+- Maliyet dosya içinde: **Θ(q·deg)** — gerçek FRI log maliyet için
+  tek-nokta değerlendirme ister, bu port yapmaz (0.0003 s @ q=97 →
+  0.0685 s @ q=10007/deg 64).
+
+`cargo test` **8/8 toplam** (4 G + 4 FRI), `cargo build` rc=0.
+
+### SONRAKİ ADIMLAR
+U katmanı (fee-paid verifiable compute, VRF assignment, konsensüs ağırlığı
+SIFIR) → GHOSTDAG DAG iskeleti (T_b=100ms hedef, Kaspa k=18 şablonu
+üzerinden kendi λ_b/k seçimi) → PVI (WASM) → fair-launch emisyon.
+
+### Commitler: 110 bu oturumda (108 round-6 sonrası + 2 F3).
+Çalışma ağacı temiz. Rust: 5 dosya (Cargo.toml, lib.rs, main.rs,
+consensus/mod.rs, consensus/poum.rs, consensus/fri.rs).
