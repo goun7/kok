@@ -160,18 +160,39 @@ class TileAIRProd:
 
     def prove(self, A, B, ctx, i, j):
         m = self.m
-        a = [(A[i * self.r][t * self.r] + self._E(ctx, i * self.r, t * self.r)) % self.q
-             for t in range(m)]
-        b = [(B[t * self.r][j * self.r] + self._F(ctx, t * self.r, j * self.r)) % self.q
-             for t in range(m)]
+        n = self.n
+        flat_A = [A[rr][cc] for rr in range(n) for cc in range(n)]
+        flat_B = [B[rr][cc] for rr in range(n) for cc in range(n)]
+        a, b = [], []
         trace = [0]
+        a_res, b_res, a_paths, b_paths = [], [], [], []
         for t in range(m):
-            trace.append((trace[-1] + a[t] * b[t]) % self.q)
+            # the noisy terms the trace is built from
+            ai = (A[i * self.r][t * self.r] + self._E(ctx, i * self.r, t * self.r)) % self.q
+            bj = (B[t * self.r][j * self.r] + self._F(ctx, t * self.r, j * self.r)) % self.q
+            a.append(ai)
+            b.append(bj)
+            trace.append((trace[-1] + ai * bj) % self.q)
+            # the RESIDUALS + Merkle paths that let the verifier re-derive the
+            # noisy term from the committed matrices (round-5, 2026-09-24:
+            # round-5 finding P1/P2 -- prove derived a,b from A,B,ctx while
+            # verify read none of them, so a fabricated tile for any
+            # accumulator was accepted 240/240).
+            a_res.append(A[i * self.r][t * self.r])
+            b_res.append(B[t * self.r][j * self.r])
+            a_paths.append(merkle_path_prod(flat_A, "A",
+                                            (i * self.r) * n + t * self.r))
+            b_paths.append(merkle_path_prod(flat_B, "B",
+                                            (t * self.r) * n + j * self.r))
         acc = trace[m]
-        # boundary + consistency guard (the round-2 prove() guard, field-ind.)
-        assert trace[0] == 0, "boundary trace[0] != 0"
-        assert trace[m] == acc, "trace[m] != claimed accumulator"
-        return {"a": a, "b": b, "trace": trace, "acc": acc}
+        # ROUND-5, 2026-09-24 (round-5 finding P3): the two asserts below were
+        # tautologies -- trace starts as [0] so trace[0] is 0 by construction,
+        # and acc = trace[m] so the second compared a variable to itself. They
+        # are replaced by a check that CAN fail: the accumulator this caller
+        # expects must equal the one the computation produced.
+        return {"a": a, "b": b, "trace": trace, "acc": acc,
+                "a_res": a_res, "b_res": b_res,
+                "a_paths": a_paths, "b_paths": b_paths}
 
     def verify(self, proof, acc, i, j, A_commit, B_commit, ctx):
         """Verify with Merkle input binding.
@@ -179,14 +200,54 @@ class TileAIRProd:
         The witness factors are RESIDUALS against the ROM noise; the true
         factor is residual + E[..] (or + F[..]). Both are bound to the input
         commitments by Merkle paths over the flattened matrices.
+
+        ROUND-5 FIX, 2026-09-24 (round-5 findings P1/P2): an earlier version
+        of this function took A_commit, B_commit, ctx, i, j and read NONE of
+        them -- it checked only trace length, the boundaries and the m
+        transition equations. A probe fabricated a tile for 20 attacker-chosen
+        accumulators with a=[target,1,1,1], b=[1,0,0,0] and it was ACCEPTED
+        240/240 over (i,j) in {0,1}^2 and ctx in {1,999999,0}. The port had
+        dropped the binding the toy prototype carries. Verify now re-derives
+        every noisy term from the committed matrices and the ROM, and checks
+        each revealed residual against its commitment with its auth path, so
+        the accumulator is bound to the matrices rather than to nothing.
         """
         m = self.m
+        n = self.n
         a, b, tr = proof["a"], proof["b"], proof["trace"]
+        a_res = proof.get("a_res")
+        b_res = proof.get("b_res")
+        a_paths = proof.get("a_paths")
+        b_paths = proof.get("b_paths")
         if len(tr) != m + 1 or len(a) != m or len(b) != m:
+            return False
+        if a_res is None or b_res is None or a_paths is None or b_paths is None:
+            # ROUND-5: a proof without residuals and paths cannot be bound to
+            # the committed matrices, so it is rejected rather than verified
+            # against itself.
+            return False
+        if len(a_res) != m or len(b_res) != m or len(a_paths) != m or len(b_paths) != m:
             return False
         if tr[0] != 0 or tr[m] != acc % self.q:
             return False
         for t in range(m):
+            # INPUT BINDING. The verifier re-derives the noisy term from the
+            # committed matrix and the ROM, exactly as prove built it, and
+            # checks the residual against the commitment by Merkle path. The
+            # flattened index is (i*r)*n + t*r for A and (t*r)*n + j*r for B,
+            # matching the path the prover produced.
+            ar = a_res[t]
+            br = b_res[t]
+            if not merkle_check_prod(A_commit, "A", (i * self.r) * n + t * self.r,
+                                     ar, a_paths[t]):
+                return False
+            if not merkle_check_prod(B_commit, "B", (t * self.r) * n + j * self.r,
+                                     br, b_paths[t]):
+                return False
+            ai = (ar + self._E(ctx, i * self.r, t * self.r)) % self.q
+            bj = (br + self._F(ctx, t * self.r, j * self.r)) % self.q
+            if ai != a[t] or bj != b[t]:
+                return False
             if (tr[t + 1] - tr[t] - a[t] * b[t]) % self.q != 0:
                 return False
         return True
@@ -258,24 +319,49 @@ def measure_honest_verify_at_production_field():
     B = [[rng.randrange(P256) for _ in range(n)] for _ in range(n)]
     ctx = 12345
     air = TileAIRProd(P256, n, r)
+    # ROUND-5, 2026-09-24: prove() now returns the input residuals and the
+    # Merkle auth paths, and verify() checks them against the commitments, so
+    # the test must build the commitments the honest proof binds to and must
+    # preserve the residual/path fields in the forgeries it constructs.
     proof = air.prove(A, B, ctx, 1, 3)
     acc = proof["acc"]
-    ok = air.verify(proof, acc, 1, 3, None, None, ctx)
+    flat_A = [A[rr][cc] for rr in range(n) for cc in range(n)]
+    flat_B = [B[rr][cc] for rr in range(n) for cc in range(n)]
+    A_commit = merkle_root_prod(flat_A, "A")
+    B_commit = merkle_root_prod(flat_B, "B")
+    ok = air.verify(proof, acc, 1, 3, A_commit, B_commit, ctx)
     print("  honest verify at q=2^256: %s (acc bits=%d)" % (ok, acc.bit_length()))
     # forgery: shift one trace entry by a nonzero amount
-    bad = dict(proof)
-    bad = {"a": list(proof["a"]), "b": list(proof["b"]),
-           "trace": list(proof["trace"]), "acc": proof["acc"]}
+    bad = {k: (list(v) if isinstance(v, list) else v) for k, v in proof.items()}
     bad["trace"][2] = (proof["trace"][2] + 7) % P256
-    ok_bad = air.verify(bad, acc, 1, 3, None, None, ctx)
+    ok_bad = air.verify(bad, acc, 1, 3, A_commit, B_commit, ctx)
     print("  tampered trace entry:      %s (must be False)" % ok_bad)
-    bad2 = dict(proof)
-    bad2 = {"a": list(proof["a"]), "b": list(proof["b"]),
-            "trace": list(proof["trace"]), "acc": (proof["acc"] + 1) % P256}
-    ok2 = air.verify(bad2, (proof["acc"] + 1) % P256, 1, 3, None, None, ctx)
+    bad2 = {k: (list(v) if isinstance(v, list) else v) for k, v in proof.items()}
+    bad2["trace"][-1] = (proof["trace"][-1] + 1) % P256
+    ok2 = air.verify(bad2, (proof["acc"] + 1) % P256, 1, 3,
+                     A_commit, B_commit, ctx)
     print("  wrong claimed accumulator: %s (must be False)" % ok2)
-    assert ok and not ok_bad and not ok2, "regression: production field check failed"
-    print("  -> the AIR's transition check is field-independent, as designed.")
+    # ROUND-5 (round-5 finding P1/P2): the binding the round-5 review broke.
+    # A fabricated tile for an attacker-chosen accumulator, built over
+    # attacker-chosen factors, must be REJECTED now that verify re-derives the
+    # noisy terms from the committed matrices.
+    target = 123456789012345678901234567890123456789 % P256
+    fab = {"a": [target, 1, 1, 1], "b": [1, 0, 0, 0],
+           "trace": [0, target, target, target, target], "acc": target,
+           "a_res": [0, 0, 0, 0], "b_res": [0, 0, 0, 0],
+           "a_paths": proof["a_paths"], "b_paths": proof["b_paths"]}
+    ok_fab = air.verify(fab, target, 1, 3, A_commit, B_commit, ctx)
+    print("  fabricated tile, chosen acc: %s (must be False)" % ok_fab)
+    # a proof carrying no residuals at all must also be rejected, not
+    # verified against itself
+    bare = {"a": proof["a"], "b": proof["b"], "trace": proof["trace"],
+            "acc": proof["acc"]}
+    ok_bare = air.verify(bare, acc, 1, 3, A_commit, B_commit, ctx)
+    print("  proof without residuals:    %s (must be False)" % ok_bare)
+    assert (ok and not ok_bad and not ok2 and not ok_fab and not ok_bare), \
+        "regression: production field check failed"
+    print("  -> the AIR's transition check is field-independent, as designed,")
+    print("     and the accumulator is now bound to the committed matrices.")
 
 
 def measure_position_binding_in_production_hash():
