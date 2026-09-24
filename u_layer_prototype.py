@@ -39,10 +39,17 @@ rng = random.Random(SEED)
 
 
 def H(*parts) -> int:
-    m = hashlib.sha3_256()
-    for p in parts:
-        m.update(str(p).encode())
-        m.update(b"|")
+    # ROUND-6, 2026-09-24 (performance, not behaviour): incremental update
+    # per part plus a trailing separator produced the same digest sequence
+    # as a single joined update, so the one-shot join is equivalent — but it
+    # avoids 2 Python-level calls per hash. Over the hardness sweep this is
+    # the bulk of the runtime. NOTE: this H uses sha3_256 while the EN twin
+    # g_layer_tests_en.H uses sha256 — the two packages produce DIFFERENT
+    # digests for the same arguments, so a TR certificate does not verify
+    # against the EN kernel and vice versa. That mismatch predates this
+    # change and is left as-is (the twins are parallel implementations, not
+    # one cross-verifying pair); stated here so nobody assumes parity.
+    m = hashlib.sha3_256("|".join(map(str, parts)).encode() + b"|")
     return int.from_bytes(m.digest(), "big")
 
 
@@ -59,13 +66,32 @@ class KWKernel:
     def __init__(self, q=97, n=8, r=2):
         self.q, self.n, self.r = q, n, r
 
+    # ROUND-6, 2026-09-24 (hiz, davranis degil): (E, F) gurultu cifti
+    # (ctx, n, q)'nun saf bir fonksiyonudur — H("E", ctx, i, j) ve
+    # H("F", ctx, i, j) A'ya, B'ye veya nonce'a bagli degildir — ama prove()
+    # ve verify() her cagridda hepsini yeniden olustururdu. 3.6M H cagrisi
+    # bunun yuzunden. Önbellek: ayni (ctx, n) anahtari her zaman ayni
+    # matrisleri dondurur, bu yuzden olculen her deger degismez.
+    _noise_cache = {}
+
+    def _noise(self, ctx, n):
+        key = (ctx, n, self.q)
+        hit = KWKernel._noise_cache.get(key)
+        if hit is None:
+            E = [[(H("E", ctx, i, j) % self.q) for j in range(n)]
+                 for i in range(n)]
+            F = [[(H("F", ctx, i, j) % self.q) for j in range(n)]
+                 for i in range(n)]
+            hit = (E, F)
+            KWKernel._noise_cache[key] = hit
+        return hit
+
     def prove(self, A, B, ctx: int, nonce: int, target: int):
         """Dürüst: tüm ara bloklari hesapla; ilk target-alti tile'i sertifika yap."""
         q, r = self.q, self.r
         n = len(A)
         m = n // r
-        E = [[(H("E", ctx, i, j) % q) for j in range(n)] for i in range(n)]   # gurultu (sade)
-        F = [[(H("F", ctx, i, j) % q) for j in range(n)] for i in range(n)]
+        E, F = self._noise(ctx, n)   # gurultu (sade) — onbellegi yukarida
         Ap = [[(A[i][j] + E[i][j]) % q for j in range(n)] for i in range(n)]
         Bp = [[(B[i][j] + F[i][j]) % q for j in range(n)] for i in range(n)]
         acc = [[0] * m for _ in range(m)]          # kisit: transcript'i basitlestir

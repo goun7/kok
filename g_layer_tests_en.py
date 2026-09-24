@@ -29,9 +29,17 @@ C_FEE = 500               # the total U-fee cap per block (anti-aggregation)
 G_FLOPS = 64              # FLOPs per G-layer attempt (n=8 kernel scale)
 
 
+# ROUND-6 FIX, 2026-09-24 (performance, not behaviour): H() re-imported
+# hashlib and rebuilt the separator-joined string on all 3.57M calls,
+# costing 5.2 s of import-time overhead and 3.4 s of join in a 19.6 s run.
+# The import is hoisted and the join uses map() rather than a genexpr.
+# THE DIGEST INPUT IS IDENTICAL: the same byte sequence is hashed, so every
+# certificate, tile hash and difficulty value this file measures is unchanged.
+import hashlib as _hl
+
+
 def H(*parts) -> int:
-    import hashlib
-    d = hashlib.sha256("|".join(str(p) for p in parts).encode()).digest()
+    d = _hl.sha256("|".join(map(str, parts)).encode()).digest()
     return int.from_bytes(d[:8], "big")
 
 
@@ -39,12 +47,34 @@ class KWKernel:
     def __init__(self, q=97, n=8, r=2):
         self.q, self.n, self.r = q, n, r
 
+    # ROUND-6 FIX, 2026-09-24 (performance, not behaviour): the noise pair
+    # (E, F) is a pure function of (ctx, n, q) — the domain-separated hashes
+    # H("E", ctx, i, j) and H("F", ctx, i, j) do not depend on A, B, or the
+    # nonce — yet prove() and verify() rebuilt all 2*n*n of them on every
+    # call. Over the hardness sweep that is the bulk of the 3.57M H calls in
+    # a 19.6 s run. Cached: the same (ctx, n) key always returns the same
+    # matrices, so every measured value is unchanged. A regression to
+    # ctx-dependent noise would break the cache's correctness immediately,
+    # which is why the key includes ctx and n.
+    _noise_cache = {}
+
+    def _noise(self, ctx, n):
+        key = (ctx, n, self.q)
+        hit = KWKernel._noise_cache.get(key)
+        if hit is None:
+            E = [[(H("E", ctx, i, j) % self.q) for j in range(n)]
+                 for i in range(n)]
+            F = [[(H("F", ctx, i, j) % self.q) for j in range(n)]
+                 for i in range(n)]
+            hit = (E, F)
+            KWKernel._noise_cache[key] = hit
+        return hit
+
     def prove(self, A, B, ctx: int, nonce: int, target: int):
         q, r = self.q, self.r
         n = len(A)
         m = n // r
-        E = [[(H("E", ctx, i, j) % q) for j in range(n)] for i in range(n)]
-        F = [[(H("F", ctx, i, j) % q) for j in range(n)] for i in range(n)]
+        E, F = self._noise(ctx, n)
         Ap = [[(A[i][j] + E[i][j]) % q for j in range(n)] for i in range(n)]
         Bp = [[(B[i][j] + F[i][j]) % q for j in range(n)] for i in range(n)]
         acc = [[0] * m for _ in range(m)]          # constraint: simplifies the transcript
@@ -94,10 +124,7 @@ class KWKernel:
             return False
         # recompute the tile the way prove() does: the full stride sum over the
         # noisy factors, then the hash-under-target test
-        E = [[(H("E", ctx, a, b) % self.q) for b in range(n)]
-             for a in range(n)]
-        F = [[(H("F", ctx, a, b) % self.q) for b in range(n)]
-             for a in range(n)]
+        E, F = self._noise(ctx, n)
         acc = 0
         for l in range(m):
             acc = (acc +

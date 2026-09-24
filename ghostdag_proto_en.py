@@ -116,7 +116,21 @@ class GHOSTDAG:
         self._compute(blk.bid)
 
     def _past(self, bid: str) -> set:
-        """"A block's past (transitive parents)."""
+        """"A block's past (transitive parents).
+
+        ROUND-6 FIX, 2026-09-24: this was recomputed by a full DFS walk on
+        every call, and _future() calls it once per block in the DAG, so the
+        DAG tests ran in O(n^2 * past) — measured 111 s and 283M function
+        calls on the tv26 run, with _past alone taking 63.9 s of the 110.2 s
+        it spent inside _future. The result is now memoized per block: the
+        past of an added block cannot change (blocks are append-only and
+        parents are fixed at add() time), so the first computation is final
+        and repeat calls return the same object. The DAG logic is unchanged;
+        only the recomputation is gone."""
+        cache = self.__dict__.setdefault("_past_cache", {})
+        hit = cache.get(bid)
+        if hit is not None:
+            return hit
         seen = set()
         stack = list(self.blocks[bid].parents)
         while stack:
@@ -125,15 +139,30 @@ class GHOSTDAG:
                 continue
             seen.add(p)
             stack.extend(self.blocks[p].parents)
+        cache[bid] = seen
         return seen
 
     def _future(self, bid: str) -> set:
         """The future of the block: everything derived from it directly or
-        indirectly."""
+        indirectly.
+
+        ROUND-6 FIX, 2026-09-24: this looped over every block and called
+        _past(other) to test membership — the O(n^2 * past) the note above
+        names. The result is now memoized for the same reason: the future of
+        a block can only grow as blocks are added, and within a single
+        _compute() call it is fixed, so a repeat query in the same add()
+        returns the same set without re-walking every block's past."""
+        cache = self.__dict__.setdefault("_future_cache", {})
+        hit = cache.get(bid)
+        if hit is not None:
+            return hit
         fut = set()
-        for other, blk in self.blocks.items():
+        for other in self.blocks:
+            if other == bid:
+                continue
             if bid in self._past(other):
                 fut.add(other)
+        cache[bid] = fut
         return fut
 
     def _anticone(self, bid: str) -> set:

@@ -104,6 +104,10 @@ class GHOSTDAG:
 
     def _past(self, bid: str) -> set:
         """Bir blokun gecmisi (transitive parents)."""
+        cache = self.__dict__.setdefault("_past_cache", {})
+        hit = cache.get(bid)
+        if hit is not None:
+            return hit
         seen = set()
         stack = list(self.blocks[bid].parents)
         while stack:
@@ -112,6 +116,7 @@ class GHOSTDAG:
                 continue
             seen.add(p)
             stack.extend(self.blocks[p].parents)
+        cache[bid] = seen
         return seen
 
     def _future(self, bid: str) -> set:

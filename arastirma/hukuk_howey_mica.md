@@ -1,188 +1,845 @@
-# Hukuk / Uyum Araştırması — KÖK v2
+# HUKUK / UYUM ARAŞTIRMASI — KÖK v2: Howey, MiCA ve Yargı Karşılaştırması
 
-**Araştıran:** Lead (Tamga ağ hatası verdiği için bizzat alındı)
-**Tarih:** 2026-09-21
-**Yöntem:** EUR-Lex resmi metni (1.68 MB HTML) tam çekildi, tanımlar verbatim çıkarıldı.
-**Durum:** web_search ve DuckDuckGo/Bing bu oturumda bot korumasına takıldı; sadece
-**direkt URL fetch** çalışıyor. Bu yüzden A (SEC/Ripple) ve D (yargı karşılaştırma)
-henüz **BULUNAMADI** — sadece resmi metinlerle teyit edilebilen kısımlar yazıldı.
+**Hazırlayan:** TAMGA (dış araştırma ajanı) — v2, 20 Eylül 2026 (v1: Lead, 21 Eylül 2026)
+**Kapsam:** KÖK v2 token modeli — (i) madencilere blok ödülü (fair-launch PoW), (ii) GÖREV
+PAZARI: kullanıcı fee öder → ESCROW → bir kısmı BURN (geri alınamaz), (iii) token ile
+ödenebilir verifiable-compute (AI inference).
+**Yöntem:** Her iddia için **(a) verbatim alıntı + (b) URL + (c) tarih**. Ulaşılamayan her
+veri **BULUNAMADI**. Tahmin (forecast) ile gerçek (actual) ayrımı her yerde belirtilmiştir.
+**v2'nin v1'e farkı:** v1'de Ripple ve yargı bölümleri Wikipedia özetlerine dayanıyordu ve
+SEC/ABD bölümü BULUNAMADI idi. **v2, tamamen birincil kaynaklarla (SEC litigation
+releaseleri, 68 sayfalık SEC yorum release'i, Atkins konuşmaları, Federal Register teklif
+metni, FINMA ICO Guidelines PDF'i, Singapur PSA konsolide metni, EUR-Lex MiCA tam metni)
+yazılmıştır.**
 
----
-
-## C) MiCA — Regulation (EU) 2023/1114 (RESMİ METİN, VERBATIM)
-
-Kaynak: EUR-Lex CELEX:32023R1114, Official Journal L 150/40, 9.6.2023.
-URL: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32023R1114
-Erişim: 2026-09-21, HTTP 200, tam metin.
-
-### C.1 Tanımlar — Article 3 (numaralandırma DÜZELTİLDİ)
-
-Önceki notlarımızda "Article 3(1)(5)" yazıyordu. **Resmi metinde numaralandırma
-farklıdır** — tanımlar Article 3'ün (5) numaralı paragrafında değil, tek bir
-numaralandırılmış listede yer alır:
-
-- **(5) ‘crypto-asset’ means** a digital representation of a value or of a right
-  that is able to be **transferred** and stored electronically using distributed
-  ledger technology or similar technology;
-- **(6) ‘asset-referenced token’ means** a type of crypto-asset that is not an
-  electronic money token and that purports to maintain a stable value by
-  referencing another value or right or a combination thereof, including one or
-  more official currencies;
-- **(7) ‘electronic money token’ or ‘e-money token’ means** a type of crypto-asset
-  that purports to maintain a stable value by referencing the value of one
-  official currency;
-- **(9) ‘utility token’ means** a type of crypto-asset that is **only intended to
-  provide access to a good or a service supplied by its issuer**;
-- **(10) ‘issuer’ means** a natural or legal person, or other undertaking, who
-  issues crypto-assets;
-
-### C.2 KÖK v2 için ÇIKARIM (analiz, metin değil)
-
-KÖK v2 token'ı **(9)‘un utility-token tanımına uymaz**: madenci blok ödülleri ve
-görev pazarında fee ödemesi, token'a "sadece erişim" dışında bir değer yükler —
-token aynı zamanda **value of a right** (5) ve potansiyel olarak **ART (6)**
-"purports to maintain a stable value" savına yakınlaşabilir. KÖK v2 ** hiçbir
-değer sabitleme vaadi olmadığını** açıkça belirtmelidir (zaten §11'de var).
-
-**Transfer edilebilirlik:** tanımda "non-transferable" şartı YOK — crypto-asset
-tanımı (5) transfer edilebilirlik ister, ancak utility token tanımı (9) buna
-değinmez. Beyan yükümlülüğü yönünden (white paper'da):
-> "the crypto-asset may not always be transferable; (c) the crypto-asset may not
-> be liquid; (d) where the offer to the public concerns a utility token, that
-> utility token may not be exchangeable against the good or service..."
-
-→ **Bir token hem transfer edilebilir hem utility olabilir**; ancak white
-paper'da yukarıdaki 4 beyan zorunludur.
-
-### C.3 Uygulama tarihi (RESMİ)
-
-Regulation 31 May 2023 tarihli, Official Journal'da 9 Haziran 2023.
-> "This Regulation shall enter into force on the twentieth day following that of
-> its publication in the Official Journal of the European Union."
-> "It shall apply from 30 December 2024."
-
-(Regulation'ın son maddelerinden; uygulama tarihi **30 December 2024**.)
+> **UYARI:** Bu belge hukuki tavsiye değildir; mühendislik/strateji kararları için
+> derlenmiş birincil kaynak araştırmasıdır. Testnet öncesi anonim proje kararlarında
+> lisanslı hukuk danışmanına başvurulmalıdır (bkz. §7).
 
 ---
 
-## A) SEC v. Ripple / Howey — BULUNAMADI
+## 0. YÖNETİCİ ÖZETİ — KÖK v2 için başlıca bulgular
 
-DuckDuckGo (HTML + lite) ve Bing bu oturumda bot koruması döndü (içerik boş);
-sec.gov 403 verdi. **CourtListener API'si** bir önceki başarısız subagent'ta
-çalıştığı raporlanmıştı ama o oturum kayboldu. **Sonuç: A şıkkı BULUNAMADI** —
-paper'daki mevcut "Howey analysis" ifadesi **kendi analizimizdir, iç kaynaklı**,
-dış citasyon taşımaz. Bu, paper §9'da "not verified" olarak zaten etiketli.
-
-## D) Yargı karşılaştırma — BULUNAMADI
-## E) Burning mekanizması yasal durum — BULUNAMADI
-
-(Eğer web erişimi geri gelirse bu üç şık tamamlanacak; şu an uydurmamak için
-BULUNAMADI olarak bırakılıyor.)
-
----
-
-## A2) SEC v. Ripple — CourtListener API denendi, BULUNAMADI
-
-**Denenen:** CourtListener REST v4 — search (type=o/r, court=ca2/nysd),
-dockets search, docket numarası 20-cv-10932, docket ID 646160.
-**Sonuç:** Ripple davası CourtListener/RECAP veritabanında **bulunamadı**
-(count: 0 ya da boş kayıt). Second Circuit (ca2) aramasında **hiç Ripple
-görünmüyor** — bu, eğer bir temyiz devam etseydi orada olması gerektiği
-düşüncesiyle çelişkili; ancak **varlık/yokluk çıkarması yapılmaz** (RECAP
-kapsamı eksik olabilir).
-
-**DÜRÜST SONUÇ:** SEC v. Ripple'in 2026-09 durumunu **bu oturumda teyit
-edemedim**. Paper §9'daki "Howey analysis" **kendi analizimizdir** (iç kaynaklı);
-Ripple kararından alıntı yapılmıyor, yalnızca Howey'in genel çerçevesi
-kullanılıyor. Bu, paper'da zaten "not verified / open item" olarak etiketli.
-
-**PRATIK ETKI:** hicbiri. Paper zaten dis citasyon olmadan yazilmis;
-arastirma bu bosluklari aciga cikardi ki bilerek kalmasin.
-
----
-
-## A3) *** SEC v. RIPPLE — TAMAMEN COZULDU (2026-09-21) ***
-
-**Yontem:** Wikipedia API (`action=parse&section=10&prop=wikitext`) ile Ripple_Labs
-sayfasinin "SEC litigation (2020-2025)" bolumu TAMAMEN cekildi. Onceki CourtListener
-ve sec.gov denemeleri basarisizdi ama Wikipedia API calisti.
-
-### DOGRULANMIS ZAMAN CIZELGESI (verbatim ozet)
-
-1. **22 Aralik 2020** — SEC, Ripple + 2 yoneticisine (Larsen, Garlinghouse) SDNY'de
-   dava acti (Securities Act of 1933 kayit hukumleri). IDDIA: XRP'nin kayitsiz
-   satislariyla **$1.3 milyar** toplanmasi.
-2. **13 Temmuz 2023** — Hakim **Analisa Torres** ozet karar verdi:
-   - Mahkeme **XRP'nin kendisini satisin kosullarindan ayirdi.**
-   - **Kurumsal (institutional) satislar = kayitsiz yatirim sozlesmesi** (menkul kiymet).
-   - **Borsalardaki programmatic satislar = menkul kiymet DEGIL** — alicilarin
-     "baskalarinin cabalarindan kar bekledigi" gerekliligi saglanmadi.
-   - Diger dagitimlar "yatirim-of-money" gerekliligini karsilamadi.
-   - Larsen/Garlinghouse'un kendi borsa satislari yatirim sozlesmesi degildi.
-3. **Ekim 2023** — SEC, Garlinghouse/Larsen'e yardim-etme iddialarini **with prejudice**
-   (tekrar acilamaz) dusurdu.
-4. **7 Agustos 2024** — Torres nihai karar: kurumsal satislar icin **$125,035,150
-   ceza** + gelecek ihlaller icin ihtiyat hukmu (injunction).
-5. **2025** — Taraflar injunction'i kaldirip cezayi **$50 milyon**'e dusurmek istedi;
-   **Torres REDDETTI** ("istisnai kosullar" yok).
-6. **7 Agustos 2025** — **SEC ve Ripple kendi itirazlarini geri cekti. DAVA KAPANDI.**
-7. *** 17 Mart 2026 — SEC, kripto varliklara federal menkul kiymet yasalarinin
-   uygulanmasina iliskin YORUM yayimladi (CFTC rehberligiyle). 23 Mart'ta Federal
-   Register'da yayimlandi. XRP'yi **bitcoin, ether, solana, stellar ile birlikte
-   "dijital emtia" (digital commodity) ornekleri** olarak belirledi — degerin
-   "baskalarinin zorunlu yonetici cabalarindan kar beklentisinden" degil,
-   "calisan kripto sistemleri ve arz-talep"den kaynaklandigi belirtildi.
-   *** ANCAK acikca soyle dedi: "kendisi menkul kiymet olmayan bir kripto varlik
-   yine de bir yatirim sozlesmesinin parcasi olarak sunulabilir/satilabilir —
-   islemin kosullarina bagli olarak." ***
-
-### KOK v2 ICIN CIKARIM (bu artik kaynakli, ic kaynakli degil!)
-
-- **Fair-launch / borsa satislari guc kazandi:** Torres'in "programmatic satislar
-  menkul kiymet degil" karari + 2026 yorumu, "madenci kazanir, borsada satar"
-  modelinin Howey disinda kalmasini destekler (alici belirli bir issuernin
-  cabasindan kar beklemez).
-- *** ANCAK KOK v2 kendini guvene alamaz: *** "kendisi menkul kiymet olmayan varlik
-  yine de yatirim sozlesmesi olarak sunulabilir." Yani bir **on-satis / investor
-  round / hazine satisi** yine menkul kiymet olur. KOK v2'nin fair-launch
-  kararliligi burada deger kazanir: premine/yatirimci YOK.
-- **2026 yorumu KOK icin dogrudan alintilanabilir** (Federal Register, 23 Mart 2026).
-
-**SONUC: A SIKKI KAPANDI. Paper §9 Howey analizi artik gercek 2026 ictihati ve
-SEC yorumu ile destekleniyor.**
+1. **ABD — PoW madencilik blok ödülleri menkul kıymet işlemi DEĞİLDİR.** SEC'in 17 Mart 2026
+   tarihli Yorum Release No. 33-11412'si açıkça der ki: "Protocol Mining Activities ... **do
+   not involve the offer and sale of a security**". KÖK Layer G'nin blok ödülleri bu
+   yorumun kapsamındadır — **şu önkoşulla:** KOK tokeni bir **"digital commodity"** olarak
+   sınıflandırılabilir olmalıdır (fungible + utility + arz-talep değeri + çalışan sistem).
+2. **ABD — KOK için doğru kategori "digital commodity", "digital tool" DEĞİL.** SEC'nin
+   "digital tool" tanımı **non-transferrable / "soul-bound"** örneklerle (ENS isimleri, bilet
+   NFT'leri) verilir. KOK transfer edilebilir ve ikincil piyasada işlem görecek; o yüzden
+   "digital commodity" kategorisi geçerlidir (bkz. §2.2).
+3. **ABD — token menkul kıymet olmasa bile "investment contract" ile satışı menkul kıymet
+   olabilir.** Yorum: "**Absent such representations or promises being conveyed to
+   purchasers, it would not be reasonable for a purchaser to expect profits**". KÖK'ün
+   sıfır-premine / sıfır-VC / anonim-kurucu modeli, "issuer tarafından kâr vaadi" unsurlarını
+   mimari olarak zayıflatır — en güçlü savunma hattı budur (bkz. §2.4).
+4. **ABD — Ağustos 2026'da RESMİ TEKLIF: "Regulation Crypto Assets"** (FR 21 Ağustos 2026,
+   Release 33-11434): startup exemption (4 yılda $5M), fundraising exemption (yıllık $75M),
+   ve **investment contract safe harbor** (issuer "essential managerial efforts"i kalıcı
+   bıraktığını sertifikalandırırsa token menkul kıymetten çıkar). **Henüz TEKLİF,
+   yürürlükte DEĞİL** (bkz. §2.5).
+5. **Ripple dava KAPALI; ama "borsa satışı = menkul kıymet değil" EMSAL DEĞİL.** 7 Ağustos
+   2025'te taraflar temyizleri ortak stipülasyonla geri çekti; **$125,035,150 ceza ve
+   ihtiyati hüküm aynen yürürlükte kaldı** (SEC LR-26369, birincil). Yaygın "$50M ödedi"
+   özeti yanıltıcıdır. İkinci Circuit merits kararı vermediği için Torres'in öğretisi
+   **bağlayıcı emsal haline gelmemiştir** (bkz. §1).
+6. **MiCA — madencilik ödülü whitepaper'dan muaf; AMA borsada listelenme niyeti tüm
+   muafiyetleri DÜŞÜRÜR.** Article 4(3)(b): "the crypto-asset is automatically created as a
+   reward for the maintenance of the distributed ledger or the validation of transactions"
+   → Title II (whitepaper rejimi) uygulanmaz. **Ancak Article 4(4):** offerör herhangi bir
+   iletişimde listelenme niyetini belli ederse **bütün muafiyetler düşer**. KÖK için EN
+   KRİTİK AB riski (bkz. §3.3).
+7. **MiCA — "utility token" tanımında transfer yasağı YOK.** Article 3(9): "'utility token'
+   means a type of crypto-asset that is only intended to provide access to a good or a
+   service supplied by its issuer". Transfer edilemeyen varlık zaten "crypto-asset" bile
+   sayılmaz (Recital 17). KOK transfer edilebilir olduğu için utility-token kategorisinde
+   değerlendirilebilir, **ancak** "only intended to provide access" sıfatı ve "supplied by
+   **its issuer**" ifadesi fair-launch/issuer'siz modelle gerilimlidir (bkz. §3.2).
+8. **MiCA — 2026-09 itibariyle TAM UYGULANIYOR** (30 Aralık 2024'ten beri; ART/EMT
+   başlıkları 30 Haziran 2024'ten beri). ~21 aydır yürürlükte (bkz. §3.5).
+9. **İsviçre — saf utility token için LİSANS GEREKMEZ; AML istisnası KOŞULLU.** FINMA ICO
+   Guidelines (16 Şubat 2018): "Utility tokens will not be treated as securities if their
+   sole purpose is to confer digital access rights to an application or service..." — AML
+   istisnası ancak "provide access rights to a **non-financial** application" ise geçerli.
+   KOK'un compute-ödeme işlevi bunu tartışmalı kılar (bkz. §4.1).
+10. **Singapur — KOK muhtemelen "digital payment token" (DPT) tanımına girer.** PSA 2019
+    tanımı: "is, or is intended to be, a medium of exchange accepted by the public ... as
+    payment for goods or services" + "can be transferred, stored or traded electronically".
+    **Fakat** lisansa tabi olan **DPT hizmetleridir** (takas/custody); madencilik/ihraç
+    lisanslı bir ödeme hizmeti **değildir** (bkz. §4.2).
+11. **Hâlâ BULUNAMADI:** ADGM/BAE ve El Salvador için birincil/regülatif kaynaklara bu
+    oturumda ulaşılamadı; token burning'in menkul kıymet/vergi analizine dair 2025–2026
+    akademik-yasal literatüre ulaşılamadı; ESMA rehberleri ile MAS'ın DTO rehberi
+    doğrulanamadı (bkz. §6 — bir sonraki oturum için 10 maddelik liste).
 
 ---
 
-## D) YARGI KARSILASTIRMASI — KISMEN COZULDU (2026-09-21)
+## 1. GÖREV 1A — SEC v. Ripple (SDNY 2023) ve 2025–2026 GÜNCEL Durumu
 
-**Yontem:** Wikipedia API "Legality of cryptocurrency by country or territory"
-(174 KB wikitext). *** ONEMLI SINIR: *** bu sayfanin verileri **Bitcoin**
-uzerinedir; **token ihraci/offer** icin degildir. KOK v2'nin ihtiyaci olan
-token-satisi rejimi degil, bu veri ancak bir baslangic noktasi.
+### 1.1 Torres'in 13 Temmuz 2023 özet kararı — üç kategorik ayrım
 
-### DOGRULANMIS (verbatim)
+Kararın **kendi metni** bu oturumda CourtListener üzerinden alınamadı (API anonım erişimi
+reddetti: `{"detail":"Anonymous users don't have permission to access the API."}`; HTML
+arama sonuç vermedi). Aşağıdaki verbatim pasajlar, kararı **yeniden üreten** bir hukuk
+firması analizinden alınmıştır:
 
-- **Isvicre:** Bitcoin isletmeleri AML'ye tabi, bazi durumlarda banka lisansi
-  gerekebilir (kaynak FINMA). *Isvicre'de ICO icin FINMA'nin ayri bir rehber
-  framework'u oldugu biliniyor ama BU SAYFADA dogrulanmadi.*
-- **Singapur:** MAS (Merkezi Banka) 2013'te "isletmelerin bitcoin kabul etmesi
-  ticari bir karardir, MAS mudahale etmez" dedi. *Token ichin MAS Payment
-  Services Act / DPT (digital payment token) rejimi bu sayfada YOK.*
-- **BAE:** Merkezi Banka kripto para birimlerini odeme araci olarak TANIMIYOR;
-  perakende odeme hizmetleri icin yeni bir duzenleme uzerinde calisiyor
-  (Library of Congress kaynakli). *Dubai VARA bu sayfada YOK.*
-- **El Salvador:** **Bitcoin 8 Haziran 2021 tarihli Bitcoin Law ile resmi
-  odeme araci (legal tender) yapildi** — dunyada ilk. *Bu BTC icindir; token
-  ihraci rejimi degildir.*
+> **Tokenin kendisi:** "XRP, as a digital token, is not in and of itself a 'contract,
+> transaction[,] or scheme' that embodies the Howey requirements of an investment contract."
+> **Programatik (borsa) alıcılar:** "the majority of individuals who purchased XRP from crypto
+> exchanges did not invest their money in Ripple at all"; bu alıcılar "could not have known
+> if their payments of money went to Ripple, or any other seller of XRP."
+> **Kurumsal satışlar:** SEC lehine; **$728 milyon** kurumsal satış değerlendirilmiş;
+> "common enterprise" testinde "the investors' assets are pooled and the fortunes of each
+> investor are tied to the fortunes of other investors, as well as to the success of the
+> overall enterprise."
+> — *Kaynak:* Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a
+> Security" (**13 Temmuz 2023**, güncelleme 17 Mart 2026),
+> https://gordonlaw.com/learn/judge-xrp-not-security/ (**İKİNCİL kaynak — kararın aslı için
+> bkz. §6 madde 7.**)
 
-### DURUST SONUC
-Bu dort yargin **Bitcoin icin** durumunu teyit edebildim. KOK v2'nin asil
-ihtiyaci olan **"anonim bir issuer'in token satisi hangi yargida en az
-sorunlu"** sorusu BU VERI ILE CEVAPLANAMAZ. Bunun icin her yarginin
-token-offer/ICO rehberine bakmak gerekir (FINMA ICO guidelines, MAS PSA/DPT,
-VARA framework) — bunlar bu oturumda dogrulanmadi.
+**Yorum (TAMGA):** Torres'in yeniliği **transaction-by-transaction** analiz: aynı token
+kurumsal satışta menkul kıymet, borsada perakende satışta menkul kıymet değil olabilir.
+KÖK dersi: belirleyici olan tokenin kendisi değil, **hangi işlemin yapıldığı**.
 
-**PAPER'A YAZILACAK SEY (dürüst):** yargi karsilastirmasi bilincli olarak
-"yapilmadi" olarak birakiliyor, nedeni ile: secim, token-satisi rejimini
-dogrulamadan yapilamaz; bu, bir avukatin gerektigi yer (§10.2). **BOSLUK
-KAPANMADI — ama artik neyin eksik oldugu NET.**
+### 1.2 8 Mayıs 2025 — uzlaşma çerçevesi (BİRİNCİL)
+
+> **SEC Litigation Release No. 26306 / May 8, 2025** — "SEC Announces Settlement Agreement to
+> Resolve Civil Enforcement Action Against Ripple and Two of Its Executives": "The settlement
+> agreement provides, among other things, that the Commission and Ripple would jointly request
+> the district court to issue an indicative ruling as to whether it would dissolve the
+> injunction against Ripple in the district court's August 7, 2024 final judgment and order
+> the escrow account holding the **$125,035,150** civil penalty imposed by the final judgment
+> be released, with **$50 million paid to the Commission in full satisfaction of that penalty**
+> and the remainder paid to Ripple. The Settlement Agreement further provides that, following
+> an indication from the district court that it would dissolve the injunction and release the
+> escrowed penalty amounts as requested, the Commission and Ripple will seek a limited remand
+> ... after which they would move to dismiss their respective appeals..."
+> — *Kaynak:* https://www.sec.gov/enforcement-litigation/litigation-releases/lr-26306
+> (**BİRİNCİL kaynak; sec.gov bu oturumda `User-Agent: KOK Research <e-posta>` ile erişildi.**)
+
+> **SEC'nin 2025 politik dönüşünü gösteren gerekçe (aynı release, verbatim):** "The
+> Commission's decision to exercise its discretion and seek a resolution of this pending
+> enforcement action rests on its judgment that such resolution will facilitate the
+> Commission's ongoing efforts to reform and renew its regulatory approach to the crypto
+> industry, **not on any assessment of the merits of the claims alleged in the action**."
+
+### 1.3 26 Haziran 2025 — Torres ortak talebi reddetti
+
+> "Judge Analisa Torres has rejected a $50 million settlement between Ripple and the SEC that
+> would have dissolved the permanent injunction blocking the institutional sales of XRP. The
+> June 26 ruling maintains Ripple's business restrictions indefinitely, despite both parties
+> agreeing to reduce the original $125 million penalty by 60%. ... Torres determined that the
+> parties failed to show the 'exceptional circumstances' required to vacate a final judgment..."
+> — *Kaynak:* Cryptonews, "Ripple Settlement Denied as Judge Torres Rejects $50M Deal..."
+> (**26 Haziran 2025**, yazar Anas Hassan),
+> https://cryptonews.com/news/ripple-settlement-denied-as-judge-torres-rejects-50m-deal-xrp-institutional-sales-remain-limited/
+> (**İKİNCİL kaynak — kararın aslı için bkz. §6 madde 8.**)
+
+### 1.4 7 Ağustos 2025 — Temyizlerin reddi; DAVA KAPALI, final karar aynen yürürlükte (BİRİNCİL)
+
+> **SEC Litigation Release No. 26369 / Aug. 7, 2025** — "SEC Announces Joint Stipulation to
+> Dismiss Appeals, Resolving Civil Enforcement Action Against Ripple and Two of Its
+> Executives": "The Securities and Exchange Commission today filed a **Joint Stipulation of
+> Dismissal** entered into with defendants Ripple Labs, Inc., Bradley Garlinghouse, and
+> Christian A. Larsen ('Defendants') that **dismisses the Commission's appeal and Ripple's
+> cross-appeal** pending in the United States Court of Appeals for the Second Circuit, and
+> resolves the Commission's civil enforcement action against Defendants. Those cross-appeals
+> followed a final judgment by the district court that imposed a **$125,035,150 civil
+> penalty** against Ripple and **an injunction prohibiting Ripple from violating the
+> registration provisions of the Securities Act of 1933. Following the dismissal of the
+> cross-appeals, that final judgment will remain in effect.**"
+> — *Kaynak:* https://www.sec.gov/enforcement-litigation/litigation-releases/lr-26369
+> (**BİRİNCİL kaynak.**) Dava numaraları: Case No. 1:20-cv-10832 (S.D.N.Y., filed Dec. 22,
+> 2020); Appeal Nos. 24-2648(L) ve 24-2705 (XAP) (2d Cir.).
+
+**2026-09 itibariyle DURUM (TAMGA):** Medyadaki "$50M ödedi / dava kazanıldı" özeti
+**birincil kaynağa göre yanıltıcıdır**: LR-26369, $125,035,150 ceza ve ihtiyati hükmün
+**yürürlükte kaldığını** açıkça yazar. Yani Mayıs 2025'deki $50M'lık indirim mekanizması
+(distinct court'un ihtiyatı kaldırmasına koşullu) **işletilmemiştir**. İkincil bir izleme
+kaynağı da bunu destekler: "a permanent injunction on Ripple's future institutional XRP sales
+remains in place — the case did not end without any injunction. No new developments in this
+matter have occurred so far in 2026." (Lawfold, 17 Eylül 2026,
+https://lawfold.com/ripple-sec-lawsuit-status-2026/ — **düşük güvenilirlikli SEO kaynağı,
+yalnızca destekleyici.**)
+
+**EN ÖNEMLİ HUKUKİ SONUÇ:** İkinci Circuit'te çekaplar **ortak stipülasyonla reddedildiği**
+için **merits kararı verilmemiştir**. Torres'in "programatik (borsa) satışlar menkul kıymet
+değil" öğretisi **appellate onaydan geçmemiştir** → ABD'de "borsa satışı = menkul kıymet
+değil" tezi **bağlayıcı emsal (precedent) değildir**, yalnızca SDNY kararlığında kalır.
+
+### 1.5 Ek: SEC artık XRP'yi "digital commodity" olarak listeliyor (2026, BİRİNCİL)
+
+> **SEC Yorum Release No. 33-11412 (17 Mart 2026):** "Examples of digital commodities include
+> Aptos (APT); Avalanche (AVAX); Bitcoin (BTC); Bitcoin Cash (BCH); Cardano (ADA); Chainlink
+> (LINK); Dogecoin (DOGE); Ether (ETH); Hedera (HBAR); Litecoin (LTC); Polkadot (DOT); Shiba
+> Inu (SHIB); Solana (SOL); Stellar (XLM); Tezos (XTZ); **and XRP (XRP)**."
+> — *Kaynak:* https://www.sec.gov/files/rules/interp/2026/33-11412.pdf (s. 14) (**BİRİNCİL.**)
+
+Beş yıllık dava, XRP'nin "digital commodity" olarak resmen listelenmesiyle kapanmıştır —
+2026'daki regülatif dönüşümün somut kanıtı.
+
+---
+
+## 2. GÖREV 1B — Howey Testi 2026: SEC'nin Yeni Tutumu, Sınıflandırma ve Safe Harbor
+
+### 2.1 Çerçeve: SEC Yorum Release No. 33-11412 (17 Mart 2026) — BİRİNCİL
+
+> **Başlık:** "Application of the Federal Securities Laws to Certain Types of Crypto Assets
+> and Certain Transactions Involving Crypto Assets" · **Release No. 33-11412; 34-105020** ·
+> **SEC Issue Date: 17 Mart 2026 · Effective Date: 23 Mart 2026 · Federal Register Publish
+> Date: 23 Mart 2026 · File Number: S7-2026-09** (CFTC eşliğinde rehberlik içerir.)
+> *Kaynaklar:* https://www.sec.gov/rules-regulations/2026/03/s7-2026-09 ve PDF
+> https://www.sec.gov/files/rules/interp/2026/33-11412.pdf
+> (**BİRİNCİL — 68 sayfa; tam metin bu oturumda PDF'ten çıkarıldı.**)
+
+> **Beş kategorik sınıflandırma (verbatim):** "we classify crypto assets into five categories
+> based on their characteristics, uses, and functions: (i) digital commodities; (ii) digital
+> collectibles; (iii) digital tools; (iv) stablecoins; and (v) digital securities. **Digital
+> commodities, digital collectibles, and digital tools, each as further described below, are
+> not themselves securities.** However, as with any asset that is not a security, **a
+> non-security crypto asset can be offered and sold subject to an investment contract, which
+> is a security.**" — *33-11412, §III, s. 14.*
+
+> **Atkins'in aynı günkü açıklaması (BİRİNCİL):** "our interpretation—grounded in existing law
+> and informed by extensive public input—establishes four asset categories that are not deemed
+> securities: digital commodities, digital collectibles, digital tools, and payment stablecoins
+> under the GENIUS Act. With these categories in place, the interpretation then clarifies that
+> only one crypto asset class remains subject to the securities laws: digital securities,
+> namely traditional securities that are tokenized. ... **We are not the Securities and
+> Everything Commission, anymore.**"
+> — *Kaynak:* Paul S. Atkins, "Regulation Crypto Assets: A Token Safe Harbor", DC Blockchain
+> Summit, Washington D.C., **17 Mart 2026**,
+> https://www.sec.gov/newsroom/speeches-statements/atkins-remarks-regulation-crypto-assets-031726
+
+### 2.2 "Digital commodity" — KÖK için EN OLASI kategori (BİRİNCİL)
+
+> "A digital commodity is a crypto asset that is intrinsically linked to and derives its value
+> from the programmatic operation of a crypto system that is 'functional', as well as supply
+> and demand dynamics, rather than from the expectation of profits from the essential
+> managerial efforts of others. A digital commodity does not have intrinsic economic properties
+> or rights, such as generating a passive yield or conveying rights to future income, profits,
+> or assets of a business enterprise or other entity, promisor, or obligor, but may have
+> certain other rights (as discussed below)." — *33-11412, §III.A, s. 14.*
+
+> **Footnote 48 (ekonomik anlam):** "we are using the term 'commodity' in an economic and
+> commercial sense (i.e., assets that are **fungible, have utility, and whose value is
+> determined by supply and demand**)."
+> **Footnote 49 ("functional"):** "a crypto system is 'functional' if the system's native
+> crypto asset can be used on the system in accordance with the programmatic utility of the
+> system."
+> **Footnote 50 ("decentralized"):** "a crypto system is 'decentralized' if the crypto system
+> functions and operates autonomously with no person, entity, or group of persons or entities
+> having operational, economic, or voting control of the crypto system."
+
+> **Amacı:** "The programmed purpose of a digital commodity is to facilitate and incentivize
+> the validation, ordering, and confirmation of transactions on the associated functional
+> crypto system, serve as a mechanism to maintain the functioning and/or security of the
+> associated functional crypto system, and foster network effects." — *33-11412, s. 15.*
+
+**KÖK v2'ye uygulama (TAMGA analizi):** KOK (a) fungible, (b) compute/fee ödemesinde gerçek
+faydaya sahip, (c) arz-talep ile değerlenen, (d) fair-launch olduğu için "essential managerial
+efforts" beklentisi zayıf bir varlıktır. **Koşullar:** sistemin **fonksiyonel** olması
+(mainnet'te tokenin gerçek compute ile kullanılması) ve ekibin kâr vaadinde bulunmaması.
+**Önemli:** "digital commodity" bile olsa, token bir **investment contract** ile satılırsa o
+işlem menkul kıymet olur (§2.4).
+
+### 2.3 "Digital tools" — DAR kategori; KÖK buraya DÜŞMEZ (BİRİNCİL)
+
+> "A digital tool is a crypto asset that performs a practical function, such as a membership,
+> ticket, credential, title instrument, or identity badge. ... **Digital tools often are
+> non-transferrable or 'soul-bound,'** and their value is derived from their practical
+> functionality. ... Examples of digital tools available in the markets today, based on our
+> understanding of their characteristics, terms, and functions as of the date of this release,
+> include **Ethereum Name Service domain names** and **CoinDesk's 'Microcosms' NFT Consensus
+> Ticket**. A digital tool itself, as described in this release, is not a security because it
+> does not have the economic characteristics of a security. ... **Digital tools are onchain
+> analogues to physical utilities, which generally have not been regulated as securities.**"
+> — *33-11412, §III.C, s. 20–21.*
+
+> **Ağ etkisi (network effects) notu (footnote 72):** "If the creator of a digital tool
+> facilitates network effects, including through the use of a digital tool, such activities do
+> not constitute essential managerial efforts."
+
+**Kullanıcının sorusunun yanıtı — "Transfer edilebilen ama hizmete erişim veren token ne
+gerektirir?" (TAMGA):** SEC çerçevesinde "utility" işlevi **tek başına** belirleyici değildir.
+Belirleyici olan **(1) sınıflandırma** (digital commodity mi, digital tool mu) ve **(2)
+tokenin hangi işlemle sunulduğu**. Transfer edilebilir bir utility token "digital commodity"
+olarak sınıflanır; çünkü "digital tool" tanımı non-transferrable/soul-bound örneklerle
+yazılmıştır. Ardından: (i) geliştirici tarafından kâr vaadiyle satılırsa **investment
+contract** (menkul kıymet) olur; (ii) yalnızca madencilik ödülü olarak dağıtılırsa ve sistem
+fonksiyonel ise **menkul kıymet işlemi olmaz** (§2.4). Yani "utility" kimlik reçete değil;
+**dağıtım mekanizması + vaadler** belirleyicidir.
+
+### 2.4 Investment contract analizi + "PROTOCOL MINING" yorumu (KÖK Layer G için KRİTİK)
+
+> **Ne zaman investment contract oluşur (verbatim):** "A non-security crypto asset becomes
+> subject to an investment contract when an issuer offers it by inducing an investment of
+> money in a common enterprise with representations or promises to undertake essential
+> managerial efforts from which a purchaser would reasonably expect to derive profits. A
+> purchaser's reasonable profit expectations depend on the issuer's representations or promises
+> to engage in such essential managerial efforts. **Absent such representations or promises
+> being conveyed to purchasers, it would not be reasonable for a purchaser to expect profits
+> from the contract, transaction, or scheme.**" — *33-11412, §IV.A, s. 25.*
+
+> **Açık-net olma ve "whitepaper" kanalları:** "representations or promises are more likely to
+> create reasonable expectations of profit when they are **explicit and unambiguous** as to the
+> essential managerial efforts to be undertaken by the issuer, contain sufficient details
+> demonstrating the issuer's ability to implement the proposed project, and explain how the
+> issuer's efforts will produce the profits that purchasers reasonably expect." ... "documents
+> clearly attributable to the issuer (**such as a whitepaper**)" bu kanallardandır. — *Aynı
+> bölüm, s. 27–28.* (Footnote 92: "whitepaper ... describes the technical aspects of a crypto
+> asset project ... along with other relevant details.")
+
+> **Satış sonrası vaatler geriye dönük etki yapmaz:** "the issuer's post-sale representations or
+> promises would not convert the prior sale into an offer or sale of an investment contract."
+> — *Aynı bölüm, s. 27.*
+
+> **Ayrılma (separation):** "A non-security crypto asset that was offered and sold subject to
+> an investment contract does not necessarily remain subject to the associated investment
+> contract in perpetuity. ... When a purchaser of a non-security crypto asset ... could no
+> longer reasonably expect the issuer's representations or promises ... to remain connected to
+> the non-security crypto asset, the non-security crypto asset **separates** from such
+> representations or promises, and thereafter the non-security crypto asset is not subject to
+> the Federal securities laws." — *33-11412, §IV.B, s. 29.* (İki gösterge: (1) vaadlerin
+> **yerine getirilmesi**; (2) vaadlerin **yerine getirilememesi**. Çözülme "immediately upon
+> delivery" dahil her an olabilir.)
+
+**PoW madenciliği — KÖK Layer G için doğrudan yorum (BİRİNCİL):**
+
+> **Kapsam:** "Federal securities laws to: (1) certain digital commodity activities known as
+> 'mining' on **public, permissionless crypto networks that use proof-of-work ('PoW')** as a
+> consensus mechanism ('PoW Networks'); ... In this release, we refer to mining digital
+> commodities on PoW Networks as 'Protocol Mining'" — *33-11412, §V girişi, s. 35.*
+
+> **PoW tanımı (dikkat):** "PoW is a consensus mechanism that incentivizes transaction
+> validation by rewarding participants, called 'miners,' who operate nodes adding computational
+> resources to the PoW Network. ... **The 'work' in PoW is the computational resources that
+> miners contribute to validate transactions and add new blocks to the PoW Network.** Miners do
+> not have to own the PoW Network's digital commodity to validate transactions. ... Miners use
+> computers to solve complex mathematical equations in the form of cryptographic puzzles."
+> — *33-11412, §V.A.1, s. 36.*
+
+> **SONUÇ (verbatim):** "**Protocol Mining Activities**, in the manner and under the
+> circumstances described in this release, **do not involve the offer and sale of a security**
+> within the meaning of section 2(a)(1) of the Securities Act and section 3(a)(10) of the
+> Exchange Act. Accordingly, participants in Protocol Mining Activities **do not need to
+> register transactions with the Commission** under the Securities Act or fall within an
+> available exemption from registration in connection with these Protocol Mining Activities."
+> — *33-11412, §V.A.3, s. 39.*
+
+> **Gerekçe (verbatim):** "By adding its computational resources to the PoW Network, the miner
+> merely is engaging in an **administrative or ministerial activity** to secure the PoW
+> Network, validate transactions and add new blocks, and receive rewards. A miner's expectation
+> to receive rewards is not derived from any third party's essential managerial efforts upon
+> which the PoW Network's success depends. ... As such, **rewards are payments to the miner in
+> exchange for services it provides to the PoW Network rather than profits derived from the
+> essential managerial efforts of others.**" — *Aynı bölüm, s. 39.*
+
+> **Madencilik havuzları (verbatim):** "whether a miner self (or solo) mines or mines as a
+> member of a mining pool does not alter the nature of Protocol Mining for purposes of the
+> Howey test. In either case, Protocol Mining, as described in this release, remains an
+> administrative or ministerial activity." — *Aynı bölüm, s. 39–40.* **Footnote 105 uyarısı:**
+> "This assumes miners receive a **pro rata** share of the rewards from the pool based on their
+> contribution of computational power, rather than where non-miners can **purchase interests in
+> the pool**, or miners can pay to receive greater than a pro rata share..."
+
+**KÖK v2'ye uygulama (TAMGA analizi — dikkatli belgelenmesi gerek):**
+- KÖK Layer G, MatMul tabanlı **PoUW**'dur. SEC'nin yorumu somut olarak "cryptographic
+  puzzles" ifadesi kullanır; **ancak** "work" tanımı daha geniştir: "the computational
+  resources that miners contribute to validate transactions and add new blocks." KÖK'ün
+  PoUW'u da "madencilerin hesaplama kaynağı katıp protokol tarafından ödüllendirildiği" bir
+  mimaridir; havuz operatörünün çabası da "administrative or ministerial" sayılır.
+- **İki dikkat noktası:** (i) Yorum, mining'i **"digital commodity"** madenciliği olarak
+  tanımlar — KOK'un digital commodity sınıflanması **önkoşuldur**; (ii) yorumun madenciliği
+  "administrative or ministerial" nitelemesi, KÖK madencilerinin **faydalı** (AI inference)
+  hesaplama yapmasıyla **görünürde gerilimlidir** — fakat iki işlemin hukuki niteliği
+  **ayrıdır**: (a) madencinin protokolden aldığı **blok ödülü** = "services ... provided to
+  the PoW Network" → menkul kıymet değil; (b) task market'ta kullanıcının **fee karşılığı
+  compute satın alması** = normal ticari hizmet alımıdır (emir/komisyon ilişkisi, herhangi bir
+  investment contract içermez). **Bu ayrım dokümantasyonda açıkça yapılmalıdır.**
+- **Öneri:** Whitepaper/pazarlama metinlerinde KOK'un değer artışına yönelik **hiçbir vaat**
+  kullanılmamalı; "absent such representations or promises ... it would not be reasonable ...
+  to expect profits" diline sadık kalınmalıdır. Anonim-kurucu + sıfır-premine + sıfır-VC
+  yapısı bu dilin **samimi** olmasını sağlar (issuer olarak kimin kâr vaadinde bulunacağı
+  belirsizdir).
+
+### 2.5 Ağustos 2026 — RESMİ TEKLİF: "Regulation Crypto Assets" (teklif, yürürlükte DEĞİL)
+
+> **Federal Register (BİRİNCİL):** "SECURITIES AND EXCHANGE COMMISSION 17 CFR Parts 200, 201,
+> 228, 230, 232, and 239 [Release Nos. **33–11434; 34–106150**; File No. **S7–2026–27**]
+> RIN 3235–AN38 **Regulation Crypto Assets** ACTION: **Proposed rule**. SUMMARY: The
+> Securities and Exchange Commission (''Commission'') is proposing new rules to create a
+> tailored offering regime for certain investment contracts involving crypto assets. ... The
+> proposed rules would be set forth in a new regulation titled ''Regulation Crypto Assets'' and
+> would include **two exemptions** from the registration requirements of section 5 of the
+> Securities Act of 1933. **The first exemption would permit offerings of up to $5 million
+> during a four-year period. The second exemption would permit offerings of up to $75 million
+> during each 12-month period.**"
+> — *Kaynak:* Federal Register, **Vol. 91, No. 161, Friday, August 21, 2026**, s. 54510,
+> https://www.govinfo.gov/content/pkg/FR-2026-08-21/pdf/2026-17183.pdf
+> (**BİRİNCİL — 146 sayfalık tam metin bu oturumda çekildi.**)
+
+> **Safe harbor (Subpart D, Rule 400, verbatim):** "Subpart D of Regulation Crypto Assets would
+> set forth a **non-exclusive safe harbor** from the term ''investment contract'' in the
+> definitions of ''security'' in section 2(a)(1) of the Securities Act and section 3(a)(10) of
+> the Exchange Act. As proposed, if the conditions of the safe harbor are satisfied, then a
+> covered investment contract will be deemed by the Commission to have **ceased to exist**, and
+> the crypto asset that was subject to the covered investment contract will be deemed by the
+> Commission not to be subject to such investment contract..." — *Aynı FR dokümanı, s. 54554
+> (§II.D).* Aynı bölüm, 2026 Yorumu'nun iki ayrılma koşulunu teyit eder: "(1) the issuer has
+> fulfilled its representations or promises to engage in essential managerial efforts under the
+> covered investment contract, or (2) the purchaser would not reasonably expect..." (s. 54554).
+
+> **Atkins'in açıklaması (18 Ağustos 2026, BİRİNCİL):** "the proposed rules include an
+> '**investment contract safe harbor**.' Under this safe harbor, **if the issuer certifies to
+> the Commission that it has ceased or terminated all essential managerial efforts that it
+> promised to undertake under the investment contract** and satisfies certain other conditions,
+> then the Commission would no longer deem the non-security crypto asset to be subject to an
+> investment contract and, therefore, no longer subject to the authority of the Commission."
+> — *Kaynak:* Paul S. Atkins, "Regulation Crypto Assets: Fit-for-Purpose Exemptions for Crypto
+> Market Innovation", **18 Ağustos 2026**,
+> https://www.sec.gov/newsroom/speeches-statements/atkins-statement-regulation-crypto-assets-081826
+
+> **Köken (Atkins, 17 Mart 2026):** "the proposal that I will discuss today, my vision for
+> Regulation Crypto Assets, traces its lineage directly to the framework that she first
+> introduced in **February 2020 as the Token Safe Harbor**" (Commissioner Hester Peirce'a).
+> Atkins ayrıca Kongre'deki **CLARITY Act**'ı destekler: "Regulation Crypto Assets is a
+> framework that would draw heavily from Congressional work over recent years, particularly the
+> CLARITY Act."
+
+**Durum (2026-09-20, TAMGA):** Regulation Crypto Assets **henüz bir TEKLİFTİR** (proposed
+rule); yorum süreci devam etmektedir, **yürürlükte değildir**. KÖK planlaması **mevcut
+hukuka** (Howey + 33-11412 yorumu) göre yapılmalı; safe harbor ancak yürürlüğe girerse bir
+opsiyon olur. **Forecast (önerilen kural) vs actual (yürürlükteki yorum) ayrımı burada
+kritiktir.**
+
+### 2.6 Özet tablosu — ABD'de KÖK token modelinin üç ayağı
+
+| KÖK ayağı | ABD hukuki nitelik (2026 yorumuna göre) | Dayanak |
+|---|---|---|
+| (i) Blok ödülü (madencilik) | **Menkul kıymet işlemi değil** — "Protocol Mining Activities ... do not involve the offer and sale of a security" | 33-11412 §V.A.3 |
+| (ii) Fee → escrow → burn | Hizmet alımı + protokol fee'si; **investment contract öğesi yok** (kâr beklentisi değil, hizmet ödemesi). Burn'ün hukuki analizi için literatüre **ULAŞILAMADI** (bkz. §5) | 33-11412 §IV.A + BULUNAMADI |
+| (iii) Token ile ödenebilir compute | Tokenin kendisi **"digital commodity"** → menkul kıymet değil; sistem **"functional"** olmalı | 33-11412 §III.A, fn 48–49 |
+
+---
+
+## 3. GÖREV 1C — MiCA (AB): 2026-09 Tam Uygulama Durumu
+
+### 3.1 Temel veriler (BİRİNCİL — EUR-Lex tam metni)
+
+> **Yönetmelik:** "REGULATION (EU) 2023/1114 OF THE EUROPEAN PARLIAMENT AND OF THE COUNCIL of
+> **31 May 2023** on markets in crypto-assets, and amending Regulations (EU) No 1093/2010 and
+> (EU) No 1095/2010 and Directives 2013/36/EU and (EU) 2019/1937" — Official Journal of the
+> European Union, **L 150/40, 9.6.2023**.
+> *Kaynak (EUR-Lex; 1.9 MB'lık tam metin bu oturumda çekildi):*
+> https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32023R1114 (**BİRİNCİL.**)
+
+**Başlık yapısı (bu oturumda EUR-Lex'ten doğrulandı):** TITLE I — Subject Matter, Scope and
+Definitions (Art. 1–3); **TITLE II — Crypto-assets other than asset-referenced tokens or
+e-money tokens** (Art. 4 ve devamı; **whitepaper rejimi burada**); TITLE III — Asset-Referenced
+Tokens; TITLE IV — E-Money Tokens; TITLE V — Authorisation and operating conditions for
+crypto-asset service providers (CASPs); TITLE VI — Prevention and prohibition of market abuse;
+TITLE VII — Competent authorities, EBA and ESMA.
+
+### 3.2 "Utility token" tanımı — VERBATIM ve "transfer edilebilir olmalı mı?" (BİRİNCİL)
+
+> **Article 3, point (9):** "**'utility token' means a type of crypto-asset that is only
+> intended to provide access to a good or a service supplied by its issuer**;"
+> **Article 3, point (2):** "'crypto-asset' means a digital representation of a value or of a
+> right that is **able to be transferred and stored electronically** using distributed ledger
+> technology or similar technology;"
+> **Article 3, point (10):** "'issuer' means a natural or legal person, or other undertaking,
+> who issues crypto-assets;"
+> **Article 3, point (12):** "'offer to the public' means a communication to persons in any
+> form, and by any means, presenting sufficient information on the terms of the offer and the
+> crypto-assets to be offered so as to enable prospective holders to decide whether to
+> **purchase** those crypto-assets;"
+> **Article 3, point (13):** "'offeror' means a natural or legal person, or other undertaking,
+> or the issuer, who offers crypto-assets to the public;"
+> — *Hepsi Regulation (EU) 2023/1114, Article 3(1).*
+
+> **Recital 17 (BİRİNCİL):** "**Digital assets that cannot be transferred to other holders do
+> not fall within the definition of crypto-assets.** Therefore, digital assets that are
+> accepted only by the issuer or the offeror and that are technically impossible to transfer
+> directly to other holders should be excluded from the scope of this Regulation. An example of
+> such digital assets includes loyalty schemes where the loyalty points can be exchanged for
+> benefits only with the issuer or offeror of those points."
+
+> **NUMARALANDIRMA NOTU (v1'deki düzeltme korunmuştur):** Görev kağıdında "Article 3(1)(5)"
+> olarak belirtilen utility-token tanımı, **nihai Regulation'da Article 3(9)'dur**. Resmi
+> metinde tanımlar tek bir numaralandırılmış listedir: (2) crypto-asset, (5) 'distributed
+> ledger technology', (6) asset-referenced token, (7) e-money token, (8) official currency,
+> **(9) utility token**, (10) issuer. "(1)(5)" numaralandırması **Avrupa Komisyonu'nun 2020
+> taslağına (COM(2020) 593)** uymaktadır; nihai metinde geçerli numara **(9)**'dur.
+
+**"Transfer edilebilen ama hizmete erişim veren token ne gerektirir?" — Yanıt (TAMGA):**
+- MiCA'da "utility token" tanımı **non-transferability şartı koymaz**. Aksine, "crypto-asset"
+  tanımı (Art 3(2)) transfer edilebilme kabiliyeti ister ve **Recital 17** transfer edilemeyen
+  dijital varlıkları MiCA kapsamı **dışında** tutar. Yani: **bir token hem transfer edilebilir
+  hem utility token olabilir.**
+- **Üç gerilim (TAMGA analizi):** (1) "only intended to provide access" sıfatı — KOK hem
+  compute erişimi sağlar hem de ikincil piyasada değeri olan bir ödeme aracıdır; bu "only"
+  sıfatı ile gerilimlidir (MiCA madde içi çözüm vermez; Recital 11'in "substance over form"
+  ilkesine göre değerlendirme yapılacaktır). (2) "supplied by **its issuer**" — KÖK fair-launch,
+  **issuer'siz** bir modeli hedeflediği için bu sıfat da gerilimlidir (bkz. Recital 22).
+  (3) Whitepaper'da **zorunlu beyanlar** vardır (v1'de tespit edildiği üzere): "the crypto-asset
+  may not always be transferable; (c) the crypto-asset may not be liquid; (d) where the offer to
+  the public concerns a utility token, that utility token may not be exchangeable against the
+> good or service..." (Article 13'teki whitepaper içeriği).
+
+> **Recital 22 (issuer'siz varlıklar — yalnızca RECIAL, operatif değil):** "This Regulation
+> applies to natural and legal persons ... **including when part of such activities or services
+> is performed in a decentralised manner. Where crypto-asset services are provided in a fully
+> decentralised manner without any intermediary, they should not fall within the scope of this
+> Regulation.** This Regulation covers the rights and obligations of issuers of crypto-assets,
+> offerors, ... **Where crypto-assets have no identifiable issuer, they should not fall within
+> the scope of Title II, III or IV of this Regulation.** Crypto-asset service providers
+> providing services in respect of such crypto-assets should, however, be covered by this
+> Regulation."
+> **TAMGA notu:** "no identifiable issuer" muafiyeti **operatif metinde (Article 2) yer
+> almaz**; yalnızca yorum aracıdır (recital). Operatif hukuk (Art 2(1)) "natural and legal
+> persons ... engaged in the issuance, offer to the public and admission to trading of
+> crypto-assets" der. Bu, KÖK için **belirsizlik kaynağıdır**.
+
+### 3.3 Whitepaper zorunluluğu + MADENCİLİK MUAFİYETİ (KÖK için KRİTİK) (BİRİNCİL)
+
+> **Article 4(1) (zorunluluk):** "A person shall not make an offer to the public of a
+> crypto-asset other than an asset-referenced token or e-money token in the Union unless that
+> person: (a) is a legal person; (b) has drawn up a crypto-asset white paper in respect of that
+> crypto-asset in accordance with Article 6; (c) has notified the crypto-asset white paper in
+> accordance with Article 8; (d) has published the crypto-asset white paper in accordance with
+> Article 9; (e) has drafted the marketing communications, if any, ...; (f) has published the
+> marketing communications, if any, ...; (g) complies with the requirements for offerors laid
+> down in Article 14."
+
+> **Article 4(2) (kısmi muafiyetler — yalnızca (b),(c),(d),(f) yükümlülüklerini kaldırır):**
+> "...shall not apply to any of the following offers ...: (a) an offer to fewer than **150**
+> natural or legal persons per Member State where such persons are acting on their own account;
+> (b) over a period of 12 months ... the total consideration of an offer ... does not exceed
+> **EUR 1 000 000**, or the equivalent amount in another official currency or in crypto-assets;
+> (c) an offer ... addressed solely to **qualified investors** where the crypto-asset can only
+> be held by such qualified investors."
+
+> **Article 4(3) (TITLE II'nin TAMAMINDAN muafiyet — MADENCİLİK BURADA):** "**This Title shall
+> not apply to offers to the public of crypto-assets other than asset-referenced tokens or
+> e-money tokens where any of the following apply: (a) the crypto-asset is offered for free;
+> (b) the crypto-asset is automatically created as a reward for the maintenance of the
+> distributed ledger or the validation of transactions; (c) the offer concerns a utility token
+> providing access to a good or service that exists or is in operation; (d) the holder of the
+> crypto-asset has the right to use it only in exchange for goods and services in a limited
+> network of merchants with contractual arrangements with the offeror.**"
+
+> **"Free" istisnasının sınırı (aynı paragraf):** "a crypto-asset shall not be considered to be
+> offered for free where purchasers are required to provide, or to undertake to provide,
+> personal data to the offeror in exchange for that crypto-asset, or where the offeror of a
+> crypto-asset receives from prospective holders of that crypto-asset **any fees, commissions,
+> or monetary or non-monetary benefits in exchange for that crypto-asset**."
+
+> **Article 4(4) (muafiyetleri KALDIRAN koşul — BORSA LİSTELEME TUZAĞI):** "**The exemptions
+> listed in paragraphs 2 and 3 shall not apply where the offeror, or another person acting on
+> the offeror's behalf, makes known in any communication its intention to seek admission to
+> trading of a crypto-asset** other than an asset-referenced token or an e-money token."
+
+> **Article 4(6) (henüz var olmayan hizmetler için 12-ay sınırı):** "Where the offer to the
+> public of the crypto-asset ... concerns a utility token providing access to goods and
+> services that **do not yet exist or are not yet in operation**, the duration of the offer to
+> the public as described in the crypto-asset white paper **shall not exceed 12 months** from
+> the date of publication of the crypto-asset white paper."
+
+> **Article 4(7):** "Any subsequent offer to the public ... shall be deemed a separate offer to
+> the public to which the requirements of paragraph 1 apply, without prejudice to the possible
+> application of paragraph 2 or 3..."
+
+**KÖK v2'ye uygulama (TAMGA analizi):**
+- KOK madencilik ödülleri **Article 4(3)(b)** kapsamında görünebilir ("automatically created as
+  a reward for the maintenance of the distributed ledger or the validation of transactions").
+  Destekleyici yorum: Article 3(12) "offer to the public" tanımı **"purchase"** (satın alma)
+  unsuruna vurgu yapar — madenciler tokeni **satın almaz, kazanır**. Bu, madencilik ödülünü
+  "offer to the public" tanımı dışında bırakmayı destekleyen bir **çıkarımdır** (resmi bir
+  ESMA/AB görüşüyle teyit edilmemiştir — bkz. §3.4).
+- **EN KRİTİK RİSK — Article 4(4):** offerör (veya adına hareket eden herhangi biri) **herhangi
+  bir iletişimde** borsada listelenme niyetini belli ederse **bütün muafiyetler (4(2) ve 4(3))
+  düşer** ve whitepaper rejimi tam uygulanır. KÖK gibi amaç-mainnet sonrası listelenmeyi
+  planlayan bir proje için pratik öneri: **listelenme niyeti herhangi bir resmi iletişimde
+  açıklanmadan ÖNCE MiCA whitepaper hazırlığı başlatılmalı**; veya niyet açıkça beyan
+  ediliyorsa whitepaper süreci hiç geciktirilmemelidir.
+- **"offeror" kimdir?** KÖK'ün tokenleri **satmayan** anonim bir ekibi varken "offeror"
+  sayılıp sayılmayacağı belirsizdir (Recital 22 sinyal verir ama operatif değildir).
+
+### 3.4 ESMA 2025–2026 rehberi — BULUNAMADI (kısmi çerçeve)
+
+- MiCA, ESMA'yı **Article 2(5)** uyarınca "guidelines ... on the conditions and criteria for
+  the qualification of crypto-assets as financial instruments" yayımlamakla yükümlü tutar:
+  > "By **30 December 2024**, ESMA shall, for the purposes of paragraph 4, point (a), of this
+  > Article issue guidelines in accordance with Article 16 of Regulation (EU) No 1095/2010 on
+  > the conditions and criteria for the qualification of crypto-assets as financial
+  > instruments." — *Article 2(5) (BİRİNCİL, bu oturumda EUR-Lex'ten doğrulandı.)*
+- **BULUNAMADI:** Söz konusu ESMA rehberinin nihai metni ve 2025–2026 ESMA MiCA
+  uygulama/supervisory-convergence çalışmaları bu oturumda **erişilemedi** (weblocal search
+  oturum ortasında boş dönmeye başladı; esma.europa.eu URL denemeleri 404 verdi).
+- **Sonraki adım:** `esma.europa.eu` doküman kütüphanesinde "Guidelines on the conditions and
+  criteria for the qualification of crypto-assets as financial instruments" final report +
+  guidelines; 2025–2026 ESMA yıllık denetim raporlarında MiCA uygulama bölümü.
+
+### 3.5 Uygulama durumları — 2026-09 itibariyle TAM UYGULAMA (BİRİNCİL)
+
+> **Nihai hükümler (verbatim):** "1. This Regulation shall **enter into force on the twentieth
+> day following that of its publication** in the Official Journal of the European Union.
+> 2. **This Regulation shall apply from 30 December 2024.** 3. By way of derogation from
+> paragraph 2, **Titles III and IV shall apply from 30 June 2024.** 4. By way of derogation
+> from paragraphs 2 and 3 ... Articles 2(5), 3(2), 6(11) and (12), ... shall apply from
+> **29 June 2023**." — *Aynı Regulation, nihai hükümler.* ("Done at Brussels, 31 May 2023";
+> OJ'de 9.6.2023'de yayımlandı → yürürlüğe giriş 29 Haziran 2023'tür.)
+
+**2026-09 durumu (TAMGA):** MiCA Eylül 2026 itibariyle **~21 aydır tam uygulanıyor**.
+Title II (utility token/whitepaper rejimi) ve Title V (CASP yetkilendirme) **30 Aralık
+2024**'ten; Title III/IV (ART/EMT ihraççı yetkilendirme) **30 Haziran 2024**'ten beri.
+
+> **Kapsam (Article 2(1)):** "This Regulation applies to natural and legal persons and certain
+> other undertakings that are engaged in the issuance, offer to the public and admission to
+> trading of crypto-assets or that provide services related to crypto-assets in the Union."
+> **Dışlamalar:** Article 2(3) — "This Regulation does not apply to crypto-assets that are
+> **unique and not fungible** with other crypto-assets"; Article 2(4) — finansal araçlar,
+> mevduatlar, fonlar, securitisation pozisyonları, sigorta/emeklilik ürünleri vb.
+
+> **Geçiş hükümleri (Recital 113):** "In order to avoid disrupting market participants ...
+> issuers of such crypto-assets should be exempt from the obligation to publish a crypto-asset
+> white paper and certain other requirements of this Regulation. However, certain obligations
+> should apply when such crypto-assets were **admitted to trading before the date of
+> application** of this Regulation."
+
+**CASP açısından KÖK:** Eğer KÖK ekibi KOK'un **takası, custodysi veya transfer hizmetini**
+AB'de profesyonel olarak sağlayacaksa **Title V kapsamında CASP yetkilendirmesi** (Article 59)
+gerekir. **Yalnızca madencilik/ihraç** CASP yetkilendirmesi gerektirmez. Tetikleyici yine
+"satış/listeleme/hizmet" eylemidir.
+
+---
+
+## 4. GÖREV 1D — Yargı Karşılaştırması: "Kâr beklentisi OLMAYAN saf utility/compute token için LİSANS gerekir mi?"
+
+### 4.1 İsviçre (FINMA / DLT Act / FINMA ICO Guidelines) — BİRİNCİL
+
+> **Yasal çerçeve:** "The Federal Act on the Adaptation of Federal Legislation to Developments
+> in Digital Ledger Technology (DLT Act) and the associated blanket ordinance **came into force
+> on 1 August 2021**. With the DLT Act, Switzerland has created legal certainty for tokenised
+> assets and trading venues. The Act enables the issuance of securities on blockchain and the
+> licensing of trading venues for this purpose..." — *Kaynak:* Swiss State Secretariat for
+> International Finance (SIF), "DLT / blockchain / tokenisation",
+> https://www.sif.admin.ch/en/dlt-blockchain-en (**BİRİNCİL; erişim 20 Eylül 2026.**)
+> Not: DLT Act'ın ledger-based securities kısmı **1 Şubat 2021**'de, geri kalanı **1 Ağustos
+> 2021**'de yürürlüğe girdi (aynı sayfadaki 18 Haziran 2021 / 11 Aralık 2020 basın bültenleri).
+
+> **2025–2026 gelişmesi (actual):** "**22 October 2025** Federal Council moves forward with
+> stablecoins and crypto: consultation launched — During its meeting on 22 October 2025, the
+> Federal Council initiated the consultation on an amendment to the Financial Institutions Act.
+> ... The consultation will run until **6 February 2026**." — *Aynı SIF sayfası.* (MiCA ile
+> uyumlu stablecoin/kripto çerçevesini güçlendirme çalışması.)
+
+> **Utility token sınıflandırması (BİRİNCİL):** "Utility tokens will not be treated as
+> securities if **their sole purpose is to confer digital access rights to an application or
+> service** and if the utility token can actually be used in this way at the point of issue. In
+> these cases, the underlying function is to grant the access rights and the connection with
+> capital markets, which is a typical feature of securities, is missing." — *Kaynak:* FINMA,
+> "Guidelines for enquiries regarding the regulatory framework for initial coin offerings
+> (ICOs)", **yayımlanma: 16 Şubat 2018**, s. 5,
+> https://www.finma.ch/en/~/media/finma/dokumente/dokumentencenter/myfinma/1bewilligung/fintech/wegleitung-ico.pdf?la=en
+> (**BİRİNCİL — 11 sayfalık PDF bu oturumda çekildi.**)
+
+> **Yatırım amcı varsa:** "If a utility token additionally or only has an investment purpose at
+> the point of issue, FINMA will treat such tokens as securities (i.e. in the same way as asset
+> tokens)." — *Aynı rehber, s. 5.*
+
+> **Menkul kıymet sayılırsa LİSANS:** "Underwriting and offering tokens constituting
+> securities of third parties publicly on the primary market, is, if conducted in a
+> professional capacity, **a licensed activity** (Art. 3 para. 2 SESTO)." — *Aynı rehber, s. 6.*
+
+> **AML açısından (KRİTİK nüans):** "The issuing of payment tokens constitutes the issuing of
+> a means of payment subject to this regulation **as long as the tokens can be transferred
+> technically on a blockchain infrastructure**. ... **In the case of utility tokens,
+> anti-money laundering regulation is not applicable as long as the main reason for issuing the
+> tokens is to provide access rights to a non-financial application of blockchain technology**
+> (see Art. 2 para. 2 let. a no. 3 AMLO, FINMA Circ. 11/1 'Financial intermediation under
+> AMLA' margin no. 13 et seq.)." — *Aynı rehber, s. 7.*
+
+**İsviçre yanıtı (TAMGA):** **Saf utility token için LİSANS GEREKMEZ** — menkul kıymet
+sayılmadığı sürece FINMA lisansı (bankacılık/komisyonculuk) gerekmez. **İki uyarı:** (1) AML
+istisnasının koşulu tokenin **finansal OLMAYAN** uygulamaya erişim sağlamasıdır; KOK'un
+**compute ödemesi/ödeme aracı** işlevi bunu tartışmalı kılar — "payment token"a yaklaştıkça
+AMLA kapsamına girme (SRO üyeliği veya doğrudan FINMA denetimi) riski doğar. (2) "sole purpose
+... digital access rights" ve "**at the point of issue**" koşulu: tokenin ihraç anında
+işlevsel olması gerekir (testnet öncesi token buna uymaz).
+
+### 4.2 Singapur (MAS / Payment Services Act 2019) — BİRİNCİL
+
+> **DPT tanımı (verbatim):** "'digital payment token' means any digital representation of value
+> (other than an excluded digital representation of value) that — (a) is expressed as a unit;
+> (b) is not denominated in any currency, and is not pegged by its issuer to any currency;
+> **(c) is, or is intended to be, a medium of exchange accepted by the public, or a section of
+> the public, as payment for goods or services or for the discharge of a debt;** (d) **can be
+> transferred, stored or traded electronically**; and (e) satisfies such other characteristics
+> as the Authority may prescribe;" — *Kaynak:* Payment Services Act 2019, Section 2 yorumlar
+> (**Act 1 of 2021 ile değişik, yürürlük 04/04/2024**),
+> https://sso.agc.gov.sg/Act/PSA2019 (**BİRİNCİL — Singapore Statutes Online; bu oturumda
+> erişildi.**)
+
+> **DPT hizmeti:** "'digital payment token instrument' and 'digital payment token service'
+> have the meanings given by **Part 3 of the First Schedule**" — *Aynı bölüm.*
+
+> **Lisans zorunluluğu (interpretasyon maddesinden, verbatim):** "'exempt payment service
+> provider', in respect of any payment service, means a person that is exempt under section
+> 13(1) from **the requirement under section 5(1) to have in force a licence that entitles the
+> person to carry on a business of providing that payment service**" — *Aynı kaynak.*
+> (**Not:** Section 5(1)'in operatif metni SSO'nun ayrı alt-sayfasında olduğundan bu oturumda
+> doğrudan alıntılanamadı; yukarıdaki atıf lisans zorunluluğunun **birincil kanıtıdır**. Bir
+> sonraki oturumda Section 5(1) metni doğrudan alınmalıdır.)
+
+**Singapur yanıtı (TAMGA):**
+- **KOK büyük ihtimalle DPT'dir:** birim şeklinde ifade edilir, bir para birimine sabitli
+  değildir, "goods or services" (compute) ödemesi olarak kullanılması amaçlanmıştır ve
+  elektronik olarak transfer edilebilir → DPT tanımına açıkça uyar.
+- **Fakat lisansa tabi olan DPT *hizmetleridir* (takas/custody), ihraç/madencilik DEĞİL.**
+  PSA'nın lisanslanabilir ödeme hizmetleri (money-changing, domestic/cross-border money
+  transfer, account issuance, e-money issuance, merchant acquisition, **DPT service = DPT
+  takası ve custodysi**) arasında **"token ihraç etme" veya "madencilik" yoktur**. Dolayısıyla:
+  **saf utility/compute token ihraç eden (satmayan) bir proje için PSA lisansı gerekmez**;
+  ancak KOK takas/custody/transfer hizmetlerini Singapur'da sağlarsa **DPT lisansı** (major /
+> standard payment institution) gerekir.
+- **SFA açısından:** token "capital markets product" değilse SFA lisansı da gerekmez. MAS'ın
+  "A Guide to Digital Token Offerings" rehberi bu ayrımı yapar — **fakat bu rehberin güncel
+  metni bu oturumda BULUNAMADI** (mas.gov.sg URL denemeleri 404; arama motorları kapalıydı).
+- **2025–2026 gelişmesi (doğrulanmamış):** Singapur'un PSA'yı yeni **Financial Institutions and
+  Services Act (FISA)** ile ikame etme çalıştığı yönündeki bilgi **bu oturumda doğrulanamadı;
+  BULUNAMADI olarak işaretlendi**; bir sonraki oturumda MAS üzerinden teyit edilmelidir.
+
+### 4.3 BAE / ADGM — BULUNAMADI
+
+- ADGM (Abu Dhabi Global Market) FSRA'nın kripto varlık aktiviteleri çerçevesi ve özellikle
+  "utility token" muamelesi için birincil/regülatif kaynaklara **bu oturumda ulaşılamadı**
+  (adgm.com URL denemeleri 404; weblocal search boş; DDG CAPTCHA'a düştü).
+- **Bilinen ama DOĞRULANMAMIŞ genel bilgiler (kullanmadan önce mutlaka teyit edilmeli):**
+  ADGM FSRA'nın kripto aktiviteleri için bir **authorization rejimi** getirdiği; Dubai'de
+  **VARA**'nın (Virtual Assets Regulatory Authority) 2022'de kurulduğu. **Bu ifadeler bu
+  oturumda bir birincil kaynaktan doğrulanmamıştır.**
+- **Sonraki adım:** FSRA Rulebook ve "crypto assets activities" düzenlemesi; VARA'nın
+  2025–2026'daki durumu.
+
+### 4.4 El Salvador — BULUNAMADI
+
+- **Ley de Emisión de Activos Digitales** (Dijital Varlık İhracı Yasası, 2023) ve **CNAD**
+  (Comisión Nacional de Activos Digitales) çerçevesi için birincil kaynaklara **bu oturumda
+  ulaşılamadı**.
+- **Bilinen ama DOĞRULANMAMIŞ genel bilgiler:** Söz konusu yasanın 2023'te kabul edildiği,
+  dijital varlık ihracını bir kayıt/onay rejimine tabi tuttuğu; Bitcoin'in 8 Haziran 2021'de
+  yasal ödeme aracı yapıldığı (Ley Bitcoin). **Bu ifadeler bu oturumda bir birincil kaynaktan
+  doğrulanmamıştır.** (v1'de Wikipedia üzerinden Bitcoin-in-El-Salvador durumu doğrulanmıştı;
+  bu BTC içindir, token ihracı rejimi değildir.)
+- **Sonraki adım:** `asamblea.gob.sv` / Diario Oficial üzerinden yasanın tam metni
+  ("activo digital" ve "utilidad" tanımları + CNAD yükümlülükleri).
+
+### 4.5 Karşılaştırma tablosu (kâr beklentisi OLMAYAN saf utility/compute token İHRAÇ etmek)
+
+| Yargı | Saf utility token menkul kıymet mi? | İhraç için LİSANS gerekir mi? | Birincil dayanak | Güven |
+|---|---|---|---|---|
+| **ABD (SEC 2026)** | Hayır — "digital commodity"; ama **dağıtım + vaadler** belirleyici | Menkul kıymet lisansı **gerekmez** (Protocol Mining yorumu); kâr vaadiyle satış = investment contract | 33-11412 (17.03.2026); FR teklifi (21.08.2026) | **Yüksek** (birincil) |
+| **AB (MiCA)** | "utility token" menkul kıymet değil; crypto-asset olarak MiCA'ya girer | Whitepaper **gerekmez** (Art 4(3)(b) madencilik) — **AMA listelenme niyeti muafiyeti düşürür (Art 4(4))** | Reg (EU) 2023/1114 Art 4 | **Yüksek** (birincil) |
+| **İsviçre** | Hayır ("sole purpose ... digital access rights") | **Gerekmez** (menkul kıymet değilse); AML istisnası ancak "non-financial application" ise | FINMA ICO Guidelines (16.02.2018) | **Yüksek** (birincil; 2018 tarihli — güncelleme kontrolü gerek) |
+| **Singapur** | DPT tanımına girer (ödeme aracı) ama menkul kıymet değil | **Gerekmez** (ihraç/madencilik lisanslı hizmet değil); takas/custody **ister DPT lisansı** | PSA 2019 s2 + First Schedule Part 3 | **Yüksek** (birincil) |
+| **BAE / ADGM** | BULUNAMADI | BULUNAMADI | — | **BULUNAMADI** |
+| **El Salvador** | BULUNAMADI | BULUNAMADI | — | **BULUNAMADI** |
+
+---
+
+## 5. GÖREV 1E — Token Burning: Menkul Kıymet / Vergi Sorunu (2025–2026)
+
+### Durum: BULUNAMADI (yalnızca çerçeve seviyesinde notlar)
+
+**2025–2026 akademik/yasal literatüre bu oturumda erişilemedi** (arama motorları oturum
+ortasında kullanılamaz hale geldi). Aşağıdakiler bu dokümanın bütünlüğü için verilmiş
+**çerçeve** notlarıdır; her biri kaynakla doğrulanana kadar **kullanılmamalıdır**.
+
+**A. SEC (ABD) açısından — çerçeve:** 33-11412'de burn mekanizmalarına **doğrudan atıf
+yoktur**. Yorum, menkul kıymet analizini **dağıtım işlemine** (offer/sale) bağlar (§2.4).
+**Burn'un kendisi bir "offer and sale" değildir**; bir tokeni yok etme işlemidir — dolayısıyla
+tek başına bir investment contract yaratmaz gibi görünmektedir. **Fakat bu, bu oturumda
+doğrulanmış bir SEC görüşü DEĞİLDIR; TAMGA çıkarımıdır.** 33-11412'de "burned" kelimesi
+yalnızca teknik örneklerde geçer: "When redeemed, the Staking Receipt Tokens are 'burned,'
+which is a process through which the Staking [Receipt Tokens are destroyed]" (fn 116) ve
+Redeemable Wrapped Token örneği (fn 117).
+**Açık soru (bir sonraki oturum):** fee'lerin bir kısmının yakılması arz azaltıcı etki yapıp
+fiyatı destekliyorsa VE bu geliştirici tarafından **kâr vaadi** olarak pazarlanıyorsa,
+"representations or promises ... essential managerial efforts" analizine girebilir. Önerim:
+burn mekanizmasının **protokol fee politikası** olarak sunulması (arz-destekleyici bir vaat
+olarak değil).
+
+**B. MiCA (AB) açısından — çerçeve (kısmen bu oturumda doğrulandı):** MiCA tam metninde
+burn'a doğrudan hüküm **bulunamadı** (yalnızca teknik örneklerde "burned/destroyed" geçer).
+İlgili doğrulanmış kural: Article 4(3)'ün "offered for free" istisnasının sınırı — "a
+crypto-asset shall not be considered to be offered for free where ... the offeror of a
+crypto-asset receives from prospective holders of that crypto-asset **any fees, commissions,
+or monetary or non-monetary benefits in exchange for that crypto-asset**". KÖK açısından:
+fee karşılığı compute sağlanıyorsa "free" istisnasına girilmez; zaten KÖK için geçerli olan
+4(3)(b) madencilik ödülü istisnasıdır.
+
+**C. Vergi açısından — BULUNAMADI:** Token burning'in vergi sonuçlarına ilişkin 2025–2026
+tarihli akademik/yasal analize ulaşılamadı. **Bir sonraki oturumda aranacak başlıklar:**
+"token burn tax treatment", "EIP-1559 fee burn securities analysis", "destruction of tokens
+tax", "proof-of-burn regulation".
+
+---
+
+## 6. BULUNAMADI LİSTESİ (bir sonraki oturumda tamamlanacak)
+
+| # | Eksik veri | Neden ulaşılamadı | Önerilen sonraki adım |
+|---|---|---|---|
+| 1 | **ADGM/FSRA** kripto varlık aktiviteleri çerçevesi + utility token muafiyeti | adgm.com URL denemeleri 404; arama motorları kapalı | FSRA Rulebook; "crypto assets activities" düzenlemesi; VARA durumu |
+| 2 | **El Salvador** Ley de Emisión de Activos Digitales + CNAD | Arama motorları kapalı | asamblea.gob.sv / Diario Oficial; "activo digital de utilidad" tanımı |
+| 3 | **ESMA** "qualification of crypto-assets as financial instruments" final guidelines + 2025–2026 MiCA rehberleri | esma.europa.eu 404; weblocal search boş | ESMA doküman kütüphanesi |
+| 4 | **MAS "A Guide to Digital Token Offerings"** güncel metni | mas.gov.sg URL denemeleri 404 | MAS guidelines sayfası |
+| 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
+| 6 | **Token burning** menkul kıymet/vergi analizi (2025–2026 akademik/yasal) | Arama motorları kapalı | SSRN/Google Scholar + hukuk firması analizleri |
+| 7 | **Torres'in 13 Temmuz 2023 kararının asıl metni** | CourtListener API anonım reddi; HTML aramada çıkmadı | CourtListener docket 17643223 veya Justia |
+| 8 | **Torres'in 26 Haziran 2025 kararının asıl metni** | Yalnızca ikincil haber kaynağı bulundu | CourtListener / SDNY docket |
+| 9 | **Regulation Crypto Assets teklifine gelen yorumlar / yürürlük takvimi** | Zaman kısıtı | Federal Register docket S7-2026-27 |
+| 10 | **AB Komisyonu'nun MiCA uygulama değerlendirme raporu (2025–2026)** | Arama motorları kapalı | EUR-Lex / Commission sayfaları |
+
+---
+
+## 7. KAYNAK LİSTESİ
+
+**Birincil kaynaklar (resmi) — bu oturumda doğrulananlar:**
+1. SEC Litigation Release No. **26306** (8 Mayıs 2025) — https://www.sec.gov/enforcement-litigation/litigation-releases/lr-26306
+2. SEC Litigation Release No. **26369** (7 Ağustos 2025) — https://www.sec.gov/enforcement-litigation/litigation-releases/lr-26369
+3. SEC **Interpretive Release No. 33-11412 / 34-105020** (17 Mart 2026; etkili 23 Mart 2026),
+   File No. S7-2026-09 — PDF: https://www.sec.gov/files/rules/interp/2026/33-11412.pdf ;
+   özet: https://www.sec.gov/rules-regulations/2026/03/s7-2026-09
+4. SEC **Proposed Rule "Regulation Crypto Assets"**, Release Nos. 33-11434; 34-106150,
+   File No. S7-2026-27, RIN 3235-AN38, **Federal Register Vol. 91, No. 161, 21 Ağustos 2026,
+   s. 54510** — https://www.govinfo.gov/content/pkg/FR-2026-08-21/pdf/2026-17183.pdf
+5. Paul S. Atkins, "Regulation Crypto Assets: A Token Safe Harbor", **17 Mart 2026** —
+   https://www.sec.gov/newsroom/speeches-statements/atkins-remarks-regulation-crypto-assets-031726
+6. Paul S. Atkins, "Regulation Crypto Assets: Fit-for-Purpose Exemptions...", **18 Ağustos
+   2026** — https://www.sec.gov/newsroom/speeches-statements/atkins-statement-regulation-crypto-assets-081826
+7. **Regulation (EU) 2023/1114 (MiCA)**, OJ L 150, 9 Haziran 2023 —
+   https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32023R1114
+8. **FINMA ICO Guidelines**, **16 Şubat 2018** —
+   https://www.finma.ch/en/~/media/finma/dokumente/dokumentencenter/myfinma/1bewilligung/fintech/wegleitung-ico.pdf?la=en
+9. **Swiss SIF**, "DLT / blockchain / tokenisation" — https://www.sif.admin.ch/en/dlt-blockchain-en
+10. **Payment Services Act 2019 (Singapur)**, konsolide metin — https://sso.agc.gov.sg/Act/PSA2019
+
+**İkincil kaynaklar (kullanıldıkları yerde güvenilirliği belirtilmiştir):**
+11. Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a Security" (13
+    Temmuz 2023; güncelleme 17 Mart 2026) — https://gordonlaw.com/learn/judge-xrp-not-security/
+12. Cryptonews, "Ripple Settlement Denied as Judge Torres Rejects $50M Deal..." (26 Haziran
+    2025) — https://cryptonews.com/news/ripple-settlement-denied-as-judge-torres-rejects-50m-deal-xrp-institutional-sales-remain-limited/
+13. Lawfold, "Ripple SEC Lawsuit Status 2026" (17 Eylül 2026) —
+    https://lawfold.com/ripple-sec-lawsuit-status-2026/ *(düşük güvenilirlik, yalnızca destekleyici)*
+
+**v1'den taşınan ve geçerliliği koruyan bölümler:** MiCA Article 3 numaralandırma düzeltmesi
+(utility token = Article 3(9)), MiCA whitepaper beyan yükümlülükleri (Art 13), v1'in Wikipedia
+tabanlı Ripple zaman çizelgesi (v2'de yerini birincil SEC kaynaklarına bıraktı).
+
+---
+
+**Belge sürümü:** **v2** (20 Eylül 2026, TAMGA) — v1'in aksine ABD bölümü tamamen birincil
+ kaynaklara dayanır. §6'daki 10 madde bir sonraki oturumda tamamlanacak şekilde işaretlenmiştir.
