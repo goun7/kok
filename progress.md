@@ -3149,3 +3149,86 @@ f0_candidate_list).
   TUTULDU (kullanıcı kararı)**.
 
 ### Commitler: 92 bu oturumda. Working tree clean.
+
+---
+
+## ROUND-6 (2026-09-24) — Tutarlılık ve Probe-Bulgu Kapatma
+
+### ÖNCEKI ROUND'LARIN "DÜZELTME" YORUMLARININ ASLA UYGULANMAMASI
+
+Round-6'nın en yaygın sınıfı buydu: bir comment "ROUND-4 FIX" diyor ama
+kod hiç değişmemişti. Üç yerde:
+
+1. **probe_field_scale F1/F2 (CRITICAL)** — "bit_length() alone kullanılmalı"
+   comment'i 30 satır boyunca açıklıyor, ama kod hâlâ `bit_length()-1`
+   çağırıyordu. Sonuç: her satır bir eksik üs basıyordu (2^256-1 → "2^255").
+   Aynı print'te tam 2^64 "2^65" basıyordu. İkisi de düzeltildi.
+2. **probe_live_demand L1 (CRITICAL)** — "phi=0" literal basılıyordu;
+   comment'in tam altında "artık sayı basmıyoruz" yazıyordu. phi bu dosyada
+   hiçbir yerde bir değişken değil — oran tanımı ve kaynağı yazıldı.
+3. **probe_blindspot F1 (CRITICAL)** — prose "tv59 generator'ünde SIFIR
+   DEĞİL (seed 23'te 572)" diyordu; kodun hesapladığı altı outside= değerinin
+   TAMAMI 0. Literal, hesaplanan değerden türetilir hale geldi, iddia
+   geri çekildi (Stage-1.1 düzeltmesi bu sapmayı kapatmış).
+
+### ÖZDEŞLİK (TAUTOLOGY) SINIFI — ROUND-6'DA DA DEVAM ETTİ
+
+- **probe_ghostdag F1 (TV-58)**: `blue_score[sp] > blue_score[cur]`
+  ARİTMETİK OLARAK İMKÂNSIZ — modül `child = sp + blue + 1` hesapladığı
+  için violations her zaman 0. 360 DAG'da pre-fix modülde DE 0. **Hiçbir
+  şeyi korumuyordu.** Yapısal özelliği (delta >= 1) assert ediliyor.
+- **probe_ghostdag F3 (TV-56)**: `extra == set()` özdeş — `_exact_mergeset`
+  modülle aynı birleşimi yeniden hesaplıyordu. past(B)'ye karşı karşılaştırma
+  yaptı, ki bu gerçek bir aşırı-dahil etme ölçümü.
+- **probe_ghostdag F2 (TV-57)**: self-comparison (sp parent'lardan seçiliyor)
+  — regression guard olarak belgelendi, adversarial probe olmadığı açıklandı.
+- **probe_field_scale F3**: "üç saldırı farklı ölçeklenir" tezi yanlıştı —
+  (1) ve (3) aynı kapalı form q^(m-1); (3) hiç transcript kurmuyor.
+  "q'dan bağımsız" iddiası min(q,2^64) olarak düzeltildi.
+
+### VERDICT'İN BAĞLANMAMASI (UNFALSIFIABLE-VERDICT SINIFI)
+
+- **probe_g_layer_size G1 (CRITICAL)**: return değeri atılıyor, exit her
+  zaman 0 → FINDING basılsa bile çağıran başarı görüyordu.
+- **probe_live_demand L2**: main() koşulsuz True döndürüyordu.
+- **probe_blindspot F4**: bare `except Exception` belgelenmiş KeyError'i
+  yutuyordu ve None dönüyordu → script regression üzerinden exit 0.
+  KeyError artık EXPECTED sinyal olarak raporlanıyor.
+- **probe_blindspot F3**: corner 2 pre-fix davranışı CHALLENGE_REJECTED'ı
+  kabul ediyordu — tam koruduğu regression. Artık SETTLED_ALREADY gerekiyor.
+- **probe_field_scale F8**: "proof hala doğruluyor" yazısı all_ok'ya bağlı.
+
+### GERÇEK HATA DEĞİL, TASARIM (ÖLÇEREK AYRILDI)
+
+- **probe_edges TV-46 RED → ACCEPT**: burn_address'e hiçbir şey yanmıyordu;
+  beklenen 30 sandım. Modülün **bilinçli tasarımı**: SLASHED yolunda
+  hiçbir şey teslim edilmediği için alıcının burn'u escrow ile birlikte
+  iade ediliyor, yakılmıyor ("burning the buyer's money for a provider's
+  misbehaviour would punish the wrong party"). Önceki check'ler burn'ü
+  hiç okumuyordu — şimdi her iki yönü de bağlı: yanma 0 VE iade tam 100.
+  TV-45 (honest settle) 30 yakıyor — iki yol artık ölçümle ayrışıyor.
+
+### PROJE GENELİ TUTARLILIK (TV-84'Ü YAYILIMI)
+
+Theta 1.05 → 1.657 düzeltmesinin kalan 8 yeri: spec §C.8, TR ikizinin kendi
+çözücüsü (yanlış üs VE 1e-12..1e9 kök aralığı), pass_sim_en'in kendi özet
+print'i (1.657 tablonun yanında 1.05 yazıyordu), tv72/egap_cert/live_demand
+docstring'leri. sim_out.txt düzeltilmiş EN dosyasından yeniden üretildi
+(eskisi Türkçe ve eski theta'lı). TV-75'in "5/9" figürü ölçülen 184/199 ile
+değiştirildi. "0.79'da absorbing" paper+TV-60'da düzeltildi (184/199 kaçıyor,
+tüm-seed eşiği ~0.08-0.10). TH/s→GH/s 1000× birim hatası. TV-83 spec satırı
+eklendi (kod var, spec'de yoktu). mask()'ın "full polynomial stays secret"
+iddiası geri çekildi (verifier tohumu tutuyor, probe TV-65 leaked=True).
+
+### DOKÜMANLAR
+- **SARTNAME_DEGERLENDIRMESI.md** (43f5abd): 5-proje master şartname
+  denetimi, 4 sorunun ölçülmüş yanıtı. Egemenlik DOĞRU ama mekanizma
+  yanlış (GKR/Freivalds inşa edilmemiş; inşa edilen zk-AIR/FRI; "4 ms",
+  "O(log n)", "32 BPS" ölçülmedi). Zayıf halka kriptografi değil TALEP.
+- Paper: 0.79 absorbing düzeltmesi, S=2.1M provenance, Pearl θ=1.657.
+- Spec: TV-60, TV-75, TV-83 satırları, §C.8 theta.
+- README ## Honest limits.
+
+### Commitler: 108 bu oturumda (92 round-6 öncesi + 16 round-6).
+Çalışma ağacı temiz. Tüm suite rc=0 (20/20 probe + 14/14 modül +
+suite_gate 39/39), iki denetim TEMIZ.
