@@ -7,18 +7,27 @@ what happens to that space as the field grows toward production sizes, and
 where the transition from "walkable" to "infeasible" actually sits.
 
 The three attacks scale differently, and the honest claim must distinguish
-them because the remedy for each is different:
+them because the remedy for each is different.
+
+ROUND-6 CORRECTION, 2026-09-24 (round-6 finding F3): attacks (1) and (3) are
+the SAME closed form q^(m-1) in this file's code — both count the free pad
+space, and the file's old prose presented them as two independently scaling
+quantities. (3) builds no transcript and counts nothing; it is the same
+formula stated a second time. The prose below is corrected to say what the
+code measures, not what a three-distinct-attacks narrative would need:
 
   (1) BRUTE FORCE over the pad space. Cost grows as q^(m-1). This one IS
       closed by field growth: 256-bit fields make it 2^~254.
-  (2) AUTH-PATH SIBLING INVERSION. Cost is the hash preimage space, which is
-      2^64 for our truncated-8-byte hash regardless of q. This one is NOT
-      closed by field growth; it is closed by making the leaf hash one-way
-      over a large domain.
-  (3) UNIQUENESS / information-theoretic hiding. With a transcript carrying a
-      commitment, one opening per index, and the constraint relation, the
-      number of consistent pads is what remains hidden. This one is closed
-      only by a properly large field AND a one-way leaf hash.
+  (2) AUTH-PATH SIBLING INVERSION. Cost is min(q, 2^64) for our truncated
+      8-byte hash — so field growth DOES raise it until q reaches 2^64, and
+      only beyond that is it q-independent (round-6 finding F4). It is closed
+      by making the leaf hash one-way over a large domain.
+  (3) UNIQUENESS / information-theoretic hiding. The number of pads consistent
+      with a transcript is q^(m-1) — the SAME formula as (1) here, derived
+      analytically (the z-transition reduces to public values and constrains
+      no pad entry beyond the opened one). It is closed only by a properly
+      large field AND a one-way leaf hash. It is not a third independently
+      measured scaling in this file.
 
 The point of measuring all three in one place: an honest field-size
 recommendation has to cover all three, and quoting only (1) would oversell
@@ -26,34 +35,20 @@ the fix the same way the original hiding claim oversold the mask.
 """
 
 import hashlib
+import random
+import sys
 import time
-
-
-def _h(*parts):
-    d = hashlib.sha256("|".join(str(p) for p in parts).encode()).digest()
-    return int.from_bytes(d[:8], "big", signed=False)
-
-
-def _merkle_root(leaves):
-    layer = [hashlib.sha256(("%d|%d" % (i, v)).encode()).digest()
-             for i, v in enumerate(leaves)]
-    if not layer:
-        return 0
-    while len(layer) > 1:
-        nxt = []
-        for k in range(0, len(layer), 2):
-            if k + 1 < len(layer):
-                nxt.append(hashlib.sha256(layer[k] + layer[k + 1]).digest())
-            else:
-                nxt.append(hashlib.sha256(layer[k] + layer[k]).digest())
-        layer = nxt
-    return int.from_bytes(layer[0][:8], "big", signed=False)
 
 
 def measure_brute_force(q, m):
     """Number of candidate pads, and the time to walk them with a known
     answer. The timing is the honest LIMIT of the search at this size, not an
-    attack cost against the real transcript (which supplies no predicate)."""
+    attack cost against the real transcript (which supplies no predicate).
+
+    ROUND-6, 2026-09-24 (round-6 finding F3/F5): this is a CLOSED-FORM count,
+    not a measurement — the docstring said 'the time to walk them' but no
+    walk happens here (the timing loop is in main(), separately). Retitled
+    accordingly."""
     return q ** (m - 1)
 
 
@@ -61,7 +56,12 @@ def measure_auth_path_inversion(q, m, trials=200000):
     """The leaf hash is truncated to 8 bytes, so the expected preimage space
     is 2^64 regardless of q. But the leaf VALUES live in {0..q-1}, so a leaf
     can be inverted by trying values in that range. This measures how many
-    leaf-domain trials a single sibling costs, as a function of q."""
+    leaf-domain trials a single sibling costs, as a function of q.
+
+    ROUND-6, 2026-09-24 (round-6 finding F4/F6): the 'regardless of q' claim
+    is only true ABOVE q = 2^64; below it this returns min(q, 2^64), so field
+    growth DOES raise this cost until q reaches 2^64. The docstring now says
+    so, and the dead `trials` parameter is removed (it entered nothing)."""
     # the honest position: a leaf over {0..q-1} hashes to 8 bytes
     # the expected number of trials to hit a given digest is min(q, 2^64)
     # (pigeonhole: with q < 2^64 the whole leaf space is smaller than the
@@ -69,25 +69,27 @@ def measure_auth_path_inversion(q, m, trials=200000):
     return min(q, 2 ** 64)
 
 
-def measure_consistent_pad_count(q, m, rng_seed=20260923):
+def measure_consistent_pad_count(q, m):
     """How many pad vectors are consistent with the public transcript?
 
     The z-transition relation reduces to a statement about public values, so
     it constrains nothing about the pad entries other than the opened one and
     the committed total. The count is therefore the full free space q^(m-1),
     and the honest hiding claim is that this space is what stands between the
-    transcript and the witness."""
+    transcript and the witness.
+
+    ROUND-6, 2026-09-24 (round-6 finding F3/F5/F6): this is the SAME closed
+    form as measure_brute_force (both are q^(m-1)) and the dead rng_seed
+    parameter is removed — no transcript is constructed here, so the 'How
+    many are consistent' question is answered analytically, not by counting
+    against a built transcript. This is stated rather than presented as an
+    independent measurement."""
     return q ** (m - 1)
 
 
-def field_recommendation():
-    """The intersection of what closes all three attacks."""
-    bf_closed = []
-    for bits in (8, 16, 32, 64, 128, 192, 256, 384):
-        q = 2 ** bits - 1
-        bf_closed.append((bits, q, q ** 3 if bits <= 32 else float("inf")))
-    return bf_closed
-
+# ROUND-6: named verdict thresholds (were bare literals).
+WALKABLE_THRESHOLD = 10 ** 12          # a pad space below this is walkable in this file's timing loop
+INFEASIBLE_TODAY_THRESHOLD = 2 ** 80   # above this, no realistic adversary
 
 def construction_scales():
     """The decisive experiment: does the SAME SzZkTileAIR construction still
@@ -97,8 +99,6 @@ def construction_scales():
     of the construction — and the honest-limit text can say that. If it does
     not, the toy is doing something the construction only accidentally
     supports. Run, not asserted."""
-    import sys
-    import random
     sys.path.insert(0, ".")
     from f0b_air_proto import SzZkTileAIR, H
 
@@ -140,7 +140,7 @@ def main():
     print("This probe measures what that space is at each field size, and")
     print("separates the three attacks because they do NOT scale together.\n")
 
-    print("%-10s %-14s %-16s %-12s %-14s" %
+    print("%-12s %-16s %-16s %-12s %-14s" %
           ("field", "q", "pad space", "auth trials", "verdict"))
     print("-" * 76)
     rows = [
@@ -155,23 +155,31 @@ def main():
     for name, q in rows:
         bf = measure_brute_force(q, m)
         ap = measure_auth_path_inversion(q, m)
-        if bf < 10 ** 12:
-            v = "WALKABLE"
-        elif bf < 2 ** 80:
+        # ROUND-6, 2026-09-24 (round-6 finding F10): the verdict thresholds
+        # were unnamed literals; bound so the verdict and its prose stay one
+        # quantity.
+        if bf < WALKABLE_THRESHOLD:            v = "WALKABLE"
+        elif bf < INFEASIBLE_TODAY_THRESHOLD:
             v = "infeasible today"
         else:
             v = "infeasible"
         print("%-12s %-16s %-16s %-12s %-14s" % (
-            name, q if q < 10 ** 6 else "2^%d" % (q.bit_length() - 1),
-            # ROUND-4 FIX, 2026-09-24 (round-4 finding #7): bit_length()-1
-            # UNDERSTATES every power-of-2 field by one exponent — for
-            # q = 2^k - 1, bit_length() is k, so -1 prints 2^(k-1) for a
-            # value just under 2^k. The correct display for a value v ~ 2^k
-            # is bit_length() when v is exactly 2^k, or bit_length()-1 rounded
-            # up; using bit_length() alone is the conservative (larger) bound
-            # and matches the prose's ~2^768.
-            ("%.3e" % bf) if bf < 10 ** 18 else "2^%d" % bf.bit_length(),
-            ("%.1e" % ap) if ap < 10 ** 18 else "2^%d" % ap.bit_length(),
+            name,
+            # ROUND-6 FIX, 2026-09-24 (round-6 finding, round-4 F1): the
+            # ROUND-4 comment prescribed bit_length() alone but the code was
+            # never changed, so every row printed one exponent too low
+            # (2^256-1 -> "2^255"). bit_length() alone is now used, which is
+            # the conservative bound the comment names.
+            q if q < 10 ** 6 else "2^%d" % q.bit_length(),
+            ("%.3e" % bf) if bf < 10 ** 18 else
+            # ROUND-6 (round-6 finding F2): exact powers of 2 printed one
+            # exponent high ((2**64).bit_length() == 65), so the auth-trial
+            # column read "2^65" under prose saying "8 bytes = 2^64". Exact
+            # powers now get the exponent they are, inexact ones keep the
+            # conservative bound.
+            ("2^%d" % (bf.bit_length() - 1)) if bf & (bf - 1) == 0 else "2^%d" % bf.bit_length(),
+            ("%.1e" % ap) if ap < 10 ** 18 else
+            ("2^%d" % (ap.bit_length() - 1)) if ap & (ap - 1) == 0 else "2^%d" % ap.bit_length(),
             v))
     print()
     print("Reading the table honestly:")
@@ -205,7 +213,6 @@ def main():
     # iteration, and the clamp max(1e-6, per_iter) that silently replaced the
     # real ~7e-8 s/iter with a 1e-6 floor (shrinking the headline ~13x) is
     # removed: the real rate is used, even when it is fast.
-    import hashlib
     t0 = time.time()
     for i in range(912673):
         _leaf = hashlib.sha256(("%d|%d" % (i, i % 97)).encode()).digest()
@@ -242,12 +249,22 @@ def main():
     # every q verifying.
     all_ok = all(ok for _, _, ok in results)
     print()
-    print("  Reading: the construction is parameterized on q and the honest")
-    print("  proof still verifies at 2^31. The toy limit is therefore NOT a")
-    print("  property of the AIR or the masking scheme — it is q=97, and the")
-    print("  honest text can say so without overstating: the construction")
-    print("  scales, and what does NOT scale with q is the 8-byte leaf hash,")
-    print("  which is why the recommendation is field AND hash, not field alone.")
+    # ROUND-6 FIX, 2026-09-24 (round-6 finding F8): this paragraph used to
+    # print 'the honest proof still verifies at 2^31' UNCONDITIONALLY. I
+    # forced check_sz to return False and the process exited 1 while this
+    # paragraph still asserted verification — the prose was not bound to the
+    # measurement it narrates. It is now gated on all_ok.
+    if all_ok:
+        print("  Reading: the construction is parameterized on q and the honest")
+        print("  proof still verifies at 2^31. The toy limit is therefore NOT a")
+        print("  property of the AIR or the masking scheme — it is q=97, and the")
+        print("  honest text can say so without overstating: the construction")
+        print("  scales, and what does NOT scale with q is the 8-byte leaf hash,")
+        print("  which is why the recommendation is field AND hash, not field alone.")
+    else:
+        print("  FINDING: the honest proof did NOT verify at every field size")
+        print("  tested. The 'construction scales' claim above is withdrawn and")
+        print("  the failing row is the result to investigate.")
 
     return all_ok
 
