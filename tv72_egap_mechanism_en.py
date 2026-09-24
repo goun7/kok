@@ -74,7 +74,13 @@ def _mine_tile(mat, ctx, target, commit=None, want_i=0, want_j=0,
     pc = program_commit_single(mat) if commit is None else commit
     for nonce in range(max_nonce):
         i, j = want_i, want_j
-        value = (mat[i][j] * mat[i][j + 1] + mat[i + 1][j] * mat[i + 1][j + 1]) % 97
+        # ROUND-5B, 2026-09-24: the tile value uses the REFERENCE computation
+        # from egap_cert_en._tile_value, so the prover and verifier cannot
+        # drift apart (round-5b finding R5B-3 was exactly that drift: the
+        # value was bound to nothing, so a tile mined over other matrices
+        # verified against the task's commitment).
+        from egap_cert_en import _tile_value
+        value = _tile_value(mat, mat, i, j)
         if H("tile", TASK_ID, pc, ctx, nonce, i, j, value) % target == 0:
             return nonce, i, j, value
     return None
@@ -127,7 +133,12 @@ def arm_b_with_binding(commissioned, ctx, mined=None):
     nonce, i, j, value = found
     required_pc = program_commit_single(commissioned)
     cert = g_cert_bound(TASK_ID, required_pc, ctx, nonce, i, j, value, TARGET)
-    return cert, verify_g_cert_bound(cert, TASK_ID, required_pc, ctx, TARGET)
+    # ROUND-5B, 2026-09-24: the verifier now re-derives the tile value from
+    # the committed program, so a miner that mines over `mined` while naming
+    # the commissioned commitment is REJECTED (the value will not match). The
+    # program argument is what makes the binding bind the computation.
+    return cert, verify_g_cert_bound(cert, TASK_ID, required_pc, ctx, TARGET,
+                                     program=(commissioned, commissioned))
 
 
 def probe_binding_is_what_makes_cheating_detectable():

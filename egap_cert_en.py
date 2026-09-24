@@ -112,9 +112,29 @@ def g_cert_bound(task_id, program_commit_value, ctx, nonce, i, j, value, target)
             "nonce": nonce, "tile": (i, j, value)}
 
 
-def verify_g_cert_bound(cert, task_id, program_commit_value, ctx, target):
+def verify_g_cert_bound(cert, task_id, program_commit_value, ctx, target,
+                        program=None):
     """The verifier derives what the certificate must be bound to from the
-    TASK, not from the caller. A cert over any other matrices fails."""
+    TASK, not from the caller. A cert over any other matrices fails.
+
+    ROUND-5B FIX, 2026-09-24 (round-5b finding R5B-3, probe
+    probe_round5b_egap_en.py): this function checked only that the cert's
+    COMMITMENT field matched the task's, and that the PoW target was met. It
+    never checked that the tile VALUE was computed from the committed
+    matrices, so a miner could mine a tile over ANY matrices while naming the
+    task's commitment, and the verifier accepted it. MEASURED before the fix:
+    commissioned [[2,3],[4,5]] (tile 26), mined over [[2,3],[4,6]] (tile 30),
+    the cert carried the commissioned commitment and was ACCEPTED -- the
+    binding bound the commitment string, not the computation.
+
+    The verifier now takes the committed PROGRAM (A, B) and RE-DERIVES the
+    tile value from it, then compares it to the value the cert claims. The
+    commitment check is still performed (it binds the task identity); the
+    value check is what binds the COMPUTATION. The argument is optional so
+    older callers that pass only the commitment still get the task-identity
+    binding, but the shipped callers pass the program, and the probe below
+    drives the substitution.
+    """
     if cert is None:
         return False
     if cert.get("task_id") != task_id:
@@ -124,8 +144,26 @@ def verify_g_cert_bound(cert, task_id, program_commit_value, ctx, target):
     if cert.get("ctx") != ctx:
         return False
     i, j, value = cert["tile"]
+    # ROUND-5B: the tile value must be the one the committed program actually
+    # produces, not a value the miner chose to mine over.
+    if program is not None:
+        A, B = program
+        derived = _tile_value(A, B, i, j)
+        if derived != value:
+            return False
     base = (task_id, program_commit_value, ctx, cert["nonce"], i, j, value)
     return H("tile", *base) % target == 0
+
+
+def _tile_value(A, B, i, j):
+    """The toy tile inner product the certificate commits to.
+
+    This is the REFERENCE computation the verifier re-derives; it must stay
+    identical to the one the prover uses, or the binding checks nothing. Both
+    sites are covered by probe_round5b_egap_en.py R5B-4.
+    """
+    return ((A[i][j] * A[i][j + 1] + A[i + 1][j] * A[i + 1][j + 1])
+            * (B[i][j] * B[i][j + 1] + B[i + 1][j] * B[i + 1][j + 1])) % 97
 
 
 # ------------------------------------------------------------------ probes
