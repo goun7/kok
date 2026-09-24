@@ -130,6 +130,7 @@ def r5b12_the_low_entropy_attack_is_rejected_at_multiple_peaks():
     rng = random.Random(212)
     n_pass = 0
     trials = 0
+    n_exceptions = 0
     for v in (10.0, 20.0, 40.0, 64.0, 90.0):
         try:
             rows = G.peaked_rows(r=4, v=v)
@@ -140,8 +141,11 @@ def r5b12_the_low_entropy_attack_is_rejected_at_multiple_peaks():
                 break
             if ok:
                 n_pass += 1
-        except Exception:
-            pass
+        except Exception as e:
+            # ROUND-6: a swallowed exception here would let a peak value
+            # be skipped silently. Count it and report it instead.
+            n_exceptions += 1
+            print("  peak v=%s raised %s: %s" % (v, type(e).__name__, e))
     if trials == 0:
         # no hook: state honestly
         print("  the file exposes no per-v hook for the peaked test;")
