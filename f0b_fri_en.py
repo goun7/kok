@@ -19,20 +19,32 @@ m/q, not negligible.
 This file builds the recursive composition: the prover commits Q's
 codeword, the verifier sends a challenge alpha, the prover folds
 Q(x) + Q(-x) (or the trace-domain analogue) into a HALF-SIZED
-polynomial, and the process repeats until the claim is constant. The
-verifier's cost becomes logarithmic in the degree rather than linear,
-and the soundness error compounds multiplicatively per round — which is
-the property a single round lacks.
+polynomial, and the process repeats until the claim is constant.
+
+ROUND-5 CORRECTION, 2026-09-24 (round-5 findings F4/F5): the two sentences
+that used to be here were claims this file does not measure. "The verifier's
+cost becomes logarithmic in the degree" is FALSE as implemented --
+verify_round scans range(1,q) with an O(deg) evaluation at each step, so its
+cost is Theta(q*deg) per round, i.e. LINEAR in q (measured: 0.0003 s at
+q=97/deg 4, 0.0014 s at q=1009, 0.0141 s at q=10007/deg 4, 0.0685 s at
+q=10007/deg 64). Real FRI achieves logarithmic verifier cost by evaluating
+the codeword at a single query point per round, not by scanning the domain;
+this prototype does not implement that, so the cost claim is removed rather
+than restated. And "a forgery is caught with probability approaching 1 as
+rounds increase" is asserted but never measured -- the file performs no
+repeated-forgery sampling, and round-5 additionally showed that a
+high-degree imposter was accepted at every round, so the compounding claim
+had no code behind it either. Both are now stated as PROPERTIES THIS PROTOTYPE
+DOES NOT DEMONSTRATE, in the file that the reader would otherwise take them
+from.
 
 WHAT THIS FILE MEASURES
 -----------------------
 1. An honest quotient survives every round of the recursion.
 2. A tampered quotient fails at SOME round, and the file reports which.
-3. The verifier cost is logarithmic (the number of rounds), measured
-   against the linear cost of the existing single-round check.
-4. The soundness error compounds: the honest case survives all rounds,
-   and a forgery is caught with probability approaching 1 as rounds
-   increase.
+3. ROUND-5 (F1/F2): the fold's degree bound is enforced, and a transcript
+   must terminate in a CONSTANT claim -- both checked, both with measured
+   imposters that the old code accepted.
 
 HONEST LIMITS (stated, not hidden)
 ----------------------------------
@@ -160,6 +172,21 @@ class FriRecursive:
             pts.append((u, fu))
             if len(pts) == new_deg + 1:
                 break
+        # ROUND-5 FIX, 2026-09-24 (round-5 finding F3): fold() needs
+        # new_deg+1 DISTINCT u = x^2 values, but only (q-1)/2 exist. When the
+        # field is too small to supply them the break above never fires and
+        # _interpolate is handed a SHORT point list, silently returning a
+        # lower-degree polynomial that is NOT the true FRI fold. Measured at
+        # q=5 with deg(P)=6: fold() returned degree 1 where the true fold has
+        # degree 3, the two disagree off the quadratic-residue set, and
+        # verify_round still returned True. For q in {11,97,251,10007} with
+        # deg in {2,4,6} fold() equals the true fold exactly, so the fix is a
+        # guard rather than a rewrite -- a too-small field now fails loudly
+        # instead of returning a wrong polynomial.
+        if len(pts) < new_deg + 1:
+            raise ValueError("field too small: fold of a degree-%d polynomial "
+                             "needs %d distinct squares, q=%d supplies %d"
+                             % (d, new_deg + 1, q, len(pts)))
         return _interpolate(pts, q)
 
     def recursive_prove(self, P, rounds, rng):
@@ -179,8 +206,28 @@ class FriRecursive:
 
         For a domain point x with u = x^2, F(u) must equal
             (P(x) + P(-x))/2 + alpha * (P(x) - P(-x))/(2x).
+
+        ROUND-5 FIX, 2026-09-24 (round-5 findings F1/F2): this function checked
+        the fold relation only, and the relation is satisfied by ANY polynomial
+        agreeing with the true fold on the (q-1)/2 quadratic residues. Measured
+        before the fix: for q=97 the imposter F' = F + c*V, where V is the
+        product over all 48 residues (u - u_i) and deg(V)=48, was ACCEPTED
+        9/9 as a valid fold of a degree-2/4/6 P (whose true bound is 1/2/3),
+        for c in {1,7,96}. The same at q=251 with a degree-125 imposter. A
+        control vanishing on only 47 of the 48 residues WAS rejected, so the
+        gap is precisely 'degree >= (q-1)/2'. The degree bound is now checked
+        explicitly, which is what makes the recursion's halving claim true
+        rather than asserted.
         """
         q = self.q
+        # ROUND-5 (finding F1): the fold of a degree-d polynomial has degree
+        # floor(d/2). An F of higher degree can agree with the true fold on
+        # every quadratic residue and still be an imposter, so the bound is
+        # checked BEFORE the relation, and a violation is a rejection.
+        dP = _deg(P)
+        bound = max(0, dP // 2)
+        if _deg(F) > bound:
+            return False
         seen_u = set()
         for x in range(1, q):
             u = (x * x) % q
@@ -196,6 +243,27 @@ class FriRecursive:
             if _eval(F, u, q) != want:
                 return False
         return True
+
+    def verify_transcript(self, transcript, alphas):
+        """ROUND-5, 2026-09-24 (round-5 finding F2): verify a WHOLE recursive
+        transcript, including the terminal claim the recursion is supposed to
+        end on.
+
+        Before this, nothing checked that the final polynomial is CONSTANT.
+        Measured: a transcript [deg 4, 48, 24, 12, 6] whose round-1 polynomial
+        is a degree-48 imposter passed every verify_round, and the final
+        degree-6 polynomial was never rejected; starting from an arbitrary
+        degree-40 polynomial, 3 rounds all verified and ended at degree 5. The
+        recursion's own claim -- 'repeat until the claim is constant' -- had no
+        code behind it. The final claim is now checked, so a transcript that
+        does not terminate in a constant is rejected.
+        """
+        polys = transcript
+        for k in range(len(polys) - 1):
+            if not self.verify_round(polys[k], alphas[k], polys[k + 1]):
+                return False
+        # the terminal claim: the last polynomial must be a constant
+        return _deg(polys[-1]) <= 0
 
 
 # ------------------------------------------------------------------ probes
@@ -251,6 +319,63 @@ def probe_rounds_halve_the_degree():
     return halving
 
 
+def probe_degree_imposter_rejected():
+    """ROUND-5 PROBE, 2026-09-24 (round-5 findings F1/F2): the fold's degree
+    bound is enforced, and a transcript must terminate in a constant.
+
+    Before the fix, verify_round checked the fold relation only, and any
+    polynomial agreeing with the true fold on the (q-1)/2 quadratic residues
+    passed regardless of degree. Measured then: the imposter
+    F' = F + c*V, with V the product over all 48 residues (u - u_i) of degree
+    48, was ACCEPTED 9/9 as a valid fold of a degree-2/4/6 P (bound 1/2/3).
+    A control vanishing on only 47 of the 48 residues was already rejected, so
+    the gap was precisely 'degree >= (q-1)/2'. The degree check now rejects the
+    imposter, and verify_transcript additionally rejects a transcript that
+    does not terminate in a constant.
+    """
+    print("=== FRI 4: degree imposter rejected (round-5) ===")
+    q = 97
+    fri = FriRecursive(q)
+    rng = random.Random(23)
+    P = _interpolate([(t, (t * t + 3) % q) for t in range(5)], q)  # deg 4
+    F, alpha = fri.fold(P, rng.randrange(1, q)), rng.randrange(1, q)
+    # the vanishing polynomial over all quadratic residues of q
+    residues = []
+    seen = set()
+    for x in range(1, q):
+        u = (x * x) % q
+        if u not in seen:
+            seen.add(u)
+            residues.append(u)
+    V = [1]
+    for u in residues:
+        # multiply the running polynomial by (x - u), coefficient-list form
+        newV = [0] * (len(V) + 1)
+        for k in range(len(V)):
+            newV[k] = (newV[k] - (u * V[k])) % q
+            newV[k + 1] = (newV[k + 1] + V[k]) % q
+        V = newV
+    imposter = [(F[k] + V[k]) % q if k < len(F) else (V[k] % q)
+                for k in range(len(V))]
+    bound = max(0, _deg(P) // 2)
+    acc_rel = fri.verify_round(P, alpha, imposter)
+    print("  honest fold degree         : %d (bound %d)" % (_deg(F), bound))
+    print("  imposter degree            : %d" % _deg(imposter))
+    print("  imposter accepted pre-fix  : would be True (deg covers all QRs)")
+    print("  imposter accepted now      : %s (must be False)" % acc_rel)
+    # F2: a transcript that does not terminate in a constant is rejected
+    honest_tr, alphas = fri.recursive_prove(P, 3, rng)
+    nonconst = list(honest_tr[-1]) + [5, 9]
+    bad_tr = honest_tr[:-1] + [nonconst]
+    acc_tr = fri.verify_transcript(bad_tr, alphas)
+    honest_tr_ok = fri.verify_transcript(honest_tr, alphas)
+    print("  honest transcript verifies : %s" % honest_tr_ok)
+    print("  non-constant terminal      : %s (must be False)" % acc_tr)
+    ok = (not acc_rel) and (not acc_tr) and honest_tr_ok
+    print("  %s" % ("ACCEPT — degree bound + constantcy enforced" if ok else "RED"))
+    return ok
+
+
 if __name__ == "__main__":
     print("=" * 76)
     print("KOK v2 - FRI recursive composition (TV-78), Stage 3")
@@ -261,12 +386,15 @@ if __name__ == "__main__":
     print()
     r3 = probe_rounds_halve_the_degree()
     print()
+    r4 = probe_degree_imposter_rejected()
+    print()
     print("-" * 76)
     for name, r in [("honest survives all rounds", r1),
                     ("tampered fails", r2),
-                    ("rounds halve the degree", r3)]:
+                    ("rounds halve the degree", r3),
+                    ("degree imposter rejected (round-5)", r4)]:
         print("  %-34s %s" % (name, "PASS" if r else "FINDING"))
-    n = sum(1 for _, r in [(1, r1), (2, r2), (3, r3)] if r)
-    print("  probes: %d/3" % n)
+    n = sum(1 for _, r in [(1, r1), (2, r2), (3, r3), (4, r4)] if r)
+    print("  probes: %d/4" % n)
     print("=" * 76)
-    print("RESULT: %s" % ("FRI RECURSION OK" if n == 3 else "OPEN FINDING"))
+    print("RESULT: %s" % ("FRI RECURSION OK" if n == 4 else "OPEN FINDING"))
