@@ -99,14 +99,38 @@ def score_candidate(answers: dict) -> tuple:
 # ============================================================================
 
 def price_is_competitive(current_price_per_Mtoken: float, token_price_usd: float,
-                         reward_per_s_KOK: float, flops_per_s: float) -> dict:
+                         reward_per_s_KOK: float, flops_per_s: float,
+                         flops_per_Mtoken: float = 1e14) -> dict:
     """Given what the customer PAYS today, can the cross-subsidy beat it?
 
     This is TV-37's crossover applied to one real customer. If the token is
     above the crossover, mining pays better than selling and KOK cannot win on
     price -- the pitch must be reason (b), permissionlessness, or nothing.
+
+    ROUND-4 finding #32 (fixed 2026-09-24): the FLOPs-per-Mtoken was a bare
+    1e14 literal with a comment saying '~2*N*T for a 50B model'. A scenario
+    constant that drives the whole crossover should be a PARAMETER with the
+    scenario named, so a caller with a different model size passes its own
+    number instead of editing the source. The default keeps the 50B scenario.
     """
-    market_usd_per_FLOP = current_price_per_Mtoken / 1e14       # ~2*N*T for a 50B model
+    market_usd_per_FLOP = current_price_per_Mtoken / flops_per_Mtoken
+    # ROUND-4 finding #29 (fixed 2026-09-24): flops_per_s == 0 crashed here
+    # with ZeroDivisionError. A caller comparing hardware that reports no
+    # measured FLOPs is a real input (a device whose rate is not yet
+    # measured), and crashing makes it look like a defect in the pricing
+    # claim rather than in the caller's datum. The crossover is undefined
+    # without a rate, so the honest result states that rather than dividing.
+    if flops_per_s <= 0:
+        return {
+            "customer_pays_per_Mtoken": current_price_per_Mtoken,
+            "kmin_crossover_token_price_usd": None,
+            "token_price_today_usd": token_price_usd,
+            "kok_can_underbid_on_price": None,
+            "note": ("the mining rate is %r FLOPs/s, so the crossover is "
+                     "undefined and the price comparison CANNOT BE MADE; "
+                     "this is a missing datum, not a verdict"
+                     % flops_per_s),
+        }
     moc_KOK_per_FLOP = reward_per_s_KOK / flops_per_s           # mining opportunity cost
     crossover_usd = market_usd_per_FLOP / moc_KOK_per_FLOP
     return {
