@@ -75,10 +75,10 @@ System date: 19 September 2026.
    for third-party auditing. Code: `github.com/badasherez/gpu-simulator`.
    **The verified source for the "determinism" route of KÖK v2 §6** (an alternative to
    native-FP ZK: reproducibility-based auditing).
-5. **Ball, Rosen, Sabin, Vasudevan — "Proofs of useful work."** ePrint 2017/203 → CRYPTO
+6. **Ball, Rosen, Sabin, Vasudevan — "Proofs of useful work."** ePrint 2017/203 → CRYPTO
    2018 ("Proofs of work from worst-case assumptions"). The first formal PoUW; **they
    retracted the usefulness claims** (poly-log overhead). KW is its successor.
-6. **Dotan, Tochner — "Proofs of useless work."** arXiv 2007.01046 (2020). An inventory of
+7. **Dotan, Tochner — "Proofs of useless work."** arXiv 2007.01046 (2020). An inventory of
    why prior PoUW systems failed.
 6a. **Sompolinsky, Wyborski, Zohar — "PHANTOM and GHOSTDAG: A Scalable Generalization of
    Nakamoto Consensus."** IACR ePrint **2018/104** (received 2018-01-30; last of 17
@@ -106,21 +106,21 @@ System date: 19 September 2026.
 
 ## 2026 negative results (evidence forcing the G/U separation in KÖK v2)
 
-7. **Basu — an empirical measurement of the Pearl Network.** arXiv **2606.04819** (2026):
+8. **Basu — an empirical measurement of the Pearl Network.** arXiv **2606.04819** (2026):
    24 EH/s, ~320,000 GPUs, ~112 MW → **zero useful AI computation**; NoisyGEMM accepts
    random matrices by design (44 pool-accepted share); 8,012 AlphaPool workers, 0/4,803 ML
    string; kurtosis 1.79 (uniform) vs 3.33 (NN) vs **2.97 (adversarial N(0,18) — passes the
    check)**; economics 1.06 revenue/cost; vLLM coupling consumes 10–30% of the hashrate.
-8. **Demirel — "Proof of Demand Is Not Proof of Work."** ePrint **2026/1492** (2026-07-21,
+9. **Demirel — "Proof of Demand Is Not Proof of Work."** ePrint **2026/1492** (2026-07-21,
    rev 2026-08-23): W/B/E framework; **Lemma 1** (coalition-controlled payments are
    reversible transfers); **Theorem 2** (leader election requires a demand-independent
    path); **Corollary 4**; solution: **irreversible burn/tax = the source of security.**
    The theoretical justification for the burn mechanism of the KÖK U layer.
-9. **Dikshit, Emami, Sedlmeir, Fridgen — SoK: "Is Proof-of-Useful-Work Really Useful?"**
+10. **Dikshit, Emami, Sedlmeir, Fridgen — SoK: "Is Proof-of-Useful-Work Really Useful?"**
    ePrint **2025/1814** (2025-10-03): 50+ constructions; **utility does not contribute to
    the security budget**; proposal of verifiable computation + partial incentive
    allocation.
-10. **Externally rewarded PoW trade-offs.**
+11. **Externally rewarded PoW trade-offs.**
     arXiv **2505.21685** (2025): miners can aggregate useful tasks into a single block →
     KÖK's **C_FEE anti-aggregation cap** (T-A3, TV-6).
     (ROUND-6, 2026-09-24, audit: author list NOT settled. The paper's own §3.2 names
@@ -130,17 +130,17 @@ System date: 19 September 2026.
     are not the same paper and the names should not be conflated: 2505.21685 is the
     aggregation trade-off, 2025/685 is the certificate construction KÖK actually
     builds on. This entry stays anonymous until the arXiv record is checked.)
-11. **Komargodski–Weinstein — prescribed-hardness MatMul PoUW.** IACR ePrint **2025/685**:
+12. **Komargodski–Weinstein — prescribed-hardness MatMul PoUW.** IACR ePrint **2025/685**:
     the certificate KÖK's G layer implements (the paper the PAPER.md pitch names).
-    Separated from entry 10 because the two were being cited interchangeably.
-11. **"SEDULity."** arXiv **2512.13666** (2025): binding the chain by encoding the template
+    Separated from entry 11 because the two were being cited interchangeably.
+13. **"SEDULity."** arXiv **2512.13666** (2025): binding the chain by encoding the template
     block into training — a different approach from KÖK's ctx-binding (T-A2).
-12. **Proof-of-Learning with incentive security.** arXiv **2404.09005** (2024):
+14. **Proof-of-Learning with incentive security.** arXiv **2404.09005** (2024):
     Θ(1)→O(log E/E) overhead, overcoming the Verifier's Dilemma.
 
 ## Economics
 
-13. **Pass — "The Economics of Proof-of-Useful-Work."** arXiv **2606.06700**
+15. **Pass — "The Economics of Proof-of-Useful-Work."** arXiv **2606.06700**
     (CORRECTED 2026-09-25, internal audit against the arXiv record: the date
     was given as 2026-08-10; the record's submitted date is **4 June 2026**,
     and only the v1 exists — the later date was a version-date conflation):
@@ -157,7 +157,7 @@ System date: 19 September 2026.
     duplex delivers 1/1.3 ≈ 0.77 units of inference and 1/1.3 ≈ 0.77 units of security");
     demand elasticity (Jevons, ε=2) is a precondition for all results; calibration $30B
     inference market / 52,560 blocks.
-14. **Hoffmann — "Challenges of Proof-of-Useful-Work" / the verifiability–usefulness
+16. **Hoffmann — "Challenges of Proof-of-Useful-Work" / the verifiability–usefulness
     tension.** arXiv **2209.03865**. *RESOLVED 2026-09-25:* the arXiv record was checked
     against the primary source and this is **Felix Hoffmann's single-author paper** —
     the "Leinweber et al." attribution that circulated in Basu's citation (and that
@@ -165,7 +165,7 @@ System date: 19 September 2026.
     is now dropped. Corrected rather than silently: the wrong name was in a table that
     claimed 39/39 verified citations, which is the exact failure mode this project
     exists to avoid.
-15. **Peigné, Nguyen, Wang — "Zero knowledge verification for frontier AI training is
+17. **Peigné, Nguyen, Wang — "Zero knowledge verification for frontier AI training is
     possible."** arXiv **2606.05433v2** (2026-06-03, v2 2026-08-22, 44 pages). *Verified
     (2026-09-19):* verification of **real floating-point** computation with zkVM + native
     BF16/FP32 precompiles (not a fixed-point approach); pre-committed training spec +

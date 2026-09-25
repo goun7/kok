@@ -1066,7 +1066,44 @@ of that crypto-asset **any fees, commissions, or monetary or non-monetary benefi
 for that crypto-asset**". KÖK açısından: fee karşılığı compute sağlanıyorsa "free" istisnasına
 girilmez; zaten KÖK için geçerli olan 4(3)(b) madencilik ödülü istisnasıdır (§3.3).
 
-**E. Vergi açısından — BULUNAMADI (kısmi çerçeve):**
+**E. Vergi açısından — ikincil yorumla KISMEN belgelendi (kesin görüş hâlâ BULUNAMADI):**
+
+> **Kaynak 3 (ikincil, hukuk-teknoloji blog'u — orta-düşük güvenilirlik, IRS GÖRÜŞÜ DEĞİLDİR):**
+> "Why Token Burning Mechanisms Create Phantom Taxable Income", ChainScore Labs
+> https://chainscorelabs.com/blog/legal-tech-smart-contracts-and-the-law/taxation-of-automated-systems/why-token-burning-mechanisms-create-phantom-taxable-income
+> (**erişim 24 Eylül 2026; yazar/tarih belirtilmemiş**)
+
+**Bu kaynağın argümanı (verbatim):**
+- "Token burning **is a taxable event**. When a protocol ... permanently removes tokens from
+  circulation, **it increases the proportional ownership of every remaining holder**. This
+  unrealized gain constitutes a **constructive receipt of income** under many tax regimes,
+  creating a liability without any cash flow."
+- "A protocol's native token is a **liability on its treasury's balance sheet**. When tokens are
+  burned, that liability disappears, but the protocol's assets ... remain unchanged. This creates
+  an accounting mismatch. ... Under accrual accounting, **destroying a liability without a
+  corresponding asset reduction is booked as income.**"
+- "Tax authorities like the IRS treat this as a **constructive distribution**, creating taxable
+  income without any actual cash flow to the user."
+
+**★ KRİTİK DOĞRULUK NOTU (TAMGA):** Yukarıdaki **bir argümandır, yerleşik vergi kuralı DEĞİLDİR.**
+- Kaynağın kendisi bunu "**significant and unresolved conflict with existing tax frameworks**"
+  olarak nitelendirir — yani çözülmemiş bir çatışma olarak sunar.
+- Dayanak gösterdiği tek gerçek IRS konusu **2019 forks/airdrops guidance**'ıdır (yeni varlık
+  ediniminin vergi olayı olduğu); bu **burn hakkında DEĞİLDİR**. Burn'a özel IRS görüşü **bu
+  kaynakta yoktur** ve ben de **bulamadım**.
+- Kaynaktaki somut sayılar ("4 million ETH burned", "$10M daily", MakerDAO "21% corporate tax")
+  **bu dokümanda doğrulanmamıştır** — yalnızca kaynağın kendi iddiaları olarak rapor edilir.
+
+**KÖK v2'ye uygulama (TAMGA analizi):**
+- **Fee-for-service burn, "buyback-and-burn"den yapısal olarak farklıdır** (§5.B'deki ayrım):
+  KOK yakılan kısım, kullanıcının **compute görevi satın almak için ödediği fee**'nin bir
+  bileşenidir — bir tüketim işlemidir, protokolün kasadan token satın alıp yakması değildir.
+  "Phantom income" argümanı en güçlü biçimde **buyback-and-burn** için geçerlidir.
+- **Yine de sıfır-risk değildir:** her native-token burn'ü toplam arzı azalttığı için kalan
+  tutar sahiplerinin oransal sahipliğini teknik olarak artırır; bu yüzden "constructive
+  distribution" argümanı teorik olarak KOK için de ileri sürülebilir. Bu, **vergi
+  danışmanına/uzman hukuk müşavirine götürülmesi gereken bir konudur**; bu doküman vergi
+  tavsiyesi değildir.
 
 > **Kaynak 2 (ikincil, DÜŞÜK güvenilirlik — "AI tarafından yazılmış" uyarısı var):** Pactria,
 > "Legal Implications of Token Burn Mechanisms", **17 Ağustos 2024**,
@@ -1084,8 +1121,8 @@ girilmez; zaten KÖK için geçerli olan 4(3)(b) madencilik ödülü istisnasıd
 
 **Kesin BULUNAMADI:** KÖK'ün **fee-burn mekanizması için Türk vergi hukukunda** (veya ABD/AB'de)
 somut bir vergi görüşü/IRS guidance'ı/literatür **bulunamadı**. **Bir sonraki oturumda aranacak
-başlıklar:** "token burn tax treatment", "EIP-1559 fee burn tax", "destruction of tokens tax",
-"proof-of-burn regulation", "Türkiye'de token yakma vergi".
+başlıklar:** "token burn tax treatment", "EIP-1559 fee burn tax", "constructive distribution token
+burn", "proof-of-burn regulation", "Türkiye'de token yakma vergi".
 
 ---
 
@@ -1153,6 +1190,9 @@ başlıklar:** "token burn tax treatment", "EIP-1559 fee burn tax", "destruction
 14. ChainScore Labs, "Why 'Burn' Mechanisms Fail to Remove a Token's Security Taint" (erişim
     24.09.2026; yazar/tarih belirtilmemiş; orta-düşük güvenilirlik) —
     https://chainscorelabs.com/blog/crypto-regulation-global-landscape-and-trends/sec-enforcement-and-securities-law/why-burn-mechanisms-fail-to-remove-a-tokens-security-taint
+14b. ChainScore Labs, "Why Token Burning Mechanisms Create Phantom Taxable Income" (erişim
+    25.09.2026; yazar/tarih belirtilmemiş; orta-düşük güvenilirlik; **IRS görüşü DEĞİL**) —
+    https://chainscorelabs.com/blog/legal-tech-smart-contracts-and-the-law/taxation-of-automated-systems/why-token-burning-mechanisms-create-phantom-taxable-income
 15. Pactria, "Legal Implications of Token Burn Mechanisms", **17 Ağustos 2024** (**⚠ "AI
     tarafından yazılmış" uyarısı; yalnızca soru çerçevesi olarak kullanıldı**) —
     https://pactria.com/legal-implications-of-token-burn-mechanisms/
@@ -1175,8 +1215,8 @@ tabanlı Ripple zaman çizelgesi (v2'de yerini birincil SEC kaynaklarına bırak
 
 ---
 
-**Belge sürümü:** **v2.5** (24 Eylül 2026, TAMGA) — v2.4'ün üzerine **MAS'ın "A Guide to Digital
- Token Offerings" rehberi birincil kaynakla çözüldü** (§4.2): **compute-gücü kiralama platformu
- tokeni için "capital markets product DEĞİL" case study'sü KÖK'ün U-katmanıyla birebir**.
- Bu oturumda kapatılanlar: ADGM, El Salvador, ESMA, MAS DTO rehberi + token burning (kısmi).
- Kalan 5 BULUNAMADI maddesi §6'da (hepsi düşük öncelikli).
+**Belge sürümü:** **v2.6** (25 Eylül 2026, TAMGA) — v2.5'in üzerine **token-burn VERGİ açısı
+ ikincil yorumla belgelendi** (§5.E: "phantom taxable income" argümanı + doğruluk notu; kesin
+ IRS/AB/TR görüşü hâlâ BULUNAMADI). Bu oturumda kapatılanlar: ADGM, El Salvador, ESMA, MAS DTO
+ rehberi + token burning'in menkul-kıymet VE vergi çerçeveleri (ikincil düzeyde). Kalan 5
+ BULUNAMADI maddesi §6'da (hepsi düşük öncelikli).
