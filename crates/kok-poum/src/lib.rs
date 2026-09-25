@@ -221,8 +221,25 @@ impl KwKernel {
         nonce: u64,
         target: u64,
     ) -> bool {
+        // DEGENERATE KERNEL: q == 0 or r == 0 makes the arithmetic below
+        // divide by zero and PANIC. These are chain parameters rather than
+        // per-block input, but the verify path is total or it is not — a
+        // misconfigured chain should reject, not crash every node.
+        if self.q == 0 || self.r == 0 {
+            return false;
+        }
         let n = a.len();
         if b.len() != n {
+            return false;
+        }
+        // ROW WIDTH — a ragged matrix would index past a short row and
+        // PANIC, and a panic in the verify path is a DoS on every node that
+        // checks a block, not a reject. The top-level length checks above
+        // guard the number of rows; this guards what each row actually
+        // holds. Both must come before any indexing. This is the same class
+        // as the PVI boundary bug: the structural gate has to precede the
+        // index, or the attacker picks the panic.
+        if !a.iter().all(|row| row.len() == n) || !b.iter().all(|row| row.len() == n) {
             return false;
         }
         let m = n / self.r;
@@ -343,6 +360,85 @@ mod tests {
             }
         };
         assert!(k.verify(&cert, &a, &b, 777, nonce, 1 << 1));
+    }
+
+    /// RAGGED MATRICES MUST REJECT, NOT PANIC — the bug this test pins. The
+    /// verifier checked the number of rows and the tile bounds, but never the
+    /// WIDTH of each row, so a matrix with a short row indexed past its end
+    /// and unwound. A panic in verify is a DoS on every node that checks a
+    /// block: one malformed matrix header takes a node down instead of being
+    /// dropped. The structural gate now precedes the index.
+    #[test]
+    fn a_ragged_matrix_rejects_instead_of_panicking() {
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (mut a, b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        // a cert honestly mined over a well-formed matrix...
+        assert!(k.verify(&cert, &a, &b, 777, nonce, 1 << 1));
+        // ...must still REJECT (not panic) when one row is truncated
+        let last = a.len() - 1;
+        a[last].truncate(1);
+        assert!(!k.verify(&cert, &a, &b, 777, nonce, 1 << 1), "a ragged matrix verified");
+    }
+
+    /// Same class on the second operand: a short row of B.
+    #[test]
+    fn a_ragged_second_matrix_rejects_instead_of_panicking() {
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (a, mut b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        assert!(k.verify(&cert, &a, &b, 777, nonce, 1 << 1));
+        b[0].truncate(1);
+        assert!(!k.verify(&cert, &a, &b, 777, nonce, 1 << 1), "a ragged B verified");
+    }
+
+    /// A row COUNT mismatch already rejected; the dimension must agree in
+    /// both operands, measured at several shapes so the check is not a
+    /// single-point coincidence.
+    #[test]
+    fn mismatched_matrix_dimensions_reject() {
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (a, b) = toy_matrices(20260919);
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, 1 << 1) {
+                break c;
+            }
+        };
+        // b taller than a
+        let mut tall_b = b.clone();
+        tall_b.push(vec![0u64; a.len()]);
+        assert!(!k.verify(&cert, &a, &tall_b, 777, nonce, 1 << 1));
+        // a wider in one row (ragged, covered above) and empty operands
+        assert!(!k.verify(&cert, &[], &b, 777, nonce, 1 << 1));
+        assert!(!k.verify(&cert, &a, &[], 777, nonce, 1 << 1));
+    }
+
+    /// DEGENERATE KERNEL PARAMETERS: q == 0 and r == 0 both divide by zero
+    /// in the accumulator. A misconfigured chain must reject, not crash
+    /// every node that touches a block.
+    #[test]
+    fn degenerate_kernel_parameters_reject_instead_of_panicking() {
+        let (a, b) = toy_matrices(20260919);
+        let cert = Certificate { i: 0, j: 0, value: 0, m: a.len() / TOY_R };
+        let zero_q = KwKernel::new(0, TOY_R);
+        assert!(!zero_q.verify(&cert, &a, &b, 777, 1, 1 << 1), "q == 0 verified");
+        let zero_r = KwKernel::new(TOY_Q, 0);
+        assert!(!zero_r.verify(&cert, &a, &b, 777, 1, 1 << 1), "r == 0 verified");
+        assert!(!zero_r.verify(&cert, &[], &[], 777, 1, 1 << 1), "r == 0 verified on empty input");
     }
 
     #[test]
