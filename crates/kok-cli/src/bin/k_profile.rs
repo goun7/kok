@@ -1,7 +1,7 @@
 // THE k EXPERIMENT: what k should a 10 BPS chain use?
 // The repo has ONE verified data point (BPS=1 -> k=18). This measures the
 // behaviour over a sweep instead of extrapolating a curve from one point.
-use kok_ghostdag::sim::{mine_chain, profile_k, KProfile};
+use kok_ghostdag::sim::{mine_chain, profile_k};
 use kok_ghostdag::Ghostdag;
 use rand::SeedableRng;
 

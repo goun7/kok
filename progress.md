@@ -3726,11 +3726,26 @@ Bu bloğun commit'leri: `a0b8a5a` (assignment wire), `727cfad` (kok-net),
 - **wrong assumption turned into measurement**: fanout-4 connected
   varsayıldı, her seed'de yanlıştan çıktı → varsayım ölçüme dönüştü.
 
+### KOD KALİTESİ TEMİZLİĞİ (2026-09-25)
+- `kok-cli/src/bin/k_profile.rs:4` — unused `KProfile` import kaldırıldı
+- `kok-cli/src/bin/fri_scale.rs:12` — `P` non-snake_case → `poly` (Rust
+  convention; polinom katsayıları için yerel isim)
+- `cargo build --release --workspace` artık **SIFIR uyarı**
+- Kalan bilinen Non-blocking: unused `SliceRandom` import
+  kok-ghostdag/src/lib.rs:456, unused `mut` kok-probes/src/lib.rs:89
+
+### DURUM
+`cargo test --release --workspace` **146/146 rc=0**. `cargo build --release
+--workspace` **0 uyarı, 0 hata**. `audit_turkish_en.py` **CLEAN**.
+`suite_gate_en.py` **39/39, 0 broken**.
+Bu oturumun (3 blok) commit'leri: `a0b8a5a`, `727cfad`, `81d7a7c`, `8ec2b6a`,
+`d4f2094`, `062cde4`, `b6d8ad0`, `8267bd7`, `a9f42e0`. Skor **83.65**.
+
 ### KALAN (sirali, güncel)
 1. Derin adversarial hardening: kalan crate'lerde dört bug sınıfını avla
-2. Kod kalitesi temizliği: unused import'lar, `mut`, non-snake_case
-3. Tamga'ya kapanış onayı zaten verildi; 5 düşük öncelikli BULUNAMADI
-   maddesi opsiyonel
+   (kok-chain select/final_set, kok-mempool edge'leri — probe kapsamında)
+2. Non-blocking: unused `SliceRandom` (ghostdag:456), unused `mut` (probes:89)
+3. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
 4. Skor **83.65** (dokunma)
 
 ## ADVERSARIAL SWEEP — G LAYER + AIR (2026-09-25, 4. blok) — 138 → 146
