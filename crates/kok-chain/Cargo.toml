@@ -7,4 +7,6 @@ description = "Chain state and fork choice — skeleton"
 rust-version.workspace = true
 
 [dependencies]
+kok-ghostdag.workspace = true
+rand.workspace = true
 kok-consensus.workspace = true

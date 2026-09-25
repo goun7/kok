@@ -359,6 +359,8 @@ name = "kok-chain"
 version = "0.1.0"
 dependencies = [
  "kok-consensus",
+ "kok-ghostdag",
+ "rand",
 ]
 
 [[package]]
