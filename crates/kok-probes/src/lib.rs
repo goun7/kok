@@ -246,6 +246,70 @@ mod tests {
         }
     }
 
+    /// THE BOUNDARY IS `>=`, NOT `>` — the exact edge, not a band around it.
+    /// In a linear chain blue_score is the block's index, so a chain of
+    /// FINALITY_GAP+1 blocks puts genesis exactly FINALITY_GAP behind the tip.
+    /// It must be final. A chain of one fewer puts it exactly FINALITY_GAP-1
+    /// behind; it must NOT be. One block of difference is the whole claim —
+    /// an off-by-one here means either pruning a block a reorg could still
+    /// reach (unsafe) or never pruning at all (the rule is decorative).
+    #[test]
+    fn probe_the_finality_boundary_is_the_gap_itself_not_one_past_it() {
+        // a chain of exactly FINALITY_GAP+1: genesis at gap == FINALITY_GAP
+        let mut g_hi = Ghostdag::new(GHOSTDAG_K);
+        for i in 1..=(FINALITY_GAP + 1) {
+            let parents = if i == 1 { vec![] } else { vec![i - 1] };
+            g_hi.add(Block { bid: i, parents });
+        }
+        let tip = select(&g_hi).expect("a non-empty DAG selects a tip");
+        let gap = g_hi.blue_score.get(&tip).unwrap() - g_hi.blue_score.get(&1u64).unwrap();
+        assert_eq!(gap, FINALITY_GAP, "the linear chain did not produce the expected gap");
+        assert!(
+            is_final(&g_hi, 1),
+            "genesis at exactly the gap is not final — the rule is `>` where it should be `>=`"
+        );
+
+        // one block short: genesis at gap == FINALITY_GAP - 1
+        let mut g_lo = Ghostdag::new(GHOSTDAG_K);
+        for i in 1..=FINALITY_GAP {
+            let parents = if i == 1 { vec![] } else { vec![i - 1] };
+            g_lo.add(Block { bid: i, parents });
+        }
+        let tip_lo = select(&g_lo).expect("a non-empty DAG selects a tip");
+        let gap_lo = g_lo.blue_score.get(&tip_lo).unwrap() - g_lo.blue_score.get(&1u64).unwrap();
+        assert_eq!(gap_lo, FINALITY_GAP - 1);
+        assert!(
+            !is_final(&g_lo, 1),
+            "genesis one short of the gap is final — the rule is `>=` where it should be `>`"
+        );
+    }
+
+    /// FINALITY IS A FUNCTION OF THE TIP, NOT OF THE BLOCK ASKING. Two
+    /// observers running is_final at the same DAG must agree, and adding a
+    /// block to the DAG can only ever move a block from not-final to final,
+    /// never back — because the tip's score can only rise. This pins the
+    /// monotone direction the pruning path depends on.
+    #[test]
+    fn probe_finality_never_goes_backwards_when_the_dag_grows() {
+        let mut g = Ghostdag::new(GHOSTDAG_K);
+        for i in 1..=FINALITY_GAP {
+            let parents = if i == 1 { vec![] } else { vec![i - 1] };
+            g.add(Block { bid: i, parents });
+        }
+        assert!(!is_final(&g, 1), "before the gap is crossed genesis must not be final");
+        g.add(Block {
+            bid: FINALITY_GAP + 1,
+            parents: vec![FINALITY_GAP],
+        });
+        assert!(is_final(&g, 1), "after the gap is crossed genesis must be final");
+        // adding more blocks must not un-final it
+        g.add(Block {
+            bid: FINALITY_GAP + 2,
+            parents: vec![FINALITY_GAP + 1],
+        });
+        assert!(is_final(&g, 1), "finality went backwards as the DAG grew");
+    }
+
     // ============================================================
     // THE ESCROW / FINALITY FIREWALL
     // ============================================================
