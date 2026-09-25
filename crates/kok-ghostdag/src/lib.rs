@@ -452,6 +452,9 @@ pub struct RewardSplit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sim::mine_chain;
+    use rand::seq::SliceRandom;
+    use rand::SeedableRng;
 
     fn add_line(g: &mut Ghostdag, bid: Bid, parents: &[Bid]) {
         g.add(Block {
@@ -602,5 +605,53 @@ mod tests {
         let b = g.reward_split(2, 7);
         assert_eq!(a, b);
         assert_eq!(a.pay_set_size, b.pay_set_size);
+    }
+
+    /// THE ANTICONE BUG, pinned as a regression test. The prototype's
+    /// anticone(B) was "everything not in past(B) ∪ {B}", which INCLUDES
+    /// future(B) — and for an early block the future is most of the DAG.
+    /// On a 100-block DAG that produced mean 64.9 / max 123, so k=18 could
+    /// never bind and every anticone measurement in the project measured the
+    /// wrong set. The proper definition excludes future(B) as well.
+    /// MEASURED on this very DAG: naive max 123, proper max 19 — k=18 binds.
+    /// This test fails if the future term is ever dropped again.
+    #[test]
+    fn anticone_excludes_the_future_not_just_the_past() {
+        let mut g = Ghostdag::new(18);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(11);
+        mine_chain(&mut g, 100, &mut rng, &["A", "B", "C"], 0.3);
+        let genesis = 1u64;
+        let ac = g.anticone(genesis);
+        // the genesis's future is every later block; under the buggy
+        // definition all of them were "anticone". Under the correct one the
+        // genesis has no past and no future-excluded anticone beyond the
+        // small set the forks create.
+        let max_ac = g.blocks.keys().map(|b| g.anticone(*b).len()).max().unwrap_or(0);
+        assert!(
+            max_ac <= 2 * g.k + 1,
+            "max anticone {} exceeded the regime k=18 binds (naive bug: ~123)",
+            max_ac
+        );
+        // and specifically: genesis's own anticone must not contain blocks
+        // that are in its future — the inverted bug signature
+        let fut = g.future(genesis);
+        assert!(
+            ac.intersection(&fut).next().is_none(),
+            "the anticone contains a block that is in the future — the bug"
+        );
+    }
+
+    /// future() is reflexively consistent with past(): if X is in past(Y)
+    /// then Y is in future(X). This is the symmetry the anticone definition
+    /// leans on, so it is tested directly rather than assumed.
+    #[test]
+    fn past_and_future_are_symmetric() {
+        let mut g = Ghostdag::new(18);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(23);
+        let tips = mine_chain(&mut g, 80, &mut rng, &["A", "B", "C"], 0.25);
+        let tip = *tips.last().unwrap();
+        let early = tips[0];
+        assert!(g.past(tip).contains(&early), "early must be in the tip's past");
+        assert!(g.future(early).contains(&tip), "tip must then be in early's future");
     }
 }
