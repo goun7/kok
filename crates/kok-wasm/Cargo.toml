@@ -9,6 +9,13 @@ rust-version.workspace = true
 [dependencies]
 kok-pvi.workspace = true
 kok-poum.workspace = true
+# getrandom compile_error!s under wasm32-unknown-unknown unless its "js"
+# feature is on (it uses crypto.getRandomValues). Nothing at VERIFY time
+# needs randomness — the kernel's noise is a pure function of (ctx, n, q) —
+# but cargo unifies features across the graph, so the error fires anyway.
+# Declaring it here with "js" turns the browser target green without adding
+# any randomness to the verification path.
+getrandom = { version = "0.2", features = ["js"] }
 
 [lib]
 # cdylib so a host gets a real WASM module; rlib so the property tests can
