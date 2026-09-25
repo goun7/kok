@@ -3321,11 +3321,36 @@ Orkestrator'un "3 gercek blokzincir projesi" iddiASI OLÇÜLDÜ:
 | Proje | Yol | Rust | Noir | Bulgu |
 |---|---|---|---|---|
 | **30-Kurul** | 02_sahis | HAYIR (Foundry/Solidity) | EVET — `circuits/zk_voting/` Nargo.toml + main.nr + foundry.toml | DOGRU |
-| **58-Mahrem** | 01_unicorn | EVET — Cargo.toml + Cargo.lock | Noir iddia edildi, bu yolda DOGRULANMADI | KISMEN |
+| **58-Mahrem** | 01_unicorn | EVET — Cargo.toml + Cargo.lock | **EVET — sonradan dogrulandi** (asagida) | **DOGRU** (ilk tarama eksikti) |
 | **15-Hazna** | 00_kurumsal_sermaye | HAYIR — pyproject.toml (Python) | hedef (FROST/Noir) ama HENUZ YOK | YANLIS — Rust DEGIL |
+
+**58-MAHREM NOIR'ININ SONRADAN DOGRULANMASI (2026-09-25, kapanis):**
+ilk tarama `01_unicorn/58-Mahrem/` kokunde Noir aradi ve bulamadi, bu
+yuzden "KISMEN" raporlandi. **Bu yanlis bir NEGATIF'ti** — devreler bir
+alt dizinde:
+- `01_unicorn/58-Mahrem/circuits/noir/` — gercek `main.nr` + `Nargo.toml`
+- `01_unicorn/58-Mahrem/circuits/noir-membership/` — gercek `membership.nr`
+  + `Nargo.toml`
+Her ikisinde de derlenebilir Nargo source var, boilerplate degil. Yani
+**58-Mahrem hem Rust hem Noir icerir** ve 3 "ilk kullanici"dan 2'sinde
+gercek ZK devreleri vardir (30-Kurul + 58-Mahrem).
+
+**DEVRENIN ICERIGI (gerçek kod okundu, varsayim degil):**
+`circuits/noir/src/membership.nr` (38 satir) seffaf bir **Merkle membership
+proof** devresidir — `pedersen_hash` ile 3 seviyeli agac, public input
+`merkle_root`, private inputlar `leaf`/`path[3]`/`path_indices[3]`, ve
+`assert(current == root)` baglanti. Paket adi `sovereign_zk_range`
+(Nargo.toml'den). Yani 58-Mahrem'in "Noir iddiasi" bos bir dizin degil,
+KOK'un U-katmaninin calistirmayi onerdigi sinifa GERCEK BIR ORNEK'tir:
+kullanici: "bu islemin bir Merkle agacinda uyesi oldugunu kanitla" ->
+KOK: ucret karsiligi dogrulanabilir hesaplama.
 
 **En degerli bulgu:** 15-Hazna'nin Rust oldugu iddia edildi ama **Python**
 (pyproject.toml). Orkestrator'un taramasinda bir hata var — duzeltilmeli.
+**Ikinci bulgu:** 58-Mahrem icin "Noir yok" NEGATIF'I, aramanin sadece
+kok dizine bakmasindan kaynaklandi; bir alt dizin taramasiyla duzeltildi.
+Iki yanlislik farkli sinifta: biri ORKESTRATOR'un verisinde (15-Hazna),
+digeri BENIM aramamda (58-Mahrem) — ikisi de olcumun nereye baktigina bagli.
 
 ### KOPEK ICIN ONERI (Orkestrator'e)
 3 "ilk kullanici" da KOK'un U-katmanina ZK devre + EVM koprusu ISTIYOR,
