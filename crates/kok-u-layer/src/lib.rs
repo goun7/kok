@@ -27,6 +27,7 @@
 //! and pseudorandomness — are now provided by the construction.
 
 pub mod ecvrf;
+pub mod assign;
 
 use sha2::{Digest, Sha256};
 
@@ -98,11 +99,20 @@ pub fn u_task_consensus_weight(_proof: &TaskProof) -> u64 {
 /// Derive the VRF epoch seed for a block from the chain, using the
 /// EPOCH_LOOKBACK window. Grinding resistance: the seed is fixed 64 blocks
 /// before the attacker can influence it.
+///
+/// DOMAIN SEPARATION (spec §A.10.3): the seed is `H("seed" | blk.hash)`,
+/// NOT the block hash itself. An earlier version returned the raw hash,
+/// which meant the very same bytes that identify a block elsewhere could be
+/// replayed as a VRF input — a cross-context collision waiting to happen.
+/// The wrapper is what makes the seed mean "assignment seed" and nothing
+/// else. This is the same class as the anticone bug: the error is not in
+/// what you computed but in which SET of things the identifier belongs to.
 pub fn epoch_seed(block_hashes: &[u64], height: usize) -> Option<u64> {
     if height < EPOCH_LOOKBACK {
         return None;
     }
-    Some(block_hashes[height - EPOCH_LOOKBACK])
+    let blk = block_hashes[height - EPOCH_LOOKBACK];
+    Some(h(&["seed", &blk.to_string()]))
 }
 
 #[cfg(test)]
@@ -151,9 +161,11 @@ mod tests {
         let hashes: Vec<u64> = (0..200).map(|i| i as u64).collect();
         // height below the lookback: no seed yet
         assert!(epoch_seed(&hashes, 10).is_none());
-        // height 64: seed is the block 64 back
-        assert_eq!(epoch_seed(&hashes, 64), Some(hashes[0]));
-        assert_eq!(epoch_seed(&hashes, 128), Some(hashes[64]));
+        // height 64: the seed is the DOMAIN-SEPARATED hash of block 0, not
+        // the block hash itself (spec A.10.3)
+        assert_eq!(epoch_seed(&hashes, 64), Some(h(&["seed", &hashes[0].to_string()])));
+        assert_ne!(epoch_seed(&hashes, 64), Some(hashes[0]), "the seed leaked the raw block hash");
+        assert_eq!(epoch_seed(&hashes, 128), Some(h(&["seed", &hashes[64].to_string()])));
     }
 
     /// GRINDING RESISTANCE, the property the lookback exists for: a miner who
@@ -174,14 +186,22 @@ mod tests {
             seed_before, seed_after,
             "the seed at h changed when block h changed — the lookback is broken"
         );
-        // but the attacker's new block DOES move the seed 64 blocks later
+        // but the attacker's new block DOES move the seed 64 blocks later —
+        // through the domain separator, never as the raw hash
         let later = epoch_seed(&hashes, at_h + 64);
-        assert_eq!(later, Some(hashes[at_h]), "influence must land at h+64, not h");
-        // and NOT at any height before that
+        assert_eq!(
+            later,
+            Some(h(&["seed", &hashes[at_h].to_string()])),
+            "influence must land at h+64, not h"
+        );
+        // and NOT at any height before that. The raw hash is not what the
+        // seed is, so comparing against it is the right NEGATIVE probe: no
+        // seed before the lookback may equal the domain-separated value.
+        let blocked = h(&["seed", &hashes[at_h].to_string()]);
         for probe in (at_h + 1)..(at_h + 64) {
             assert_ne!(
                 epoch_seed(&hashes, probe),
-                Some(hashes[at_h]),
+                Some(blocked),
                 "block h leaked its influence into height {} before the lookback",
                 probe
             );
