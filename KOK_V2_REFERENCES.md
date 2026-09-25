@@ -123,12 +123,16 @@ System date: 19 September 2026.
 10. **Externally rewarded PoW trade-offs.**
     arXiv **2505.21685** (2025): miners can aggregate useful tasks into a single block →
     KÖK's **C_FEE anti-aggregation cap** (T-A3, TV-6).
-    (ROUND-6, 2026-09-24, internal audit: the author list is NOT settled. The
-    paper's §3.2 citation names Bar-On, this entry named Komargodski &
-    Weinstein, and the arXiv record has been checked against neither by this
-    project — a discrepancy between two files in the same package, recorded
-    here rather than silently corrected. Both names are kept visible until
-    one is verified against the record.)
+    (ROUND-6, 2026-09-24, audit: author list NOT settled. The paper's own §3.2 names
+    **Bar-On**, this entry previously named **Komargodski & Weinstein**, and a third
+    project file (PAPER.md §3.1) cites Komargodski–Weinstein for a DIFFERENT work,
+    IACR ePrint **2025/685** — the prescribed-hardness MatMul construction. The two
+    are not the same paper and the names should not be conflated: 2505.21685 is the
+    aggregation trade-off, 2025/685 is the certificate construction KÖK actually
+    builds on. This entry stays anonymous until the arXiv record is checked.)
+11. **Komargodski–Weinstein — prescribed-hardness MatMul PoUW.** IACR ePrint **2025/685**:
+    the certificate KÖK's G layer implements (the paper the PAPER.md pitch names).
+    Separated from entry 10 because the two were being cited interchangeably.
 11. **"SEDULity."** arXiv **2512.13666** (2025): binding the chain by encoding the template
     block into training — a different approach from KÖK's ctx-binding (T-A2).
 12. **Proof-of-Learning with incentive security.** arXiv **2404.09005** (2024):
@@ -136,7 +140,10 @@ System date: 19 September 2026.
 
 ## Economics
 
-13. **Pass — "The Economics of Proof-of-Useful-Work."** arXiv **2606.06700** (2026-08-10):
+13. **Pass — "The Economics of Proof-of-Useful-Work."** arXiv **2606.06700**
+    (CORRECTED 2026-09-25, internal audit against the arXiv record: the date
+    was given as 2026-08-10; the record's submitted date is **4 June 2026**,
+    and only the v1 exists — the later date was a version-date conflation):
     M/L/D activities, Δ = 1/γ + 1/α − 1, θ = PR/(pQ), **Theorem 1** (Bitconia /
     Fortessia / Duplexia regimes), **Theorem 3** (p = αe/(1+θ), ΔSV), **Prop 1**, attack
     cost = PR/2 (in every regime), Fisher foundation. The theoretical basis of KÖK's
@@ -150,11 +157,14 @@ System date: 19 September 2026.
     duplex delivers 1/1.3 ≈ 0.77 units of inference and 1/1.3 ≈ 0.77 units of security");
     demand elasticity (Jevons, ε=2) is a precondition for all results; calibration $30B
     inference market / 52,560 blocks.
-14. **"Verifiability–usefulness tension" — arXiv 2209.03865** (cited by Basu; full author
-    list not verified). ROUND-6, 2026-09-24: Basu's citation names "Leinweber
-    et al." while the arXiv record's first author is Hoffmann — an internal
-    audit caught the mismatch, recorded here rather than silently corrected
-    because the project has not independently confirmed which is intended.
+14. **Hoffmann — "Challenges of Proof-of-Useful-Work" / the verifiability–usefulness
+    tension.** arXiv **2209.03865**. *RESOLVED 2026-09-25:* the arXiv record was checked
+    against the primary source and this is **Felix Hoffmann's single-author paper** —
+    the "Leinweber et al." attribution that circulated in Basu's citation (and that
+    this project carried while the authorship was unverified) is a misattribution and
+    is now dropped. Corrected rather than silently: the wrong name was in a table that
+    claimed 39/39 verified citations, which is the exact failure mode this project
+    exists to avoid.
 15. **Peigné, Nguyen, Wang — "Zero knowledge verification for frontier AI training is
     possible."** arXiv **2606.05433v2** (2026-06-03, v2 2026-08-22, 44 pages). *Verified
     (2026-09-19):* verification of **real floating-point** computation with zkVM + native
