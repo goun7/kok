@@ -68,7 +68,19 @@ impl Mempool {
     /// a replace-by-fee that does not drop the original would let a tx be
     /// packed twice, which is the double-spend analogue probe pins for the
     /// pay set.
-    pub fn insert(&mut self, tx: Tx) {
+    ///
+    /// SPAM GATE: a transaction with zero bytes or a zero fee is REFUSED.
+    /// Both are free-load vectors, and the second is subtle: the pool sorts
+    /// by fee_per_byte, and a zero-BYTE transaction can still declare any
+    /// fee_per_byte it likes (its total fee is fee_per_byte * 0 = 0). Such a
+    /// transaction pays nothing, takes no block space, and yet sorts AHEAD
+    /// of every honest transaction with a lower fee_per_byte — free priority
+    /// at the head of the leader's order. Refusing it at insert keeps the
+    /// ordering honest without the caller having to know why.
+    pub fn insert(&mut self, tx: Tx) -> bool {
+        if tx.bytes == 0 || tx.fee == 0 {
+            return false;
+        }
         let key = std::cmp::Reverse(tx.fee_per_byte);
         if let Some(&old_key) = self.index.get(&tx.id) {
             if let Some(bucket) = self.by_fee.get_mut(&old_key) {
@@ -80,6 +92,7 @@ impl Mempool {
         }
         self.by_fee.entry(key).or_default().insert(tx.id, tx);
         self.index.insert(tx.id, key);
+        true
     }
 
     pub fn remove(&mut self, id: u64) -> Option<Tx> {
@@ -140,9 +153,9 @@ mod tests {
     #[test]
     fn pack_order_is_descending_fee_per_byte() {
         let mut p = Mempool::new();
-        p.insert(Tx::new(1, 5, 100));
-        p.insert(Tx::new(2, 50, 100));
-        p.insert(Tx::new(3, 20, 100));
+        let _ = p.insert(Tx::new(1, 5, 100));
+        let _ = p.insert(Tx::new(2, 50, 100));
+        let _ = p.insert(Tx::new(3, 20, 100));
         let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
         assert_eq!(ids, vec![2, 3, 1], "the pool did not return descending fee-per-byte");
     }
@@ -154,7 +167,7 @@ mod tests {
     fn ties_break_by_lowest_id_deterministically() {
         let mut p = Mempool::new();
         for id in [7u64, 3, 11, 5] {
-            p.insert(Tx::new(id, 10, 100));
+            let _ = p.insert(Tx::new(id, 10, 100));
         }
         let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
         assert_eq!(ids, vec![3, 5, 7, 11], "ties were not broken by ascending id");
@@ -173,8 +186,8 @@ mod tests {
     #[test]
     fn reinserting_an_id_replaces_not_duplicates() {
         let mut p = Mempool::new();
-        p.insert(Tx::new(1, 5, 100));
-        p.insert(Tx::new(1, 9, 100)); // replace-by-fee
+        let _ = p.insert(Tx::new(1, 5, 100));
+        let _ = p.insert(Tx::new(1, 9, 100)); // replace-by-fee
         assert_eq!(p.len(), 1, "a re-inserted id was duplicated");
         let tx = p.pack_order()[0];
         assert_eq!(tx.fee_per_byte, 9, "the replacement did not take effect");
@@ -185,9 +198,9 @@ mod tests {
     #[test]
     fn select_respects_the_byte_budget_and_the_accounting() {
         let mut p = Mempool::new();
-        p.insert(Tx::new(1, 50, 100));
-        p.insert(Tx::new(2, 30, 100));
-        p.insert(Tx::new(3, 10, 100));
+        let _ = p.insert(Tx::new(1, 50, 100));
+        let _ = p.insert(Tx::new(2, 30, 100));
+        let _ = p.insert(Tx::new(3, 10, 100));
         let sel = p.select(200);
         let bytes: u64 = sel.iter().map(|t| t.bytes).sum();
         assert!(bytes <= 200, "select exceeded the byte budget");
@@ -204,8 +217,8 @@ mod tests {
     #[test]
     fn remove_drops_from_both_the_order_and_the_index() {
         let mut p = Mempool::new();
-        p.insert(Tx::new(1, 50, 100));
-        p.insert(Tx::new(2, 30, 100));
+        let _ = p.insert(Tx::new(1, 50, 100));
+        let _ = p.insert(Tx::new(2, 30, 100));
         let removed = p.remove(1);
         assert_eq!(removed.map(|t| t.id), Some(1));
         assert_eq!(p.len(), 1);
@@ -223,9 +236,9 @@ mod tests {
         let mut p = Mempool::new();
         // a deliberately adversarial mix: big txs with low fee-per-byte and
         // small txs with high fee-per-byte
-        p.insert(Tx::new(1, 1, 1000)); // fee 1000
-        p.insert(Tx::new(2, 10, 100)); // fee 1000
-        p.insert(Tx::new(3, 100, 10)); // fee 1000
+        let _ = p.insert(Tx::new(1, 1, 1000)); // fee 1000
+        let _ = p.insert(Tx::new(2, 10, 100)); // fee 1000
+        let _ = p.insert(Tx::new(3, 100, 10)); // fee 1000
         for budget in [10u64, 100, 110, 1000, 1100, 1110] {
             let sel = p.select(budget);
             let packed: u64 = sel.iter().map(|t| t.fee).sum();
@@ -251,5 +264,68 @@ mod tests {
             // these instances, which is the property worth pinning
             assert_eq!(packed, best, "budget {}: the pool order was not fee-maximal", budget);
         }
+    }
+
+    /// THE SPAM GATE — two free-load vectors the pool must refuse, found by
+    /// asking what insert() accepts rather than what it is for.
+    ///
+    /// (1) A ZERO-BYTE transaction packs into ANY budget, including zero:
+    /// `used + 0 <= 0` is true. An empty block would then report it holds
+    /// transactions, and the accounting invariant `bytes <= budget` becomes
+    /// vacuous. Worse: its total fee is fee_per_byte * 0 = 0, so it costs
+    /// nothing.
+    ///
+    /// (2) The subtle one. The pool sorts by fee_per_byte, and a zero-byte
+    /// tx may still declare any fee_per_byte it likes. So it pays nothing,
+    /// takes no space, and sorts AHEAD of every honest tx with a lower
+    /// rate — free priority at the head of the leader's order. Refusing at
+    /// insert is what keeps the ordering honest.
+    #[test]
+    fn zero_byte_and_zero_fee_transactions_are_refused() {
+        let mut p = Mempool::new();
+        // zero bytes with a high declared rate: must refuse, must not sort
+        // ahead of the honest 100-byte transactions below
+        assert!(!p.insert(Tx::new(1, 1_000_000, 0)), "a zero-byte tx was accepted");
+        // zero fee (zero rate)
+        assert!(!p.insert(Tx::new(2, 0, 100)), "a zero-fee tx was accepted");
+        // both
+        assert!(!p.insert(Tx::new(3, 0, 0)), "a zero-byte zero-fee tx was accepted");
+        assert!(p.is_empty(), "refused transactions left residue in the pool");
+
+        // the honest ones are still accepted
+        assert!(p.insert(Tx::new(10, 50, 100)));
+        assert!(p.insert(Tx::new(11, 30, 100)));
+        assert_eq!(p.len(), 2);
+        let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
+        assert_eq!(ids, vec![10, 11], "the pack order was polluted by refused txs");
+    }
+
+    /// A refused replacement must not evict the existing entry — the spam
+    /// gate must not become a removal vector. A caller re-inserting with
+    /// invalid parameters should leave the pool as it was.
+    #[test]
+    fn a_refused_replacement_keeps_the_original() {
+        let mut p = Mempool::new();
+        assert!(p.insert(Tx::new(1, 50, 100)));
+        // re-insert the same id with invalid parameters
+        assert!(!p.insert(Tx::new(1, 1_000_000, 0)));
+        assert_eq!(p.len(), 1, "a refused replacement evicted the original");
+        let tx = p.pack_order()[0];
+        assert_eq!(tx.fee_per_byte, 50);
+        assert_eq!(tx.bytes, 100);
+    }
+
+    /// THE BOUNDARY AT ZERO: an empty pool and a zero budget select nothing,
+    /// and a transaction larger than the budget selects nothing. These are
+    /// the degenerate corners the accounting must survive without panic.
+    #[test]
+    fn empty_and_zero_budget_corners_select_nothing() {
+        let mut p = Mempool::new();
+        assert!(p.select(0).is_empty(), "an empty pool selected something at budget 0");
+        let _ = p.insert(Tx::new(1, 50, 100));
+        assert!(p.select(0).is_empty(), "a zero budget selected a nonzero-byte tx");
+        assert!(p.select(99).is_empty(), "a sub-tx budget selected the tx");
+        assert_eq!(p.select(100).len(), 1, "an exactly-fitting budget did not select the tx");
+        assert_eq!(p.select(u64::MAX).len(), 1);
     }
 }
