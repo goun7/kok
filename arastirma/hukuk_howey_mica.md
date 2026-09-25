@@ -68,10 +68,12 @@ yazılmıştır.**
     payment for goods or services" + "can be transferred, stored or traded electronically".
     **Fakat** lisansa tabi olan **DPT hizmetleridir** (takas/custody); madencilik/ihraç
     lisanslı bir ödeme hizmeti **değildir** (bkz. §4.2).
-11. **Hâlâ BULUNAMADI:** ADGM/BAE ve El Salvador için birincil/regülatif kaynaklara bu
-    oturumda ulaşılamadı; token burning'in menkul kıymet/vergi analizine dair 2025–2026
-    akademik-yasal literatüre ulaşılamadı; ESMA rehberleri ile MAS'ın DTO rehberi
-    doğrulanamadı (bkz. §6 — bir sonraki oturum için 10 maddelik liste).
+11. **ADGM (BAE) — ÇÖZÜLDÜ (24 Eylül 2026, BİRİNCİL):** FSRA guidance'ına göre utility
+    tokenlar **"Treated as commodities and, therefore, not deemed Specified Investments"** ve
+    "**the Virtual Asset Framework does not apply to: ... ICOs, ... Utility tokens**"; yani saf
+    utility/compute token ihraçı için FSRA lisansı **gerekmez**. **Hâlâ BULUNAMADI:** El
+    Salvador (Ley de Emisión de Activos Digitales / CNAD); token burning'in menkul
+    kıymet/vergi analizi; ESMA rehberleri; MAS'ın DTO rehberi (bkz. §6 — 9 madde).
 
 ---
 
@@ -838,12 +840,17 @@ tax", "proof-of-burn regulation".
 
 ---
 
-## 6. BULUNAMADI LİSTESİ (bir sonraki oturumda tamamlanacak)
+## 6. BULUNAMADI LİSTESİ (kalan 9 madde — bir sonraki oturumda tamamlanacak)
+
+> **24 Eylül 2026 güncellemesi:** **ADGM/FSRA ÇÖZÜLDÜ** (§4.3, BİRİNCİL FSRA guidance'ı).
+> Aşağıdaki 1 no'lu madde kapatılmış; kalan 9 madde geçerlidir. Arama motorları **kısa
+> pencerelerle** çalışıyor (ADGM bir açık pencerede yakalandı) — her oturumda tekrar
+> denenmelidir.
 
 | # | Eksik veri | Neden ulaşılamadı | Önerilen sonraki adım |
 |---|---|---|---|
-| 1 | **ADGM/FSRA** kripto varlık aktiviteleri çerçevesi + utility token muafiyeti | adgm.com URL denemeleri 404; arama motorları kapalı | FSRA Rulebook; "crypto assets activities" düzenlemesi; VARA durumu |
-| 2 | **El Salvador** Ley de Emisión de Activos Digitales + CNAD | Arama motorları kapalı | asamblea.gob.sv / Diario Oficial; "activo digital de utilidad" tanımı |
+| ~~1~~ | ~~**ADGM/FSRA** + utility token muafiyeti~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.3'e bakınız | — |
+| 2 | **El Salvador** Ley de Emisión de Activos Digitales + CNAD | Arama motorları kapalı (weblocal boş, DDG 202/CAPTCHA) | asamblea.gob.sv / Diario Oficial; "activo digital de utilidad" tanımı |
 | 3 | **ESMA** "qualification of crypto-assets as financial instruments" final guidelines + 2025–2026 MiCA rehberleri | esma.europa.eu 404; weblocal search boş | ESMA doküman kütüphanesi |
 | 4 | **MAS "A Guide to Digital Token Offerings"** güncel metni | mas.gov.sg URL denemeleri 404 | MAS guidelines sayfası |
 | 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
@@ -876,13 +883,16 @@ tax", "proof-of-burn regulation".
    https://www.finma.ch/en/~/media/finma/dokumente/dokumentencenter/myfinma/1bewilligung/fintech/wegleitung-ico.pdf?la=en
 9. **Swiss SIF**, "DLT / blockchain / tokenisation" — https://www.sif.admin.ch/en/dlt-blockchain-en
 10. **Payment Services Act 2019 (Singapur)**, konsolide metin — https://sso.agc.gov.sg/Act/PSA2019
+11. **ADGM FSRA**, "Guidance – Regulation of Virtual Asset Activities in ADGM"
+    (VER07.100625), **erişim 24 Eylül 2026, HTTP 200, 55 sayfa** —
+    https://www.adgm.com/documents/legal-framework/guidance-and-policy/fsra/guidance-virtual-asset-activities-in-adgm-20231218.pdf
 
 **İkincil kaynaklar (kullanıldıkları yerde güvenilirliği belirtilmiştir):**
-11. Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a Security" (13
+12. Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a Security" (13
     Temmuz 2023; güncelleme 17 Mart 2026) — https://gordonlaw.com/learn/judge-xrp-not-security/
-12. Cryptonews, "Ripple Settlement Denied as Judge Torres Rejects $50M Deal..." (26 Haziran
+13. Cryptonews, "Ripple Settlement Denied as Judge Torres Rejects $50M Deal..." (26 Haziran
     2025) — https://cryptonews.com/news/ripple-settlement-denied-as-judge-torres-rejects-50m-deal-xrp-institutional-sales-remain-limited/
-13. Lawfold, "Ripple SEC Lawsuit Status 2026" (17 Eylül 2026) —
+14. Lawfold, "Ripple SEC Lawsuit Status 2026" (17 Eylül 2026) —
     https://lawfold.com/ripple-sec-lawsuit-status-2026/ *(düşük güvenilirlik, yalnızca destekleyici)*
 
 **v1'den taşınan ve geçerliliği koruyan bölümler:** MiCA Article 3 numaralandırma düzeltmesi
@@ -891,5 +901,6 @@ tabanlı Ripple zaman çizelgesi (v2'de yerini birincil SEC kaynaklarına bırak
 
 ---
 
-**Belge sürümü:** **v2** (20 Eylül 2026, TAMGA) — v1'in aksine ABD bölümü tamamen birincil
- kaynaklara dayanır. §6'daki 10 madde bir sonraki oturumda tamamlanacak şekilde işaretlenmiştir.
+**Belge sürümü:** **v2.1** (24 Eylül 2026, TAMGA) — v2'nin (20 Eylül 2026) üzerine **ADGM/FSRA
+ bölümü birincil kaynakla çözüldü** (§4.3); böylece 1D'deki dört yargının üçü (İsviçre, Singapur,
+ ADGM) birincil kaynaklıdır. Kalan 9 BULUNAMADI maddesi §6'da listelenmiştir.

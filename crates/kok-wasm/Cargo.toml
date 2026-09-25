@@ -3,8 +3,14 @@ name = "kok-wasm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "WASM bindings for browser verification"
+description = "WASM light-client verifier boundary — trap-free by construction"
 rust-version.workspace = true
 
 [dependencies]
-kok-consensus.workspace = true
+kok-pvi.workspace = true
+kok-poum.workspace = true
+
+[lib]
+# cdylib so a host gets a real WASM module; rlib so the property tests can
+# run from the same source without a second crate.
+crate-type = ["cdylib", "rlib"]

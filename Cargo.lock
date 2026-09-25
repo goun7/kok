@@ -465,7 +465,8 @@ dependencies = [
 name = "kok-wasm"
 version = "0.1.0"
 dependencies = [
- "kok-consensus",
+ "kok-poum",
+ "kok-pvi",
 ]
 
 [[package]]
