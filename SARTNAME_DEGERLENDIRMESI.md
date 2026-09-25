@@ -45,6 +45,26 @@ sunuyor. Projenin gerçekte inşa ettiği şey **F0b = zk-AIR (STARK-like)**:
 `f0b_air_proto.py` + `f0b_fri_en.py` + `f0b_prod_field_en.py` + `spec_rederive_en.py`.
 Ölçülen asimetri: prove **4.56 ms** ↔ verify **0.37 ms** (toy q=97, n=8, r=2).
 
+**(2026-09-25, Rust port sırasında yeniden ölçüldü — bu iki sayının ikisi de
+STACK seviyesindedir ve bileşenlere yanlış atfedilmiştir):** aynı girdide,
+aynı tohumda (random.seed 20260925), bu makinede ayrı ayrı ölçüldüğünde:
+
+| katman | prove | verify |
+|---|---|---|
+| AIR (`f0b_air_proto.TileAIR`) | 0.959 ms | 0.051 ms |
+| FRI (`f0b_fri_en.FriRecursive`) | 0.043 ms | 0.315 ms |
+| **AIR+FRI stack** | **1.002 ms** | **0.365 ms** |
+
+Yani **"0.37 ms verify" AIR+FRI stack'inin toplamıdır** (0.365), FRI tek başına
+**0.315 ms**'dir — FRI'ya atfedildiğinde sayı, olduğu kadar bileşeni içerir.
+**"4.56 ms prove" bu toy parametrelerde bu makinede yeniden üretilmedi**
+(AIR+FRI prove 1.002 ms, Merkle köklerinin inşası dahil 1.25 ms). Sayı büyük
+olasılıkla daha yavaş bir makinede veya daha büyük bir toy'da alındı;
+silinmedi çünkü denetim onu bu repoda ölçülebilir bir sayı olarak sundu —
+burada kaydedilen, **decomposition'ın kendisidir**: hangi sayı hangi
+bileşene ait. Rust Criterion benchmark'ları aynı girdide 591.75 µs prove /
+33.14 µs AIR verify ve 7.35 µs / 47.05 µs FRI prove/verify ölçer.
+
 **Bu bir bagaj değil, bir ÖZELLİKTİR** ve şartnameye uygun hale getirilmeli: doğrulama
 stack'i GKR/Freivalds yerine **zk-AIR/FRI** olarak yazılmalı.
 

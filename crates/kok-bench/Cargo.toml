@@ -26,3 +26,11 @@ harness = false
 [[bench]]
 name = "retarget"
 harness = false
+
+[[bench]]
+name = "fri"
+harness = false
+
+[[bench]]
+name = "air"
+harness = false

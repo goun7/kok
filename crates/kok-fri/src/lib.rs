@@ -17,6 +17,13 @@
 //! Python prototype (0.0003 s at q=97, 0.0685 s at q=10007 / deg 64). Real
 //! FRI achieves log cost by evaluating at one query point; this port does not.
 
+/// Canonical polynomial for cross-language measurement: emitted by
+/// f0b_fri_en.py under random.seed(20260925). The Rust benchmark and the
+/// Python measurement must run the SAME polynomial or the ms comparison
+/// compares two different computations (the Mersenne/PCG trap again).
+pub mod canonical;
+pub mod air;
+
 /// Field arithmetic helpers over the prime q.
 pub fn fp_add(a: u64, b: u64, q: u64) -> u64 {
     (a + b) % q
@@ -352,18 +359,19 @@ mod tests {
 
     #[test]
     fn python_parity_same_transcript_byte_for_byte() {
-        // CANONICAL PARITY CHECK. The fixture below is emitted by
-        // f0b_fri_en.py::FriRecursive.recursive_prove at the SAME input
-        // (P, q, rounds) using the seeded rng the Python file uses; the Rust
-        // port must produce the identical transcript and alphas, or the port
-        // diverged and no benchmark comparison between the two is honest.
-        let p: Vec<u64> = vec![42, 16, 65, 15, 55, 72, 94, 84];
+        // CANONICAL PARITY CHECK. The canonical polynomial is emitted by
+        // f0b_fri_en.py under random.seed(20260925) and shipped in
+        // canonical.rs; the Rust port must produce the identical transcript
+        // and alphas, or the port diverged and the benchmark comparison
+        // above is comparing two different computations (the Mersenne/PCG
+        // trap the G layer hit — different RNGs, same-looking numbers).
+        let p: Vec<u64> = canonical::CANON_POLY.to_vec();
         let (tr, alphas) = recursive_prove(&p, 3, Q).expect("fold must succeed at q=97");
         // alphas are Fiat-Shamir over the polynomial, so they are deterministic
         assert_eq!(alphas, vec![73, 22, 82], "challenge diverged from Python");
-        assert_eq!(tr[1], vec![46, 93, 73, 18], "fold round 1 diverged");
-        assert_eq!(tr[2], vec![55, 81], "fold round 2 diverged");
-        assert_eq!(tr[3], vec![4], "terminal constant diverged");
+        assert_eq!(tr[1], vec![46, 93, 73, 18], "fold round 1 diverged from Python");
+        assert_eq!(tr[2], vec![55, 81], "fold round 2 diverged from Python");
+        assert_eq!(tr[3], vec![4], "terminal constant diverged from Python");
         assert!(verify_transcript(&tr, &alphas, Q));
     }
 
