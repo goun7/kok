@@ -475,4 +475,108 @@ mod tests {
         let b = proof_to_hash(&prove(&keys.sk, &keys.pk, b"alpha-b")).unwrap();
         assert_ne!(a, b, "two inputs gave the same output");
     }
+
+    /// THE IDENTITY-POINT FORGERY. RFC 9381 §5.4.1 requires H and Gamma to
+    /// be valid, NON-IDENTITY members of the subgroup, because a Gamma at
+    /// the identity makes the verification equation degenerate: s*H - c*1
+    /// collapses, and under some parameter choices an attacker can solve for
+    /// (c, s) without the secret. This is the attack a verifier that only
+    /// checks "is it a point" misses.
+    ///
+    /// The identity on P-256 is the point at infinity, which has NO valid
+    /// compressed encoding — it is not 0x02||x for any x. So a proof whose
+    /// Gamma is the identity cannot even be constructed as 81 bytes. This
+    /// test FORGES the attempt anyway and asserts the rejection, so the
+    /// property is pinned rather than assumed by a comment.
+    #[test]
+    fn a_gamma_at_the_identity_is_rejected_not_accepted() {
+        let keys = VrfKeys::from_secret(hex_to_32(
+            "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+        ));
+        // the identity has no compressed encoding; try the all-zero point
+        // representation that a naive verifier might accept, and the x=0
+        // form, at both parities
+        for parity in [0x02u8, 0x03] {
+            let mut forged = vec![0u8; PTLEN];
+            forged[0] = parity;
+            forged.extend_from_slice(&[0u8; CLEN + QLEN]);
+            // a zero c and a zero s from an attacker who controls neither
+            // the secret nor a valid H
+            assert!(
+                verify(&keys.pk, b"sample", &forged).is_none(),
+                "a proof with a degenerate Gamma at parity {} verified",
+                parity
+            );
+        }
+        // and the honest proof must still verify — the rejection is not a
+        // blanket refusal of everything
+        let honest = prove(&keys.sk, &keys.pk, b"sample");
+        assert!(verify(&keys.pk, b"sample", &honest).is_some(), "an honest proof was rejected");
+    }
+
+    /// A proof TRANSPLANTED to another public key must fail: the proof binds
+    /// to Y as well as to H, and verification recomputes H from
+    /// (pk_string, alpha), so a proof from a different key has the wrong H
+    /// and its c' cannot match. This is the cross-context replay class
+    /// (bug class 2 of the sweep), pinned for the VRF.
+    #[test]
+    fn a_proof_replayed_under_another_key_is_rejected() {
+        let k1 = VrfKeys::from_secret(hex_to_32(
+            "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+        ));
+        let k2 = VrfKeys::from_secret(hex_to_32(
+            "2ca1411a64c5f2e2ca3bd8f0e4a2c8d6f8e0f7d0e0f7e0f7d0e0f7e0f7d0e0f7",
+        ));
+        let pi = prove(&k1.sk, &k1.pk, b"sample");
+        // under its own key it verifies
+        assert!(verify(&k1.pk, b"sample", &pi).is_some());
+        // under a different key it must not
+        assert!(
+            verify(&k2.pk, b"sample", &pi).is_none(),
+            "a proof from one key verified under another"
+        );
+        // and the same proof under the same key but a different alpha must not
+        assert!(
+            verify(&k1.pk, b"different", &pi).is_none(),
+            "a proof for one alpha verified for another"
+        );
+    }
+
+    /// An s at or above q must be rejected — decode_proof's canonical-form
+    /// gate, tested at the boundary rather than far away. A proof whose s is
+    /// exactly q, or q+1, or 2^256-1, must fail before any arithmetic.
+    #[test]
+    fn a_proof_whose_s_is_not_canonical_is_rejected() {
+        let keys = VrfKeys::from_secret(hex_to_32(
+            "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+        ));
+        let pi = prove(&keys.sk, &keys.pk, b"sample");
+        // s = q exactly
+        let mut at_q = pi.clone();
+        at_q[PTLEN + CLEN..].copy_from_slice(&Q);
+        assert!(decode_proof(&at_q).is_none(), "s == q was accepted as canonical");
+        // s = q + 1
+        let mut over = Q;
+        // Q is little-endian-free big-endian; add 1 with carry
+        {
+            let mut q_be = Q;
+            for i in (0..QLEN).rev() {
+                let (v, c) = q_be[i].overflowing_add(1);
+                q_be[i] = v;
+                if !c {
+                    break;
+                }
+            }
+            over = q_be;
+        }
+        let mut over_q = pi.clone();
+        over_q[PTLEN + CLEN..].copy_from_slice(&over);
+        assert!(decode_proof(&over_q).is_none(), "s = q+1 was accepted as canonical");
+        // s = 2^256 - 1
+        let mut max_s = pi.clone();
+        max_s[PTLEN + CLEN..].copy_from_slice(&[0xFFu8; QLEN]);
+        assert!(decode_proof(&max_s).is_none(), "s = 2^256-1 was accepted as canonical");
+        // the honest proof's s is canonical and decodes
+        assert!(decode_proof(&pi).is_some(), "the honest s was rejected as non-canonical");
+    }
 }
