@@ -16,6 +16,24 @@
 //! Cost note, kept honest: verify_round is Theta(q * deg) here, as in the
 //! Python prototype (0.0003 s at q=97, 0.0685 s at q=10007 / deg 64). Real
 //! FRI achieves log cost by evaluating at one query point; this port does not.
+//!
+//! SCALING MEASURED (2026-09-25), not assumed from one point — the claim is
+//! about the SHAPE of the curve and one point cannot establish a shape:
+//!
+//! | q | Rust verify | Python verify | Rust cost ratio | q ratio |
+//! |---|---|---|---|---|
+//! | 97 | 179 us | 2.0 ms | — | — |
+//! | 1009 | 2184 us | 23.9 ms | 12.2x | 10.4x |
+//! | 2003 | 4913 us | 39.4 ms | 27.4x | 20.6x |
+//!
+//! Python tracks the linear bound closely (19.7x cost for 20.6x q). Rust is
+//! MILDLY SUPERLINEAR (27.4x for 20.6x) — about 33% above the linear
+//! prediction at q=2003. The likely cause is the residue-set allocation per
+//! round: a set of size q is materialised for every round, so the footprint
+//! grows with q and the cache stops fitting. The bound Theta(q*deg) is
+//! therefore correct asymptotically in Python and approximately correct in
+//! Rust, with a measured constant-factor deviation that a production port
+//! would address by streaming residues instead of building the set.
 
 /// Canonical polynomial for cross-language measurement: emitted by
 /// f0b_fri_en.py under random.seed(20260925). The Rust benchmark and the

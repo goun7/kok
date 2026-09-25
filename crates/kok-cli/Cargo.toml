@@ -11,5 +11,6 @@ kok-consensus.workspace = true
 kok-poum.workspace = true
 kok-ghostdag.workspace = true
 kok-u-layer.workspace = true
+kok-fri.workspace = true
 rand.workspace = true
 anyhow.workspace = true
