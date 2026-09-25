@@ -712,17 +712,67 @@ işlevsel olması gerekir (testnet öncesi token buna uymaz).
   Services Act (FISA)** ile ikame etme çalıştığı yönündeki bilgi **bu oturumda doğrulanamadı;
   BULUNAMADI olarak işaretlendi**; bir sonraki oturumda MAS üzerinden teyit edilmelidir.
 
-### 4.3 BAE / ADGM — BULUNAMADI
+### 4.3 BAE / ADGM (FSRA) — BİRİNCİL Kaynakla ÇÖZÜLDÜ (24 Eylül 2026)
 
-- ADGM (Abu Dhabi Global Market) FSRA'nın kripto varlık aktiviteleri çerçevesi ve özellikle
-  "utility token" muamelesi için birincil/regülatif kaynaklara **bu oturumda ulaşılamadı**
-  (adgm.com URL denemeleri 404; weblocal search boş; DDG CAPTCHA'a düştü).
-- **Bilinen ama DOĞRULANMAMIŞ genel bilgiler (kullanmadan önce mutlaka teyit edilmeli):**
-  ADGM FSRA'nın kripto aktiviteleri için bir **authorization rejimi** getirdiği; Dubai'de
-  **VARA**'nın (Virtual Assets Regulatory Authority) 2022'de kurulduğu. **Bu ifadeler bu
-  oturumda bir birincil kaynaktan doğrulanmamıştır.**
-- **Sonraki adım:** FSRA Rulebook ve "crypto assets activities" düzenlemesi; VARA'nın
-  2025–2026'daki durumu.
+**Kaynak (BİRİNCİL):** ADGM FSRA, "Guidance – Regulation of Virtual Asset Activities in
+ADGM" (sürüm **VER07.100625**), 55 sayfalık PDF. Erişim: 24 Eylül 2026, HTTP 200.
+https://www.adgm.com/documents/legal-framework/guidance-and-policy/fsra/guidance-virtual-asset-activities-in-adgm-20231218.pdf
+
+> **(a) Utility token = emtia, menkul kıymet DEĞİL (verbatim):** "'Utility Tokens' — **Treated
+> as commodities and, therefore, not deemed Specified Investments under FSMR.** (e.g., tokens
+> which can be redeemed for access to a specific product or service, typically provided using
+> a DLT platform, do not exhibit the features and characteristics of a regulated investment /
+> instrument under FSMR)."
+
+> **(b) Spot işlem = düzenli faaliyet DEĞİL (verbatim):** "**Unless such Utility Tokens are
+> caught as Accepted Virtual Assets, spot trading and transactions in Utility Tokens do not
+> constitute Regulated Activities**, activities envisaged under a Recognition Order (e.g., those
+> of a Recognised Investment Exchange or Recognised Clearing House), or activities envisaged
+> under MKT."
+
+> **(c) VA Framework İHRAÇLARI kapsamıyor (verbatim, KRİTİK):** "For clarification, **the
+> Virtual Asset Framework does not apply to: a) initial token or coin offerings (ICOs),
+> (whether Digital Securities or Utility tokens), or other capital formation/ capital raising
+> purposes.** For details of FSRA's regulatory treatment of ICOs, Digital Securities and
+> utility tokens please refer to the FSRA's ICO Guidance and Digital Securities Guidance;"
+
+> **(d) Beş VA Regulated Activity (verbatim liste) — İHRAÇ YOK:** "Dealing in Investments as
+> Principal; Dealing in Investments as Agent; Arranging Deals in Investments; Providing Custody;
+> and Operating a Multilateral Trading Facility". **İhraç yalnızca FRT'ler için ayrı bir
+> Regulated Activity'dir:** "Issuing a FRT is a distinct Regulated Activity in ADGM." (FRT =
+> Fiat Referenced Token = stablecoin; KÖK bunun değildir.)
+
+> **(e) "Virtual Asset" tanımı (verbatim):** "'Virtual Asset' means a digital representation of
+> value that can be digitally traded and functions as (1) a medium of exchange; and/or (2) a
+> unit of account; and/or (3) a store of value, but does not have legal tender status in any
+> jurisdiction. A Virtual Asset is a) neither issued nor guaranteed by any jurisdiction, and
+> fulfils the above functions only by agreement within the community of users of the Virtual
+> Asset; b) distinguished from Fiat Currency and E-money; and c) not a Specified Investment,
+> Fiat-Referenced Token or Spot Commodity."
+
+> **(f) AVA rejimi — lisanslı kişileri bağlar (verbatim):** "COBS Rule 17.2.1 provides that an
+> Authorised Person conducting any VA Regulated Activity **shall not conduct such Regulated
+> Activity with a Virtual Asset which is not an Accepted Virtual Asset.** An Authorised Person
+> is obliged to assess each Virtual Asset it proposes to use against the criteria outlined in
+> COBS Rule 17.2.2 ... [and] ... notify the FSRA upon completion of that assessment no later
+> than five Business Days prior to using the Virtual Asset."
+
+**ADGM yanıtı (TAMGA analizi):**
+- **Saf utility/compute token İHRAÇ ETMEK için FSRA LİSANSI GEREKMEZ.** Üç bağımsız gerekçe
+  (hepsi yukarıdaki verbatim pasajlarda): (1) VA Framework "does not apply to ... ICOs ...
+  Utility tokens"; (2) utility tokenlar commodity muamelesi görür, Specified Investment
+  değildir; (3) "issuing" beş VA Regulated Activity'den hiçbirinde yoktur (yalnızca FRT için
+  ayrı bir faaliyettir).
+- **KÖK için iki koşullu uyarı:** (i) KOK compute ödemesi olarak kullanıldığı için "medium of
+  exchange" fonksiyonunu taşır → "Virtual Asset" tanımına girer. **Bu, ihraççı için değil,
+  ADGM'deki lisanslı kişiler içindir:** bir Authorised Person KOK'da dealing/custody/MTF
+  yapacaksa **AVA değerlendirmesi** (COBS 17.2.2 kriterleri) + FSRA'ya 5 iş günü önceden
+  bildirim zorunluluğu vardır. (ii) Dubai ana karasındaki **VARA** bu FSRA guidance'ı
+  kapsamında değildir (ADGM ≠ Dubai); VARA'nın 2025–2026 durumu bu oturumda **BULUNAMADI**.
+- **Not:** Bu guidance ADGM'nin **kendi** ICO guidance'ına atıf yapar ("FSRA's ICO Guidance
+  and Digital Securities Guidance") — o belgenin tam metni bu oturumda çekilemedi, fakat
+  yukarıdaki (a)–(c) pasajlar utility-token ihraçı için **doğrudan** ve **yeterli** bir cevap
+  vermektedir.
 
 ### 4.4 El Salvador — BULUNAMADI
 
@@ -745,7 +795,7 @@ işlevsel olması gerekir (testnet öncesi token buna uymaz).
 | **AB (MiCA)** | "utility token" menkul kıymet değil; crypto-asset olarak MiCA'ya girer | Whitepaper **gerekmez** (Art 4(3)(b) madencilik) — **AMA listelenme niyeti muafiyeti düşürür (Art 4(4))** | Reg (EU) 2023/1114 Art 4 | **Yüksek** (birincil) |
 | **İsviçre** | Hayır ("sole purpose ... digital access rights") | **Gerekmez** (menkul kıymet değilse); AML istisnası ancak "non-financial application" ise | FINMA ICO Guidelines (16.02.2018) | **Yüksek** (birincil; 2018 tarihli — güncelleme kontrolü gerek) |
 | **Singapur** | DPT tanımına girer (ödeme aracı) ama menkul kıymet değil | **Gerekmez** (ihraç/madencilik lisanslı hizmet değil); takas/custody **ister DPT lisansı** | PSA 2019 s2 + First Schedule Part 3 | **Yüksek** (birincil) |
-| **BAE / ADGM** | BULUNAMADI | BULUNAMADI | — | **BULUNAMADI** |
+| **BAE / ADGM** | Hayır — utility token "**Treated as commodities**", Specified Investment değil | **Gerekmez** — "the Virtual Asset Framework does not apply to ... ICOs ... Utility tokens"; "issuing" 5 VA Regulated Activity'de yok | FSRA Guidance VER07.100625 (24.09.2026) | **Yüksek** (birincil) |
 | **El Salvador** | BULUNAMADI | BULUNAMADI | — | **BULUNAMADI** |
 
 ---
