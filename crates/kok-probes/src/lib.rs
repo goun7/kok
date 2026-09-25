@@ -86,7 +86,7 @@ mod tests {
         // and TV-59 (no order entry outside past(B))
         use kok_ghostdag::{Block, Ghostdag, GHOSTDAG_K};
         let mut g = Ghostdag::new(GHOSTDAG_K);
-        let mut add = |g: &mut Ghostdag, bid: u64, parents: &[u64]| {
+        let add = |g: &mut Ghostdag, bid: u64, parents: &[u64]| {
             g.add(Block { bid, parents: parents.to_vec() });
         };
         add(&mut g, 1, &[]);

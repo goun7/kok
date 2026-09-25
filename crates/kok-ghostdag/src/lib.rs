@@ -453,7 +453,6 @@ pub struct RewardSplit {
 mod tests {
     use super::*;
     use crate::sim::mine_chain;
-    use rand::seq::SliceRandom;
     use rand::SeedableRng;
 
     fn add_line(g: &mut Ghostdag, bid: Bid, parents: &[Bid]) {
