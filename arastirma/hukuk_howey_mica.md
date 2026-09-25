@@ -81,8 +81,13 @@ yazılmıştır.**
     (sertifikatör raporuyla) bağlar (Art. 26). KOK transfer edilebilir olduğu için dar Art. 4(c)
     "únicamente" istisnasına girmez. **Net kontrast:** İsviçre/Singapur/ADGM'de lisans
     gerekmezken, El Salvador'da yetkilendirme gerekir. Böylece **1D'nin dört yargısı da tamam**.
-    **Hâlâ BULUNAMADI:** token burning'in menkul kıymet/vergi analizi; ESMA rehberleri; MAS'ın
-    DTO rehberi (bkz. §6 — 8 madde).
+     **Hâlâ BULUNAMADI (kalan tek madde):** token burning'in **vergi** açısından
+     kesin analizi — bkz. §6.E, ikincil kaynaklarla KISMEN belgelenmiş, kesin
+     görüş yok; §6.5'teki phantom-tax riski *çözülmemiş bir argüman* olarak
+     duruyor, *yerleşmiş bir kural* olarak değil. Bu listedeki öteki üç madde
+     v2.6'da kapatıldı ve listenin güncel kalması için buradan çıkarıldı:
+     ESMA rehberleri (§6.2, Guideline 9 + ESMA75453128700-1323), MAS'ın DTO
+     rehberi (§6.3, Case study 1), SEC/ABD bölümünün tamamı (§1).
 
 ---
 
