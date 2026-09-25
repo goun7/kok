@@ -3576,10 +3576,159 @@ bana raporladı).
 `cargo test --release --workspace` **100/100 rc=0**. Skor **83.65**
 (dokunulmadı). Tamga 4 rapor iletti, sonuncusu TAMAM+BEKLE.
 
+## PRODUCTION-READY OTURUMU (2026-09-25, 3. blok) — 100 → 138 test
+
+Tüm iskeletler doldu. Bu blokta kapananlar:
+
+### 19. **ECVRF → task assignment WIRE** (`a0b8a5a`)
+    ECVRF modülü doğru ama **ULAŞILABİLİR DEĞİLDİ** — hiçbir şey onu
+    çağırmıyordu. Spec §A.10.3 gerçek akış: her görev için madenci
+    (seed, tid) üzerinden VRF değerlendirir, çıktı bir kapıdan geçerse
+    görev atanır. Kapı **INTEGER-EXACT**: spec `w = vrf_out/2^256` [0,1)
+    yazar ama float bölme consensus-safe değil — iki makine son bitlerde
+    anlaşamaz, tek atama hakkında anlaşmazlık = fork. Üst 64 bit tam sayı
+    karşılaştırması yapıldı.
+    **SPEC SAPMASI BULUNDU VE DÜZELTİLDİ:** epoch_seed ham blok hash'ini
+    döndürüyordu, spec `H("seed"‖blk.hash)` ister. Domain separator olmadan
+    bir bloğu tanımlayan aynı baytlar VRF girdisi olarak replay edilebilirdi
+    — anticone bug'ıyla aynı sınıf (hatanın ne hesapladığında değil,
+    tanımlayıcının hangi KÜMEYE ait olduğunda).
+    **ÖLÇÜLDÜ:** kapı iddia ettiği oranda filtreliyor (4000 görevde yarım
+    kapı ~%50, onda bir kapı ~%10, 3-sigma bantlarında).
+    **AÇIK GRINDING YÜZEYİ, ÖLÇÜLDÜ, GİZLENMEDİ:** madenci KENDİ anahtarı
+    altında VRF değerlendirdiği için N kayıtlı anahtara bölmek bağımsız
+    çekiliş sayısını N katlar. VRF her çekilişi doğrulanabilir yapar ama
+    çekiliş SAYISINI dürüst yapmaz — kapanması registration'da
+    one-key-per-bonded-identity gerektirir (bu crate'in dışı). Test çarpanı
+    ölçüyor (iki anahtar ~2.0x, 0.25 içinde) ki gelecek düzeltmenin
+    yenmesi gereken bir sayısı olsun.
+
+### 20. **kok-net: relay contract + ölçülen connectivity threshold** (`727cfad`)
+    6 satır iskelettik. Tam P2P stack doldurmak ölçülmemiş şekil iddiası
+    olurdu; sadece consensus-relevant olan implement edildi ve ölçüldü:
+    - **SeenSet**: bir blok bir kez, ilk görüşte relay — yoksa her inform
+      her tur her peere yeniden gönderir, bant genişliği sınırsız büyür
+      (gossip katmanı ile amplification saldırısı arasındaki fark).
+    - **AdmissionGate**: her parent bilinmeyen blok admit edilmez — yabancı
+      bir invalid blok bir node'un CPU'sunu yer, ağın bant genişliğini değil.
+      **DÜRÜST KARŞI-ÖZELLİK test ile sabitlendi:** bu kapı geride kalmış
+      bir node'un DÜZGÜN bir bloğunu da reddeder — IBD sync yolu kapının
+      yanında olmalı; kapı relay bant genişliğini korur, catching-up node'a
+      liveness VERMEZ.
+    - **Yayılma bound'u**: GHOSTDAG k profili fork 0.30 @ TARGET_BLOCK_TIME
+      0.1s'de ölçüldü; bu da bir bloğun bir interval içinde ulaşmasını
+      varsayar. Yayılma yavaşlayınca forkler çoğalır, anticone k'yı geçer,
+      "k=18'de %0.0 over-anticone" tutmaz. **Bağlantı bu katmandan DAG
+      katmanına akıyor ve burada yazılı.**
+    - **ÖLÇÜLDÜ:** fanout-8 grafiğinde her kaynaktan teslimat tam; derinlik
+      logaritmik (n 16→1024, 1024-node derinliği 16-node'unkinden 6 tur
+      içinde — zincir olsa fail ederdi); fanout arttıkça derinlik
+      monotone azalıyor.
+    - **CONNECTIVITY THRESHOLD TEORİYE GÖRE ÖLÇÜLDÜ:** random out-degree-F
+      grafta bir node'un hiç seçilmeme olasılığı ~e^-F → beklenen ulaşılamayan
+      N·e^-F. N=512 F=4'te 512·e^-4 ≈ 9.4; **ölçüm de bu bantta**. Eşiğin
+      altında ağ PARTITION olur = liveness failure (ulaşılmayan node'un
+      bloğu asla varmaz), None olarak raporlanır, umut dolu bir sayıyla
+      gizlenmez.
+      → **Bu, önceki bir testin varsayımını değiştirdi:** ilk test fanout 4'ün
+      connected olduğunu varsayıyordu; denenen her seed'de yanlıştan
+      çıktı. Hata ölçüme dönüştürüldü, üstü örtülmedi.
+
+### 21. **kok-ledger: escrow + conservation identity** (`81d7a7c`)
+    Para yüzeyi — buradaki bug değer kaybıdır, is_final phantom-block
+    bug'ıyla aynı sınıf. Tek invariant etrafında kuruldu:
+      **sum(balances) + sum(escrowed) == deposited − burned**
+    Her depositle gelen KOK her an üç yerden tam birinde: harcanabilir
+    bakiye, açık görev escrow'u, veya yakılmış. Başka hiçbir şey unit
+    yaratamaz/yokedemez.
+    **BRUTE-FORCE ÖLÇÜLDÜ:** 20.000 adımlık seeded random lifecycle'ın
+    HER adımından sonra invariant kontrol edildi (deposit, post, settle,
+    refund, reddedilen post, bilerek double-settle). Tek unit hatası herhangi
+    bir adımda fail eder; seed regression'u flake değil tekrarlanabilir yapar.
+    **PARA-YÜZEY BUG'LARI STATE ERROR OLARAK SABİTLENDİ:** settle edilen
+    tekrar settle edilemez (double-payment), settle edilen refund edilemez
+    (miner'a ödeyip poster'a iade = unit yaratmak), post fee'yi AYNI adımda
+    debit eder (yoksa aynı fonlar bir blokta iki göreve söz verilebilir).
+    Refund TAM fee'yi iade eder, hiç yakmaz — iş yapılmadı.
+    **ARİTMETİK:** her işlem checked, hiç wrap yok — fee*burn_rate tavanda
+      wrap'leyip küçük bir burn verebilir, miner'ı eksik öder.
+    **BİRİM HATASI KENDİ TESTİNDE YAKALANDI:** `burn = fee·rate/1000`, yani
+      500 PER MILLE = **%50**; test ve iki doc comment "%5" iddia ediyordu —
+      MAX_BURN_RATE=500 per mille (bu crate'in tavanı) ile TREASURY_BPS=500
+      BAZİS NOKTA (%5, G-layer) karıştırıldı. **Aynı rakamlar, farklı birim,
+      farklı katman.** Ledger aritmetiği doğruydu; beklenti ve yorumlar
+      yanlıştı, her iki 500 yan yana isimlendirilerek düzeltildi.
+    **SINIR, AÇIKÇA BELİRTİLDİ:** bu in-memory REFERENCE ledger'dır
+      (accounting kurallarının hakemi, single-threaded, deterministic).
+      Production ledger persistence, batch-atomic debit, Merkle-committed
+      state root ister; bunlar burada yok ve yok diyerek ölçülmemiş şekil
+      iddiası verilmedi.
+
+### 22. **kok-consensus: composition boundary, zero-weight ÖLÇÜLDÜ** (`8ec2b6a`)
+    13 satırlık re-export facade idi. Ayrım proste artık test edilen bir
+    özellik. Üç savunma katmanı:
+    1. **YAPISAL** — GHOSTDAG Block'unda U proofs için alan yok; ağırlık
+       hesaplayan graf göremeyeceğini danışamaz.
+    2. **TİPSEL** — u_task_consensus_weight proof alır 0 döner; reward_split
+       ve select U argümanı almaz.
+    3. **ÖLÇÜLDÜ** — 50 yüksek-fee U proof taşıyan blok ile hiç taşımayanın
+       blue_score, pay_set ve order'u aynı.
+    **FORK'TA ÖLÇÜLDÜ, ZİNCİRDE DEĞİL:** her iki varyantı kuran DAG'de
+    derinlik 2'de gerçek fork var — düz zincir ağırlığın gerçekte
+    bağımlı olduğu coloring'i hiç sarsmaz; sadece zincir kuran bir test
+    invariant her contested block'ta bozukken geçebilirdi. Ağırlık her fee
+    seviyesinde ve sayıda da sıfır (u64::MAX fee'li tek proof, 1000 proof).
+    **Para yüzeyi formu da sabitlendi:** reward split bundled proof'u
+    görmez — U proof daha büyük blok ödülü alamaz, sadece escrow edildiği
+    fee'yi. add_block U proof'ları gerçek bir adım olarak projekte eder,
+    yorum olarak değil.
+
+### 23. **kok-ffi: trap-free C ABI** (`d4f2094`)
+    6 satır iskelettik. extern C fonksiyonu asla caller'a unwind edemez
+    (Rust panic FFI sınırında UB, C yakalayamaz) → her fonksiyon TOTAL:
+    caller-supplied length üzerinde indexing yok, checked aritmetik
+    (fee+carried u64::MAX'te release'de sessiz wrap'ler, wrap'lenen cap
+    protocol'ün reddettiği görevi admit ederdi), caller adına allocation
+    yok, her sonuç status code (rejectler dahil).
+    **catch_unwind YOK, NEDENİYLE:** bu fonksiyonlar total, yakalanacak
+    bir şey yok. Guard sadece yüzey panic EDİLEBİLEN koda büyüyünce gerekir
+    (indexing, parsing, allocating) — o rehberlik bir wiki'de değil
+    bir sonraki FFI fonksiyonunun yazılacağı sınırdaki doc'ta.
+    **ÖLÇÜLDÜ:** u64::MAX her yerde (overflow rapor etmeli, pass'a
+    wrap'lememeli), cap'te carried (reddetmeli), kalan bütçeyi tam
+    dolduran görev (geçmeli), zero fee (görev değil), burn sınırları
+    (tavanın kendisi serbest, bir üstü değil). **FFI gate her noktada
+    protocol gate ile aynı.**
+    **MAGIC NUMBER 500 KAYNAĞINDA İSİMLENDİ:** burn-rate ceiling validate_u_task
+    içinde bare 500 idi — treasury'nin 500 bazis noktası (%5) ile aynı
+    rakamlar. Artık birimleri yazılı named MAX_BURN_RATE constant ve
+    ABI'dan kok_max_burn_rate olarak exposing (SDK consumer node'un
+    değerine hardcoded kopya yerine derlesin).
+    **KAPSAM DÜRÜST TUTULDU:** protocol constant'ları ve U-layer admission
+    gate exposing edildi; G-certificate verification yüzeyinin kendi
+    byte-packet ABI'i kok-wasm'da (o intended light-client path) ve burada
+    kopyalamak drift edebilecek ikinci bir source of truth yaratırdı.
+
+### DURUM
+`cargo test --release --workspace` **138/138 rc=0** (bu blokta 100→138).
+Bu bloğun commit'leri: `a0b8a5a` (assignment wire), `727cfad` (kok-net),
+`81d7a7c` (kok-ledger), `8ec2b6a` (kok-consensus), `d4f2094` (kok-ffi).
+**Tüm 15 crate artık dolu — iskelet KALMADI.** Skor **83.65** (dokunulmadı).
+
+### BU OTOTURUMDA YAKALANAN ÖZELLİK ÖRÜNTÜLERİ
+- **units/label** (4. kez): MAX_BURN_RATE per mille vs TREASURY_BPS bazis
+  nokta — aynı 500, farklı birim, farklı katman. Ledger'ın kendi test'i
+  yakaladı.
+- **wrong set / cross-context replay**: epoch_seed domain separation yok;
+  blok tanımlayan baytlar VRF girdisi olarak replay.
+- **unimplemented gate / unreachable code**: ECVRF doğru ama hiçbir şey
+  çağırmıyordu; doğru kod ulaşılamazsa doğru DEĞİL.
+- **wrong assumption turned into measurement**: fanout-4 connected
+  varsayıldı, her seed'de yanlıştan çıktı → varsayım ölçüme dönüştü.
+
 ### KALAN (sirali, güncel)
-1. ECVRF'yi epoch_seed / task assignment akışına entegre et (modül var,
-   wire edilmedi)
-2. Kalan iskeletler: kok-net, kok-ledger, kok-ffi (F3+ dürüst arayüzler)
-3. kok-consensus: iki-katman composition dok'u (şu an re-export facade)
-4. Tamga'ya kapanış onayı + 5 düşük öncelikli BULUNAMADI maddesi
-5. Skor **83.65** (dokunma)
+1. Derin adversarial hardening: kalan crate'lerde dört bug sınıfını avla
+2. Kod kalitesi temizliği: unused import'lar, `mut`, non-snake_case
+3. Tamga'ya kapanış onayı zaten verildi; 5 düşük öncelikli BULUNAMADI
+   maddesi opsiyonel
+4. Skor **83.65** (dokunma)

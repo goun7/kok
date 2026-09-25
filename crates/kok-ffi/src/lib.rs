@@ -53,7 +53,7 @@ pub extern "C" fn kok_c_fee() -> u64 {
 /// value the node uses, not a copy.
 #[no_mangle]
 pub extern "C" fn kok_epoch_lookback() -> u64 {
-    kok_consensus::kok_u_layer::EPOCH_LOOKBACK as u64
+    EPOCH_LOOKBACK as u64
 }
 
 /// The ceiling on a task's burn rate, in parts per thousand. NOT the
