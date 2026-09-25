@@ -3732,3 +3732,56 @@ Bu bloğun commit'leri: `a0b8a5a` (assignment wire), `727cfad` (kok-net),
 3. Tamga'ya kapanış onayı zaten verildi; 5 düşük öncelikli BULUNAMADI
    maddesi opsiyonel
 4. Skor **83.65** (dokunma)
+
+## ADVERSARIAL SWEEP — G LAYER + AIR (2026-09-25, 4. blok) — 138 → 146
+
+Bu blok "guard, koruduğu şeyden önce çalışıyor mu?" sorusunu her iki proof
+crate'inde sordu. **Aynı sınıf tek dosyada üç kez ısırdı.**
+
+### 24. **kok-poum verify: ragged matrix PANIC'i** (`062cde4`)
+    `KwKernel::verify` satır SAYISINI, tile bound'larını (i,j) ve width
+    binding'i (m) kontrol ediyordu — ama her bir SATIRIN GENİŞLİĞİNİ asla.
+    Kısa satırlı bir matrix index'i geçip **panic**'liyordu. Verify yolunda
+    panic = her node'u düşüren DoS: tek malformed matrix header'ı bloğu
+    reddetmek yerine node'u kapatır.
+    **Sınıf:** PVI boundary ile aynı — structural gate index'ten ÖNCE gelmeli,
+    yoksa saldırgan panic'i seçer. Guard her iki operand için eklendi.
+    **Ölçüldü:** dürüst matrix üzerinde madenlenen sertifika hala verify
+    ediyor; AYNI sertifika A'nın veya B'nin kısaltılmış satırı üzerinde
+    reddediyor. Boyut uyumsuzluğu birkaç şekilde, boş operandlar dahil.
+    q==0 ve r==0 degenerate kernel'ı da guard'landı (bölme by zero).
+    Mevcut 14 test (Python canonical parity dahil) değişmedi, hala geçiyor.
+
+### 25. **kok-fri/air.rs: guard DOĞRU YERDE DEĞİL** (`b6d8ad0`)
+    **Daha sinsi versiyon.** `TileAir::verify`'de flat-index guard'I VARDI —
+    ama koruduğu `e[i*r][l*r]`/`f[l*r][j*r]` erişimlerinden SONRA çalışıyordu.
+    Yanlış (i,j) reddedilmek yerine panic'liyordu. **Koruduğu şeyden sonra
+    çalışan koruma hiçbir şey korumaz** — ve G-layer'daki halinden daha kötü,
+    çünkü kod savunmalı okunuyordu.
+    **Aynı pasajda üç ek yüzey:**
+    - e/f noise matrix'lerinin SATIR GENİŞLİĞİ hiç kontrol değil (ragged →
+      panic) — G-layer'ın birebiri, ikinci proof sisteminde;
+    - q==0 / r==0 degenerate accumulator'da bölme by zero;
+    - `a_paths`/`b_paths` adım başı indexleniyordu ama uzunlukları gate'sizdi
+      → adımdan az path'i olan bir proof panic'lerdi.
+    **VE SONRA SINIF KENDİ DÜZELTMESİNİ ISIRDI (üçüncü kez):** degenerate-
+    kernel guard'ı trace-boundary satırından SONRA koymuştum; o satırın
+    `acc % self.q`'sı q'ya bölüyor → guard panikten ÖNCE değil SONRA.
+    Guard artık `verify`'nin İLK statement'ı.
+    **Ölçüldü:** dürüst proof hala verify ediyor; AYNI proof out-of-range i,
+    out-of-range j, ikisi birden uzakta, ragged E, kısa F, truncated a_paths,
+    boş b_paths ve iki degenerate kernel'da reddediyor — hepsi eskiden
+    panic'leyen durumlar. Python parity anchor'ları ve honest prove/verify
+    değişmedi.
+
+### DURUM
+`cargo test --release --workspace` **146/146 rc=0** (138→146).
+Commit'ler: `062cde4` (G-layer ragged), `b6d8ad0` (AIR guard order).
+
+### BU SWEEP'İN ÖZETİ
+"Guard önce" kuralı artık beş farklı yerde uygulandı: PVI decode (round 6),
+kok-poum verify (bu blok), kok-fri air verify tile guard (bu blok), kok-fri
+degenerate kernel (bu blok, iki denemede), WASM checked arithmetic (round 6).
+**Her biri gerçek bir panic yüzeyiydi.**Örüntü: Rust release mode'da indexing
+panic'leri DoS'a dönüşür; structural gate'i kullanımdan SONRA koymak,
+koymamakla aynıdır.
