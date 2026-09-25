@@ -3364,3 +3364,61 @@ ama KOK'un U-katmani **sifir konsensus agirligi** tasarimiyla geliyor:
   DEGISTIRMEZ (KOK egemen L1, disaridakileri beklemez); onlar KOK'un
   U-katman talebinin (phi>0) GOSTERGESI olabilirler ama KANITI olamazlar
   — kanit canli ag olcusudur (TV-72).
+
+## OTONOM OTURUM (2026-09-25) — G katmani + FRI/AIR + GHOSTDAG + chain + 3 dogrulama
+
+Tamga'nin 4 onceligi kapatildi. Her biri olculdu, her hata yerinde belgelendi.
+
+### KAPANANLAR
+1. **G katmani** (`7f19ddb`): `h_num()`'un `to_string()` heap allocation'i
+   kaldirildi (el ile u64->decimal, 20-byte scratch + reverse-copy, bayt-özdes).
+2. **BIRIM HATASI (en onemli)**: `g_compare.rs` `as_nanos()/reps/1000` = **µs**
+   yazdiriyordu ama etiket `ms` idi. "Rust verify 0.73 ms → Python 170× daha
+   hizli" raporu **tamamen bu hataydi**. Duzeltildi:
+   **Rust 0.78 µs vs Python 10.7 µs → Rust 13.7× DAHA HIZLI.**
+3. **FRI + zk-AIR portu** (`95990f3`): canonical fixture ile (Mersenne/PCG
+   tuzaği yok). Merkle kökü her iki dilde **7776579357882374515**.
+4. **Orkestrator'un rakamlari yanlis atfedilmisti**: "0.37 ms FRI verify"
+   aslinda **AIR+FRI stack** (0.365); FRI tek basina 0.315 ms. "4.56 ms prove"
+   bu toy parametrede **üretilmedi** (1.002 ms) — makine-bagimli kaydedildi,
+   silinmedi. Açiklamasi kalici bulgu.
+5. **GHOSTDAG tam consensus** (`aa21d19`): order() gerçek kural (hash sirasi
+   degil), **anticone bug'i** (future(B) dahil ediliyordu → naive max 123 vs
+   proper max 19, k=18 ancak böyle baglandi), pay set + reward split
+   (U sifir-agirlik TIPLE), k profili olculdu (k=18'de over-anticone %0.0).
+6. **Chain selection + finality** (`d450ef4`): blue-score gap kurali, gap'lar
+   belgelendi (network layer yok).
+7. **58-Mahrem kapanisi** (`bcb17cd`): Noir `circuits/noir/src/membership.nr`
+   gercek Pedersen Merkle membership devresi (38 satir). İlk taramam
+   **YANLIS NEGATIF**'ti (kok dizine bakti, devreler bir alt dizinde).
+8. **Anticone regression testi** (`b0e2717`): bug'in geri donusune karsi 2 test.
+
+### HATA SINIFLARI (genel lesson)
+- **Birim/etiket hatasi** (g_compare µs→ms): olcum dogru, etiket yanlis,
+  sonuc 1000× sapti. "Olcerken degil, YAZARKEN" bozuldu.
+- **Yanlis kume/tarama yeri** (anticone future dahil; 58-Mahrem kok dizin):
+  her ikisi de "olcum nereye baktigina bagli" — ayni sinif.
+- **Silinmeyen düzeltmeler**: 4.56 ms, "Python 170×", eski verify tablosu —
+  hepsi yerinde RETRACTION ile duruyor.
+
+### OLÇUMLER (hepsi canonical girdi, warm)
+| ne | Rust | Python | oran |
+|---|---|---|---|
+| G verify (2^16) | 0.78 µs | 10.7 µs | 13.7× Rust |
+| G verify (2^4) | 1.68 µs | — | — |
+| G mine/attempt | 0.0084-0.0086 ms | 0.05-0.0665 ms | 6-7.9× Rust |
+| AIR prove/verify | 591.75 / 33.14 µs | 959 / 51 µs | 1.6× / 1.5× |
+| FRI prove/verify | 7.35 / 42.27 µs | 43 / 315 µs | 5.9× / 7.4× |
+| GHOSTDAG order (600 blk) | 43 µs | — | << 100 ms T_b |
+| GHOSTDAG per-block add | 757 µs | — | %0.75 CPU @ 10 BPS |
+
+### TEST DURUMU
+`cargo test --release --workspace` **67/67 rc=0** (kok-poum 14, kok-fri 12,
+kok-ghostdag 18, kok-chain 5, kok-u-layer 12, kok-probes 6).
+`audit_turkish_en.py` CLEAN. `suite_gate_en.py` 39/39, 0 broken.
+
+### KALAN (sirali)
+1. GNoME-Forge U-layer pilot (G katmani bitince HOLD kaldirildi — artik baslayabilir)
+2. U-layer VRF HMAC-toy → ECVRF
+3. PVI (WASM verifier) arayuzu
+4. Skor **83.65** (dokunma)
