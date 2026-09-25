@@ -168,6 +168,13 @@ impl GossipNet {
     /// partition is a liveness failure, not a slow relay.
     pub fn broadcast_rounds(&self, src: usize) -> Option<usize> {
         let n = self.peers.len();
+        // src is adversarial input: an out-of-range node id must answer
+        // "nothing can be broadcast" rather than index past the peer table
+        // and unwind. Same class as the proof-system guards — the bounds
+        // check has to come before the index.
+        if src >= n {
+            return None;
+        }
         let mut dist = vec![usize::MAX; n];
         let mut q = VecDeque::new();
         dist[src] = 0;
@@ -196,6 +203,11 @@ impl GossipNet {
         if n == 0 {
             return 0.0;
         }
+        // an out-of-range source reaches nobody: the fraction is zero, and
+        // this guard keeps the peer-table index below the table
+        if src >= n {
+            return 0.0;
+        }
         let mut dist = vec![usize::MAX; n];
         let mut q = VecDeque::new();
         dist[src] = 0;
@@ -220,6 +232,12 @@ impl GossipNet {
     /// connectivity threshold for this network size.
     pub fn unreachable_from(&self, src: usize) -> usize {
         let n = self.peers.len();
+        // an out-of-range source cannot reach any of the n nodes, so all n
+        // are unreachable — the honest count, and this keeps the index in
+        // bounds rather than panicking on a phantom node id
+        if src >= n {
+            return n;
+        }
         let mut reached = vec![false; n];
         let mut q = VecDeque::new();
         reached[src] = true;
@@ -422,5 +440,61 @@ mod tests {
         let mut z = Rng::new(0);
         let first = z.next_u64();
         assert_ne!(z.next_u64(), first, "a zero-seeded generator produced a constant stream");
+    }
+
+    /// OUT-OF-RANGE NODE ID: the three graph queries must answer rather than
+    /// panic. A node id beyond the network has no peer table entry, and all
+    /// three helpers indexed `self.peers[src]` directly — so a phantom node
+    /// id unwound instead of reporting "unreachable". This is the same class
+    /// as the proof-system bounds bugs: the check has to precede the index.
+    /// The answers are the honest ones for a node that is not on the graph.
+    #[test]
+    fn a_phantom_node_id_answers_rather_than_panicking() {
+        let g = GossipNet::new(16, 4, 20260919);
+        let n = 16;
+        // broadcast: nothing can be broadcast from a node that does not exist
+        assert_eq!(
+            g.broadcast_rounds(n),
+            None,
+            "a phantom node broadcast a block — and `n` is the first out-of-range id"
+        );
+        assert_eq!(g.broadcast_rounds(usize::MAX), None, "a far out-of-range id broadcast");
+        // delivery: zero of the network is reached
+        assert_eq!(
+            g.delivery_fraction(n, 10),
+            0.0,
+            "a phantom node delivered to a nonzero fraction of the network"
+        );
+        // unreachable: all n nodes are unreachable from a node that is not one
+        assert_eq!(
+            g.unreachable_from(n),
+            n,
+            "a phantom node did not leave every node unreachable"
+        );
+        // the honest queries still work on the same graph, so the guards are
+        // not a blanket refusal
+        assert!(g.broadcast_rounds(0).is_some(), "node 0 cannot broadcast on a live graph");
+        assert!(g.unreachable_from(0) < n, "node 0 cannot reach any peer");
+    }
+
+    /// THE EMPTY NETWORK is the other degenerate corner. Zero nodes means no
+    /// peer table at all; every query must still answer without panic.
+    #[test]
+    fn an_empty_network_answers_every_query_without_panicking() {
+        let g = GossipNet::new(0, 4, 20260919);
+        assert_eq!(g.broadcast_rounds(0), None, "a node broadcast on an empty network");
+        assert_eq!(g.delivery_fraction(0, 10), 0.0);
+        assert_eq!(g.unreachable_from(0), 0, "an empty network has unreachable nodes");
+    }
+
+    /// A SINGLE NODE network is the other end of the degenerate range: one
+    /// node, no peers to draw, so it broadcasts in one round and reaches
+    /// only itself. The degree-fanout logic must handle n=1 without panic.
+    #[test]
+    fn a_single_node_network_broadcasts_to_itself() {
+        let g = GossipNet::new(1, 4, 20260919);
+        assert_eq!(g.broadcast_rounds(0), Some(1), "a lone node did not broadcast in one round");
+        assert_eq!(g.delivery_fraction(0, 1), 1.0, "a lone node did not reach itself");
+        assert_eq!(g.unreachable_from(0), 0);
     }
 }
