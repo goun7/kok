@@ -88,6 +88,10 @@ pub enum LedgerError {
     AlreadySettled,
     BurnRateOutOfRange,
     Overflow,
+    /// settle called on a task that was never assigned — no payee exists.
+    NotAssigned,
+    /// settle named a miner that is not the task's assignee.
+    WrongPayee,
 }
 
 impl Ledger {
@@ -166,12 +170,30 @@ impl Ledger {
     /// Settle a proven task: pay the assignee and burn the burn component.
     /// Idempotent-by-rejection — settling an already-settled task fails
     /// rather than paying again, which is the double-payment bug pinned.
+    ///
+    /// THE PAYEE IS THE ASSIGNEE. The burn and the payee are the two money
+    /// destinations this function opens, and for a long time only the burn
+    /// was validated while the payee was a caller-supplied `miner` that
+    /// `assign` had no say over. That made assignment decorative: a task
+    /// could be settled to ANY miner, including one never assigned — the
+    /// money moved on the caller's word, and the assignment record was
+    /// bookkeeping nobody consulted. The settlement now requires the caller
+    /// to name the task's own assignee, so an unassigned task cannot be
+    /// settled at all and a task assigned to X cannot be settled to Y. This
+    /// is what makes the escrow a payment to the party that did the work
+    /// rather than to whoever asks.
     pub fn settle(&mut self, tid: u64, miner: u64) -> Result<Settlement, LedgerError> {
         let t = self.tasks.get_mut(&tid).ok_or(LedgerError::UnknownTask)?;
         match t.status {
             TaskStatus::Settled => return Err(LedgerError::AlreadySettled),
             TaskStatus::Refunded => return Err(LedgerError::NotEscrowed),
             TaskStatus::Escrowed => {}
+        }
+        // the payee must be the assignee on record. An unassigned task has
+        // no payee, and a task assigned to X cannot be settled to Y.
+        let assignee = t.assignee.ok_or(LedgerError::NotAssigned)?;
+        if assignee != miner {
+            return Err(LedgerError::WrongPayee);
         }
         let fee = t.fee;
         let burn_rate = t.burn_rate;
@@ -316,12 +338,13 @@ mod tests {
         ));
     }
 
-    /// Settling pays the miner and burns the burn component, exactly.
+    /// Settling pays the assignee and burns the burn component, exactly.
     #[test]
     fn settling_splits_the_fee_into_pay_and_burn() {
         let mut l = Ledger::new();
         l.deposit(1, 1000).unwrap();
         l.post_task(1, 10, 1000, 250).unwrap(); // 25% burn
+        l.assign(10, 2).unwrap();
         let s = l.settle(10, 2).unwrap();
         assert_eq!(s.pay, 750);
         assert_eq!(s.burn, 250);
@@ -332,6 +355,65 @@ mod tests {
         assert!(l.conserved());
     }
 
+    /// THE ASSIGNEE IS THE PAYEE — the bug this test pins. For a long time
+    /// `settle` took the payee as a caller-supplied `miner` and never
+    /// consulted the assignment record, so `assign` was decorative: a task
+    /// could be settled to ANY miner, including one that was never assigned,
+    /// and the assignment bookkeeping was never consulted by the one function
+    /// that moves the money. An escrow that pays whoever asks is not an
+    /// escrow. Now settle requires the caller to name the task's own
+    /// assignee.
+    #[test]
+    fn settle_pays_the_assignee_and_nobody_else() {
+        let mut l = Ledger::new();
+        l.deposit(1, 1000).unwrap();
+        l.post_task(1, 10, 1000, 250).unwrap();
+        l.assign(10, 2).unwrap();
+        // the task's own assignee settles
+        let s = l.settle(10, 2).unwrap();
+        assert_eq!(s.pay, 750);
+        assert_eq!(l.balance(2), 750);
+        // a miner that is not the assignee must not be able to claim it
+        l.deposit(1, 1000).unwrap();
+        l.post_task(1, 11, 1000, 250).unwrap();
+        l.assign(11, 4).unwrap();
+        assert!(
+            matches!(l.settle(11, 3), Err(LedgerError::WrongPayee)),
+            "a miner that is not the assignee settled the task"
+        );
+        // the wrong payee's balance did not grow, and the task is still open
+        assert_eq!(l.balance(3), 0, "the wrong payee was credited");
+        assert_eq!(l.task_status(11), Some(TaskStatus::Escrowed), "the task was closed by a wrong payee");
+        assert!(l.conserved());
+        // the real assignee still can
+        assert!(l.settle(11, 4).is_ok());
+        assert_eq!(l.balance(4), 750);
+        assert!(l.conserved());
+    }
+
+    /// An UNASSIGNED task cannot be settled at all — no payee exists, so the
+    /// escrow has nowhere honest to go. Before the fix this "settled" to
+    /// whatever miner the caller named, which is the same bug in its purest
+    /// form: the assignment step had no bearing on who got paid.
+    #[test]
+    fn an_unassigned_task_cannot_be_settled() {
+        let mut l = Ledger::new();
+        l.deposit(1, 1000).unwrap();
+        l.post_task(1, 10, 1000, 250).unwrap();
+        assert!(
+            matches!(l.settle(10, 2), Err(LedgerError::NotAssigned)),
+            "an unassigned task was settled to a miner"
+        );
+        assert_eq!(l.balance(2), 0, "a miner was paid by an unassigned task");
+        // the escrow is still intact and the task is still open
+        assert_eq!(l.total_escrowed(), 1000);
+        assert_eq!(l.task_status(10), Some(TaskStatus::Escrowed));
+        assert!(l.conserved());
+        // assigning and then settling works
+        l.assign(10, 2).unwrap();
+        assert!(l.settle(10, 2).is_ok());
+    }
+
     /// DOUBLE-PAYMENT PINNED: settling a settled task must fail, and must
     /// not move money again. This is the is_final bug's class — a state
     /// that never existed being paid.
@@ -340,6 +422,7 @@ mod tests {
         let mut l = Ledger::new();
         l.deposit(1, 1000).unwrap();
         l.post_task(1, 10, 1000, 100).unwrap();
+        l.assign(10, 2).unwrap();
         l.settle(10, 2).unwrap();
         assert!(matches!(l.settle(10, 2), Err(LedgerError::AlreadySettled)));
         assert!(matches!(l.settle(10, 3), Err(LedgerError::AlreadySettled)));
@@ -370,6 +453,7 @@ mod tests {
         let mut l = Ledger::new();
         l.deposit(1, 1000).unwrap();
         l.post_task(1, 10, 1000, 100).unwrap();
+        l.assign(10, 2).unwrap();
         l.settle(10, 2).unwrap();
         assert!(matches!(l.refund(10), Err(LedgerError::AlreadySettled)));
         assert_eq!(l.balance(1), 0);
@@ -437,10 +521,18 @@ mod tests {
                     // consume it either way, so the id comes off the list
                     // regardless of success — a failed settle on an
                     // already-consumed task still means it is not open.
+                    //
+                    // The settle path assigns FIRST half the time, so the
+                    // fuzzer exercises both the accepted assignee and the
+                    // WrongPayee rejection, not only the NotAssigned path.
                     if let Some(&tid) = posted.last() {
                         let op = (r >> 8) % 2;
                         let _ = if op == 0 {
-                            l.settle(tid, (r >> 16) % 8).map(|_| ())
+                            let miner = (r >> 16) % 8;
+                            if (r >> 24) % 2 == 0 {
+                                let _ = l.assign(tid, miner);
+                            }
+                            l.settle(tid, miner).map(|_| ())
                         } else {
                             l.refund(tid)
                         };
@@ -483,11 +575,13 @@ mod tests {
         l.deposit(1, u64::MAX / 4).unwrap();
         // the ceiling itself: 500 per mille of 1000
         l.post_task(1, 1, 1000, MAX_BURN_RATE).unwrap();
+        l.assign(1, 2).unwrap();
         let s = l.settle(1, 2).unwrap();
         assert_eq!(s.burn, 500, "the ceiling burn was not exactly MAX_BURN_RATE per mille");
         assert_eq!(s.pay, 500);
         // a rate that does not divide evenly: 333 per mille of 1000
         l.post_task(1, 2, 1000, 333).unwrap();
+        l.assign(2, 2).unwrap();
         let s2 = l.settle(2, 2).unwrap();
         assert_eq!(s2.burn, 333);
         assert_eq!(s2.pay, 667);
@@ -503,6 +597,7 @@ mod tests {
         // fee large, burn_rate at the ceiling
         let fee = 1_000_000_000_000u64;
         l.post_task(1, 1, fee, MAX_BURN_RATE).unwrap();
+        l.assign(1, 2).unwrap();
         let s = l.settle(1, 2).unwrap();
         assert_eq!(s.burn, fee * MAX_BURN_RATE / 1000, "the burn wrapped or mis-computed");
         assert_eq!(s.pay, fee - s.burn);
