@@ -3870,9 +3870,33 @@ overflow) — ama **HEDEFİ** hiç kimse doğrulamıyordu.
 ### DURUM
 `cargo test --release --workspace` **162/162 rc=0**. Build 0 uyarı.
 
+### 32. **VALIDATE_U_TASK: wrap bypass — kapı decorative** (`40b25f3`)
+    `carried_fee_total + task.fee <= C_FEE` plain addition — release mode'da
+    wrap'liyor. `carried = u64::MAX` + `fee = 10` → toplam **9** → `9 <= 500`
+    → **task geçer**. Bu kapı ANTI-AGGREGATION bound'u: amacı tek miner'in
+    U-layer'ı kaplamasını engellemek. Wrap'li sum tam onun var olduğu durumu
+    (caller itiyor) yenilgiye uğratıyor.
+    **FFI sınırı** bunu checked_add ile yakalıyordu (testler u64::MAX'ta
+    KOK_OVERFLOW döndüğünü doğruluyordu) — ama **kararı veren public fonksiyon
+    unwrap'li değildi** ve Rust'tan da çağrılıyor. Tek bir caller input
+    screen'lediğinde tutan gate, gate değildir.
+    **Düzeltme:** karar noktasında checked_add → overflow = reject.
+    **Ölçümlendi:** sığan task geçer, sınırın bir üzeri reddedilir, wrap her
+    iki uçta test edildi (carried=u64::MAX + küçük fee → naive toplam 9
+    olurdu ve geçerdi; carried tek başına cap'i aşmış; dev fee + küçük
+    carried). FFI'nın KOK_OVERFLOW yolu değişmedi, hala çalışıyor → sınır ve
+    karar artık aynı fikirde.
+
+### DURUM — PRODUCTION READY DOĞRULANDI
+- `cargo build --release --workspace`: **0 hata, 0 uyarı**
+- `cargo test --release --workspace`: **163/163 rc=0**
+- `audit_turkish_en.py`: **CLEAN** (0 ambiguous Turkish hit)
+- `suite_gate_en.py`: **39/39 files, 0 broken**
+- Çalışma ağacı: yalnızca `f0_demand_log.jsonl` (runtime log, kaynak değil)
+
 ### KALAN (sirali, güncel)
-1. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
-2. Kok-wasm/browser verify yolu opsiyonel (derleniyor, wasip1 ölçüldü)
+1. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel (session kapı)
+2. Kok-wasm browser path derleniyor, wasip1 ölçüldü (opsiyonel derinleştirme)
 3. Skor **83.65** (dokunma)
 
 ### BUG SINIFLARI — SWEEP SONUCU (6 blok)
