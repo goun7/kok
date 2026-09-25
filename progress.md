@@ -3838,11 +3838,51 @@ iki crate'i de buldu. Artık her crate en az bir adversarial testle kaplı.
 Ayrıca bug sınıf 2 (cross-context replay) ECVRF'de pinned ve mempool'da
 yeni bir spam sınıfı bulundu (sıfır-byte tx = bedava öncelik).
 
+## 6. BLOK — LEDGER'DA PARASAL BUG: ASSIGNMENT DECORATIVE (2026-09-25)
+
+Sweep'in sorusu bu blokta "bir şey kontrol ediliyor ama **doğru** şey mi?"
+şekline döndü. Ledger'ın tüm gate'leri MİKTARI doğruluyordu (burn, fee,
+overflow) — ama **HEDEFİ** hiç kimse doğrulamıyordu.
+
+### 31. **KOK-LEDGER: settle kimi ödeyeceğini assign'den öğrenmiyordu** (`68174d8`)
+    `settle(tid, miner)` payee'yi caller-supplied `miner` olarak alıyordu ve
+    `assign()`'in yazdığı `assignee` kaydını **hiç okumuyordu**. Sonuç:
+    * assign **decorative** bookkeeping'ti — parayı hareket ettiren tek
+      fonksiyon tarafından hiç okunmadı;
+    * ataması hiç yapılmamış bir task herhangi bir miner'a settle edilebiliyordu;
+    * X'e atanmış task Y'ye ödenebiliyordu.
+    **İsteyene ödeyen escrow, escrow değildir — fee'li bir musluktur.**
+    **Düzeltme:** settle artık task'ın kendi assignee'sini ister. Atanmamış
+    task settle edilemez (`NotAssigned`), yanlış payee reddedilir
+    (`WrongPayee`). İki yeni error varyantı.
+    **Ölçüldü:** assignee 750/1000 (25% burn) alıyor; yanlış payee
+    `WrongPayee` alıyor, 0 credits, task açık kalıyor (blanket reddetme
+    değil); atanmamış task settle edilemiyor, escrow tam fee'de duruyor.
+    **Mevcut testlerin ikisi** (`the_burn_is_exactly_per_mille`,
+    `extreme_amounts_do_not_wrap_into_a_small_burn`) assignsiz settle
+    çağırıyordu — **bu bug'ın kendi ayak izi**. İkisi de artık önce assign
+    ediyor, dürüst caller davranışı.
+    **Brute-force conservation** (20,000 adım) her settle'dan önce yarısı
+    assign yapıacak şekilde genişletildi → artık kabul edilen assignee,
+    WrongPayee reddi ve NotAssigned yollarını conservation check ile birlikte
+    çalıştırıyor.
+
+### DURUM
+`cargo test --release --workspace` **162/162 rc=0**. Build 0 uyarı.
+
 ### KALAN (sirali, güncel)
-1. kok-ledger edge case'leri ve kok-consensus bundle projection adversarial
-   testleri (zaten 4 test var, ek surface az)
-2. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
+1. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
+2. Kok-wasm/browser verify yolu opsiyonel (derleniyor, wasip1 ölçüldü)
 3. Skor **83.65** (dokunma)
+
+### BUG SINIFLARI — SWEEP SONUCU (6 blok)
+Sınıf 1 **guard-sonrası**: 8 yüzey (PVI, kok-poum ragged, kok-fri 3x,
+kok-net phantom, ECVRF 2x, ledger assignee).
+Sınıf 2 **cross-context replay**: ECVRF cross-key, assign alpha, epoch_seed.
+Sınıf 3 **tek nokta**: k=18 → 4 noktada ölçüldü, **eğri düz çıktı**, her iki
+scaling hipotezi reddedildi.
+Sınıf 4 **birim/etiket**: ledger 500-per-mille vs 500-basis-points.
+Sınıf 5 **bu bloğun yenisi**: doğru MİKTAR ama yanlış HEDEF.
 
 ## ADVERSARIAL SWEEP — G LAYER + AIR (2026-09-25, 4. blok) — 138 → 146
 
