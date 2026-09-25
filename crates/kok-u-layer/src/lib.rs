@@ -92,7 +92,18 @@ pub fn validate_u_task(task: &TaskSpec, carried_fee_total: u64) -> bool {
     if task.burn_rate == 0 || task.burn_rate > MAX_BURN_RATE {
         return false;
     }
-    carried_fee_total + task.fee <= C_FEE
+    // CHECKED ADD — the overflow this gate exists to catch. A caller that
+    // passes carried_fee_total near u64::MAX makes a naive sum wrap to a
+    // small value, and a wrapped sum PASSES this comparison, admitting a
+    // task that overflows the block's fee budget. The FFI boundary already
+    // checked this once, but this function is public and called from Rust
+    // too — a gate that only holds when one particular caller screens its
+    // inputs is not a gate. This is the wrap the sweep found in
+    // anti-aggregation_cap_rejects_overflow's sibling path.
+    match carried_fee_total.checked_add(task.fee) {
+        Some(sum) => sum <= C_FEE,
+        None => false,
+    }
 }
 
 /// The consensus weight a U-task proof contributes. Always zero — stated
@@ -152,6 +163,41 @@ mod tests {
         // read verbatim; the cap is now enforced against the running total
         let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
         assert!(!validate_u_task(&t, 450)); // 450 + 100 > 500
+    }
+
+    /// THE WRAP BYPASS — the bug the FFI boundary was guarding against while
+    /// this function, the one that decides, was not. A naive
+    /// `carried + fee <= C_FEE` wraps when carried is near u64::MAX:
+    /// u64::MAX + 10 becomes 9, and 9 <= 500 admits the task. The fee budget
+    /// is an ANTI-AGGREGATION bound — its purpose is to stop a block
+    /// stuffing itself with so many tasks that a single miner captures the
+    /// U layer — and a wrapped sum makes the cap decorative exactly when a
+    /// caller is pushing it. The FFI already checked this once, but this
+    /// function is public and called from Rust too; a gate that only holds
+    /// when one particular caller screens its inputs is not a gate.
+    #[test]
+    fn a_wrapping_carried_total_cannot_bypass_the_fee_cap() {
+        let t = TaskSpec { program: "mm8".into(), fee: 10, burn_rate: 100 };
+        // the honest case: fits with room to spare
+        assert!(validate_u_task(&t, C_FEE - 10), "a task that fits the cap was rejected");
+        // exactly at the cap
+        assert!(validate_u_task(&t, C_FEE - 10));
+        // one over: rejected
+        assert!(!validate_u_task(&t, C_FEE - 9), "a task past the cap was accepted");
+        // THE WRAP: carried at u64::MAX, fee 10 — the naive sum wraps to 9
+        // and would pass. It must not.
+        assert!(
+            !validate_u_task(&t, u64::MAX),
+            "a wrapping carried total bypassed the fee cap"
+        );
+        // carried alone already past the cap, no wrap needed yet
+        assert!(
+            !validate_u_task(&t, C_FEE + 1),
+            "a carried total already past the cap was accepted"
+        );
+        // the wrap at the other end: carried small, fee huge
+        let big = TaskSpec { program: "mm8".into(), fee: u64::MAX, burn_rate: 100 };
+        assert!(!validate_u_task(&big, 1), "a huge fee wrapped into the cap");
     }
 
     #[test]
