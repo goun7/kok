@@ -450,6 +450,17 @@ tarafından geçildi** (N(0,18) → 2,97, [2,4] eşiğinden). Pearl'in üretimde
 dağılım parametrelerine değil. **KÖK v2 G katmanı bu dört kontrolü alır; kurtosis kontrolü
 sadece uyarı (TV-9) olarak kalır.**
 
+> **ROUND-6 DÜRÜST NOTU (2026-09-24, iç denetim bulgusu D):** bu Türkçe
+> spec EN ikizinin **TV-40..TV-85'ini içermez** — 31 sıra burada vs 67 sıra
+> `KOK_V2_TECHNICAL_SPEC.md`'de. Eksik olanlar: round-3 adversarial review
+> (TV-75), round-4/5 bulguları (TV-76..TV-80), E-gap mekanizması (TV-77,
+> TV-82), **TV-84'nin theta 1,05 → 1,657 düzeltmesi** (yukarıdaki §C.8
+> hariç, tek tek taşınmadı) ve round-6 verdict sınıfı düzeltmeleri.
+> **KAPSAM AÇIKÇA BELİRTİLDİ:** bu dosya 2026-09-20 snapshot'udur ve
+> sonraki tüm bulgular EN dosyada kanoniktir. Bir çelişki olursa EN dosya
+> kazanır. Çevirmek yerine bu not eklendi çünkü yanlış çevrilmiş bir test
+> tablosu, eksik tablodan daha tehlikelidir.
+
 **Toy adaptasyonun bilinen sınırları (dürüst):** (1) gürültü iid, rank-r değil — 5.1'in 1/2/4.
 kontrolleri per-entry/per-row istatistikleri olduğu için yapı korunur, ama Pearl'in üretimdeki
 rank-r analizinin tam karşılığı değildir; (2) tamed/unpredictable eşikleri toy ölçeğe (K=64)
@@ -678,7 +689,7 @@ Kod çalıştırıldı ve doğrulandı (`python3 pass_sim.py`, çıkış `sim_ou
    bir PoUW zincirini açıklayabiliyor.
 2. **Theorem 1 rejim haritası:** tüm θ değerlerinde sıfır-kâr artıkları `< 1e-9`, pasif ihlaller
    `0`, market-clearing hatası `< 1e-12`; θ<0,3 → Fortessia, θ>0,3 → Duplexia; θ>3,33 → karışık.
-3. **Pearl'in rejim teşhisi:** Pearl'in gerçek PR seviyesi **endojen θ = 1,05 → saf Duplexia**'ya
+3. **Pearl'in rejim teşhisi:** Pearl'in gerçek PR seviyesi **endojen θ = 1,657 (2026-09-24'te TV-84 tarafından 1,05'ten düzeltildi — endojen theta çözücüsünde off-by-one üs vardı) → saf Duplexia**'ya
    düşüyor. Yani Pearl'in ekonomisi **zaten inference'ı sübside edecek rejimdeydi** — ama ölçülen
    φ = 0: fayda hiç gerçekleşmedi. Sebebi **E-gap** (Demirel): protokol matrislerin kimsenin işi
    olduğunu certify edemedi. **Pearl Bitconia gibi davrandı, Duplexia gibi pazarlandı.**

@@ -132,8 +132,10 @@ The remaining two gaps (economics, law) are addressed in §7 and §9.
   are appended to a block already won by the G layer and are never read by the target test.
   The wording is corrected to match the code, and the citation is withdrawn because Cor. 4 was
   never verified against the source.)*
-- **Anti-aggregation (arXiv 2505.21685):** a per-block useful-fee cap `C_fee` + tasks spilling over
+- **Anti-aggregation (arXiv 2505.21685, Bar-On):** a per-block useful-fee cap `C_fee` + tasks spilling over
   into later blocks (preventing miners from gathering every high-fee task into a single block).
+  (Round-6, 2026-09-24: author name added — the citation gave only the
+  identifier; internal audit confirmed the arXiv record lists Bar-On.)
 
 ### 3.3 Chain binding and task lifecycle
 - **ctx binding:** every solution's statement contains `selected_parent ‖ miner_pubkey ‖ task_ref ‖

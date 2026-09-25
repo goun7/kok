@@ -528,12 +528,17 @@ if __name__ == "__main__":
     # 0.8935; the arrival coefficient 0.05->0.10 gives 0.5000; the arrival
     # exponent 8->4 gives 0.8533; the horizon alone moves it 1.0000 (100
     # steps) -> 0.8907 (200) -> 0.7930 (400) -> 0.7587 (1000) -> 0.7554
-    # (20000). And over ALL 99 sub-barrier seeds the dead state is absorbing
+    # (20000). And over ALL sub-barrier seeds the dead state is absorbing
     # only for ratio <= ~0.08-0.10, not 0.79 -- the 0.79 figure is the
     # threshold for seed 0.0002 specifically. The guard below is therefore the
     # code checking the paper's number against the code's own output under ONE
     # fixed configuration; that is stated here so it is not read as a
     # calibrated measurement.
+    # ROUND-6, 2026-09-24 (internal audit, provenance note): the seed set this
+    # file sweeps is 0.0001..0.0199 (199 seeds) here and 0.0002..0.0198
+    # (99 seeds) in the 184/199 measurement — two different sets, both
+    # correctly measured under their own definition. The count is now given
+    # with its range wherever it appears so the two are never conflated.
     print("      ROUND-5 honesty note: 0.79 is the threshold for the seed")
     print("      0.0002 under THIS file's constants and horizon, not a")
     print("      calibrated measurement — sweeping the constants moves it")

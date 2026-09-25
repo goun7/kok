@@ -145,7 +145,10 @@ System date: 19 September 2026.
     demand elasticity (Jevons, ε=2) is a precondition for all results; calibration $30B
     inference market / 52,560 blocks.
 14. **"Verifiability–usefulness tension" — arXiv 2209.03865** (cited by Basu; full author
-    list not verified).
+    list not verified). ROUND-6, 2026-09-24: Basu's citation names "Leinweber
+    et al." while the arXiv record's first author is Hoffmann — an internal
+    audit caught the mismatch, recorded here rather than silently corrected
+    because the project has not independently confirmed which is intended.
 15. **Peigné, Nguyen, Wang — "Zero knowledge verification for frontier AI training is
     possible."** arXiv **2606.05433v2** (2026-06-03, v2 2026-08-22, 44 pages). *Verified
     (2026-09-19):* verification of **real floating-point** computation with zkVM + native
