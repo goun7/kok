@@ -7,4 +7,5 @@ description = "GHOSTDAG block ordering"
 rust-version.workspace = true
 
 [dependencies]
+rand.workspace = true
 

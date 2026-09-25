@@ -367,7 +367,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "kok-consensus",
+ "kok-ghostdag",
  "kok-poum",
+ "rand",
 ]
 
 [[package]]
@@ -397,6 +399,9 @@ dependencies = [
 [[package]]
 name = "kok-ghostdag"
 version = "0.1.0"
+dependencies = [
+ "rand",
+]
 
 [[package]]
 name = "kok-ledger"

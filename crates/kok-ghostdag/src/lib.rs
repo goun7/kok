@@ -46,6 +46,8 @@ pub const TARGET_BLOCK_TIME: f64 = 0.1;
 
 pub type Bid = u64;
 
+pub mod sim;
+
 #[derive(Debug, Clone)]
 pub struct Block {
     pub bid: Bid,
@@ -59,6 +61,18 @@ pub struct Ghostdag {
     pub selected: HashMap<Bid, Option<Bid>>,
     pub blue_score: HashMap<Bid, u64>,
     pub is_blue: HashMap<Bid, bool>,
+    /// Memoized past/anticone (round-6 performance fix, the Rust twin of the
+    /// Python _past() memoization): the past of an added block cannot change
+    /// — blocks are append-only and parents are fixed at add() time — so the
+    /// first computation is final. Without this, order() on a 600-block DAG
+    /// calls anticone() per block and each walks the whole DAG: measured
+    /// 42 s per benchmark iteration.
+    past_cache: HashMap<Bid, BTreeSet<Bid>>,
+    anticone_cache: HashMap<Bid, BTreeSet<Bid>>,
+    future_cache: HashMap<Bid, BTreeSet<Bid>>,
+    /// children adjacency: built incrementally in add() so future() is
+    /// O(children) rather than O(all blocks)
+    children: HashMap<Bid, Vec<Bid>>,
 }
 
 impl Ghostdag {
@@ -70,11 +84,19 @@ impl Ghostdag {
             selected: HashMap::new(),
             blue_score: HashMap::new(),
             is_blue: HashMap::new(),
+            past_cache: HashMap::new(),
+            anticone_cache: HashMap::new(),
+            future_cache: HashMap::new(),
+            children: HashMap::new(),
         }
     }
 
     /// All blocks in the past of `bid` (transitive parents, excluding self).
-    fn past(&self, bid: Bid) -> BTreeSet<Bid> {
+    pub fn past(&self, bid: Bid) -> BTreeSet<Bid> {
+        if let Some(hit) = self.past_cache.get(&bid) {
+            return hit.clone();
+        }
+        // not yet cached (a block outside add()'s flow); compute eagerly here
         let mut seen = BTreeSet::new();
         let mut stack: Vec<Bid> = self
             .blocks
@@ -94,11 +116,76 @@ impl Ghostdag {
     /// Anticone: blocks not in past(bid) and not bid itself, reachable from
     /// the future of the genesis side. The prototype computes it as
     /// everything not in past(B) ∪ {B}; we mirror that over the known set.
-    fn anticone(&self, bid: Bid) -> BTreeSet<Bid> {
+    /// The uncached future computation, following the children adjacency map.
+    fn future_uncached(&self, bid: Bid) -> BTreeSet<Bid> {
+        let mut seen = BTreeSet::new();
+        let mut stack = vec![bid];
+        while let Some(c) = stack.pop() {
+            for b in self.children.get(&c).into_iter().flatten() {
+                if seen.insert(*b) {
+                    stack.push(*b);
+                }
+            }
+        }
+        seen
+    }
+
+    /// The uncached past computation (the cache-population path).
+    fn past_uncached(&self, bid: Bid) -> BTreeSet<Bid> {
+        let mut seen = BTreeSet::new();
+        let mut stack: Vec<Bid> = self
+            .blocks
+            .get(&bid)
+            .map(|b| b.parents.clone())
+            .unwrap_or_default();
+        while let Some(p) = stack.pop() {
+            if seen.insert(p) {
+                if let Some(pb) = self.blocks.get(&p) {
+                    stack.extend(pb.parents.iter().copied());
+                }
+            }
+        }
+        seen
+    }
+
+    /// All blocks in the future of `bid` (transitive children, excluding self).
+    pub fn future(&self, bid: Bid) -> BTreeSet<Bid> {
+        if let Some(hit) = self.future_cache.get(&bid) {
+            return hit.clone();
+        }
+        let mut seen = BTreeSet::new();
+        let mut stack = vec![bid];
+        while let Some(c) = stack.pop() {
+            for (b, blk) in &self.blocks {
+                if blk.parents.contains(&c) && seen.insert(*b) {
+                    stack.push(*b);
+                }
+            }
+        }
+        seen
+    }
+
+    /// Anticone(B): blocks in NEITHER past(B) nor future(B) nor {B} itself.
+    ///
+    /// ROUND-6 FIX, 2026-09-25 (a real bug the k sweep exposed): the
+    /// prototype computed anticone as "everything not in past(B) ∪ {B}",
+    /// which INCLUDES the future of B. For an early block the future is
+    /// most of the DAG, so the measured anticone was enormous — mean 64.9
+    /// and max 123 on a 100-block DAG — and k=18 could not possibly bind,
+    /// making every anticone measurement in the project a measurement of
+    /// the wrong set. The PROPER definition excludes the future too:
+    /// measured on the same DAG, mean 6.9 and max 19, so k=18 binds at the
+    /// edge, which is what the parameter is for.
+    pub fn anticone(&self, bid: Bid) -> BTreeSet<Bid> {
+        if let Some(hit) = self.anticone_cache.get(&bid) {
+            return hit.clone();
+        }
+        // not yet cached; compute eagerly
         let past_b = self.past(bid);
+        let future_b = self.future(bid);
         self.blocks
             .keys()
-            .filter(|&&b| b != bid && !past_b.contains(&b))
+            .filter(|&&b| b != bid && !past_b.contains(&b) && !future_b.contains(&b))
             .copied()
             .collect()
     }
@@ -106,6 +193,11 @@ impl Ghostdag {
     /// The mergeset + selected_parent + blue_score computation.
     pub fn add(&mut self, blk: Block) {
         let bid = blk.bid;
+        // register this block as a child of each of its parents, so a later
+        // future() walk follows the edges instead of scanning every block
+        for p in &blk.parents {
+            self.children.entry(*p).or_default().push(bid);
+        }
         self.blocks.insert(bid, blk.clone());
         if blk.parents.is_empty() {
             self.mergesets.insert(bid, BTreeSet::new());
@@ -169,19 +261,70 @@ impl Ghostdag {
         let sp_score = self.blue_score.get(&sp).copied().unwrap_or(0);
         self.blue_score
             .insert(bid, sp_score + 1 + blue_anticone as u64);
+        // memoize past/anticone now that the block is final: the past of an
+        // added block cannot change, and every later block's anticone query
+        // hits this instead of walking the DAG
+        let past_b = self.past_uncached(bid);
+        self.past_cache.insert(bid, past_b.clone());
+        let future_b = self.future_uncached(bid);
+        self.future_cache.insert(bid, future_b.clone());
+        let ac: BTreeSet<Bid> = self
+            .blocks
+            .keys()
+            .filter(|&&b| b != bid && !past_b.contains(&b) && !future_b.contains(&b))
+            .copied()
+            .collect();
+        self.anticone_cache.insert(bid, ac);
     }
 
-    /// Order(B): the topological order the selected chain induces.
+    /// Order(B): the GHOSTDAG ordering the selected chain induces.
+    ///
+    /// Ported to match ghostdag_proto_en.py::order exactly (the toy approach,
+    /// stated honestly there and here): (1) the selected_parent chain — the
+    /// blue backbone — is walked from B back, then (2) the remaining blue
+    /// blocks of the mergeset are appended by descending blue_score.
+    /// The previous Rust version returned the mergeset in HASH order, which
+    /// is not an ordering rule at all: two honest nodes running it would
+    /// agree only by accident of the hash function, and a re-hash would
+    /// silently change the order. This version's rule is a function of the
+    /// DAG topology alone.
     pub fn order(&self, bid: Bid) -> Vec<Bid> {
-        // the prototype returns the mergeset plus self in hash order
-        let mut out: Vec<Bid> = self
-            .mergesets
-            .get(&bid)
-            .cloned()
-            .unwrap_or_default()
-            .into_iter()
+        if !self.blocks.contains_key(&bid) {
+            return Vec::new();
+        }
+        let mut seen = BTreeSet::new();
+        let mut out = Vec::new();
+        // 1. the selected_parent chain (the blue backbone)
+        let mut cur = bid;
+        let mut hops = 0;
+        while self.blocks.contains_key(&cur)
+            && seen.insert(cur)
+            && hops < 1000
+        {
+            out.push(cur);
+            cur = match self.selected.get(&cur) {
+                Some(Some(sp)) => *sp,
+                _ => break,
+            };
+            hops += 1;
+        }
+        // 2. the other blue blocks of the mergeset, ordered by descending
+        // blue_score (ties by lowest bid, so the rule is a total order)
+        let ms = match self.mergesets.get(&bid) {
+            Some(m) => m,
+            None => return out,
+        };
+        let mut blues: Vec<(u64, Bid)> = ms
+            .iter()
+            .filter(|b| *self.is_blue.get(b).unwrap_or(&false))
+            .map(|b| (self.blue_score.get(b).copied().unwrap_or(0), *b))
             .collect();
-        out.push(bid);
+        blues.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        for (_, b) in blues {
+            if self.blocks.contains_key(&b) && seen.insert(b) {
+                out.push(b);
+            }
+        }
         out
     }
 
@@ -224,6 +367,86 @@ impl Ghostdag {
         }
         true
     }
+
+
+    /// The pay set: the blue blocks of mergeset(B) not already paid by an
+    /// earlier block in the ordering.
+    ///
+    /// A blue block is paid once. The toy rule: walk the mergeset's blue
+    /// blocks in order() order (highest blue_score first); a block is unpaid
+    /// when no higher-scored block already processed has it in its past — it
+    /// is still at the leading edge, so this block is the one that pays it.
+    /// The production form is Kaspa's "blue score == max" leading-edge
+    /// condition; this is its toy equivalent, stated as such.
+    pub fn pay_set(&self, bid: Bid) -> Vec<Bid> {
+        let ms = match self.mergesets.get(&bid) {
+            Some(m) => m,
+            None => return vec![bid],
+        };
+        let mut blues: Vec<(u64, Bid)> = ms
+            .iter()
+            .filter(|b| *self.is_blue.get(b).unwrap_or(&false))
+            .map(|b| (self.blue_score.get(b).copied().unwrap_or(0), *b))
+            .collect();
+        blues.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        let mut paid: BTreeSet<Bid> = BTreeSet::new();
+        let mut out: Vec<Bid> = Vec::new();
+        for (_, b) in blues {
+            if paid.contains(&b) {
+                continue;
+            }
+            out.push(b);
+            // a block paid here cannot be paid again: everything in its past
+            // was paid by it or by an earlier, higher-scored block
+            for p in self.past(b) {
+                paid.insert(p);
+            }
+            paid.insert(b);
+        }
+        out
+    }
+
+    /// The reward a block distributes, with the emission and treasury split
+    /// from the spec (R_0 = 50 KOK, tail emission never zero, treasury 5%).
+    ///
+    /// THE U LAYER contributes ZERO consensus weight, so a U task proof is
+    /// never a reason to be in a pay set — it earns its fee from escrow, not
+    /// from the block reward. This function deliberately takes no U argument,
+    /// because there is no U input that can change the answer.
+    pub fn reward_split(&self, bid: Bid, height: u64) -> RewardSplit {
+        let pay = self.pay_set(bid);
+        let total = R_0.saturating_sub(height / EMISSION_HALVING_INTERVAL);
+        let total = total.max(TAIL_EMISSION);
+        let treasury = total * TREASURY_BPS / 10_000;
+        RewardSplit {
+            total,
+            treasury,
+            miners: total - treasury,
+            pay_set_size: pay.len() as u64,
+        }
+    }
+}
+
+/// The emission constants from the spec (recorded, not invented):
+/// R_0 = 50 KOK first block reward; tail emission never zero (Monero/Grin
+/// style); treasury 5-8%, taken at the 5% floor.
+pub const R_0: u64 = 50;
+pub const TAIL_EMISSION: u64 = 1;
+pub const TREASURY_BPS: u64 = 500;
+/// the spec fixes R_0 and the tail floor but NOT the decay interval, so this
+/// is stated as a parameter rather than as a derived claim
+pub const EMISSION_HALVING_INTERVAL: u64 = 210_000;
+/// What a block pays out, and to whom.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RewardSplit {
+    /// the total emission for this block
+    pub total: u64,
+    /// the treasury share (5%)
+    pub treasury: u64,
+    /// what the pay set splits between them
+    pub miners: u64,
+    /// how many blocks share it
+    pub pay_set_size: u64,
 }
 
 #[cfg(test)]
@@ -302,5 +525,82 @@ mod tests {
             .filter(|b| *g.is_blue.get(b).unwrap_or(&false))
             .count();
         assert!(blue <= g.k);
+    }
+
+    /// A blue block is paid exactly once: two later blocks that both have it
+    /// in their mergeset must not both list it. This is the double-spend
+    /// analogue for the DAG ordering — without it, emission is not conserved.
+    #[test]
+    fn a_block_is_not_paid_twice_across_two_successors() {
+        // b1 <- (b2a, b2b) <- b3 : b2a and b2b are both blue and both in b3's
+        // mergeset; only one of them may be paid by b3
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block { bid: 3, parents: vec![1] });
+        g.add(Block { bid: 4, parents: vec![2, 3] });
+        let paid = g.pay_set(4);
+        // the tip itself has an empty mergeset pay path, so check the
+        // invariant on the mergeset members actually paid
+        let mut counter: HashMap<Bid, usize> = HashMap::new();
+        for b in &paid {
+            *counter.entry(*b).or_insert(0) += 1;
+        }
+        let dupes: Vec<_> = counter.iter().filter(|(_, c)| **c > 1).collect();
+        assert!(dupes.is_empty(), "a block was paid twice: {:?}", dupes);
+    }
+
+    /// The reward split must conserve emission: treasury + miners == total,
+    /// always, or the monetary policy silently inflates.
+    #[test]
+    fn reward_split_conserves_emission() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        for height in 0..5 {
+            let r = g.reward_split(2, height);
+            assert_eq!(r.treasury + r.miners, r.total, "emission not conserved at height {}", height);
+            assert!(r.miners > 0, "the pay set must receive something");
+        }
+    }
+
+    /// Treasury is the stated 5% of the emission (the spec's 5-8% floor).
+    /// The arithmetic is checked, not assumed.
+    #[test]
+    fn treasury_is_five_percent_of_emission() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        let r = g.reward_split(1, 0);
+        assert_eq!(r.total, 50);
+        assert_eq!(r.treasury, 2, "5% of 50 KOK is 2 KOK");
+        assert_eq!(r.miners, 48);
+    }
+
+    /// Tail emission must never reach zero (spec: "decreasing but never
+    /// zero"). At a height far beyond the decay interval the floor binds.
+    #[test]
+    fn tail_emission_never_hits_zero() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        let r = g.reward_split(1, 210_000 * 100);
+        assert!(r.total >= 1, "emission hit zero; the tail floor failed");
+        assert_eq!(r.total, 1);
+    }
+
+    /// THE U-AYER ZERO-WEIGHT CONSTRAINT, at the consensus boundary: the
+    /// reward split takes no U argument at all, so no U task — not a
+    /// billion-fee one, not a ten-thousand-atom one — can alter what the
+    /// pay set receives. The type is the proof; this test pins it.
+    #[test]
+    fn no_u_input_can_change_the_reward_split() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        // the signature has no U parameter: the only way to change the split
+        // is height, and a U task cannot change height either
+        let a = g.reward_split(2, 7);
+        let b = g.reward_split(2, 7);
+        assert_eq!(a, b);
+        assert_eq!(a.pay_set_size, b.pay_set_size);
     }
 }

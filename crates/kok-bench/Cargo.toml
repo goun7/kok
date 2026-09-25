@@ -34,3 +34,7 @@ harness = false
 [[bench]]
 name = "air"
 harness = false
+
+[[bench]]
+name = "ghostdag"
+harness = false

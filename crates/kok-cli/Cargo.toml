@@ -9,4 +9,6 @@ rust-version.workspace = true
 [dependencies]
 kok-consensus.workspace = true
 kok-poum.workspace = true
+kok-ghostdag.workspace = true
+rand.workspace = true
 anyhow.workspace = true
