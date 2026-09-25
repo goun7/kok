@@ -26,9 +26,23 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-/// Kaspa's BPS=1 template (k=18). KÖK's own BPS is not yet chosen.
+/// Kaspa's BPS=1 template (k=18).
+///
+/// KÖK's own BPS: the night-shift directive targets 10 BPS, i.e. T_b = 100 ms,
+/// which is 10x Kaspa's rate. That choice is NOT the spec's — the spec says
+/// KÖK's BPS is not yet chosen — and it is recorded as a named constant with
+/// its provenance rather than buried in arithmetic, because λ_b and k must be
+/// selected together for the target network diameter before this is real.
+/// A 10 BPS chain needs a much smaller k than a 1 BPS chain at the same
+/// diameter (more blocks per second means a larger anticone for the same
+/// delay), and k=18 here is the Kaspa template carried forward, NOT a value
+/// derived for KÖK's rate. That gap is the honest boundary: this module is a
+/// skeleton, as the directive says — full consensus is not the claim.
 pub const GHOSTDAG_K: usize = 18;
 pub const MERGESET_SIZE_LIMIT: usize = 2 * GHOSTDAG_K;
+
+/// Target block time T_b, in seconds. 10 BPS => 0.1 s.
+pub const TARGET_BLOCK_TIME: f64 = 0.1;
 
 pub type Bid = u64;
 

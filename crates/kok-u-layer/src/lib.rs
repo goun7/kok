@@ -25,6 +25,8 @@ pub const EPOCH_LOOKBACK: usize = 64;
 
 /// The anti-aggregation fee cap: a block cannot carry more U-fee value than
 /// this, so a miner cannot dilute the fee market by packing many tiny tasks.
+pub mod job;
+
 pub const C_FEE: u64 = 500;
 
 pub fn h(parts: &[&str]) -> u64 {
