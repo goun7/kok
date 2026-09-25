@@ -260,6 +260,10 @@ def tv36_cold_start(seed_demand: float, cross_subsidy_ratio: float,
             # refutes it. ROUND-5, 2026-09-24 (round-5 finding F19): "5 of 9"
             # matched no count this file performs; the measured count is 184
             # of 199 sub-barrier seeds (0.0001..0.0199 at ratio 0.5) escape.
+            # ROUND-6, 2026-09-24 (SESTER audit): this count is now PRINTED by
+            # the TV-60b sweep below rather than existing only in prose, so a
+            # future refactor that changes the dynamics moves the printed
+            # number with it instead of leaving a stale claim behind.
             # The dynamics have a REPELLING fixed point at D*, not an absorbing
             # state: seeds below D* decay and seeds above it grow, and 0.79 is
             # where the growth is fast enough to cross the 0.15 visibility line
@@ -548,6 +552,34 @@ if __name__ == "__main__":
           % ("ACCEPT" if ok else "RED"))
     assert ok, ("TV-60: the escape threshold has moved outside the quoted band; "
                 "the paper says ~0.79 — check both before assuming either is right")
+
+    # ROUND-6, 2026-09-24 (SESTER internal audit): the 184/199 count was
+    # quoted in the prose above and in the paper/spec as a "measured count"
+    # while this file never printed it — the "measurement that measures
+    # nothing" pattern this project has closed everywhere else. The sweep
+    # now runs here and prints its own result, so the number is produced by
+    # the code that claims it. Both seed sets are swept and labelled, which
+    # also closes the 99-vs-199 provenance confusion in one place.
+    print("\n" + "-" * 76)
+    print("TV-60b: THE ALL-SEED SWEEP (the count the prose quotes, now printed)")
+    print("-" * 76)
+    for label, seeds in (("199 seeds 0.0001..0.0199", [i / 10000 for i in range(1, 200)]),
+                         ("99 seeds  0.0002..0.0198", [i / 10000 for i in range(2, 200, 2)])):
+        esc = sum(1 for s in seeds
+                  if tv36_cold_start(s, 0.5)["escaped_dead_state"])
+        print("      ratio 0.50, %-26s escaping: %3d/%d"
+              % (label, esc, len(seeds)))
+    # the all-seed absorbing threshold: the highest ratio where NO seed escapes
+    thr = 0.0
+    for ratio_x10 in range(1, 200):
+        ratio = ratio_x10 / 100.0
+        any_esc = any(tv36_cold_start(s, ratio)["escaped_dead_state"]
+                      for s in [i / 10000 for i in range(1, 200)])
+        if any_esc:
+            thr = ratio
+            break
+    print("      all-seed absorbing threshold (199 seeds): %.4f" % thr)
+    print("      (the prose says ~0.08-0.10; this is the number behind it)")
 
     print("\n" + "-" * 76)
     print("TV-35/36/37 COMPLETE")

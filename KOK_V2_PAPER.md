@@ -132,10 +132,11 @@ The remaining two gaps (economics, law) are addressed in §7 and §9.
   are appended to a block already won by the G layer and are never read by the target test.
   The wording is corrected to match the code, and the citation is withdrawn because Cor. 4 was
   never verified against the source.)*
-- **Anti-aggregation (arXiv 2505.21685, Bar-On):** a per-block useful-fee cap `C_fee` + tasks spilling over
+- **Anti-aggregation (arXiv 2505.21685):** a per-block useful-fee cap `C_fee` + tasks spilling over
   into later blocks (preventing miners from gathering every high-fee task into a single block).
-  (Round-6, 2026-09-24: author name added — the citation gave only the
-  identifier; internal audit confirmed the arXiv record lists Bar-On.)
+  (Round-6, 2026-09-24: this paper names Bar-On and the references file names Komargodski &
+  Weinstein for the same identifier — the two disagree and neither has been checked against the
+  arXiv record; both are kept visible in `KOK_V2_REFERENCES.md:10` until one is verified.)
 
 ### 3.3 Chain binding and task lifecycle
 - **ctx binding:** every solution's statement contains `selected_parent ‖ miner_pubkey ‖ task_ref ‖
@@ -1007,7 +1008,8 @@ market to escape the dead state. Two findings, both stated plainly:
    (round-3 [28], restated round-5 TV-85): "absorbing for every seed" is an overstatement.**
    The dynamics have a **repelling** fixed point at D*, not an absorbing state: seeds above D*
    still grow below 0.79, and over the 199 sub-barrier seeds at ratio 0.5 a measured **184
-   escape**. The all-seed absorbing threshold is about **0.08–0.10**, not 0.79; 0.79 is where
+   escape** (printed by `adoption_econ.py`'s TV-60b sweep, not quoted from prose; the same
+   sweep prints 92/99 on the 99-seed set and an all-seed absorbing threshold of 0.0900). The all-seed absorbing threshold is about **0.08–0.10**, not 0.79; 0.79 is where
    the test seed's growth is fast enough to cross the 0.15 visibility line within 400 steps,
    and it is a property of (this file's constants, that one seed, that horizon) — sweeping
    CHURN_DEAD 0.04→0.02 moves it to 0.50 and the horizon 400→20000 moves it to 0.7554. Above

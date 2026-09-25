@@ -120,9 +120,15 @@ System date: 19 September 2026.
    ePrint **2025/1814** (2025-10-03): 50+ constructions; **utility does not contribute to
    the security budget**; proposal of verifiable computation + partial incentive
    allocation.
-10. **Komargodski, Weinstein — externally rewarded PoW trade-offs.**
+10. **Externally rewarded PoW trade-offs.**
     arXiv **2505.21685** (2025): miners can aggregate useful tasks into a single block →
     KÖK's **C_FEE anti-aggregation cap** (T-A3, TV-6).
+    (ROUND-6, 2026-09-24, internal audit: the author list is NOT settled. The
+    paper's §3.2 citation names Bar-On, this entry named Komargodski &
+    Weinstein, and the arXiv record has been checked against neither by this
+    project — a discrepancy between two files in the same package, recorded
+    here rather than silently corrected. Both names are kept visible until
+    one is verified against the record.)
 11. **"SEDULity."** arXiv **2512.13666** (2025): binding the chain by encoding the template
     block into training — a different approach from KÖK's ctx-binding (T-A2).
 12. **Proof-of-Learning with incentive security.** arXiv **2404.09005** (2024):
