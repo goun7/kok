@@ -3254,6 +3254,16 @@ korundu → bir sertifika Python/Rust sınırını geçer.
 - Verify hızlanmadı: SHA256 baskın, her ikisi aynı 256 hash. Prove 48×:
   MatMul döngüsü vektörize edildi.
 
+**DÜZELTME 2026-09-25 (BİRİM HATASI — bu satırın verify rakamı yanlış
+etiketliydi):** `g_compare.rs` `as_nanos()/reps/1000` hesaplıyordu, bu
+**µs** verir ama etiket `ms` yazıyordu. Bu yüzden "verify 0.73 ms" raporu
+gerçekte **0.73 µs** idi ve "Python 170× daha hızlı" sonucu **tamamen bu
+birim hatasından** kaynaklanıyordu. Etiket `us` olarak düzeltildi.
+**DÜRÜST KARŞILAŞTIRMA (aynı canonical girdi, warm): Rust verify 0.78 µs
+(Criterion), Python verify 10.7 µs → Rust ~13.7× DAHA HIZLI.** SHA256 her
+iki tarafta aynı 256 hash'i hesaplar, ama Rust'ın geri kalanı (field
+arithmetic 22 ns, allocation-free el ile decimal yazımı) Python'ı geçer.
+
 ### ADIM 3 — FRI (src/consensus/fri.rs)
 verify_round + verify_transcript, f0b_fri_en.py'den port. Round-5'in iki
 kritik özelliği taşındı:

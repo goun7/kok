@@ -30,9 +30,14 @@ fn main() {
         for _ in 0..reps {
             ok = k.verify(&cert, &a, &b, 777, nonce, target);
         }
-        let verify_ms = t1.elapsed().as_nanos() as f64 / reps as f64 / 1000.0;
+        let verify_us = t1.elapsed().as_nanos() as f64 / reps as f64 / 1000.0;
         let exp = 64 - target.leading_zeros() as i64 - 1;
-        println!("  target 2^{:2}: mine {:10.3} ms over {:7} attempts ({:.4} ms/attempt) | verify {:7.4} ms | tile=({},{}) ok={}",
-            exp, mine_ms, nonce, mine_ms / nonce as f64, verify_ms, cert.i, cert.j, ok);
+        // NOTE (2026-09-25, units fix): this value is MICROSECONDS, not
+        // milliseconds. The formula divides nanoseconds by 1000, so a
+        // printed "0.7576" read as ms overstates verify by 1000x — and a
+        // 757 ns verify reported as 0.73 ms looks 170x slower than Python
+        // when it is actually ~8x FASTER. Label now says us.
+        println!("  target 2^{:2}: mine {:10.3} ms over {:7} attempts ({:.4} ms/attempt) | verify {:7.4} us | tile=({},{}) ok={}",
+            exp, mine_ms, nonce, mine_ms / nonce as f64, verify_us, cert.i, cert.j, ok);
     }
 }
