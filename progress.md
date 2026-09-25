@@ -3741,12 +3741,66 @@ Bu bloğun commit'leri: `a0b8a5a` (assignment wire), `727cfad` (kok-net),
 Bu oturumun (3 blok) commit'leri: `a0b8a5a`, `727cfad`, `81d7a7c`, `8ec2b6a`,
 `d4f2094`, `062cde4`, `b6d8ad0`, `8267bd7`, `a9f42e0`. Skor **83.65**.
 
+## 4. BLOK — ADVERSARIAL SWEEP DERİNLEŞTİ + k AÇIKLARI KAPANDI (2026-09-25)
+
+Önceki bloğun "guard önce mi?" sorusu bu blokta üç yeni yüzey buldu. Aynı
+soru genişletildi: **"bu sayı kaç noktadan ölçüldü?"** — ve k=18'in tek
+noktadan geldiği ortaya çıktı.
+
+### 26. **KOK-CHAIN: finality boundary tek yöndü** (`0a61e80`)
+    `probe_the_finality_boundary_is_exact` ileri yönü assert ediyordu,
+    ters yönü "run-dependent" notuyla atlamıştı. Bu `>=` mi `>` mi olduğunu
+    TESTSİZ bırakıyordu. Off-by-one kozmetik değil: kural `>` ise gap'teki
+    blok hiç final olmaz (pruning conservative, ama kural kendi sabitine
+    karşı çıkıyor); `>=` ise gap'ten bir az ötedeki bloğu final ilan edip
+    reorg'un hala ulaşabileceği bir bloğu budayabiliyorsun.
+    **Düzeltme:** lineer zincirde blue_score = index olduğu için boundary
+    KESİN kontrol edilebilir. `FINALITY_GAP+1` blokta genesis tam gap'te →
+    final olmalı; bir eksikte → olmamalı. Tek blok farkı tüm iddiayı taşıyor.
+    Ayrıca monotone yön pinned.
+
+### 27. **KOK-MEMPOOL: spam gate — bedava öncelik** (`eac51d1`)
+    `insert()` input'unu hiç doğrulamıyordu. **Sıfır-byte'lı tx iki yolla
+    free-load:** (1) her bütçeye — hatta 0 bütçeye — paketlenir (`used+0<=0`
+    doğru), böylece boş blok işlem içerdiği raporlanır ve `bytes<=budget`
+    muhasebesi ANLAMSIZ olur; (2) **daha sinsi:** pool fee_per_byte'a göre
+    sıralar ve sıfır-byte tx istediği rate'i declare edebilir (toplam fee =
+    rate×0 = 0). Hiç para ödemiyor, hiç yer kaplamıyor, ama dürüst her
+    tx'in ÖNÜNE sıralanıyor — liderin sıralamasının dürüst olması gereken tek
+    yerde bedava öncelik.
+    `insert` artık `bool` dönp `bytes==0 || fee==0` reddediyor. Reddedilen
+    replacement'ın orijinalini evict etmediği de test edildi (gate removal
+    vectorü olamaz).
+
+### 28. **k SORUSU ÖLÇÜMLE KAPANDI** (`f31adcc`)
+    k=18 TEK doğrulanmış noktadan (BPS=1→k=18) geliyordu; iki candidate
+    scaling (k∝L, k∝√L) tek noktadan extrapolation'du — tek nokta iki
+    eğriyi ayıramaz, ikisi de o noktadan geçer.
+    **ÖLÇÜLEN SONUÇ: EĞRİ DÜZ.** k=8 her fork oranında (5%→40%, 8x load).
+    **İki hipotez de doğrulanmadı** — ölçüm her iki tahminin de ALTINDA,
+    ki bu kendisi cevap. Sebeb: bu DAG modelinde anticone FORK RATE'e değil
+    PARENT-POOL WINDOW'a (2×10=20 blok) bağlı. Forklu blok yine aynı yakın
+    komşuluktan parent çizer, rekabet eden bloklar parent paylaşır.
+    **k LOAD'IN DEĞİL GECİKME BANT'ININ FONKSİYONU.** Kaspa template k=18,
+    bu modelin ihtiyaç duyduğu k=8'e karşı ölçülmüş ~2.25x headroom taşıyor.
+    Bu, k=18'in buradaki dürüst gerekçesi: Kaspa'nın BPS eğrisinin türetilmesi
+    (yerelde hala türetilmemiş) değil, template'in bu DAG'ın kendi
+    anticone'una sıkı olmadığını gösteren ölçülmüş bir bound.
+
+### KOD KALİTESİ
+- `cargo build --release --workspace` **0 uyarı 0 hata** (önceki 4'ü
+  temizlendi: unused KProfile, non-snake `P`, unused SliceRandom, needless
+  `mut`)
+
+### DURUM
+`cargo test --release --workspace` **154/154 rc=0**. Build 0 uyarı.
+`audit_turkish_en.py` CLEAN, `suite_gate_en.py` 39/39.
+
 ### KALAN (sirali, güncel)
-1. Derin adversarial hardening: kalan crate'lerde dört bug sınıfını avla
-   (kok-chain select/final_set, kok-mempool edge'leri — probe kapsamında)
-2. Non-blocking: unused `SliceRandom` (ghostdag:456), unused `mut` (probes:89)
-3. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
-4. Skor **83.65** (dokunma)
+1. Kalan adversarial yüzey: kok-consensus bundle projection edge'leri,
+   kok-net gossip partition davranışları, ECVRF edge case'ler
+2. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
+3. Skor **83.65** (dokunma)
 
 ## ADVERSARIAL SWEEP — G LAYER + AIR (2026-09-25, 4. blok) — 138 → 146
 
