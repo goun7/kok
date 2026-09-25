@@ -3,8 +3,9 @@ name = "kok-pvi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Pluggable Verifier Interface — unimplemented skeleton"
+description = "The Proof Verifier Interface boundary a light client calls — total by construction."
 rust-version.workspace = true
 
 [dependencies]
+kok-poum.workspace = true
 

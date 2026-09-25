@@ -448,6 +448,9 @@ dependencies = [
 [[package]]
 name = "kok-pvi"
 version = "0.1.0"
+dependencies = [
+ "kok-poum",
+]
 
 [[package]]
 name = "kok-u-layer"

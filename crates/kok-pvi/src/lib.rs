@@ -1,6 +1,235 @@
-//! PVI — skeleton (F3)
+//! PVI — the Proof Verifier Interface: the boundary a light client calls.
+//!
+//! Round-6, 2026-09-24: this crate was a pure skeleton. The TOTALITY
+//! CONTRACT is now implemented (2026-09-25); the composed G-layer verify it
+//! gates is F3+ and is deliberately not faked.
+//!
+//! THE DESIGN CONSTRAINT THAT SHAPES THIS MODULE: a verifier that runs in
+//! WASM must be a TOTAL function. A panic becomes a trap, and a trap is not
+//! a rejection — it is an undefined outcome a caller can misread, and in the
+//! worst case a crash at exactly the moment a decision was owed. This is not
+//! hypothetical: the round-4 g_layer cluster [11]–[14] found that verify()
+//! indexed matrices with the KERNEL's constant n, so a 6x6 proof made it
+//! index row 8 and raise IndexError instead of rejecting. The verifier
+//! accepted nothing wrong — it simply failed to answer.
+//!
+//! So the interface checks every structural property BEFORE it indexes
+//! anything, and returns a typed Verdict rather than a bool, so a rejection
+//! always carries the reason a caller can act on.
 
-//! Round-6, 2026-09-24: this crate is a SKELETON. The workspace layout
-//! is modeled on the FISP workspace so the boundaries exist before the
-//! code does; the implementation is F3+ and every TODO it leaves is named
-//! in the roadmap rather than implied.
+use kok_poum::{Certificate, KwKernel};
+
+/// A serialized certificate as it would arrive over the wire.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerifierInput {
+    /// (i, j, value, m) little-endian, 8 bytes each — 32 bytes total
+    pub cert_bytes: [u8; 32],
+    /// the flattened matrices, row-major, n*n entries of 8 bytes each
+    pub flat_a: Vec<u8>,
+    pub flat_b: Vec<u8>,
+    /// (ctx, nonce, target, n, q, r) — 48 bytes
+    pub pub_inputs: [u8; 48],
+}
+
+/// Why a proof was rejected. Never returned for an accept.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Verdict {
+    Accept,
+    Reject(String),
+}
+
+impl Verdict {
+    pub fn accepted(&self) -> bool {
+        matches!(self, Verdict::Accept)
+    }
+}
+
+fn u64_le(b: &[u8]) -> Option<u64> {
+    if b.len() < 8 {
+        return None;
+    }
+    Some(u64::from_le_bytes(b[..8].try_into().unwrap()))
+}
+
+/// Decode the packet, rejecting any structurally-invalid input BEFORE the
+/// matrices are indexed. Every failure here is a Reject, never a panic.
+fn decode(
+    input: &VerifierInput,
+) -> Result<(Certificate, u64, u64, u64, u64, u64, Vec<Vec<u64>>, Vec<Vec<u64>>), String> {
+    let i = u64_le(&input.cert_bytes[0..8]).ok_or("cert too short: i")?;
+    let j = u64_le(&input.cert_bytes[8..16]).ok_or("cert too short: j")?;
+    let value = u64_le(&input.cert_bytes[16..24]).ok_or("cert too short: value")?;
+    let m = u64_le(&input.cert_bytes[24..32]).ok_or("cert too short: m")?;
+
+    let ctx = u64_le(&input.pub_inputs[0..8]).ok_or("pub_inputs too short: ctx")?;
+    let nonce = u64_le(&input.pub_inputs[8..16]).ok_or("pub_inputs too short: nonce")?;
+    let target = u64_le(&input.pub_inputs[16..24]).ok_or("pub_inputs too short: target")?;
+    let n = u64_le(&input.pub_inputs[24..32]).ok_or("pub_inputs too short: n")?;
+    let q = u64_le(&input.pub_inputs[32..40]).ok_or("pub_inputs too short: q")?;
+    let r = u64_le(&input.pub_inputs[40..48]).ok_or("pub_inputs too short: r")?;
+
+    // STRUCTURAL GATES, all before any matrix indexing:
+    if n == 0 {
+        return Err("n is zero: no matrix can be verified".into());
+    }
+    if r == 0 || n % r != 0 {
+        return Err("r does not divide n: the tile grid is not integral".into());
+    }
+    if q == 0 {
+        return Err("q is zero: the field is degenerate".into());
+    }
+    if target == 0 {
+        // target 0 would put every hash "under target" — the division-by-zero
+        // analogue in the difficulty sense
+        return Err("target is zero: the difficulty is undefined".into());
+    }
+    let need = (n * n) as usize * 8;
+    if input.flat_a.len() != need || input.flat_b.len() != need {
+        return Err(format!(
+            "matrix size mismatch: expected {} bytes each, got {}/{}",
+            need,
+            input.flat_a.len(),
+            input.flat_b.len()
+        ));
+    }
+    let mut a = Vec::with_capacity(n as usize);
+    let mut b = Vec::with_capacity(n as usize);
+    for row in 0..n as usize {
+        let mut ra = Vec::with_capacity(n as usize);
+        let mut rb = Vec::with_capacity(n as usize);
+        for col in 0..n as usize {
+            let off = (row * n as usize + col) * 8;
+            ra.push(u64_le(&input.flat_a[off..off + 8]).ok_or("matrix A truncated")?);
+            rb.push(u64_le(&input.flat_b[off..off + 8]).ok_or("matrix B truncated")?);
+        }
+        a.push(ra);
+        b.push(rb);
+    }
+    // the tile coordinates must be inside the grid — checked HERE, not at the
+    // indexing site where a bad value would panic
+    let grid = n / r;
+    if i >= grid || j >= grid {
+        return Err(format!("tile ({},{}) is outside the {}x{} grid", i, j, grid, grid));
+    }
+    if m != grid {
+        return Err(format!("m is {} but n/r is {}", m, grid));
+    }
+    let cert = Certificate { i: i as usize, j: j as usize, value, m: m as usize };
+    Ok((cert, ctx, nonce, target, n, q, a, b))
+}
+
+/// The interface entry point. Total: returns a Verdict for EVERY input,
+/// including malformed ones. Never panics.
+pub fn verify_raw(input: &VerifierInput) -> Verdict {
+    let (cert, ctx, nonce, target, _n, q, _a, _b) = match decode(input) {
+        Ok(v) => v,
+        Err(reason) => return Verdict::Reject(reason),
+    };
+    // the kernel is built from the PUBLIC inputs, never from constants —
+    // round-4 [11]: the verifier used self.n while prove() derived n from
+    // the input. Here n and r come from the packet.
+    let r = u64_le(&input.pub_inputs[40..48]).unwrap_or(0);
+    let kernel = KwKernel::new(q, r as usize);
+    // NOTE: the full G-layer check is kok_poum::validate(). This boundary
+    // establishes the TOTALITY contract; composing the actual verify call
+    // here is F3+ and is deliberately not faked — an unimplemented gate that
+    // ACCEPTS would be far worse than one that says it is not done.
+    let _ = (ctx, nonce, target, cert, kernel);
+    Verdict::Reject("the composed verify is F3+; this boundary is the contract".into())
+}
+
+/// A constructor for well-formed input, for tests and for callers that
+/// already hold the typed values.
+pub fn pack(
+    i: u64, j: u64, value: u64, m: u64, ctx: u64, nonce: u64, target: u64,
+    n: u64, q: u64, r: u64,
+) -> VerifierInput {
+    let mut cert_bytes = [0u8; 32];
+    cert_bytes[0..8].copy_from_slice(&i.to_le_bytes());
+    cert_bytes[8..16].copy_from_slice(&j.to_le_bytes());
+    cert_bytes[16..24].copy_from_slice(&value.to_le_bytes());
+    cert_bytes[24..32].copy_from_slice(&m.to_le_bytes());
+    let mut pub_inputs = [0u8; 48];
+    pub_inputs[0..8].copy_from_slice(&ctx.to_le_bytes());
+    pub_inputs[8..16].copy_from_slice(&nonce.to_le_bytes());
+    pub_inputs[16..24].copy_from_slice(&target.to_le_bytes());
+    pub_inputs[24..32].copy_from_slice(&n.to_le_bytes());
+    pub_inputs[32..40].copy_from_slice(&q.to_le_bytes());
+    pub_inputs[40..48].copy_from_slice(&r.to_le_bytes());
+    let bytes = (n * n) as usize * 8;
+    VerifierInput { cert_bytes, flat_a: vec![0u8; bytes], flat_b: vec![0u8; bytes], pub_inputs }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// THE TOTALITY CONTRACT: every malformed input must produce a REJECT,
+    /// never a panic. This is the property a WASM boundary owes its caller,
+    /// and it is the property the round-4 cluster violated.
+    #[test]
+    fn every_malformed_input_rejects_never_panics() {
+        // truncated matrices
+        let mut bad = pack(1, 2, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
+        bad.flat_a.truncate(4);
+        assert!(!verify_raw(&bad).accepted(), "truncated matrix A was accepted");
+        // empty matrices
+        let mut e = pack(1, 2, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
+        e.flat_a.clear();
+        e.flat_b.clear();
+        assert!(!verify_raw(&e).accepted(), "empty matrices were accepted");
+        // target 0
+        let mut t0 = pack(1, 2, 3, 4, 777, 1, 0, 8, 97, 2);
+        t0.flat_a = vec![0u8; 512];
+        t0.flat_b = vec![0u8; 512];
+        let v = verify_raw(&t0);
+        assert!(!v.accepted(), "target 0 was accepted");
+        assert!(matches!(&v, Verdict::Reject(r) if r.contains("target")));
+        // n = 0
+        let z = pack(1, 2, 3, 4, 777, 1, 1 << 16, 0, 97, 2);
+        assert!(!verify_raw(&z).accepted(), "n=0 was accepted");
+        // r does not divide n
+        let mut nr = pack(1, 2, 3, 4, 777, 1, 1 << 16, 7, 97, 2);
+        nr.flat_a = vec![0u8; 49 * 8];
+        nr.flat_b = vec![0u8; 49 * 8];
+        assert!(!verify_raw(&nr).accepted(), "r not dividing n was accepted");
+        // tile outside the grid
+        let mut og = pack(99, 99, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
+        og.flat_a = vec![0u8; 512];
+        og.flat_b = vec![0u8; 512];
+        let v = verify_raw(&og);
+        assert!(!v.accepted(), "an out-of-grid tile was accepted");
+        assert!(matches!(&v, Verdict::Reject(r) if r.contains("outside")));
+        // m inconsistent with n/r
+        let mut mm = pack(1, 2, 3, 99, 777, 1, 1 << 16, 8, 97, 2);
+        mm.flat_a = vec![0u8; 512];
+        mm.flat_b = vec![0u8; 512];
+        assert!(!verify_raw(&mm).accepted(), "an inconsistent m was accepted");
+    }
+
+    /// A well-formed packet decodes and reaches the gate. It rejects with the
+    /// F3+ marker — the honest statement that the boundary exists and the
+    /// composition is not faked. Crucially it does NOT accept.
+    #[test]
+    fn a_well_formed_packet_reaches_the_gate_but_does_not_accept() {
+        let good = pack(1, 2, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
+        match verify_raw(&good) {
+            Verdict::Reject(r) => assert!(r.contains("F3+"), "unexpected rejection reason: {}", r),
+            Verdict::Accept => panic!("the composed verify is not implemented; this must not accept"),
+        }
+    }
+
+    /// pack/decode round trip: the byte layout is self-consistent. The tile
+    /// coordinates must be inside the n/r grid or decode correctly rejects.
+    #[test]
+    fn pack_decodes_back_consistently() {
+        let input = pack(3, 2, 42, 4, 777, 1780, 1 << 16, 8, 97, 2);
+        let (cert, ctx, nonce, target, n, q, a, b) =
+            decode(&input).expect("a well-formed packet must decode");
+        assert_eq!((cert.i, cert.j, cert.value, cert.m), (3, 2, 42, 4));
+        assert_eq!((ctx, nonce, target, n, q), (777, 1780, 1 << 16, 8, 97));
+        assert_eq!(a.len(), 8);
+        assert_eq!(b.len(), 8);
+        assert_eq!(a[0].len(), 8);
+    }
+}
