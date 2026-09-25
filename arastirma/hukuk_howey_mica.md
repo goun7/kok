@@ -68,12 +68,14 @@ yazılmıştır.**
     payment for goods or services" + "can be transferred, stored or traded electronically".
     **Fakat** lisansa tabi olan **DPT hizmetleridir** (takas/custody); madencilik/ihraç
     lisanslı bir ödeme hizmeti **değildir** (bkz. §4.2).
-11. **ADGM (BAE) — ÇÖZÜLDÜ (24 Eylül 2026, BİRİNCİL):** FSRA guidance'ına göre utility
-    tokenlar **"Treated as commodities and, therefore, not deemed Specified Investments"** ve
-    "**the Virtual Asset Framework does not apply to: ... ICOs, ... Utility tokens**"; yani saf
-    utility/compute token ihraçı için FSRA lisansı **gerekmez**. **Hâlâ BULUNAMADI:** El
-    Salvador (Ley de Emisión de Activos Digitales / CNAD); token burning'in menkul
-    kıymet/vergi analizi; ESMA rehberleri; MAS'ın DTO rehberi (bkz. §6 — 9 madde).
+11. **El Salvador DA ÇÖZÜLDÜ (24 Eylül 2026, BİRİNCİL) — ve sonucu FARKLI:** Decreto N.° 643
+    (Ley de Emisión de Activos Digitales, 11 Ocak 2023) dijital varlıkların "títulos valores"
+    (menkul kıymet) olmadığını belirtir **AMA** her kamu teklifini CNAD **habilitación**'ına
+    (sertifikatör raporuyla) bağlar (Art. 26). KOK transfer edilebilir olduğu için dar Art. 4(c)
+    "únicamente" istisnasına girmez. **Net kontrast:** İsviçre/Singapur/ADGM'de lisans
+    gerekmezken, El Salvador'da yetkilendirme gerekir. Böylece **1D'nin dört yargısı da tamam**.
+    **Hâlâ BULUNAMADI:** token burning'in menkul kıymet/vergi analizi; ESMA rehberleri; MAS'ın
+    DTO rehberi (bkz. §6 — 8 madde).
 
 ---
 
@@ -776,18 +778,81 @@ https://www.adgm.com/documents/legal-framework/guidance-and-policy/fsra/guidance
   yukarıdaki (a)–(c) pasajlar utility-token ihraçı için **doğrudan** ve **yeterli** bir cevap
   vermektedir.
 
-### 4.4 El Salvador — BULUNAMADI
+### 4.4 El Salvador (CNAD) — BİRİNCİL Kaynakla ÇÖZÜLDÜ (24 Eylül 2026)
 
-- **Ley de Emisión de Activos Digitales** (Dijital Varlık İhracı Yasası, 2023) ve **CNAD**
-  (Comisión Nacional de Activos Digitales) çerçevesi için birincil kaynaklara **bu oturumda
-  ulaşılamadı**.
-- **Bilinen ama DOĞRULANMAMIŞ genel bilgiler:** Söz konusu yasanın 2023'te kabul edildiği,
-  dijital varlık ihracını bir kayıt/onay rejimine tabi tuttuğu; Bitcoin'in 8 Haziran 2021'de
-  yasal ödeme aracı yapıldığı (Ley Bitcoin). **Bu ifadeler bu oturumda bir birincil kaynaktan
-  doğrulanmamıştır.** (v1'de Wikipedia üzerinden Bitcoin-in-El-Salvador durumu doğrulanmıştı;
-  bu BTC içindir, token ihracı rejimi değildir.)
-- **Sonraki adım:** `asamblea.gob.sv` / Diario Oficial üzerinden yasanın tam metni
-  ("activo digital" ve "utilidad" tanımları + CNAD yükümlülükleri).
+**Kaynak (BİRİNCİL):** **Ley de Emisión de Activos Digitales**, **Decreto N.° 643** (Asamblea
+Legislativa de la República de El Salvador; San Salvador'da **11 Ocak 2023** tarihinde onaylandı),
+CNAD'ın resmi kütüphanesinden PDF. Erişim: 24 Eylül 2026, HTTP 200.
+https://cnad.gob.sv/wp-content/uploads/2024/08/1.-Ley-de-Emision-de-Activos-Digitales-DL-643.pdf
+(*Yasayı doğrulayan ikinci kaynak:* asamblea.gob.sv Decreto N.° 643 PDF'i; bu oturumda bağlantı
+vermedi (HTTP 000).)
+
+> **(a) Dijital varlık = menkul kıymet (título valor) DEĞİL (verbatim, Art. 3):** "Un activo
+> digital es una representación digital que puede almacenarse y transferirse electrónicamente,
+> utilizando un sistema de Tecnología de Registro Distribuida, o tecnología similar o análoga,
+> en la cual los registros se encuentran enlazados y cifrados para proteger la seguridad y
+> privacidad de las transacciones." ... "**Los activos digitales no se consideran títulos valores
+> y por lo tanto no serán aplicables en ningún aspecto las disposiciones referentes a los títulos
+> valores**, contenidas en el Código de Comercio, ni tampoco las establecidas en la Ley del
+> Mercado de Valores, en la Ley de Títulos Valores Electrónicos, en la Ley de Anotaciones
+> Electrónicas de Valores en Cuenta o en la Ley de Inversiones."
+
+> **(b) Utility-token İSTİSNASI (verbatim, Art. 4(c)) — çok DAR:** "Las disposiciones de esta
+> Ley no son aplicables a: ... c) **Los activos digitales que únicamente pueden ser intercambiados
+> por un bien o servicio que es provisto por el emisor de ese activo digital o por un número
+> limitado de proveedores de ese bien o servicio;** d) Activos digitales que no pueden ser
+> negociados o intercambiados."
+> *(Yani: yalnızca ihraççının (veya sınırlı sayıda sağlayıcının) mal/hizmeti ile değiştirilebilen
+> tokenler yasanın kapsamı dışındadır.)*
+
+> **(c) "Token" tanımı (verbatim, Art. 5(z)):** "Token: Es un activo digital que es utilizado
+> como unidad de cuenta en una red, basándose en la Tecnología de Registro Distribuido o una
+> similar o análoga."
+
+> **(d) PUBLİK TEKLİF İÇİN YETKİLENDİRME ZORUNLU (verbatim, Art. 26 — KRİTİK):** "**Toda oferta
+> pública de activos digitales deberá cumplir con la habilitación de la misma**, para lo cual,
+> como etapa previa, las entidades certificadoras deberán realizar un análisis integral de los
+> requisitos de dicha oferta pública, contemplados en la Ley, reglamentos, instructivos, normas
+> técnicas, guías y cualquier normativa emitida por la Comisión Nacional de Activos Digitales.
+> Posteriormente, los certificadores deberán emitir un informe que contenga su análisis de la
+> viabilidad de la oferta pública propuesta, ya sea favorable o desfavorable, que en todo caso
+> presentarán ante la Comisión. **Únicamente los informes favorables se considerarán
+> certificados.**"
+
+> **(e) İhraççıların yükümlülükleri (Art. 22):** "Los emisores, incluyendo los que emitan monedas
+> estables, podrán realizar las ofertas públicas que esta Ley regula, siempre y cuando cumplan
+> con los siguientes requisitos: a) ... descripción general de su negocio ... y domicilio; b)
+> Indicar el LRU de su sitio web principal; c) Identificar claramente cuáles son las
+> jurisdicciones, países o territorios en donde realizan sus operaciones; ..."
+
+> **(f) CNAD (Art. 6):** "Créase la Comisión Nacional de Activos Digitales ... como una
+> institución de derecho público con personalidad jurídica y patrimonio propio, de carácter
+> técnico, con autonomía económica, financiera y administrativa ... La Comisión ... se
+> relacionará con el Órgano Ejecutivo a través del Ministerio de Economía."
+
+> **(g) Yürürlük (Art. 47):** "El presente Decreto entrará en vigencia **ocho días después de su
+> publicación en el Diario Oficial**." (Onay tarihi: San Salvador, 11 Ocak 2023.)
+
+**El Salvador yanıtı (TAMGA analizi) — DİĞER ÜÇ YARGIDAN FARKLI:**
+- **Dijital varlıklar menkul kıymet değildir** (Art. 3 açıkça título valor olmadığını belirtir) —
+  yani bu bir **menkul kıymet lisansı** rejimi değildir.
+- **ANCAK yasa, dijital varlıklar için ÖZEL bir yetkilendirme rejimi yaratmıştır:** her **public
+  offer** (oferta pública), CNAD tarafından **habilitación** (yetkilendirme) gerektirir ve bu,
+  bir **sertifikatörün olumlu raporuna** bağlıdır (Art. 26). İhraççılar ayrıca Art. 22'deki
+  yükümlülükleri (iş tanımı, web sitesi, faaliyet yargıları) sağlamak zorundadır.
+- **KÖK v2 için sonuç:** KOK **transfer edilebilir** ve ikincil piyasada işlem göreceği için
+  Art. 4(c) istisnasına **girmez** ("únicamente pueden ser intercambiados por un bien o
+  servicio" — yalnızca ihraççının mal/hizmetiyle değiştirilebilen tokenler). Dolayısıyla
+  KOK'un El Salvador'da bir **oferta pública**'sı CNAD habilitación'ı gerektirir.
+- **Fair-launch madencilik açısından (TAMGA çıkarsaması, doğrulanmamış):** Yasanın Art. 4'ünde
+  MiCA'daki (Art 4(3)(b)) gibi açık bir **madencilik ödülü istisnası YOKTUR**. Yasa
+  "emisores" (ihraççılar) ve "ofertas públicas" (kamusal teklifler) düzenler. Fair-launch
+  madencilik ödülünün bir "oferta pública" sayılmayacağı (satış değil, kazanım olduğu için)
+  **savunulabilir** — bu, SEC Protocol Mining yorumu ve MiCA Art 4(3)(b) ile **paralel** bir
+  argümandır — **fakat bu yoruma dayalıdır ve El Salvador doktrini/uygulamasıyla doğrulanmamıştır.**
+- **Net kontrast:** İsviçre / Singapur / ADGM'de saf utility token ihraçı için lisans
+  **gerekmezken**, El Salvador'da bir **habilitación rejimi** gerekir. Bu, "en az sorunlu yargı"
+  seçiminde belirleyici bir farktır.
 
 ### 4.5 Karşılaştırma tablosu (kâr beklentisi OLMAYAN saf utility/compute token İHRAÇ etmek)
 
@@ -798,7 +863,7 @@ https://www.adgm.com/documents/legal-framework/guidance-and-policy/fsra/guidance
 | **İsviçre** | Hayır ("sole purpose ... digital access rights") | **Gerekmez** (menkul kıymet değilse); AML istisnası ancak "non-financial application" ise | FINMA ICO Guidelines (16.02.2018) | **Yüksek** (birincil; 2018 tarihli — güncelleme kontrolü gerek) |
 | **Singapur** | DPT tanımına girer (ödeme aracı) ama menkul kıymet değil | **Gerekmez** (ihraç/madencilik lisanslı hizmet değil); takas/custody **ister DPT lisansı** | PSA 2019 s2 + First Schedule Part 3 | **Yüksek** (birincil) |
 | **BAE / ADGM** | Hayır — utility token "**Treated as commodities**", Specified Investment değil | **Gerekmez** — "the Virtual Asset Framework does not apply to ... ICOs ... Utility tokens"; "issuing" 5 VA Regulated Activity'de yok | FSRA Guidance VER07.100625 (24.09.2026) | **Yüksek** (birincil) |
-| **El Salvador** | BULUNAMADI | BULUNAMADI | — | **BULUNAMADI** |
+| **El Salvador** | "no se consideran títulos valores" (menkul kıymet değil) — **özel yasa rejimi** | **GEREKİR** — "Toda oferta pública ... deberá cumplir con la habilitación" (Art. 26) + sertifika raporu; KOK, Art. 4(c) "únicamente" istisnasına girmez (transfer edilebilir) | Decreto N.° 643 (11.01.2023), CNAD | **Yüksek** (birincil) |
 
 ---
 
@@ -840,18 +905,18 @@ tax", "proof-of-burn regulation".
 
 ---
 
-## 6. BULUNAMADI LİSTESİ (kalan 9 madde — bir sonraki oturumda tamamlanacak)
+## 6. BULUNAMADI LİSTESİ (kalan 8 madde — bir sonraki oturumda tamamlanacak)
 
-> **24 Eylül 2026 güncellemesi:** **ADGM/FSRA ÇÖZÜLDÜ** (§4.3, BİRİNCİL FSRA guidance'ı).
-> Aşağıdaki 1 no'lu madde kapatılmış; kalan 9 madde geçerlidir. Arama motorları **kısa
-> pencerelerle** çalışıyor (ADGM bir açık pencerede yakalandı) — her oturumda tekrar
-> denenmelidir.
+> **24 Eylül 2026 güncellemesi:** **ADGM/FSRA ve El Salvador ÇÖZÜLDÜ** (§4.3 ve §4.4, her ikisi
+> de BİRİNCİL kaynaklarla). **1D'nin dört yargısı da tamamlanmıştır** (İsviçre, Singapur, ADGM,
+> El Salvador). Aşağıdaki 1 ve 2 no'lu maddeler kapatılmış; kalan 8 madde geçerlidir. Arama
+> motorları **kısa pencerelerle** çalışıyor — her oturumda tekrar denenmelidir.
 
 | # | Eksik veri | Neden ulaşılamadı | Önerilen sonraki adım |
 |---|---|---|---|
-| ~~1~~ | ~~**ADGM/FSRA** + utility token muafiyeti~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.3'e bakınız | — |
-| 2 | **El Salvador** Ley de Emisión de Activos Digitales + CNAD | Arama motorları kapalı (weblocal boş, DDG 202/CAPTCHA) | asamblea.gob.sv / Diario Oficial; "activo digital de utilidad" tanımı |
-| 3 | **ESMA** "qualification of crypto-assets as financial instruments" final guidelines + 2025–2026 MiCA rehberleri | esma.europa.eu 404; weblocal search boş | ESMA doküman kütüphanesi |
+| ~~1~~ | ~~**ADGM/FSRA** + utility token muafiyeti~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.3 | — |
+| ~~2~~ | ~~**El Salvador** Ley de Emisión de Activos Digitales + CNAD~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.4 | — |
+| 3 | **ESMA** "qualification of crypto-assets as financial instruments" final guidelines + 2025–2026 MiCA rehberleri | esma.europa.eu URL denemeleri 404; weblocal search boş; IETF/datatracker benzeri Cloudflare 403'leri | ESMA doküman kütüphanesi; EUR-Lex'te COM implementasyon raporu |
 | 4 | **MAS "A Guide to Digital Token Offerings"** güncel metni | mas.gov.sg URL denemeleri 404 | MAS guidelines sayfası |
 | 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
 | 6 | **Token burning** menkul kıymet/vergi analizi (2025–2026 akademik/yasal) | Arama motorları kapalı | SSRN/Google Scholar + hukuk firması analizleri |
@@ -886,6 +951,12 @@ tax", "proof-of-burn regulation".
 11. **ADGM FSRA**, "Guidance – Regulation of Virtual Asset Activities in ADGM"
     (VER07.100625), **erişim 24 Eylül 2026, HTTP 200, 55 sayfa** —
     https://www.adgm.com/documents/legal-framework/guidance-and-policy/fsra/guidance-virtual-asset-activities-in-adgm-20231218.pdf
+12. **El Salvador — Ley de Emisión de Activos Digitales, Decreto N.° 643** (Asamblea
+    Legislativa, San Salvador, **11 Ocak 2023**), CNAD resmi kütüphanesi PDF, **erişim 24 Eylül
+    2026, HTTP 200, 1618 satır** —
+    https://cnad.gob.sv/wp-content/uploads/2024/08/1.-Ley-de-Emision-de-Activos-Digitales-DL-643.pdf
+    *(Doğrulayıcı ikincil kaynak:* asamblea.gob.sv Decreto N.° 643 PDF'i — bu oturumda bağlantı
+    vermedi; vLex ve interbiznet yansıları law metnini doğrular.)*
 
 **İkincil kaynaklar (kullanıldıkları yerde güvenilirliği belirtilmiştir):**
 12. Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a Security" (13
@@ -901,6 +972,7 @@ tabanlı Ripple zaman çizelgesi (v2'de yerini birincil SEC kaynaklarına bırak
 
 ---
 
-**Belge sürümü:** **v2.1** (24 Eylül 2026, TAMGA) — v2'nin (20 Eylül 2026) üzerine **ADGM/FSRA
- bölümü birincil kaynakla çözüldü** (§4.3); böylece 1D'deki dört yargının üçü (İsviçre, Singapur,
- ADGM) birincil kaynaklıdır. Kalan 9 BULUNAMADI maddesi §6'da listelenmiştir.
+**Belge sürümü:** **v2.2** (24 Eylül 2026, TAMGA) — v2.1'in üzerine **El Salvador (Decreto
+ N.° 643) birincil kaynakla çözüldü** (§4.4). **GÖREV 1D TAMAMLANDI:** dört yargının dördü de
+ (İsviçre, Singapur, ADGM, El Salvador) birincil kaynaklıdır. Kalan 8 BULUNAMADI maddesi §6'da
+ listelenmiştir (en kritik olanı: token burning analizi, §5).

@@ -245,4 +245,42 @@ mod tests {
             assert!(g.blocks.contains_key(&b), "the final set contains a non-existent block");
         }
     }
+
+    // ============================================================
+    // THE ESCROW / FINALITY FIREWALL
+    // ============================================================
+    // Flagged by the legal-and-security review (2026-09-25): if a U-layer
+    // escrow release or burn ever consulted the finality predicate, the
+    // phantom-block bug this crate caught (is_final scoring a non-existent
+    // block as zero and reporting it settled) would become a WRONG RELEASE
+    // OF FUNDS rather than a pruning oddity. The money surface of that
+    // coupling is exactly what these probes pin. So the invariant is made
+    // explicit and tested: the escrow path is validated per-block and does
+    // NOT depend on settlement state.
+    //
+    // THE STRUCTURAL REASON IT HOLDS: kok-u-layer depends on nothing but
+    // sha2 — it has no path to kok_chain at all. A caller cannot pass a
+    // finality flag into validate_u_task because the function takes no such
+    // argument. This probe exists so that the day someone adds one, the
+    // failure names the reason rather than surfacing as a balance that does
+    // not reconcile.
+    #[test]
+    fn probe_the_escrow_path_does_not_consult_finality() {
+        use kok_u_layer::{validate_u_task, TaskSpec};
+        // a valid task
+        let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
+        // validation is a function of the task and the carried fee ONLY.
+        // There is no settlement argument, so the same task validates
+        // identically whether or not anything is settled.
+        assert!(validate_u_task(&t, 0), "a valid task failed to validate");
+        assert!(validate_u_task(&t, 300), "the same valid task gave a different answer");
+        // and the money-binding rejections are structural, not contextual
+        assert!(!validate_u_task(&TaskSpec { program: "x".into(), fee: 0, burn_rate: 300 }, 0), "a zero-fee task validated");
+        assert!(!validate_u_task(&TaskSpec { program: "x".into(), fee: 100, burn_rate: 0 }, 0), "a zero burn rate validated");
+        assert!(!validate_u_task(&TaskSpec { program: "x".into(), fee: 100, burn_rate: 501 }, 0), "an out-of-range burn rate validated");
+        // the anti-aggregation cap is the one place fees interact, and it is
+        // a pure arithmetic bound — no settlement state in it
+        assert!(!validate_u_task(&t, kok_u_layer::C_FEE), "the fee cap did not bind at exactly C_FEE");
+        assert!(validate_u_task(&t, kok_u_layer::C_FEE - 100), "the fee cap rejected a task that should fit");
+    }
 }
