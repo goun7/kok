@@ -42,6 +42,12 @@ pub mod job;
 
 pub const C_FEE: u64 = 500;
 
+/// The ceiling on a task's burn rate, in PARTS PER THOUSAND: 500 = 50% of
+/// the fee. An anti-abuse bound, not a policy target. Named here because it
+/// was a magic 500 inside validate_u_task — the same digits as the
+/// treasury's 500 basis points (5%), and the two must not be conflated.
+pub const MAX_BURN_RATE: u64 = 500;
+
 pub fn h(parts: &[&str]) -> u64 {
     let mut hasher = Sha256::new();
     for (idx, p) in parts.iter().enumerate() {
@@ -83,7 +89,7 @@ pub fn validate_u_task(task: &TaskSpec, carried_fee_total: u64) -> bool {
     if task.fee == 0 {
         return false;
     }
-    if task.burn_rate == 0 || task.burn_rate > 500 {
+    if task.burn_rate == 0 || task.burn_rate > MAX_BURN_RATE {
         return false;
     }
     carried_fee_total + task.fee <= C_FEE
