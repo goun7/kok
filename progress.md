@@ -3422,3 +3422,68 @@ kok-ghostdag 18, kok-chain 5, kok-u-layer 12, kok-probes 6).
 2. U-layer VRF HMAC-toy → ECVRF
 3. PVI (WASM verifier) arayuzu
 4. Skor **83.65** (dokunma)
+
+## OTONOM OTURUM DEVAMI (2026-09-25) — pilot + VRF + FRI scaling + PVI
+
+Tamga'nın kalan görevleri ve "sıradaki" maddeleri kapatildi.
+
+### KAPANANLAR (bu blok)
+9. **GNoME-Forge U-layer pilot** (`49dbcc5`): submit→price→escrow→burn→verify→
+   **zero weight** uçtan uca. OLÇÜLEN: 64 atom = 24,768 flops/[64,3], 256 atom
+   = 393,984 flops, 1000 atom = 6,003,000 flops. Pricing path 0.105 µs/call
+   = T_b bütçesinin **%0.0001**'i. 10,000-atom × 1e9 fee job **hâlâ weight 0**.
+   Anti-aggregation: ikinci job tüm C_FEE=500 cap'i isteyince REDDEDILDI.
+   **Gerçek ML potential'i çalıştırmıyor** — interface; oyuncak yürütme,
+   ölçülmemiş "çalışıyor" iddiası demektir.
+10. **VRF grinding resistance machine-checkable** (`b88cf90`): epoch_seed'in
+    lookback'i için test YOKTU. Eklendi: block 150'yi tamamen değiştir →
+    seed 150 **değişmiyor** (64 blok önce sabitlenmiş), etki sadece h+64'te,
+    aradaki hiçbir height'a sızmiyor. Ayrıca HMAC-toy VRF'in ne GARANTİLEDIĞI
+    sabitlendi (determinism + distinct heights) ve neyi GARANTİLEMEDIĞI
+    yazıldı (uniqueness, public verifiability — ECVRF S2'de spec'de adı geçen).
+11. **FRI Θ(q·deg) 3 noktada ölçüldü** (`fe34e76`): iddia tek toy noktanın
+    yanındaydı, bir nokta eğrinin şeklini ispatlayamaz. Python lineer
+    (20.6× q → 19.7× maliyet ✓), **Rust hafif superlineer** (20.6× → 27.4×,
+    q=2003'te lineer tahminin %33 üstü). Nedeni kaydedildi: residue set her
+    round'da boyut q'da materialize ediliyor, cache sığmiyor. Üretim portu
+    streaming residue kullanmalı.
+12. **PVI — verifier boundary, total-by-construction** (`165693c`): kok-pvi
+    6 satır iskeletti. Şimdi WASM verifier'ın borçlu olduğu özelliği
+    implement ediyor: **total fonksiyon**. Panic = trap = red değil, kararsız
+    sonuç. Bu round-4 [11]-[14] sınıfının ta kendisi (verify() kernel'in
+    sabit n'iyle indexleyip 6x6 proof'ta row 8'de IndexError). Artık her
+    structural özellik indexing'den ÖNCE kontrol ediliyor, kernel public
+    input'lardan inşa ediliyor, ve Verdict bir bool değil **reddin sebebini**
+    taşıyor. Composed verify F3+ ve **KASITLI FAKELANMADI** — gate "F3+"
+    diyerek reddediyor, çünkü kabul eden implementasyon, edilmemiş bir gate'i
+    kabul etmesinden bin kat beter.
+
+### TEKNİK NOT — sandbox görünürlüğü (bu oturumun gerçek bulgusu)
+Bu blokta bash komutları ara sıra **tutarsız bir filesystem görünümüne**
+düştü: `ls crates/` tek crate gösterdi, `Cargo.toml` bulunamadı, `.git`
+görünmedi, ve `progress.md` 3733 bayt göründü (gerçek ~196 kb). PWD her
+zaman doğruydu — aynı yola iki ayrı filesystem mount edildi. **Çözüm: bash
+`workdir` PARAMETRESİ** ve tutarlı görünüm gelene kadar ayrı çağrıları
+tekrarlamak; tek çağrı içindeki retry loop işe yaramıyor (görünüm çağrı
+başına sabit). read/write/edit tool'ları tutarlı görünümü gördü; sorun
+sadece bash'te. **Lesson: bu projede dosya tutarsızlığı görürsen "dosya
+kayboldu" varsayımını yapma; önce `workdir` ile ve tool'lar ile doğrula.**
+
+### HATA SINIFLARI (genel lesson, güncel)
+1. **Birim/etiket hatasi** (µs→ms, 1000× sapma) — ölçüm dogru, etiket yanlis.
+2. **Yanlis kume/tarama yeri** (anticone future dahil; 58-Mahrem kok dizin) —
+   "olcum nereye baktigina bagli".
+3. **Tek noktadan şekil iddia etme** (Θ(q·deg) 1 noktadan; k=18 1 noktadan) —
+   şekil için en az 3 nokta.
+4. **Fakelanmamış F3+** — PVI gate "yapılmadı" diyor, kabul etmiyor.
+
+### TEST DURUMU (güncel)
+`cargo test --release --workspace` **72/72 rc=0** (kok-poum 14, kok-fri 12,
+kok-ghostdag 18, kok-chain 5, kok-u-layer 14, kok-pvi 3, kok-probes 6).
+`audit_turkish_en.py` CLEAN. `suite_gate_en.py` 39/39, 0 broken.
+
+### KALAN (sirali, güncel)
+1. kok-wasm hâlâ iskelet (PVI'yi WASM'e derleme)
+2. ECVRF (S2, spec'te adı geçen)
+3. PVI composed verify (F3+)
+4. Skor **83.65** (dokunma)
