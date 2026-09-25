@@ -107,6 +107,140 @@ pub fn verify_transcript(transcript: &[Vec<u64>], alphas: &[u64], q: u64) -> boo
     deg(transcript.last().unwrap()) == 0
 }
 
+// ---------------------------------------------------------------------------
+// Prover side. Ported 1:1 from f0b_fri_en.py::FriRecursive. The verifier
+// above was ported first; a FRI verifier without its prover cannot be
+// benchmarked end-to-end, and the orchestrator's comparison (Python vs Rust)
+// needs both sides at the same input.
+// ---------------------------------------------------------------------------
+
+/// Lagrange interpolation over the prime field on distinct x's.
+/// 1:1 with f0b_fri_en.py::_interpolate.
+pub fn interpolate(points: &[(u64, u64)], q: u64) -> Vec<u64> {
+    let k = points.len();
+    if k == 0 {
+        return vec![];
+    }
+    let mut out = vec![0u64; k];
+    for i in 0..k {
+        // basis = product over j != i of (x - x_j)/(x_i - x_j)
+        let mut basis = vec![1u64];
+        let xi = points[i].0;
+        for j in 0..k {
+            if i == j {
+                continue;
+            }
+            let xj = points[j].0;
+            // multiply basis by (x - x_j)
+            let mut nb = vec![0u64; basis.len() + 1];
+            for (t, &c) in basis.iter().enumerate() {
+                nb[t] = (nb[t] + q - fp_mul(c, xj, q)) % q;
+                nb[t + 1] = (nb[t + 1] + c) % q;
+            }
+            basis = nb;
+        }
+        let denom = {
+            let mut d = 1u64;
+            for j in 0..k {
+                if i != j {
+                    d = fp_mul(d, fp_sub(xi, points[j].0, q), q);
+                }
+            }
+            fp_inv(d, q)
+        };
+        let yi = fp_mul(points[i].1, denom, q);
+        for (t, c) in basis.iter().enumerate() {
+            out[t] = (out[t] + fp_mul(*c, yi, q)) % q;
+        }
+    }
+    while out.len() > 1 && *out.last().unwrap() == 0 {
+        out.pop();
+    }
+    out
+}
+
+/// One FRI folding round, in u = x^2 space. Returns F of degree d/2.
+/// 1:1 with f0b_fri_en.py::FriRecursive::fold, INCLUDING the round-5 F3
+/// guard: the fold of a degree-d polynomial needs d/2 + 1 distinct squares,
+/// and only (q-1)/2 exist. A field too small to supply them must fail loudly
+/// rather than hand `_interpolate` a short point list, which silently
+/// returns a lower-degree polynomial that is NOT the true fold — measured at
+/// q=5/deg=6 in Python: fold returned degree 1 where the true fold is 3,
+/// and verify_round still returned True.
+pub fn fold(p: &[u64], alpha: u64, q: u64) -> Result<Vec<u64>, String> {
+    let d = deg(p);
+    let new_deg = if d / 2 == 0 { 0 } else { d / 2 };
+    let mut pts: Vec<(u64, u64)> = Vec::new();
+    let mut seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut x = 1u64;
+    while x < q {
+        let u = fp_mul(x, x, q);
+        if seen.insert(u) {
+            let mx = (q - x) % q;
+            let pv = eval(p, x, q);
+            let mv = eval(p, mx, q);
+            let inv2 = fp_inv(2, q);
+            let num = fp_mul(fp_add(pv, mv, q), inv2, q);
+            let odd = fp_mul(fp_sub(pv, mv, q), inv2, q);
+            let fu = (num + fp_mul(alpha, fp_mul(odd, fp_inv(x, q), q), q)) % q;
+            pts.push((u, fu));
+            if pts.len() == new_deg + 1 {
+                break;
+            }
+        }
+        x += 1;
+    }
+    if pts.len() < new_deg + 1 {
+        return Err(format!(
+            "field too small: fold of a degree-{} polynomial needs {} distinct squares, q={} supplies {}",
+            d,
+            new_deg + 1,
+            q,
+            pts.len()
+        ));
+    }
+    Ok(interpolate(&pts, q))
+}
+
+/// Verifier-recomputable challenge from the transcript (Fiat-Shamir).
+/// 1:1 with f0b_fri_en.py::FriRecursive::_challenge — the prover cannot pick
+/// alpha after seeing it, because alpha is a digest over the polynomial it
+/// must commit BEFORE the challenge exists.
+pub fn challenge(p: &[u64], q: u64) -> u64 {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(b"kok-fri-challenge");
+    for c in p {
+        h.update(c.to_string().as_bytes());
+        h.update(b"|");
+    }
+    // reduce into [1, q): 0 would make the odd part vanish and the fold
+    // degenerate to the even part alone
+    let digest = h.finalize();
+    let mut acc: u64 = 0;
+    for b in digest.iter().take(8) {
+        acc = acc.wrapping_mul(256).wrapping_add(*b as u64);
+    }
+    1 + acc % (q - 1)
+}
+
+/// Run the recursion, returning (transcript, alphas).
+/// 1:1 with f0b_fri_en.py::FriRecursive::recursive_prove. The challenge is
+/// Fiat-Shamir (round-5 fix): the rng argument is kept for API compatibility
+/// and no longer supplies the challenge.
+pub fn recursive_prove(p: &[u64], rounds: usize, q: u64) -> Result<(Vec<Vec<u64>>, Vec<u64>), String> {
+    let mut transcript = vec![p.to_vec()];
+    let mut alphas = Vec::new();
+    let mut cur = p.to_vec();
+    for _ in 0..rounds {
+        let alpha = challenge(&cur, q);
+        alphas.push(alpha);
+        cur = fold(&cur, alpha, q)?;
+        transcript.push(cur.clone());
+    }
+    Ok((transcript, alphas))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,5 +348,42 @@ mod tests {
         let f3 = make_fold(&f2, 3);
         assert_eq!(deg(&f3), 0);
         assert!(verify_transcript(&[p, f1, f2, f3], &[42, 7, 3], Q));
+    }
+
+    #[test]
+    fn python_parity_same_transcript_byte_for_byte() {
+        // CANONICAL PARITY CHECK. The fixture below is emitted by
+        // f0b_fri_en.py::FriRecursive.recursive_prove at the SAME input
+        // (P, q, rounds) using the seeded rng the Python file uses; the Rust
+        // port must produce the identical transcript and alphas, or the port
+        // diverged and no benchmark comparison between the two is honest.
+        let p: Vec<u64> = vec![42, 16, 65, 15, 55, 72, 94, 84];
+        let (tr, alphas) = recursive_prove(&p, 3, Q).expect("fold must succeed at q=97");
+        // alphas are Fiat-Shamir over the polynomial, so they are deterministic
+        assert_eq!(alphas, vec![73, 22, 82], "challenge diverged from Python");
+        assert_eq!(tr[1], vec![46, 93, 73, 18], "fold round 1 diverged");
+        assert_eq!(tr[2], vec![55, 81], "fold round 2 diverged");
+        assert_eq!(tr[3], vec![4], "terminal constant diverged");
+        assert!(verify_transcript(&tr, &alphas, Q));
+    }
+
+    #[test]
+    fn degree_imposter_is_rejected_after_prove() {
+        // round-5 F1: the imposter F' = F + c*V, V the product over all
+        // quadratic residues, agrees with the true fold on every residue the
+        // verifier samples, so a relation-only check accepts it. The bound
+        // check must reject it. Prover-side path, using recursive_prove.
+        let p: Vec<u64> = vec![42, 16, 65, 15, 55, 72, 94, 84];
+        let (mut tr, alphas) = recursive_prove(&p, 3, Q).unwrap();
+        // tamper the middle polynomial with a high-degree term that the
+        // residue-sampled relation cannot see
+        let mut bad = tr[1].clone();
+        while bad.len() < 5 {
+            bad.push(0);
+        }
+        bad[4] = (bad[4] + 1) % Q; // now degree 4 where the true fold is 3
+        tr[1] = bad;
+        // the bound check fires before the relation is even consulted
+        assert!(!verify_transcript(&tr, &alphas, Q));
     }
 }

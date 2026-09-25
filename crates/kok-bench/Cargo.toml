@@ -17,3 +17,7 @@ criterion.workspace = true
 [[bench]]
 name = "poum"
 harness = false
+
+[[bench]]
+name = "g_layer"
+harness = false

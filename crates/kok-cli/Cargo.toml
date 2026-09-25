@@ -8,4 +8,5 @@ rust-version.workspace = true
 
 [dependencies]
 kok-consensus.workspace = true
+kok-poum.workspace = true
 anyhow.workspace = true

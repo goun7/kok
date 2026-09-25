@@ -355,6 +355,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "kok-consensus",
+ "kok-poum",
 ]
 
 [[package]]
@@ -408,6 +409,7 @@ name = "kok-poum"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "once_cell",
  "sha2",
 ]
 

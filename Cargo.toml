@@ -68,6 +68,7 @@ sha2 = "0.10"
 sha3 = "0.10"
 hex = "0.4"
 hmac = "0.12"
+once_cell = "1"
 
 # --- randomness: VRF assignment and the toy matrices ---
 rand = "0.8"
