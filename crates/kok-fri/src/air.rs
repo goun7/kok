@@ -222,6 +222,15 @@ impl TileAir {
         a_commit: u64,
         b_commit: u64,
     ) -> bool {
+        // DEGENERATE KERNEL FIRST: q == 0 divides by zero in the boundary
+        // check just below (acc % self.q) and r == 0 divides by zero in
+        // m = n / self.r. Both guards must come BEFORE any use, or the
+        // check that exists to prevent the panic runs after it — which is
+        // exactly how the tile-coordinate guard above was misplaced, and
+        // how this one was too on its first attempt.
+        if self.q == 0 || self.r == 0 {
+            return false;
+        }
         // (2) boundary: trace[0] = 0
         if proof.trace.first() != Some(&0) {
             return false;
@@ -231,12 +240,23 @@ impl TileAir {
             return false;
         }
         let n = e.len();
+        if f.len() != n {
+            return false;
+        }
+        // ROW WIDTH of the public noise matrices: a ragged row would index
+        // past its end and PANIC, and a panic in verify is a DoS rather than
+        // a reject — the same class the G-layer kernel just got fixed for.
+        if !e.iter().all(|row| row.len() == n) || !f.iter().all(|row| row.len() == n) {
+            return false;
+        }
         let m = n / self.r;
         if proof.a.len() != m
             || proof.b.len() != m
             || proof.trace.len() != m + 1
             || proof.a_res.len() != m
             || proof.b_res.len() != m
+            || proof.a_paths.len() != m
+            || proof.b_paths.len() != m
         {
             return false;
         }
@@ -244,6 +264,16 @@ impl TileAir {
         for l in 0..m {
             let a_res = proof.a_res[l];
             let b_res = proof.b_res[l];
+            // the flattened index must be in range BEFORE it is used. This
+            // guard existed already, but AFTER the e/f accesses below — a
+            // check that runs after the thing it protects protects nothing,
+            // and a wrong (i, j) panicked instead of rejecting. The order is
+            // the fix.
+            if (i * self.r) * n + l * self.r >= flat_len
+                || (l * self.r) * n + j * self.r >= flat_len
+            {
+                return false;
+            }
             // bind the witness to the committed inputs: the residual the
             // prover says it used must be committed at the right position
             if !merkle_check(a_commit, (i * self.r) * n + l * self.r, a_res, &proof.a_paths[l]) {
@@ -261,13 +291,6 @@ impl TileAir {
             // (1) transition: trace[t+1] = trace[t] + a_t * b_t
             let want = (proof.trace[l] + proof.a[l] * proof.b[l]) % self.q;
             if proof.trace[l + 1] != want {
-                return false;
-            }
-            // the flattened index must be in range (a wrong (i,j) would
-            // otherwise index out of bounds and panic rather than reject)
-            if (i * self.r) * n + l * self.r >= flat_len
-                || (l * self.r) * n + j * self.r >= flat_len
-            {
                 return false;
             }
         }
@@ -435,5 +458,141 @@ mod tests {
         // measured: f0b_air_proto._merkle_root(leaves) at random.seed(20260925)
         let python_root: u64 = 7_776_579_357_882_374_515;
         assert_eq!(merkle_root(&leaves), python_root, "Rust Merkle root diverged from Python's");
+    }
+
+    /// OUT-OF-RANGE TILE COORDINATES must reject, not panic. The flat-index
+    /// guard existed before this fix — but AFTER the e/f accesses it was
+    /// meant to protect, so a wrong (i, j) unwound instead of rejecting. A
+    /// check that runs after the thing it protects protects nothing.
+    #[test]
+    fn out_of_range_tile_coordinates_reject_instead_of_panicking() {
+        let (a, b, e, f) = toy(20260925);
+        let air = TileAir::new(97, 2);
+        let n = 8;
+        let m = n / 2;
+        let (i, j) = (1, 2);
+        let mut acc = 0u64;
+        for l in 0..m {
+            acc = (acc
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                % 97;
+        }
+        let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
+        let flat_b: Vec<u64> = b.iter().flatten().copied().collect();
+        let a_commit = merkle_root(&flat_a);
+        let b_commit = merkle_root(&flat_b);
+        let proof = air.prove(&a, &b, &e, &f, 777, i, j, acc).unwrap();
+        // the honest proof verifies
+        assert!(air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit));
+        // i beyond the grid
+        assert!(
+            !air.verify(&proof, acc, &e, &f, m, j, a_commit, b_commit),
+            "an out-of-range i verified"
+        );
+        // j beyond the grid
+        assert!(
+            !air.verify(&proof, acc, &e, &f, i, m, a_commit, b_commit),
+            "an out-of-range j verified"
+        );
+        // both far out of range
+        assert!(
+            !air.verify(&proof, acc, &e, &f, 9999, 9999, a_commit, b_commit),
+            "far out-of-range coordinates verified"
+        );
+    }
+
+    /// RAGGED NOISE MATRICES must reject, not panic — the same class the
+    /// G-layer kernel just got fixed for, found here in the AIR verifier.
+    #[test]
+    fn ragged_noise_matrices_reject_instead_of_panicking() {
+        let (a, b, mut e, f) = toy(20260925);
+        let air = TileAir::new(97, 2);
+        let n = 8;
+        let m = n / 2;
+        let (i, j) = (1, 2);
+        let mut acc = 0u64;
+        for l in 0..m {
+            acc = (acc
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                % 97;
+        }
+        let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
+        let flat_b: Vec<u64> = b.iter().flatten().copied().collect();
+        let a_commit = merkle_root(&flat_a);
+        let b_commit = merkle_root(&flat_b);
+        let proof = air.prove(&a, &b, &e, &f, 777, i, j, acc).unwrap();
+        assert!(air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit));
+        // truncate one row of E
+        e[0].truncate(1);
+        assert!(!air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit), "a ragged E verified");
+        // a height mismatch on F
+        let (a2, b2, _e2, f2) = toy(20260925);
+        let mut short_f = f2;
+        short_f.pop();
+        let _ = (a2, b2);
+        assert!(!air.verify(&proof, acc, &e, &short_f, i, j, a_commit, b_commit), "a short F verified");
+    }
+
+    /// TRUNCATED MERKLE PATHS must reject. a_paths/b_paths are indexed per
+    /// step, so a proof with fewer paths than steps would panic; the length
+    /// gate now covers them alongside the other witness vectors.
+    #[test]
+    fn proofs_with_truncated_paths_reject_instead_of_panicking() {
+        let (a, b, e, f) = toy(20260925);
+        let air = TileAir::new(97, 2);
+        let n = 8;
+        let m = n / 2;
+        let (i, j) = (1, 2);
+        let mut acc = 0u64;
+        for l in 0..m {
+            acc = (acc
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                % 97;
+        }
+        let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
+        let flat_b: Vec<u64> = b.iter().flatten().copied().collect();
+        let a_commit = merkle_root(&flat_a);
+        let b_commit = merkle_root(&flat_b);
+        let proof = air.prove(&a, &b, &e, &f, 777, i, j, acc).unwrap();
+        assert!(air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit));
+        let mut truncated = proof.clone();
+        truncated.a_paths.truncate(1);
+        assert!(!air.verify(&truncated, acc, &e, &f, i, j, a_commit, b_commit), "truncated a_paths verified");
+        let mut truncated_b = proof.clone();
+        truncated_b.b_paths.truncate(0);
+        assert!(!air.verify(&truncated_b, acc, &e, &f, i, j, a_commit, b_commit), "empty b_paths verified");
+    }
+
+    /// DEGENERATE kernel parameters divide by zero in the accumulator; a
+    /// misconfigured chain must reject rather than crash the verifier.
+    #[test]
+    fn degenerate_air_kernel_parameters_reject_instead_of_panicking() {
+        let (a, b, e, f) = toy(20260925);
+        let zero_q = TileAir::new(0, 2);
+        let zero_r = TileAir::new(97, 0);
+        assert!(
+            !zero_q.verify(&TileAirProof {
+                a: vec![],
+                b: vec![],
+                trace: vec![0],
+                a_res: vec![],
+                b_res: vec![],
+                a_paths: vec![],
+                b_paths: vec![],
+            }, 0, &e, &f, 1, 2, 0, 0),
+            "q == 0 verified"
+        );
+        assert!(
+            !zero_r.verify(&TileAirProof {
+                a: vec![],
+                b: vec![],
+                trace: vec![0],
+                a_res: vec![],
+                b_res: vec![],
+                a_paths: vec![],
+                b_paths: vec![],
+            }, 0, &e, &f, 1, 2, 0, 0),
+            "r == 0 verified"
+        );
     }
 }
