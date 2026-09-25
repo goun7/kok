@@ -4,6 +4,13 @@
 //! that makes this a LAYER rather than a marketplace is carried here and
 //! stated where it can be read:
 //!
+//!   * a U proof contributes ZERO consensus weight — the G layer alone
+//!     chooses leaders, so buying inference demand cannot buy security;
+//!   * the fee is escrowed and the burn is a protocol fee policy, never a
+//!     supply-reduction promise (see arastirma/hukuk_howey_mica.md §5.C);
+//!   * task assignment is seeded by an ECVRF (RFC 9381) rather than a
+//!     hash, so the assignment is verifiably a function of the epoch.
+
 //! **LAYER U HAS ZERO CONSENSUS WEIGHT.** A U-task proof never enters leader
 //! election and never contributes to a block's weight. The G layer alone
 //! chooses leaders. This is why "useful work" cannot be captured: an attacker
@@ -13,8 +20,13 @@
 //! ECVRF — verify() there is a STRUCTURAL check, and the real guarantee (a
 //! forger holding a public key cannot reproduce another miner's proof) is
 //! MEASURED by probe_u_layer_en rather than asserted in the class. This Rust
-//! port preserves that property the same way: the proof binds (pk, msg), so
-//! a second identity's proof does not verify against the first's key.
+//! port now carries the real construction: kok-u-layer::ecvrf implements
+//! RFC 9381 ECVRF-P256-SHA256-TAI, pinned byte-for-byte against the
+//! standard's own Appendix B.1 test vectors. The HMAC toy's guarantee
+//! (determinism) is subsumed; the properties it could not have — uniqueness
+//! and pseudorandomness — are now provided by the construction.
+
+pub mod ecvrf;
 
 use sha2::{Digest, Sha256};
 

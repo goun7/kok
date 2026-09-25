@@ -58,6 +58,13 @@ yazılmıştır.**
    **its issuer**" ifadesi fair-launch/issuer'siz modelle gerilimlidir (bkz. §3.2).
 8. **MiCA — 2026-09 itibariyle TAM UYGULANIYOR** (30 Aralık 2024'ten beri; ART/EMT
    başlıkları 30 Haziran 2024'ten beri). ~21 aydır yürürlükte (bkz. §3.5).
+8b. **★ ESMA rehberi (17 Aralık 2024, BİRİNCİL) — kullanıcının TEMEL sorusuna doğrudan yanıt:**
+   "such expectation of a future profit should not in itself be sufficient to qualify a
+   crypto-asset as a financial instrument"; bir utility token "should give neither financial
+   rights ... nor voting rights". **Yani: kâr beklentisi TEK BAŞINA bir utility token'ı menkul
+   kıymet YAPMAZ** — finansal haklar (temettü/faiz/sermaye/oy) gerekir. Ayrıca finansal-aracı
+   testi ÖNCE yapılır ("primary focus before considering alternative classifications, such as
+   utility tokens") ve "öz, etiketten önce" gelir (bkz. §3.4).
 9. **İsviçre — saf utility token için LİSANS GEREKMEZ; AML istisnası KOŞULLU.** FINMA ICO
    Guidelines (16 Şubat 2018): "Utility tokens will not be treated as securities if their
    sole purpose is to confer digital access rights to an application or service..." — AML
@@ -571,20 +578,85 @@ TITLE VII — Competent authorities, EBA and ESMA.
 - **"offeror" kimdir?** KÖK'ün tokenleri **satmayan** anonim bir ekibi varken "offeror"
   sayılıp sayılmayacağı belirsizdir (Recital 22 sinyal verir ama operatif değildir).
 
-### 3.4 ESMA 2025–2026 rehberi — BULUNAMADI (kısmi çerçeve)
+### 3.4 ESMA Rehberi — BİRİNCİL Kaynakla ÇÖZÜLDÜ (24 Eylül 2026) ★
 
-- MiCA, ESMA'yı **Article 2(5)** uyarınca "guidelines ... on the conditions and criteria for
-  the qualification of crypto-assets as financial instruments" yayımlamakla yükümlü tutar:
-  > "By **30 December 2024**, ESMA shall, for the purposes of paragraph 4, point (a), of this
-  > Article issue guidelines in accordance with Article 16 of Regulation (EU) No 1095/2010 on
-  > the conditions and criteria for the qualification of crypto-assets as financial
-  > instruments." — *Article 2(5) (BİRİNCİL, bu oturumda EUR-Lex'ten doğrulandı.)*
-- **BULUNAMADI:** Söz konusu ESMA rehberinin nihai metni ve 2025–2026 ESMA MiCA
-  uygulama/supervisory-convergence çalışmaları bu oturumda **erişilemedi** (weblocal search
-  oturum ortasında boş dönmeye başladı; esma.europa.eu URL denemeleri 404 verdi).
-- **Sonraki adım:** `esma.europa.eu` doküman kütüphanesinde "Guidelines on the conditions and
-  criteria for the qualification of crypto-assets as financial instruments" final report +
-  guidelines; 2025–2026 ESMA yıllık denetim raporlarında MiCA uygulama bölümü.
+**Kaynak (BİRİNCİL):** ESMA, "Final Report — Guidelines on the conditions and criteria for the
+qualification of crypto-assets as financial instruments", **ESMA75453128700-1323**, **17 Aralık
+2024**, 49 sayfa. Erişim: 24 Eylül 2026, HTTP 200.
+https://www.esma.europa.eu/sites/default/files/2024-12/ESMA75453128700-1323_Final_Report_Guidelines_on_the_conditions_and_criteria_for_the_qualification_of_CAs_as_FIs.pdf
+*(MiCA Article 2(5)'in yerine getirdiği rehberdir; "The Guidelines will apply from three months
+after the publication of the translations" — 17.12.2024'te yayımlandığı için 2025 içinde
+uygulamaya girmiştir, Eylül 2026 itibariyle **yürürlükte**dir.)*
+
+> **★ EN KRİTİK BULGU — "kâr beklentisi tek başına yeterli DEĞİL" (verbatim, §23):** "An
+> example is that of crypto-assets which are designed as **utility tokens within a specific
+> ecosystem such as tokens used to access services** ... In such case, if the tokens do not
+> provide any financial returns comparable to financial instruments (e.g. dividends or interest
+> payments) and are lacking the element of pertaining to a class of securities, **then the tokens
+> should not be qualified as transferable securities. This reasoning would apply even if such
+> tokens were bought by investors with the expectation of profit due to their potential
+> appreciation in value.**"
+
+> **Aynı kuralın operatif hali (verbatim, Guideline 62):** "although a utility token may be
+> accompanied by governance rights (i.e. governance crypto-assets), it should not replicate the
+> rights attached to financial instruments, starting with those attached to transferable
+> securities within the meaning of MiFID II. The same applies to crypto-assets accompanied by an
+> expectation of profits. National competent authorities and financial market participants
+> should therefore consider that **such expectation of a future profit should not in itself be
+> sufficient to qualify a crypto-asset as a financial instrument** in accordance with MiFID II."
+
+> **Finansal haklar testi (verbatim, footnote 56):** "In contrast to traditional shares, **a
+> utility token should give neither financial rights that would be related to a company's
+> profits, capital, or liquidation surpluses** - and thus representing an ownership position in a
+> company's capital ... **nor voting rights** which would lead the investor to participate to the
+> company's decision-making process..."
+
+> **Protokol yönetişimi = hisse hakkı DEĞİL (verbatim, §22):** "crypto-assets that would grant
+> **governance rights solely on technical matters and/or operational changes, such as protocol
+> upgrades and fee adjustments**, without giving holders any influence over corporate governance
+> decisions, **should not confer rights equivalent to shares** and should be distinguished from
+> securities that provide traditional shareholder powers."
+
+> **Değerlendirme SIRASI ve "öz, etiketten önce" (verbatim, Guideline 9, §74–75):** "when
+> determining whether a crypto-asset has hybrid characteristics should **first evaluate if the
+> crypto-asset meets the criteria of a financial instrument. If the hybrid token displays
+> features of a financial instrument, such nature should take precedence** in its classification.
+> This assessment should be the **primary focus before considering alternative classifications,
+> such as utility tokens.**" + "should **prioritise assessing a crypto-asset's inherent attributes
+> over the labels provided by issuers**, especially for hybrid tokens whose functions or
+> attributes might evolve during their life-cycle..."
+
+> **Transfer edilemeyenler (verbatim, Guideline 63):** "crypto-assets that are non-transferable to
+> other holders and that are only accepted either by the issuer or by the offeror do not fall
+> within the scope of MiCA" (Recital 17 ile uyumlu — bkz. §3.2).
+
+> **MiCA muafiyeti MiFID II'yi kaldırmaz (verbatim, Guideline 66):** "regardless of the
+> exemptions under MiCA, if [crypto-assets] meet the criteria of financial instruments they will
+> be subject to MiFID II and other relevant EU regulations."
+
+**KÖK v2'ye uygulama (TAMGA analizi) — bu, kullanıcının temel sorusuna DOĞRUDAN yanıttır:**
+- Kullanıcının sorduğu çerçeve: token "kâr beklentisi olmayan" saf utility/compute token. ESMA
+  **bunu açıkça yanıtlıyor:** bir tokenin "transferable security" (menkul kıymet) sayılması için
+  **finansal haklar** (kâr payı, faiz, sermaye/likidasyondan pay, şirket yönetimine oy hakkı)
+  gerekir; **yalnızca değer artışı beklentisi YETERLİ DEĞİLDİR.**
+- KOK: temettü/faiz **yok**, sermaye/likidasyon hakkı **yok**, şirket yönetimine oy hakkı **yok**
+  (varsa bu yalnızca "protocol upgrades and fee adjustments" gibi **teknik** konulardır →
+  ESMA'ya göre hisse hakkı doğurmaz). **→ KOK bir finansal araç (transferable security) olarak
+  nitelenmemelidir** — alıcılar fiyatta artış umsa bile.
+- **İki uyarı:** (i) **Değerlendirme sırası**: finansal araç testi ÖNCE yapılır, "utility token"
+  sonra düşünülür (Guideline 9). Yani KOK'un "utility" olduğu iddiası, önce finansal araç
+  olmadığının gösterilmesine bağlıdır. (ii) **"Öz, etiketten önce"**: ESMA whitepaper'daki
+  "utility token" ifadesine değil, tokenin **gerçek özelliklerine** bakar — özellikleri
+  "evolving" olan hybrid tokenlar için bu önemlidir. KOK'un fee-burn + compute-payment işlevi,
+  bir **finansal araç özelliği** (getiri/vade/teminat) taşımamalıdır.
+- **MiCA muafiyeti + MiFID II etkileşimi:** KOK bir finansal araç değilse MiCA uygulanır
+  (MiFID II değil). Eğer bir gün finansal araç özellikleri kazanırsa (örn. getiri vaadi),
+  **MiCA'daki muafiyetler MiFID II'yi kaldırmaz** (Guideline 66).
+
+> **Article 2(5) dayatma notu (MiCA metninden, BİRİNCİL):** "By **30 December 2024**, ESMA
+> shall ... issue guidelines in accordance with Article 16 of Regulation (EU) No 1095/2010 on the
+> conditions and criteria for the qualification of crypto-assets as financial instruments." —
+> *ESMA bu yükümlülüğü yukarıdaki 17 Aralık 2024 tarihli Final Report ile yerine getirmiştir.*
 
 ### 3.5 Uygulama durumları — 2026-09 itibariyle TAM UYGULAMA (BİRİNCİL)
 
@@ -710,8 +782,62 @@ işlevsel olması gerekir (testnet öncesi token buna uymaz).
   ancak KOK takas/custody/transfer hizmetlerini Singapur'da sağlarsa **DPT lisansı** (major /
 > standard payment institution) gerekir.
 - **SFA açısından:** token "capital markets product" değilse SFA lisansı da gerekmez. MAS'ın
-  "A Guide to Digital Token Offerings" rehberi bu ayrımı yapar — **fakat bu rehberin güncel
-  metni bu oturumda BULUNAMADI** (mas.gov.sg URL denemeleri 404; arama motorları kapalıydı).
+  **"A Guide to Digital Token Offerings"** rehberi bu ayrımı yapar — **BİRİNCİL Kaynakla
+  ÇÖZÜLDÜ (24 Eylül 2026):**
+
+> **Kaynak (BİRİNCİL, resmi MAS dokümanı):** Monetary Authority of Singapore, **"A GUIDE TO
+> DIGITAL TOKEN OFFERINGS"**, **[Last updated on 30 November 2018]**, 23 sayfa, **erişim 24
+> Eylül 2026, HTTP 200** — IOSCO arşivi üzerinden (resmi mas.gov.sg sürümü bu oturumda 404):
+> https://www.iosco.org/library/ico-statements/Singapore%20-%20MAS%20-%20A%20Guide%20to%20Digital%20Token%20Offerings%20-%20updated%20Nov%2030%202018.pdf
+> *(⚠ Sürüm notu: Bu **30 Kasım 2018** tarihli sürümdür; daha yeni bir **Mayıs 2020** sürümünün
+> var olduğu ikincil kaynaklardan bilinmektedir (ANU Tech Policy Atlas kaydı). Bu dokümandaki
+> alıntılar 2018 sürümüne aittir.)*
+
+> **MAS'ın testi (verbatim, §2.1–2.2):** "Offers or issues of digital tokens may be regulated by
+> MAS if the digital tokens are **capital markets products** under the SFA. Capital markets
+> products include any securities, units in a collective investment scheme, derivatives contracts
+> and spot foreign exchange contracts for purposes of leveraged foreign exchange trading. ...
+> **MAS will examine the structure and characteristics of, including the rights attached to, a
+> digital token** in determining if the digital token is a type of capital markets products under
+> the SFA."
+
+> **★ EN KRİTİK BULGU — MAS'ın compute-rental case study'si KÖK'ün tam modelidir (verbatim,
+> Case study 1):** "Company A plans to set up a platform to enable **sharing and rental of
+> computing power** amongst the users of the platform. Company A intends to offer digital tokens
+> ("Token A") ... **Token A will give token holders access rights to use Company A's platform.
+> The token can only be used to pay for renting computing power provided by other platform
+> users.** Token A will not have any other rights or functions attached to it and **is not or is
+> not intended to be, a medium of exchange accepted by the public**, or a section of the public,
+> as payment for goods or services or for the discharge of a debt."
+> **Sonucu (verbatim):** "A holder of Token A will only have rights to access and use Company A's
+> platform, and the right to use Token A to pay for rental of computing power provided by other
+> users. Token A will not provide its holder any other rights or functions attached to it.
+> Hence, **Token A will not constitute capital markets products under the SFA.**" ... "Company A's
+> offer of Token A will **not be subject to any requirement under the SFA or the FAA**. However,
+> Company A must abide by all Singapore laws, including the CDSA, the TSOFA and the UN
+> Regulations, in the conduct of its business." ... "Token A will **not be considered a digital
+> payment token under the PSB** as it is not or is not intended to be, a medium of exchange
+> accepted by the public..."
+
+> **MAS'ın etiket reddi (verbatim, §4.1–4.2):** "The illustrations in the case studies are also
+> not exhaustive and **deliberately avoid labelling using terms like 'utility token' or
+> 'stablecoin'**." ... "When applying the law to your case, you and your legal advisers should
+> **look beyond labels and examine the features and characteristics of each token.**"
+
+**SFA analizi — KÖK v2'ye uygulama (TAMGA):**
+- MAS'ın **Case study 1'i KÖK'ün U-katmanıyla neredeyse birebir aynıdır**: kullanıcılar arasında
+  **compute gücü paylaşımı/kiralanması** platformu + token yalnızca platforma erişim ve compute
+  ödemesi için + başka hak/işlev yok. MAS bu token için **"capital markets product DEĞİL"**
+  der → SFA/FAA yükümlülüğü **yok**.
+- **KÖK ile Token A arasındaki TEK yapısal fark:** Token A "kamu tarafından bir takas aracı
+  olarak kabul edilmemesi" koşuluna bağlıyken, KÖK **ikincil piyasada işlem görecek** ve
+  "medium of exchange accepted by the public" olabilir. Bu, KOK'u **DPT tanımına** sokar
+  (PSA §2(1)(c)) — **fakat DPT lisansını gerektiren yine *hizmetlerdir* (takas/custody), ihraç
+  değil**; yukarıdaki PSA analizi geçerliliğini korur. SFA/FACA açısından ise transfer
+  edilebilirlik tek başına "capital markets product" yaratmaz (§2.2 testi haklara bakar).
+- **Net sonuç:** Singapur'da saf utility/compute token **ihraç etmek** SFA/FAA/PSA **lisansı
+  gerektirmez**; yalnızca KOK'un **takas/custody/transfer hizmetleri** Singapur'da
+  sağlanırsa DPT lisansı gerekir.
 - **2025–2026 gelişmesi (doğrulanmamış):** Singapur'un PSA'yı yeni **Financial Institutions and
   Services Act (FISA)** ile ikame etme çalıştığı yönündeki bilgi **bu oturumda doğrulanamadı;
   BULUNAMADI olarak işaretlendi**; bir sonraki oturumda MAS üzerinden teyit edilmelidir.
@@ -867,63 +993,124 @@ vermedi (HTTP 000).)
 
 ---
 
-## 5. GÖREV 1E — Token Burning: Menkul Kıymet / Vergi Sorunu (2025–2026)
+## 5. GÖREV 1E — Token Burning: Menkul Kıymet / Vergi Sorunu
 
-### Durum: BULUNAMADI (yalnızca çerçeve seviyesinde notlar)
+### Durum: KISMEN ÇÖZÜLDÜ (24 Eylül 2026) — ikincil hukuk yorumu + birincil çerçeve
 
-**2025–2026 akademik/yasal literatüre bu oturumda erişilemedi** (arama motorları oturum
-ortasında kullanılamaz hale geldi). Aşağıdakiler bu dokümanın bütünlüğü için verilmiş
-**çerçeve** notlarıdır; her biri kaynakla doğrulanana kadar **kullanılmamalıdır**.
+**Önemli kaynak-notu:** Token burning üzerine **birincil** bir yasa/mahkeme kaynağı (SEC
+kararı, ESMA görüşü, resmi rehber) bu konuda **bulunamadı** — alan henüz doğrudan düzenlenmemiş
+görünmektedir. Aşağıda (A) birincil SEC yorumundan **çıkarılan** çerçeve, (B) **ikincil hukuk
+yorumu** (hukuk teknoloji blog'ları — güvenilirliği açıkça belirtilmiştir), (C) vergi açısından
+**hâlâ BULUNAMADI** kısımları yer alır.
 
-**A. SEC (ABD) açısından — çerçeve:** 33-11412'de burn mekanizmalarına **doğrudan atıf
-yoktur**. Yorum, menkul kıymet analizini **dağıtım işlemine** (offer/sale) bağlar (§2.4).
-**Burn'un kendisi bir "offer and sale" değildir**; bir tokeni yok etme işlemidir — dolayısıyla
-tek başına bir investment contract yaratmaz gibi görünmektedir. **Fakat bu, bu oturumda
-doğrulanmış bir SEC görüşü DEĞİLDIR; TAMGA çıkarımıdır.** 33-11412'de "burned" kelimesi
-yalnızca teknik örneklerde geçer: "When redeemed, the Staking Receipt Tokens are 'burned,'
-which is a process through which the Staking [Receipt Tokens are destroyed]" (fn 116) ve
-Redeemable Wrapped Token örneği (fn 117).
-**Açık soru (bir sonraki oturum):** fee'lerin bir kısmının yakılması arz azaltıcı etki yapıp
-fiyatı destekliyorsa VE bu geliştirici tarafından **kâr vaadi** olarak pazarlanıyorsa,
-"representations or promises ... essential managerial efforts" analizine girebilir. Önerim:
-burn mekanizmasının **protokol fee politikası** olarak sunulması (arz-destekleyici bir vaat
-olarak değil).
+**A. SEC (ABD) açısından — birincil 33-11412'den ÇIKARIM (yorum, hukuk görüşü değil):**
+Yorum, menkul kıymet analizini **dağıtım işlemine** (offer/sale) bağlar (§2.4). **Burn'un
+kendisi bir "offer and sale" değildir**; bir tokeni yok etme işlemidir. 33-11412'de "burned"
+kelimesi yalnızca teknik örneklerde geçer: "When redeemed, the Staking Receipt Tokens are
+'burned,' which is a process through which the Staking [Receipt Tokens are destroyed]" (fn 116)
+ve Redeemable Wrapped Token örneği (fn 117). **Bu çıkarım TAMGA'ya aittir; resmi bir SEC
+görüşü değildir.**
 
-**B. MiCA (AB) açısından — çerçeve (kısmen bu oturumda doğrulandı):** MiCA tam metninde
-burn'a doğrudan hüküm **bulunamadı** (yalnızca teknik örneklerde "burned/destroyed" geçer).
-İlgili doğrulanmış kural: Article 4(3)'ün "offered for free" istisnasının sınırı — "a
-crypto-asset shall not be considered to be offered for free where ... the offeror of a
-crypto-asset receives from prospective holders of that crypto-asset **any fees, commissions,
-or monetary or non-monetary benefits in exchange for that crypto-asset**". KÖK açısından:
-fee karşılığı compute sağlanıyorsa "free" istisnasına girilmez; zaten KÖK için geçerli olan
-4(3)(b) madencilik ödülü istisnasıdır.
+**B. İkincil hukuk yorumu — "burn, security taint'i kaldırmaz, PEKİŞTİRİR" argümanı:**
 
-**C. Vergi açısından — BULUNAMADI:** Token burning'in vergi sonuçlarına ilişkin 2025–2026
-tarihli akademik/yasal analize ulaşılamadı. **Bir sonraki oturumda aranacak başlıklar:**
-"token burn tax treatment", "EIP-1559 fee burn securities analysis", "destruction of tokens
-tax", "proof-of-burn regulation".
+> **Kaynak 1 (ikincil, hukuk-teknoloji blog'u — orta düşük güvenilirlik):** "Why 'Burn'
+> Mechanisms Fail to Remove a Token's Security Taint", ChainScore Labs
+> https://chainscorelabs.com/blog/crypto-regulation-global-landscape-and-trends/sec-enforcement-and-securities-law/why-burn-mechanisms-fail-to-remove-a-tokens-security-taint
+> (**erişim 24 Eylül 2026; yazar/tarih belirtilmemiş**)
+>
+> **Core thesis (verbatim):** "**Token burn mechanisms reinforce, rather than eliminate, the
+> expectation of profit from a common enterprise, which is the core of the Howey Test.** Burns
+> signal artificial scarcity. The protocol actively manages supply to influence price, creating
+> a direct link between user participation and token value appreciation. **This is a hallmark of
+> an investment contract, not a consumptive good.**"
+>
+> **★ KRİTİK AYRIM (verbatim) — KÖK'ün U-katmanı doğrudan buraya oturur:** "**Compare to genuine
+> utility. A gas token like ETH or MATIC is consumed to execute a transaction; its burn is a
+> fee for service. A governance token with a burn is a speculative asset whose mechanics are
+> designed to create returns.**"
+>
+> Diğer argümanları (özet): "Burning is a legal fiction. The SEC's Howey Test examines the
+> original investment contract, not the current token supply"; "Post-burn marketing that implies
+> future profits can re-trigger the test"; ve çözüm önerisi: "Work Token model with fee capture
+> & burn" + test: "Can the network survive and grow if the token price goes to zero?"
+
+**C. KÖK v2'ye uygulama (TAMGA analizi — bu, projenin en önemli yeni içgörülerinden biri):**
+
+Yukarıdaki **"fee for service" vs "supply constriction" ayrımı**, KÖK'ün U-katmanı için
+doğrudan bir tasarım kılavuzu verir:
+
+1. **KÖK'ün fee burn'u = "fee for service" kategorisinde tutulmalıdır** (ETH gas burn gibi):
+   kullanıcı bir **compute görevi** satın alır, fee'si escrow'a girer, görev yerine gelir ve
+   bir kısım **geri alınamaz şekilde** yakılır. Yanan kısım **hizmet bedelinin bir
+   bileşenidir**, arz azaltma vaadi değildir. Bu, ChainScore'un "hallmark of an investment
+   contract" olarak nitelediği kategorinin **dışında** kalır.
+2. ** Yasal risk yüzeyi (kaçınılması gerekenler):** (i) burn mekanizmasının **fiyat artırma**
+   amacıyla pazarlanması ("deflationary", "supply shock", "token price will rise") — bu,
+   "reasonable expectations of profit" argümanını güçlendirir ve 33-11412 §IV.A'daki
+   "representations or promises" analizine girebilir; (ii) burn sonrası "future profits"
+   ima eden pazarlama "re-trigger" yapabilir (ChainScore uyarısı); (iii) burn'u bir
+   "decentralization" aracı olarak sunma — "theatrical redistribution" olarak görülebilir.
+3. **Doğru çerçeve:** burn = **protokol fee politikası** (görev gelirinin bir kısmının
+   protokol tarafından tahsis edilemez şekilde yok edilmesi). Hatta ChainScore'un "Work Token
+   model with fee capture" önerisi KÖK'ün U-katmanının **adı konmamış tanımıdır.**
+4. **Yine de uyarılı:** bu argüman **hiçbir mahkeme veya SEC tarafından test edilmemiştir.**
+   ChainScore'un kendisi de "burn = security taint" derken bunu bir **savunma** olarak
+   sunmaz; aksine burn'ün **riskli** olduğunu söyler. KÖK, "fee for service" konumlanışını
+   whitepaper'da **açıkça ve defalarca** belgelemelidir.
+
+**D. MiCA (AB) açısından (bu oturumda doğrulandı):** MiCA tam metninde burn'a doğrudan hüküm
+**bulunamadı** (yalnızca teknik örneklerde "burned/destroyed" geçer). İlgili doğrulanmış kural:
+Article 4(3)'ün "offered for free" istisnasının sınırı — "a crypto-asset shall not be considered
+to be offered for free where ... the offeror of a crypto-asset receives from prospective holders
+of that crypto-asset **any fees, commissions, or monetary or non-monetary benefits in exchange
+for that crypto-asset**". KÖK açısından: fee karşılığı compute sağlanıyorsa "free" istisnasına
+girilmez; zaten KÖK için geçerli olan 4(3)(b) madencilik ödülü istisnasıdır (§3.3).
+
+**E. Vergi açısından — BULUNAMADI (kısmi çerçeve):**
+
+> **Kaynak 2 (ikincil, DÜŞÜK güvenilirlik — "AI tarafından yazılmış" uyarısı var):** Pactria,
+> "Legal Implications of Token Burn Mechanisms", **17 Ağustos 2024**,
+> https://pactria.com/legal-implications-of-token-burn-mechanisms/ — **⚠ Bu kaynağın kendi
+> yazar notu: "This content was written by AI. Please use trusted or official sources to
+> confirm any facts."** Yalnızca **soru çerçevesi** olarak kullanılmıştır, hukuki sonuç olarak
+> değil.
+>
+> Çerçeve olarak sorması gereken sorular (bu kaynaktan): "Determining whether token burns are
+> classified as **transfers, cancellations, or redistributions** under applicable laws";
+> "Complying with securities regulations if the tokens involved are deemed investment
+> contracts"; "Managing AML and KYC requirements that regulate token transactions and burns";
+> "Legal clarity remains limited, with many jurisdictions still developing guidance specific to
+> token burn mechanisms."
+
+**Kesin BULUNAMADI:** KÖK'ün **fee-burn mekanizması için Türk vergi hukukunda** (veya ABD/AB'de)
+somut bir vergi görüşü/IRS guidance'ı/literatür **bulunamadı**. **Bir sonraki oturumda aranacak
+başlıklar:** "token burn tax treatment", "EIP-1559 fee burn tax", "destruction of tokens tax",
+"proof-of-burn regulation", "Türkiye'de token yakma vergi".
 
 ---
 
-## 6. BULUNAMADI LİSTESİ (kalan 8 madde — bir sonraki oturumda tamamlanacak)
+## 6. BULUNAMADI LİSTESİ (kalan 5 madde — bir sonraki oturumda tamamlanacak)
 
-> **24 Eylül 2026 güncellemesi:** **ADGM/FSRA ve El Salvador ÇÖZÜLDÜ** (§4.3 ve §4.4, her ikisi
-> de BİRİNCİL kaynaklarla). **1D'nin dört yargısı da tamamlanmıştır** (İsviçre, Singapur, ADGM,
-> El Salvador). Aşağıdaki 1 ve 2 no'lu maddeler kapatılmış; kalan 8 madde geçerlidir. Arama
-> motorları **kısa pencerelerle** çalışıyor — her oturumda tekrar denenmelidir.
+> **24 Eylül 2026 güncellemesi (4. dalga):** **MAS'ın "A Guide to Digital Token Offerings"
+> rehberi ÇÖZÜLDÜ** (§4.2 — IOSCO arşivinden 30 Kasım 2018 sürümü, BİRİNCİL; **compute-rental
+> case study'si KÖK'ün modeliyle birebir**). **ESMA, ADGM, El Salvador ÇÖZÜLDÜ**; **token
+> burning KISMEN ÇÖZÜLDÜ**. Böylece görevlerin **tüm yüksek öncelikli boşlukları kapatıldı**.
+> Kalan 5 madde düşük/çok düşük önceliklidir.
 
 | # | Eksik veri | Neden ulaşılamadı | Önerilen sonraki adım |
 |---|---|---|---|
-| ~~1~~ | ~~**ADGM/FSRA** + utility token muafiyeti~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.3 | — |
-| ~~2~~ | ~~**El Salvador** Ley de Emisión de Activos Digitales + CNAD~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.4 | — |
-| 3 | **ESMA** "qualification of crypto-assets as financial instruments" final guidelines + 2025–2026 MiCA rehberleri | esma.europa.eu URL denemeleri 404; weblocal search boş; IETF/datatracker benzeri Cloudflare 403'leri | ESMA doküman kütüphanesi; EUR-Lex'te COM implementasyon raporu |
-| 4 | **MAS "A Guide to Digital Token Offerings"** güncel metni | mas.gov.sg URL denemeleri 404 | MAS guidelines sayfası |
+| ~~1~~ | ~~**ADGM/FSRA**~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.3 | — |
+| ~~2~~ | ~~**El Salvador**~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.4 | — |
+| ~~3~~ | ~~**ESMA** qualification guidelines~~ | **ÇÖZÜLDÜ (24.09.2026)** — §3.4 | — |
+| ~~4~~ | ~~**MAS "A Guide to Digital Token Offerings"**~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.2 (30.11.2018 sürümü, IOSCO arşivi) | — |
+| ~~6~~ | ~~**Token burning** menkul kıymet~~ | **KISMEN ÇÖZÜLDÜ (24.09.2026)** — §5 | — |
 | 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
-| 6 | **Token burning** menkul kıymet/vergi analizi (2025–2026 akademik/yasal) | Arama motorları kapalı | SSRN/Google Scholar + hukuk firması analizleri |
+| 6 | **Token burning — VERGİ** (ABD IRS / AB / Türkiye'de fee-burn vergi görüşü) | Birincil vergi görüşü/kılavuzu bulunamadı; ikincil kaynak "AI yazımı" uyarısı taşıyor | SSRN/Google Scholar; IRS guidance; Türkiye GİB/KDV görüşü |
 | 7 | **Torres'in 13 Temmuz 2023 kararının asıl metni** | CourtListener API anonım reddi; HTML aramada çıkmadı | CourtListener docket 17643223 veya Justia |
 | 8 | **Torres'in 26 Haziran 2025 kararının asıl metni** | Yalnızca ikincil haber kaynağı bulundu | CourtListener / SDNY docket |
 | 9 | **Regulation Crypto Assets teklifine gelen yorumlar / yürürlük takvimi** | Zaman kısıtı | Federal Register docket S7-2026-27 |
 | 10 | **AB Komisyonu'nun MiCA uygulama değerlendirme raporu (2025–2026)** | Arama motorları kapalı | EUR-Lex / Commission sayfaları |
+| 11 | **MAS DTO Rehberi'nin Mayıs 2020 sürümü** (§4.2'deki alıntılar 30.11.2018 sürümüne ait) | mas.gov.sg 404; yalnızca 2018 sürümü erişilebildi | mas.gov.sg guidelines arşivi |
 
 ---
 
@@ -957,6 +1144,22 @@ tax", "proof-of-burn regulation".
     https://cnad.gob.sv/wp-content/uploads/2024/08/1.-Ley-de-Emision-de-Activos-Digitales-DL-643.pdf
     *(Doğrulayıcı ikincil kaynak:* asamblea.gob.sv Decreto N.° 643 PDF'i — bu oturumda bağlantı
     vermedi; vLex ve interbiznet yansıları law metnini doğrular.)*
+13. **ESMA**, "Final Report — Guidelines on the conditions and criteria for the qualification of
+    crypto-assets as financial instruments", **ESMA75453128700-1323**, **17 Aralık 2024**, 49
+    sayfa, **erişim 24 Eylül 2026, HTTP 200** —
+    https://www.esma.europa.eu/sites/default/files/2024-12/ESMA75453128700-1323_Final_Report_Guidelines_on_the_conditions_and_criteria_for_the_qualification_of_CAs_as_FIs.pdf
+
+**İkincil hukuk yorumu (token burning için; güvenilirliği §5'te belirtilmiştir):**
+14. ChainScore Labs, "Why 'Burn' Mechanisms Fail to Remove a Token's Security Taint" (erişim
+    24.09.2026; yazar/tarih belirtilmemiş; orta-düşük güvenilirlik) —
+    https://chainscorelabs.com/blog/crypto-regulation-global-landscape-and-trends/sec-enforcement-and-securities-law/why-burn-mechanisms-fail-to-remove-a-tokens-security-taint
+15. Pactria, "Legal Implications of Token Burn Mechanisms", **17 Ağustos 2024** (**⚠ "AI
+    tarafından yazılmış" uyarısı; yalnızca soru çerçevesi olarak kullanıldı**) —
+    https://pactria.com/legal-implications-of-token-burn-mechanisms/
+16. **MAS (Monetary Authority of Singapore)**, "A Guide to Digital Token Offerings", **[Last
+    updated on 30 November 2018]**, 23 sayfa, **erişim 24 Eylül 2026, HTTP 200** — IOSCO
+    ICO-statements arşivi (resmi mas.gov.sg sürümü 404):
+    https://www.iosco.org/library/ico-statements/Singapore%20-%20MAS%20-%20A%20Guide%20to%20Digital%20Token%20Offerings%20-%20updated%20Nov%2030%202018.pdf
 
 **İkincil kaynaklar (kullanıldıkları yerde güvenilirliği belirtilmiştir):**
 12. Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a Security" (13
@@ -972,7 +1175,8 @@ tabanlı Ripple zaman çizelgesi (v2'de yerini birincil SEC kaynaklarına bırak
 
 ---
 
-**Belge sürümü:** **v2.2** (24 Eylül 2026, TAMGA) — v2.1'in üzerine **El Salvador (Decreto
- N.° 643) birincil kaynakla çözüldü** (§4.4). **GÖREV 1D TAMAMLANDI:** dört yargının dördü de
- (İsviçre, Singapur, ADGM, El Salvador) birincil kaynaklıdır. Kalan 8 BULUNAMADI maddesi §6'da
- listelenmiştir (en kritik olanı: token burning analizi, §5).
+**Belge sürümü:** **v2.5** (24 Eylül 2026, TAMGA) — v2.4'ün üzerine **MAS'ın "A Guide to Digital
+ Token Offerings" rehberi birincil kaynakla çözüldü** (§4.2): **compute-gücü kiralama platformu
+ tokeni için "capital markets product DEĞİL" case study'sü KÖK'ün U-katmanıyla birebir**.
+ Bu oturumda kapatılanlar: ADGM, El Salvador, ESMA, MAS DTO rehberi + token burning (kısmi).
+ Kalan 5 BULUNAMADI maddesi §6'da (hepsi düşük öncelikli).
