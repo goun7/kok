@@ -3796,9 +3796,51 @@ noktadan geldiği ortaya çıktı.
 `cargo test --release --workspace` **154/154 rc=0**. Build 0 uyarı.
 `audit_turkish_en.py` CLEAN, `suite_gate_en.py` 39/39.
 
+## 5. BLOK — SWEEP'İN SONU: HER CRATE'DE "GUARD ÖNCE" (2026-09-25)
+
+Sweep'in "guard, koruduğu şeyden önce çalışıyor mu?" sorusu bu blokta son
+iki crate'i de buldu. Artık her crate en az bir adversarial testle kaplı.
+
+### 29. **KOK-ECVRF: identity forgery + cross-key replay** (`f409fe9`)
+    RFC 9381 §5.4.1 H ve Gamma'nın non-identity subgroup üyesi olmasını
+    istiyor — Gamma identity'de verification equation dejenere olur, bazı
+    parametre seçimlerinde saldırgan secret olmadan (c,s) çözebilir.
+    Modül doc'u bunun "implied" olduğunu not ediyordu (point at infinity'nin
+    compressed encoding'i yok → 81 bayt inşa edilemez). Doğru ama **argüman,
+    test değil**. Artık her iki parity'de forge denemesi assert ediliyor.
+    **Cross-key replay** (bug sınıf 2): proof Y'ye de bağlı çünkü verify H'yi
+    (pk_string, alpha)'dan recompute ediyor → başka anahtarın proof'unda H
+    yanlış, c' eşleşemez. Hem yabancı anahtar hem yabancı alpha test edildi.
+    **Canonical-form boundary:** decode_proof s>=q reddediyor ama eski
+    testler boundary'den uzaktı. Şimdi tam q, q+1, 2^256-1 ve dürüst s hala
+    decode ediyor.
+    3 RFC 9381 Appendix B.1 vektörü hala byte-for-byte geçiyor.
+
+### 30. **KOK-NET: phantom node id** (`5f256e8`)
+    `broadcast_rounds`/`delivery_fraction`/`unreachable_from` üçü de node id
+    alıp `self.peers[src]`'i doğrudan indexliyordu — out-of-range id panic.
+    Guard'lar dürüst cevapları döner: broadcast imkansız (None), delivery 0,
+    unreachable = n. İki dejenere köşe pinned: **BOŞ ağ** (peer table yok)
+    ve **TEK node** (kendi kendine 1 round'da broadcast).
+    Dürüst sorgular aynı graf'ta hala çalışıyor → guard blanket reddetme değil.
+
+### DURUM
+`cargo test --release --workspace` **160/160 rc=0**. Build 0 uyarı.
+`audit_turkish_en.py` CLEAN, `suite_gate_en.py` 39/39.
+
+### SWEEP'İN ÖZETİ (2 blok, 8 gerçek bug)
+"Guard önce mi?" sorusu 8 gerçek panic/replay yüzeyi buldu:
+1. PVI decode (round 6), 2. kok-poum ragged matrix (blok 3),
+3. kok-fri tile guard sıralı (blok 3), 4. kok-fri degenerate kernel (blok 3,
+   düzeltmenin kendisinde 2. kez), 5. kok-fri a_paths uzunluğu (blok 3),
+6. kok-net phantom node (bu blok), 7. ECVRF identity implied-ama-test-siz
+   (bu blok), 8. ECVRF canonical-form boundary uzakta (bu blok).
+Ayrıca bug sınıf 2 (cross-context replay) ECVRF'de pinned ve mempool'da
+yeni bir spam sınıfı bulundu (sıfır-byte tx = bedava öncelik).
+
 ### KALAN (sirali, güncel)
-1. Kalan adversarial yüzey: kok-consensus bundle projection edge'leri,
-   kok-net gossip partition davranışları, ECVRF edge case'ler
+1. kok-ledger edge case'leri ve kok-consensus bundle projection adversarial
+   testleri (zaten 4 test var, ek surface az)
 2. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel
 3. Skor **83.65** (dokunma)
 
