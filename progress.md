@@ -3274,3 +3274,58 @@ SIFIR) → GHOSTDAG DAG iskeleti (T_b=100ms hedef, Kaspa k=18 şablonu
 ### Commitler: 110 bu oturumda (108 round-6 sonrası + 2 F3).
 Çalışma ağacı temiz. Rust: 5 dosya (Cargo.toml, lib.rs, main.rs,
 consensus/mod.rs, consensus/poum.rs, consensus/fri.rs).
+
+---
+
+## ORKESTRATOR GUNCELLEMESI — FISP deseni + 3 ilk kullanici (2026-09-24)
+
+### FISP INCELEMESI (adim 1)
+`/home/gokun/projects/02_sahis/FISP/` workspace root okundu:
+- **15 crate**, `resolver = "2"`, members `crates/*` deseninde
+- `workspace.package` + `workspace.dependencies` merkezi versyon
+- **MSRV 1.98.0** acikca beyan edilmis (rust-version)
+- **ml-kem 0.3** (FIPS 203 ML-KEM-1024) + **hpke 0.12** (ECH)
+- **criterion 0.5** html_reports ile — "0ms iddialari yerine olculen degerler"
+- dev/test/release/tiny/ffi profilleri (disk hijyeni)
+
+### KOK WORKSPACE (adim 2-3, commit fd7033f)
+15 crate FISP desenine GORE YAZILDI (kod KOPYALANMADI):
+kok-consensus, kok-poum, kok-fri, kok-ghostdag, kok-u-layer, kok-pvi,
+kok-net, kok-mempool, kok-chain, kok-ledger, kok-ffi, kok-cli, kok-wasm,
+kok-bench, kok-probes.
+- `cargo build --release` **rc=0**; `cargo test` **19 test** workspace'e tasindi
+- **criterion 0.5** kok-bench'te: prove/verify icin gercek benchmark
+- **ml-kem 0.3 workspace.dependencies'te BEYAN ama HICBIR crate'E PULL EDILMEDI**
+  — KOK PQC KULLANMIYOR; FISP'in crate/version'i paylasiliyor ki ileride
+  ayni zeminden gelsin. Bu kasitli: kullanilmayan bagimliligi cekmek
+  "measured" standartlarina aykiri.
+- FISP'in deny-unused lint'i alindi: dead code, tautological acceptance
+  checker'larin 5 round review'den sag cikmasinin mekanizmasiydi
+- Kok-net/mempool/chain/ledger/ffi/wasm/pvi ISIMLENDIRILMIS ISKELET:
+  sinirlar koddan once var. PVI'nin implementasyonu yok (markdown-only
+  iddia round-5'te kanitlanmisti).
+
+### 3 ILK KULLANICI DEGERLENDIRMESI (adim: dogrulama)
+Orkestrator'un "3 gercek blokzincir projesi" iddiASI OLÇÜLDÜ:
+
+| Proje | Yol | Rust | Noir | Bulgu |
+|---|---|---|---|---|
+| **30-Kurul** | 02_sahis | HAYIR (Foundry/Solidity) | EVET — `circuits/zk_voting/` Nargo.toml + main.nr + foundry.toml | DOGRU |
+| **58-Mahrem** | 01_unicorn | EVET — Cargo.toml + Cargo.lock | Noir iddia edildi, bu yolda DOGRULANMADI | KISMEN |
+| **15-Hazna** | 00_kurumsal_sermaye | HAYIR — pyproject.toml (Python) | hedef (FROST/Noir) ama HENUZ YOK | YANLIS — Rust DEGIL |
+
+**En degerli bulgu:** 15-Hazna'nin Rust oldugu iddia edildi ama **Python**
+(pyproject.toml). Orkestrator'un taramasinda bir hata var — duzeltilmeli.
+
+### KOPEK ICIN ONERI (Orkestrator'e)
+3 "ilk kullanici" da KOK'un U-katmanina ZK devre + EVM koprusu ISTIYOR,
+ama KOK'un U-katmani **sifir konsensus agirligi** tasarimiyla geliyor:
+- 30-Kurul (Noir zk_voting): KOK'un zk-AIR/FRI'si Noir'in UPA'sini
+  degistirmez; KOK sadece **talep** tarafidir (U is = zk dogrulama isi).
+- **GNoME-Forge** (sinerji haritasi 2.5) hala U-katman BAŞ ADAYI:
+  "Rust L1 yapmadan once GNoME-Forge'un tensor profili KOK'un tezini
+  dogrular" — harita kendi onceligi boyle koyuyor.
+- ONERI: "ilk kullanici" olarak 3 ZK projesi eklemek KOK'un tezini
+  DEGISTIRMEZ (KOK egemen L1, disaridakileri beklemez); onlar KOK'un
+  U-katman talebinin (phi>0) GOSTERGESI olabilirler ama KANITI olamazlar
+  — kanit canli ag olcusudur (TV-72).
