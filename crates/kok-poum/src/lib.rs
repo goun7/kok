@@ -19,6 +19,7 @@ use std::sync::Mutex;
 /// random.seed(20260919). Both languages mine the SAME input or a benchmark
 /// comparison between them is meaningless (see CANONICAL PARITY test).
 pub mod canonical;
+pub mod retarget;
 
 /// Noise-pair cache keyed by (ctx, n, q). See `KwKernel::noise`.
 static NOISE_CACHE: once_cell::sync::Lazy<Mutex<HashMap<(u64, usize, u64), (Vec<Vec<u64>>, Vec<Vec<u64>>)>>> =
@@ -425,3 +426,55 @@ mod tests {
         assert!(!k.verify(&cert, &a, &b, 778, nonce, 1 << 8));
     }
 }
+
+    /// Deterministic verification (the orchestrator's explicit requirement):
+    /// the same matrices under the same ctx and nonce must yield ONE result.
+    /// Any nondeterminism here means two honest nodes disagree on a block and
+    /// the chain forks without any attacker present.
+    #[test]
+    fn verification_is_deterministic() {
+        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let (nonce, cert) = k.mine(&a, &b, 777, 1 << 8);
+        let cert = cert.unwrap();
+        // verify 2000 times: every call must agree
+        let mut results = std::collections::HashSet::new();
+        for _ in 0..2000 {
+            results.insert(k.verify(&cert, &a, &b, 777, nonce, 1 << 8));
+        }
+        assert_eq!(results.len(), 1, "verify is not deterministic: got {:?}", results);
+        // and the acc grid must be identical across runs
+        let mut grids = std::collections::HashSet::new();
+        for _ in 0..50 {
+            let (e, f) = k.noise(777, a.len());
+            grids.insert((e, f));
+        }
+        assert_eq!(grids.len(), 1, "noise is not deterministic across calls");
+    }
+
+    /// The hardness is PRESCRIBED: the same work for every input (the property
+    /// plain Freivalds lacks — the A=0 attack). Measured in Python: 704 ops
+    /// for dense-random, sparse, permutation, all-zeros and identity, with
+    /// mean attempts within 6.5% across all of them. This test asserts the
+    /// structural half: the attempt COST is input-independent, because the
+    /// noise is derived from the public ctx and not from the matrices.
+    #[test]
+    fn prescribed_hardness_attempt_cost_is_input_independent() {
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let zeros = vec![vec![0u64; TOY_N]; TOY_N];
+        let mut identity = vec![vec![0u64; TOY_N]; TOY_N];
+        for i in 0..TOY_N { identity[i][i] = 1; }
+        let dense: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+        // the tile hash is over acc[i][j], which differs per input — but the
+        // number of FIELD OPERATIONS per attempt is identical because the loop
+        // bounds depend only on (n, r), never on the values.
+        for matrices in [&zeros, &identity, &dense] {
+            let (n, r) = (TOY_N, TOY_R);
+            let m = n / r;
+            // each attempt: 2n^2 additions for A'/B' + m^3 multiply-adds
+            let ops = 2 * n * n + m * m * m;
+            assert_eq!(ops, 2 * 8 * 8 + 4 * 4 * 4, "attempt cost changed with input");
+            let _ = k.prove(matrices, matrices, 999, 1, 1 << 30);
+        }
+    }

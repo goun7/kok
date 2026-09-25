@@ -10,6 +10,7 @@ rust-version.workspace = true
 kok-poum.workspace = true
 kok-fri.workspace = true
 kok-ghostdag.workspace = true
+rand.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
@@ -20,4 +21,8 @@ harness = false
 
 [[bench]]
 name = "g_layer"
+harness = false
+
+[[bench]]
+name = "retarget"
 harness = false
