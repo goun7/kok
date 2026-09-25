@@ -121,7 +121,7 @@ fn decode(
 /// The interface entry point. Total: returns a Verdict for EVERY input,
 /// including malformed ones. Never panics.
 pub fn verify_raw(input: &VerifierInput) -> Verdict {
-    let (cert, ctx, nonce, target, _n, q, _a, _b) = match decode(input) {
+    let (cert, ctx, nonce, target, _n, q, a, b) = match decode(input) {
         Ok(v) => v,
         Err(reason) => return Verdict::Reject(reason),
     };
@@ -130,12 +130,17 @@ pub fn verify_raw(input: &VerifierInput) -> Verdict {
     // the input. Here n and r come from the packet.
     let r = u64_le(&input.pub_inputs[40..48]).unwrap_or(0);
     let kernel = KwKernel::new(q, r as usize);
-    // NOTE: the full G-layer check is kok_poum::validate(). This boundary
-    // establishes the TOTALITY contract; composing the actual verify call
-    // here is F3+ and is deliberately not faked — an unimplemented gate that
-    // ACCEPTS would be far worse than one that says it is not done.
-    let _ = (ctx, nonce, target, cert, kernel);
-    Verdict::Reject("the composed verify is F3+; this boundary is the contract".into())
+    // THE COMPOSED VERIFY. decode() has already gated every structural
+    // property (square matrices, byte lengths, tile inside the grid, m
+    // consistent with n/r, non-degenerate q and target), and KwKernel::verify
+    // is itself total (it bounds-checks i, j and m before it indexes, and
+    // returns false rather than panicking), so the composition stays total:
+    // every input reaches a Verdict.
+    if kernel.verify(&cert, &a, &b, ctx, nonce, target) {
+        Verdict::Accept
+    } else {
+        Verdict::Reject("the G-layer certificate does not verify".into())
+    }
 }
 
 /// A constructor for well-formed input, for tests and for callers that
@@ -207,16 +212,104 @@ mod tests {
         assert!(!verify_raw(&mm).accepted(), "an inconsistent m was accepted");
     }
 
-    /// A well-formed packet decodes and reaches the gate. It rejects with the
-    /// F3+ marker — the honest statement that the boundary exists and the
-    /// composition is not faked. Crucially it does NOT accept.
-    #[test]
-    fn a_well_formed_packet_reaches_the_gate_but_does_not_accept() {
-        let good = pack(1, 2, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
-        match verify_raw(&good) {
-            Verdict::Reject(r) => assert!(r.contains("F3+"), "unexpected rejection reason: {}", r),
-            Verdict::Accept => panic!("the composed verify is not implemented; this must not accept"),
+    /// THE END-TO-END PATH: a certificate mined honestly over real matrices
+    /// must ACCEPT through the byte boundary, and every forgery must REJECT.
+    /// Before this the boundary rejected everything with an F3+ marker —
+    /// honest about being unimplemented, but not a verifier.
+    fn encode(a: &[Vec<u64>], b: &[Vec<u64>], cert: &Certificate, ctx: u64, nonce: u64, target: u64, q: u64, r: usize) -> VerifierInput {
+        let n = a.len();
+        let mut flat_a = Vec::with_capacity(n * n * 8 * 2);
+        for row in a.iter().chain(b.iter()) {
+            for v in row {
+                flat_a.extend_from_slice(&v.to_le_bytes());
+            }
         }
+        // chain() wrote both matrices into flat_a; split them apart again
+        let split = n * n * 8;
+        let flat_b = flat_a.split_off(split);
+        let mut cert_bytes = [0u8; 32];
+        cert_bytes[0..8].copy_from_slice(&(cert.i as u64).to_le_bytes());
+        cert_bytes[8..16].copy_from_slice(&(cert.j as u64).to_le_bytes());
+        cert_bytes[16..24].copy_from_slice(&cert.value.to_le_bytes());
+        cert_bytes[24..32].copy_from_slice(&(cert.m as u64).to_le_bytes());
+        let mut pub_inputs = [0u8; 48];
+        pub_inputs[0..8].copy_from_slice(&ctx.to_le_bytes());
+        pub_inputs[8..16].copy_from_slice(&nonce.to_le_bytes());
+        pub_inputs[16..24].copy_from_slice(&target.to_le_bytes());
+        pub_inputs[24..32].copy_from_slice(&(n as u64).to_le_bytes());
+        pub_inputs[32..40].copy_from_slice(&q.to_le_bytes());
+        pub_inputs[40..48].copy_from_slice(&r.to_le_bytes());
+        VerifierInput { cert_bytes, flat_a, flat_b, pub_inputs }
+    }
+
+    /// Mine a real certificate over the canonical matrices and drive it
+    /// through the byte boundary. ACCEPTS.
+    #[test]
+    fn an_honestly_mined_certificate_accepts_through_the_boundary() {
+        use kok_poum::canonical;
+        use kok_poum::{KwKernel, TOY_Q, TOY_R};
+        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let target = 1u64 << 4;
+        // mine the honest way: try nonces until one clears the target
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, target) {
+                break c;
+            }
+        };
+        let input = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
+        assert!(matches!(verify_raw(&input), Verdict::Accept), "an honestly mined certificate was rejected");
+    }
+
+    /// A FORGED VALUE must reject — the accumulator the packet claims is not
+    /// the one the tile computes to. This is the forgery the boundary exists
+    /// to stop, and it only bites now that the verify is composed.
+    #[test]
+    fn a_forged_certificate_value_is_rejected() {
+        use kok_poum::canonical;
+        use kok_poum::{KwKernel, TOY_Q, TOY_R};
+        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let target = 1u64 << 4;
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, target) {
+                break c;
+            }
+        };
+        // tamper: claim a different accumulated value
+        let mut forged = cert.clone();
+        forged.value = (cert.value + 1) % TOY_Q;
+        let input = encode(&a, &b, &forged, 777, nonce, target, TOY_Q, TOY_R);
+        assert!(!verify_raw(&input).accepted(), "a forged tile value was accepted");
+    }
+
+    /// A REPLAYED CTX must reject: a certificate mined under one block
+    /// context cannot be replayed under another. This is the TV-1 property,
+    /// now enforced through the byte boundary too.
+    #[test]
+    fn a_certificate_replayed_under_another_ctx_is_rejected() {
+        use kok_poum::canonical;
+        use kok_poum::{KwKernel, TOY_Q, TOY_R};
+        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let target = 1u64 << 4;
+        let mut nonce = 0u64;
+        let cert = loop {
+            nonce += 1;
+            if let Some(c) = k.prove(&a, &b, 777, nonce, target) {
+                break c;
+            }
+        };
+        // the cert was mined under ctx 777; present it under a different one
+        let input = encode(&a, &b, &cert, 778, nonce, target, TOY_Q, TOY_R);
+        assert!(!verify_raw(&input).accepted(), "a ctx replay was accepted");
     }
 
     /// pack/decode round trip: the byte layout is self-consistent. The tile
