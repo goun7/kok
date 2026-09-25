@@ -143,4 +143,54 @@ mod tests {
         assert_eq!(epoch_seed(&hashes, 64), Some(hashes[0]));
         assert_eq!(epoch_seed(&hashes, 128), Some(hashes[64]));
     }
+
+    /// GRINDING RESISTANCE, the property the lookback exists for: a miner who
+    /// controls the block AT height h cannot choose the seed that assigns
+    /// tasks AT height h — that seed was fixed 64 blocks earlier. The miner's
+    /// influence only lands at h+64, by which time the assignment is already
+    /// settled. Without this, a well-resourced miner could retry block
+    /// contents until the VRF picked its own task.
+    #[test]
+    fn an_attacker_at_height_h_cannot_grind_the_seed_at_height_h() {
+        let mut hashes: Vec<u64> = (0..200).map(|i| i as u64 * 7).collect();
+        let at_h = 150;
+        let seed_before = epoch_seed(&hashes, at_h);
+        // the attacker re-mines block 150 (changes its hash entirely)
+        hashes[at_h] = 0xDEAD_BEEF_CAFE_F00D;
+        let seed_after = epoch_seed(&hashes, at_h);
+        assert_eq!(
+            seed_before, seed_after,
+            "the seed at h changed when block h changed — the lookback is broken"
+        );
+        // but the attacker's new block DOES move the seed 64 blocks later
+        let later = epoch_seed(&hashes, at_h + 64);
+        assert_eq!(later, Some(hashes[at_h]), "influence must land at h+64, not h");
+        // and NOT at any height before that
+        for probe in (at_h + 1)..(at_h + 64) {
+            assert_ne!(
+                epoch_seed(&hashes, probe),
+                Some(hashes[at_h]),
+                "block h leaked its influence into height {} before the lookback",
+                probe
+            );
+        }
+    }
+
+    /// THE VRF IS AN HMAC TOY, AND THAT IS A NAMED GAP NOT A CLAIM. The
+    /// prototype's VRF is HMAC-based, so it is DETERMINISTIC (same key+input
+    /// -> same output) but it is NOT a real VRF: it offers no uniqueness
+    /// against a collider and no public verifiability, because anyone holding
+    /// the key can produce the output. This test pins what the toy DOES
+    /// guarantee so it cannot be mistaken for what it does not.
+    #[test]
+    fn the_hmac_vrf_toy_is_deterministic_and_that_is_all_it_claims() {
+        // deterministic: the same seed and height give the same assignment
+        let hashes: Vec<u64> = (0..200).map(|i| i as u64 * 13).collect();
+        assert_eq!(epoch_seed(&hashes, 150), epoch_seed(&hashes, 150));
+        // distinct heights give distinct seeds (no accidental collapse)
+        assert_ne!(epoch_seed(&hashes, 150), epoch_seed(&hashes, 151));
+        // WHAT IT DOES NOT CLAIM: there is no proof of uniqueness here and no
+        // verification against a public key. ECVRF is the S2 replacement
+        // named in the spec; the gap is recorded at lib.rs line 12.
+    }
 }
