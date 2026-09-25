@@ -10,5 +10,6 @@ rust-version.workspace = true
 kok-consensus.workspace = true
 kok-poum.workspace = true
 kok-ghostdag.workspace = true
+kok-u-layer.workspace = true
 rand.workspace = true
 anyhow.workspace = true
