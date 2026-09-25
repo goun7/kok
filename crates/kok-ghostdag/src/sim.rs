@@ -5,16 +5,29 @@
 //! weighted, so the result is a real DAG rather than a chain. Without that
 //! the anticone/fork tests measure nothing.
 //!
-//! THE k QUESTION (recorded honestly, not resolved): the repo has ONE
-//! verified data point (BPS=1 -> k=18, from rusty-kaspa bps.rs, cited and
-//! verified 2026-09-20). A single point cannot define a curve, and no copy of
-//! Kaspa's bps.rs is present locally to derive a formula from. Two plausible
-//! scalings (k*BPS const -> k=1.8; k/sqrt(BPS) -> k=5.7) are both
-//! extrapolations, not derivations. Rather than pick one blind, this module
-//! MEASURES what k does to a DAG at KÖK's target rate and reports the range
-//! in which ordering stays stable — the answer to the question "what k for
-//! 10 BPS" is then a measured interval with a stated derivation gap, not a
-//! guessed number.
+//! THE k QUESTION — CLOSED BY MEASUREMENT (2026-09-25). The repo had ONE
+//! verified anchor (BPS=1 -> k=18, from rusty-kaspa bps.rs, cited and
+//! verified 2026-09-20), and two plausible scalings (k*BPS const, k/sqrt BPS)
+//! that are extrapolations from that single point. Rather than pick one
+//! blind, the load curve was MEASURED: the smallest k holding the
+//! over-anticone fraction at or below 2% across an 8x load range.
+//!
+//! THE MEASURED RESULT: the curve is FLAT. k=8 at every fork rate from 5%
+//! to 40% (probe_the_required_k_is_flat_not_load_scaled). Neither growth
+//! hypothesis is confirmed — the measurement sits below BOTH predicted
+//! curves, which is itself the answer. In this DAG model the anticone is
+//! bounded by the PARENT-POOL WINDOW (2 * MAX_BLOCK_PARENTS = 20 blocks),
+//! not by the fork rate: a forked block draws its parents from the same
+//! recent neighbourhood, so competing blocks largely share parents and
+//! their mutual anticone stays inside the delay band. Load widens the
+//! NUMBER of parallel blocks, not the window they draw from.
+//!
+//! SO k IS A FUNCTION OF THE DELAY BAND, NOT OF THE LOAD, in this model.
+//! The Kaspa template k=18 carries measured headroom over the k=8 this
+//! model actually requires — roughly 2.25x. That headroom is the honest
+//! justification for k=18 here: not a derivation of Kaspa's BPS curve, which
+//! remains underived locally, but a measured bound showing the template is
+//! not tight against this DAG's actual anticone.
 
 use crate::{Bid, Block, Ghostdag};
 use rand::seq::SliceRandom;
