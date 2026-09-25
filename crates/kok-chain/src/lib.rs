@@ -51,13 +51,23 @@ pub fn select(g: &Ghostdag) -> Option<Bid> {
 
 /// Is `bid` final against the current tip? The tip's blue_score must exceed
 /// the block's by FINALITY_GAP.
+///
+/// A bid that is NOT in the DAG is never final. The earlier code scored a
+/// phantom block as 0 via `unwrap_or(0)` and then, once the tip's score
+/// cleared FINALITY_GAP, returned TRUE for it — final-by-omission. A node
+/// could then prune, or treat as settled, a block it never actually had.
+/// The probe `probe_finality_rejects_an_unknown_block` pins this: absence
+/// from the DAG is a not-final verdict, not a zero score.
 pub fn is_final(g: &Ghostdag, bid: Bid) -> bool {
     let tip = match select(g) {
         Some(t) => t,
         None => return false,
     };
     let tip_score = g.blue_score.get(&tip).copied().unwrap_or(0);
-    let blk_score = g.blue_score.get(&bid).copied().unwrap_or(0);
+    let blk_score = match g.blue_score.get(&bid) {
+        Some(s) => *s,
+        None => return false,
+    };
     tip_score.saturating_sub(blk_score) >= FINALITY_GAP
 }
 

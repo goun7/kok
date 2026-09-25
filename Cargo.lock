@@ -439,10 +439,12 @@ dependencies = [
 name = "kok-probes"
 version = "0.1.0"
 dependencies = [
+ "kok-chain",
  "kok-fri",
  "kok-ghostdag",
  "kok-poum",
  "kok-u-layer",
+ "rand",
 ]
 
 [[package]]

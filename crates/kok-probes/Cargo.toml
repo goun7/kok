@@ -11,3 +11,5 @@ kok-poum.workspace = true
 kok-fri.workspace = true
 kok-ghostdag.workspace = true
 kok-u-layer.workspace = true
+kok-chain.workspace = true
+rand.workspace = true
