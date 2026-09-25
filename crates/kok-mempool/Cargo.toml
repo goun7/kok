@@ -1,0 +1,10 @@
+[package]
+name = "kok-mempool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Transaction mempool — skeleton"
+rust-version.workspace = true
+
+[dependencies]
+

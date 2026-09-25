@@ -1,0 +1,10 @@
+[package]
+name = "kok-fri"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The F0b FRI recursive low-degree test"
+rust-version.workspace = true
+
+[dependencies]
+sha2.workspace = true

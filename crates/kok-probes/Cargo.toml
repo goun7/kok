@@ -1,0 +1,13 @@
+[package]
+name = "kok-probes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Adversarial regression probes as code"
+rust-version.workspace = true
+
+[dependencies]
+kok-poum.workspace = true
+kok-fri.workspace = true
+kok-ghostdag.workspace = true
+kok-u-layer.workspace = true

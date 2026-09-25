@@ -1,0 +1,11 @@
+[package]
+name = "kok-poum"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The G layer: MatMul PoW certificate (KW-Kernel)"
+rust-version.workspace = true
+
+[dependencies]
+sha2.workspace = true
+hex.workspace = true

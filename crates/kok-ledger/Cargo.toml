@@ -1,0 +1,10 @@
+[package]
+name = "kok-ledger"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "U-layer task market ledger — skeleton"
+rust-version.workspace = true
+
+[dependencies]
+kok-u-layer.workspace = true

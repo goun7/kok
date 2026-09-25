@@ -1,0 +1,13 @@
+[package]
+name = "kok-consensus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The two-layer PoUM composition"
+rust-version.workspace = true
+
+[dependencies]
+kok-poum.workspace = true
+kok-fri.workspace = true
+kok-ghostdag.workspace = true
+kok-u-layer.workspace = true

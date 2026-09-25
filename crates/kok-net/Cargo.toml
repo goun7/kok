@@ -1,0 +1,10 @@
+[package]
+name = "kok-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "P2P transport and block relay — skeleton"
+rust-version.workspace = true
+
+[dependencies]
+tokio.workspace = true

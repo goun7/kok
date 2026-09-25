@@ -1,21 +1,117 @@
-[package]
-name = "kok-node"
+[workspace]
+resolver = "2"
+members = [
+    # Two-layer PoUM consensus: G = MatMul PoW (security), U = fee-paid
+    # verifiable compute (zero consensus weight).
+    "crates/kok-consensus",
+    "crates/kok-poum",
+    "crates/kok-fri",
+    "crates/kok-ghostdag",
+    "crates/kok-u-layer",
+    # The verifier isolation layer: a WASM-verifier boundary so the proof
+    # system can be replaced without a hard fork (PVI).
+    "crates/kok-pvi",
+    # Network: P2P transport, block relay, the DAG gossip layer.
+    "crates/kok-net",
+    "crates/kok-mempool",
+    # Chain state, storage, the U-layer task market ledger.
+    "crates/kok-chain",
+    "crates/kok-ledger",
+    # FFI + CLI + WASM bindings for the SDK surface.
+    "crates/kok-ffi",
+    "crates/kok-cli",
+    "crates/kok-wasm",
+    # A proof-carrying harness: the benchmarks that keep every ms claim
+    # measured rather than asserted.
+    "crates/kok-bench",
+    # Regression probes as code — the adversarial tests rounds 1-6 wrote in
+    # Python, carried into the language the node ships in.
+    "crates/kok-probes",
+]
+
+# The workspace root itself is not a crate; the binary lives in kok-cli.
+exclude = ["target", "python"]
+
+[workspace.lints.rust]
+# Round-6 (2026-09-24): the project's own standard is that a check which
+# cannot fail protects nothing. Lint accordingly: deny the patterns that
+# produced real bugs in the Python prototypes.
+# - unused must be a warning: dead code was how the tautological
+#   acceptance checkers survived five rounds of review.
+unused = "warn"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
-description = "KOK Network v2 sovereign L1 node - two-layer PoUM (G=MatMul PoW, U=fee-paid verifiable compute)"
+authors = ["KOK Protocol"]
 license = "MIT"
+description = "KOK Network v2 — sovereign L1 with two-layer proof-of-useful-work"
+# MSRV: verified on this machine (rustc 1.98.1, 2026-09-01).
+rust-version = "1.98.0"
 
-[dependencies]
+[workspace.dependencies]
+# --- async + error plumbing (modeled on the FISP workspace) ---
+tokio = { version = "1.43", features = ["full"] }
+thiserror = "2.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bytes = "1.10"
+
+# --- the hashes the Python prototypes domain-separated with sha256 ---
+# The Rust G-layer port keeps byte-identical domain separation so a
+# certificate crosses the language boundary; changing this crate changes
+# every certificate and is a consensus break.
 sha2 = "0.10"
+sha3 = "0.10"
 hex = "0.4"
+hmac = "0.12"
 
-[lib]
-name = "kok_node"
-path = "src/lib.rs"
+# --- randomness: VRF assignment and the toy matrices ---
+rand = "0.8"
+rand_core = { version = "0.6", features = ["getrandom"] }
 
-[[bin]]
-name = "kok-node"
-path = "src/main.rs"
+# --- post-quantum: the FISP workspace's PQC choice, shared deliberately ---
+# FISP uses ml-kem 0.3 for ML-KEM-1024 key encapsulation. KÖK does not use
+# PQC yet — the dependency is declared here so that when the chain adds
+# quantum-resistant key agreement it shares FISP's crate and version rather
+# than forking the ecosystem. Not pulled into any crate until it is used.
+ml-kem = { version = "0.3", features = ["getrandom"] }
+
+# --- measurement: criterion, so every "ms" claim is a benchmark not prose ---
+# The Python rounds measured prove 3.47 ms / verify 0.25 ms by timing; the
+# Rust port measured 0.072 ms / 0.211 ms the same way. Criterion makes that
+# the repo's mechanism rather than a one-off script.
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# --- internal crate paths ---
+kok-consensus = { path = "crates/kok-consensus" }
+kok-poum = { path = "crates/kok-poum" }
+kok-fri = { path = "crates/kok-fri" }
+kok-ghostdag = { path = "crates/kok-ghostdag" }
+kok-u-layer = { path = "crates/kok-u-layer" }
+kok-pvi = { path = "crates/kok-pvi" }
+kok-net = { path = "crates/kok-net" }
+kok-mempool = { path = "crates/kok-mempool" }
+kok-chain = { path = "crates/kok-chain" }
+kok-ledger = { path = "crates/kok-ledger" }
+kok-ffi = { path = "crates/kok-ffi" }
+kok-cli = { path = "crates/kok-cli" }
+kok-wasm = { path = "crates/kok-wasm" }
+kok-bench = { path = "crates/kok-bench" }
+kok-probes = { path = "crates/kok-probes" }
 
 [profile.release]
 opt-level = 3
+# The G layer's MatMul loop vectorises at opt-level 3; measured 48x faster
+# than the Python prototype at the same toy size. Debug stays unoptimized
+# so the probe layer's timing semantics stay interpretable.
+debug = false
+
+# The benchmark profile: like release, but with debug symbols so a flame
+# graph can name the SHA256 that dominates verification cost.
+[profile.bench]
+opt-level = 3
+debug = true

@@ -1,0 +1,10 @@
+[package]
+name = "kok-chain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Chain state and fork choice — skeleton"
+rust-version.workspace = true
+
+[dependencies]
+kok-consensus.workspace = true

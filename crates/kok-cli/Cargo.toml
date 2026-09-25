@@ -1,0 +1,11 @@
+[package]
+name = "kok-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The kok-node binary"
+rust-version.workspace = true
+
+[dependencies]
+kok-consensus.workspace = true
+anyhow.workspace = true

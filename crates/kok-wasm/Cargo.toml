@@ -1,0 +1,10 @@
+[package]
+name = "kok-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WASM bindings for browser verification"
+rust-version.workspace = true
+
+[dependencies]
+kok-consensus.workspace = true

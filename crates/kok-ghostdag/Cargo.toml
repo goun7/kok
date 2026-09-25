@@ -1,0 +1,10 @@
+[package]
+name = "kok-ghostdag"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "GHOSTDAG block ordering"
+rust-version.workspace = true
+
+[dependencies]
+
