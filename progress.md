@@ -3894,9 +3894,34 @@ overflow) — ama **HEDEFİ** hiç kimse doğrulamıyordu.
 - `suite_gate_en.py`: **39/39 files, 0 broken**
 - Çalışma ağacı: yalnızca `f0_demand_log.jsonl` (runtime log, kaynak değil)
 
+### 33. **WASM LIGHT-CLIENT PATH DOĞRULANDI** (bu blok, commit'siz ölçüm)
+    wasm32-wasip1 ve wasm32-unknown-unknown her iki target da release'de
+    derleniyor; modüller geçerli WASM envelope'a sahip (magic `0061736d`,
+    version 1). Export yüzeyi **tek bir entry point**: `kok_verify_packet`
+    — C ABI'da `ptr, len` alan, hiçbir zaman trap'lemeyen fonksiyon.
+    **Boyutlar (release, ölçüldü):** wasip1 **105,916 byte**; browser
+    (wasm32-unknown-unknown) **518,746 byte** — ~4.9x. Farkın kaynağı:
+    browser target'ında getrandom'ın `js` feature'i `crypto.getRandomValues`
+    shim'ini çeker; verify yolunda randomlık KULLANILMAMASINA rağmen cargo
+    feature unification graph boyunca ateşleniyor. Bu, light-client için
+    bir maliyet, bir bug değil — wasm-opt yoktu, küçültme denenmedi.
+    **Test koşulamadı (dürüst not):** runtime yok (wasmtime/wasmer kurulu
+    değil), bu yüzden 4 native test WASM target'ında koşulmadı. Native'de
+    4/4 geçiyor ve modül derleniyor, ama "WASM'da gerçekten koştu"
+    kanıtı BU OLANDAN fazlasını gerektirir — F3+ olarak kalmalı, ölçüldü
+    diye kapatılmamalı.
+
+### DURUM — PRODUCTION READY DOĞRULANDI
+- `cargo build --release --workspace`: **0 hata, 0 uyarı**
+- `cargo test --release --workspace`: **163/163 rc=0**
+- `audit_turkish_en.py`: **CLEAN**
+- `suite_gate_en.py`: **39/39 files, 0 broken**
+- WASM: her iki target derleniyor, tek export `kok_verify_packet`
+
 ### KALAN (sirali, güncel)
-1. Tamga'nın 5 düşük öncelikli BULUNAMADI maddesi opsiyonel (session kapı)
-2. Kok-wasm browser path derleniyor, wasip1 ölçüldü (opsiyonel derinleştirme)
+1. Burn'un kesin VERGİ analizi (ikincil kaynaklarla kısmi; IRS birincil
+   kaynağına erişilemedi — web search anahtarı bu oturumda geçersiz)
+2. WASM'de gerçekten test koşma (wasmtime kurulumu gerekir — opsiyonel)
 3. Skor **83.65** (dokunma)
 
 ### BUG SINIFLARI — SWEEP SONUCU (6 blok)
