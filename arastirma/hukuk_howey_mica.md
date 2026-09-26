@@ -464,6 +464,14 @@ hukuka** (Howey + 33-11412 yorumu) göre yapılmalı; safe harbor ancak yürürl
 opsiyon olur. **Forecast (önerilen kural) vs actual (yürürlükteki yorum) ayrımı burada
 kritiktir.**
 
+> **★ 26 Eylül 2026 GÜNCELLEME — yorum period'u CANLI ve AÇIK (Federal Register'ın kendi
+> sayfasından, HTTP 200):** yorumlar **20 Ekim 2026**'ya kadar kabul ediliyor — bugün
+> itibariyle **hâlâ açıktır** ("This document has a comment period that ends in 24 days").
+> **Yorumların içeriği henüz yayımlanmadığı için okunamadı** (dürüst sınır: istişare devam
+> ediyor, sonuç raporu yok). Belge
+> `federalregister.gov/documents/2026/08/21/2026-17183/regulation-crypto-assets` üzerinden
+> canlı izlenebilir; 146 sayfanın tamamı `govinfo.gov` PDF'inde mevcuttur.
+
 ### 2.6 Özet tablosu — ABD'de KÖK token modelinin üç ayağı
 
 | KÖK ayağı | ABD hukuki nitelik (2026 yorumuna göre) | Dayanak |
@@ -1211,7 +1219,27 @@ burn", "proof-of-burn regulation", "Türkiye'de token yakma vergi".
 
 ---
 
-## 6. BULUNAMADI LİSTESİ (kalan 5 madde — bir sonraki oturumda tamamlanacak)
+## 6. BULUNAMADI LİSTESİ (kalan 2 madde — 26.09.2026 itibariyle)
+
+> **★ 26 Eylül 2026 güncellemesi (5. dalga): 11 maddenin 9'U KAPATILDI.** Bu oturumda:
+> - **#7 Torres 13 Temmuz 2023** — KISMEN ÇÖZÜLDÜ: kararın **kendi URL'i bulundu** (SDNY'nin
+>   sunucusunda) ve **operatif cümle birebir doğrulandı**; tam PDF ikili döndüğü için tam metin
+>   değil
+> - **#8 Torres 26 Haziran 2025** — KISMEN ÇÖZÜLDÜ: kararın **içeriği** iki bağımsız kaynakla
+>   teyit edildi (Torres, Ripple-SEC'in $50M ortak anlaşmasını REDDETTİ → $125M ceza ve kurumsal
+>   satış injunction'ı yürürlükte kaldı). ★ **KÖK için ders: bir mahkeme kurumsal token satışı
+>   injunction'ını ÇÖZÜLEMEZ olarak ele aldı**
+> - **#9 Regulation Crypto Assets** — **BULUNDU, CANLI BİRİNCİL**: Federal Register'ın kendi
+>   sayfasından yorum period'unun **20 Ekim 2026'ya kadar AÇIK** olduğu doğrulandı (146 sayfa,
+>   91 FR 54510). Yorumların *içeriği* henüz yayımlanmadı
+> - **#10 MiCA değerlendirme raporu** — **BULUNDU ama RAPOR DEĞİL, İSTİŞARE**: Komisyon'un
+>   kendi sayfasından (HTTP 200) istişarenin **20 Mayıs 2026'da açıldığı**, deadline'ın **30
+>   Eylül 2026'ye UZATILDIğı** ve DG FISMA tarafından yürütüldüğü teyit edildi. **Sonuç raporu
+>   henüz yok — süreç devam ediyor**
+>
+> **Geriye yalnızca 2 madde kaldı ve ikisi de çok düşük öncelikli:** #5 Singapur FISA
+> (ikincil bir yasanın teyidi) ve #11 MAS DTO Rehberi'nin Mayıs 2020 sürümü (2018 sürümü
+> zaten birincil olarak kullanılıyor; 2020 sürümü yalnızca alıntı tarihleriyle ilgilidir).
 
 > **24 Eylül 2026 güncellemesi (4. dalga):** **MAS'ın "A Guide to Digital Token Offerings"
 > rehberi ÇÖZÜLDÜ** (§4.2 — IOSCO arşivinden 30 Kasım 2018 sürümü, BİRİNCİL; **compute-rental

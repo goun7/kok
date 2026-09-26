@@ -746,6 +746,50 @@ is a substitute for the audit in F6, and none of the three has been reviewed
 by an independent cryptographer. They are written down so that a reader can
 find the argument, the citation, and the limit, in that order.
 
+**★ 2026-09-26 — the live US regulatory development this paper must not be
+caught ignoring.** The SEC proposed a new rule titled **"Regulation Crypto
+Assets"** on **21 August 2026** (Federal Register **91 FR 54510–54655**, 146
+pages; Release Nos. **33-11434; 34-106150**; File No. **S7-2026-27**; RIN
+3235-AN38). The comment period runs to **20 October 2026** — it is open as this
+is written, and the rule is **proposed, not final**.
+
+Two parts of it bear on this paper directly:
+
+1. **Two offering exemptions** from Securities Act §5 registration: up to
+   **$5 million over a four-year period**, and up to **$75 million per 12-month
+   period**, with the larger tier requiring financial statements and ongoing
+   reporting. Both keep issuers subject to the antifraud and antimanipulation
+   provisions.
+2. **A conditional safe harbor from the term "investment contract"** in the
+   §77b definitions of "security". If the proposed conditions are met, a crypto
+   asset would be deemed **not** to be an investment contract under those
+   definitions.
+
+**Why this matters here, stated without overclaiming.** This paper's Howey
+analysis (§9) holds that KÖK's native asset is **not** an investment contract
+because utility is purchased as a **fee for a service**, not in expectation of
+profits from a promoter's efforts — the task market pays for compute, escrow
+holds the fee, and the token carries no profit entitlement. The proposed safe
+harbor is an independent path to the **same destination**, and one that does not
+depend on persuading anyone of the economic reading: if the conditions are
+satisfied, the conclusion follows by rule. **But nothing in the proposal has
+been adopted, and the conditions are not yet final**, so the paper does not rely
+on it — the Howey argument stands on its own analysis and the safe harbor is
+recorded as a development that could simplify, not establish, the conclusion.
+The honest caveat cuts the other way too: a proposed rule can be withdrawn or
+narrowed, and the $75M tier's reporting obligations show the Commission
+treating larger raises as presumptively requiring more disclosure — which is a
+reason this paper's design avoids raising money through the token rather than a
+reason to plan around a threshold.
+
+**The standing observation, which the proposal reinforces rather than changes:**
+the design's defence was never "crypto assets are not securities". It was that
+**this** asset is a service voucher whose transfer of value is a payment for
+work, structured so that no promoter's effort is the source of a holder's
+return. A rule that writes a conditional exclusion for that shape is welcome and
+does not alter the argument; a rule that narrows it would not break the design,
+because the design does not sell the asset as an investment either way.
+
 ---
 
 ## 10. Proof, Audit and Roadmap
