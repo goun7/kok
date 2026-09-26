@@ -555,19 +555,14 @@ mod tests {
         let mut at_q = pi.clone();
         at_q[PTLEN + CLEN..].copy_from_slice(&Q);
         assert!(decode_proof(&at_q).is_none(), "s == q was accepted as canonical");
-        // s = q + 1
+        // s = q + 1, computed as a big-endian increment-with-carry over Q
         let mut over = Q;
-        // Q is little-endian-free big-endian; add 1 with carry
-        {
-            let mut q_be = Q;
-            for i in (0..QLEN).rev() {
-                let (v, c) = q_be[i].overflowing_add(1);
-                q_be[i] = v;
-                if !c {
-                    break;
-                }
+        for i in (0..QLEN).rev() {
+            let (v, c) = over[i].overflowing_add(1);
+            over[i] = v;
+            if !c {
+                break;
             }
-            over = q_be;
         }
         let mut over_q = pi.clone();
         over_q[PTLEN + CLEN..].copy_from_slice(&over);

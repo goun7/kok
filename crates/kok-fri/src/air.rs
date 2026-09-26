@@ -567,7 +567,11 @@ mod tests {
     /// misconfigured chain must reject rather than crash the verifier.
     #[test]
     fn degenerate_air_kernel_parameters_reject_instead_of_panicking() {
-        let (a, b, e, f) = toy(20260925);
+        // The degenerate-kernel test needs only e and f from the toy: q == 0
+        // and r == 0 reject before any tile is read, so a and b are unused
+        // here by design, named with underscores so the intent is visible
+        // rather than reading like an oversight.
+        let (_a, _b, e, f) = toy(20260925);
         let zero_q = TileAir::new(0, 2);
         let zero_r = TileAir::new(97, 0);
         assert!(
