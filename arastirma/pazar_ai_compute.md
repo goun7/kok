@@ -88,6 +88,28 @@ açık finansal tabloları, Wikipedia üzerinden özetlenmiş hali; v1'de çekil
 - **Doğrudan yatırım:** Nvidia → OpenAI **$100 milyar** MOU (22 Ekim 2025), **en az 10 GW**
   sistem gücü planı; Nvidia → Nebius (AI cloud) **$2 milyar** (2026).
 
+#### 1.1.1 ÇEYREK SERİSİ — BİRİNCİL KAYNAK DOĞRULAMASI (26 Eylül 2026)
+
+Yukarıdaki yıllık ve momentum rakamları **Nvidia newsroom'un kendi basın bültenlerinden birebir doğrulandı**. Bu, Wikipedia özetinden değil, **şirketin açıkladığı orijinal metinlerden** alınmıştır.
+
+| Çeyrek | Bülten tarihi | Gelir ($B) | Data Center ($B) | Y/Y | Kaynak URL'si |
+|---|---|---|---|---|---|
+| Q1 FY2026 | 28 Mayıs 2025 | 44.062 | 39.1 | +69% | .../first-quarter-fiscal-2026 |
+| Q2 FY2026 | 27 Ağustos 2025 | 46.743 | 41.1 | +56% | .../second-quarter-fiscal-2026 |
+| Q3 FY2026 | 19 Kasım 2025 | 57.006 | 51.2 | +62% | .../third-quarter-fiscal-2026 |
+| **Q4 FY2026** | **25 Şubat 2026** | **68.1** | **62.3** | **+75%** | .../fourth-quarter-and-fiscal-2026 |
+| **FY2026 tam yıl** | **25 Şubat 2026** | **215.9** | — | **+65%** | aynı bülten |
+| **Q1 FY2027** | **20 Mayıs 2026** | **81.615** | **75.2** | **+85%** | .../first-quarter-fiscal-2027 |
+| **Q2 FY2027** | **26 Ağustos 2026** | **96.221** | **89.0** | **+106%** | .../second-quarter-fiscal-2027 |
+
+**Doğrulamadan çıkan yeni bulgular:**
+- Dosyadaki **"FY2026 = 215"** yıllık rakamı **birebir doğrulandı**: şirket $215.9B açıklamış (25 Şubat 2026).
+- **Q2 FY2027'nin Data Center breakdown'u ilk kez**: $89.0B, **+117% Y/Y** — gelirin %92.5'i Data Center. Bu, AI-compute harcamasının NICEL BÜYÜKLÜĞÜNÜN birincil kanıtıdır: tek bir çeyrekte $89B'lik AI altyapı geliri.
+- **H20 Çin ihracat kontrolü olayı** (Q1 FY2026): $4.5B stok zararı + $2.5B sevk edilemedi — Nvidia'nın "AI altyapısı jeopolitik tedarik kısıtı altında" olduğunu kanıtlar; KÖK'ün izin gerektirmeyen (permissionless) konumlandırması için doğrudan ilgilidir: merkezi tedarikçinin kısıtlandığı yerde, ağ tabanlı compute piyasası bir alternatiftir.
+- **Huang'ın Q2 FY2027 sözleri (birebir):** "AI has reached its inflection point. It's doing useful work. Its tokens are productive and profitable. Now, **compute is revenue**." — KÖK'ün teziyle (useful compute = fee-generating work) aynı çerçeveyi kullanıyor.
+
+Bu bölüm önceki sürümdeki rakamların güncel olduğunu ama ikincil kaynaktan (Wikipedia özeti) geldiğini gösterir; şimdi her rakam orijinal şirket bültenine tarihiyle bağlı. Üç noktalı birincil kanıt zinciri: bülten tarihi + URL + çeyrek/Y/Y tablosu.
+
 ### 1.2 KÖK v2 için analiz ve SINIRLAMASI (açıkça belirtilmelidir)
 
 - Bu rakamlar AI-compute pazarının **büyüklüğünü ve hızını** kanıtlar: GPU tedarikçisinin
@@ -120,14 +142,63 @@ rate-limit'e** düştüğü için market-cap / 24h-change / io.net fiyatı alın
 | io.net (IO) | `io-net` | **BULUNAMADI** | CoinGecko 429 (ilk çağrıda yanlış ID, sonra rate-limit) |
 | Pearl (PRL) | — | **$0.76** | ACTUAL — **Basu arXiv 2606.04819 ölçüm anındaki fiyat** (Haziran 2026); bugünkü fiyat BULUNAMADI |
 
-### 2.2 Ağ kullanım metrikleri — BULUNAMADI
+### 2.2 Ağ kullanım metrikleri — KISMEN DOLDURULDU (26 Eylül 2026)
 
-- Render, Akash, io.net, Golem için **GPU-saat sayısı, gerçekleşen iş geliri, aktif node sayısı**
-  metrikleri bu oturumda **BULUNAMADI**. Denenenler: `api.akash.network/v1/metrics/global`
-  (bağlantı başarısız), `stats.akash.network/api/metrics` (404, SPA HTML döndü). Bu siteler
-  JS ile veri yüklediği için statik fetch ile metrik alınamamıştır.
-- **Sonraki adım:** Akash "stats" sayfasının kullandığı gerçek API uç noktası (JS kaynağından
-  çıkarılmalı), Render `renderv3` indexer, io.net `stats.io.net` API'si.
+**v1'de tamamen BULUNAMADI idi; bu oturumda Akash için BİRİNCİL kaynak bulundu.**
+Render, io.net, Golem için hala BULUNAMADI (aşağıda).
+
+#### Akash — Q1 2026 raporu (BİRİNCİL, akash.network/blog, 1 Nisan 2026)
+
+> Kaynak: https://akash.network/blog/akash-network-q1-2026-report/ — "Akash Network: Q1 2026
+> Report", Michelle Javed, 1 Nisan 2026. **HTTP 200, 26 Eylül 2026'da alındı.**
+
+- **2026'nın ilk 90 gününde tüm zamanların en yükseği olan $5 milyon compute spend aşıldı.**
+- **BME (Burn Mint Equilibrium) mainnet'e 23 Mart 2026'da geldi** (Proposal 318). Mekanizma
+  BİREBİR ŞU ŞEKİLDE: kullanıcı compute aldığında, ödemesi açık piyasadaki **AKT'yi otomatik
+  satın alır, burn ederek ACT (transfer-edilemez stablecoin) üretir**, ve ACT ile işlemi
+  settle eder. Sağlayıcı ACT alır ve cari fiyattan AKT'ye geri mintler.
+- **Homenode Beta**: Tüketici GPU sahipleri (RTX 4090, RTX 5090, Quadro RTX 6000 Ada) ağa
+  doğrudan compute katkısı yapar — AI inference için tasarlandı. Raporun dayanıklılık
+  argümanı (birebir): "If a data center in the Middle East takes a strike, nodes in Seoul
+  and Frankfurt keep running."
+- **AkashML**: OpenRouter üzerinde **günde 1.7 milyar token** inference trafiği.
+- **AEP-23 öncül modelin açık itirafı (birebir):** "tenants pay in USDC, demand for AKT
+  weakens. **Usage grew while AKT's role as the network's core economic unit eroded.**"
+  — KÖK'ün tezi için ÇOK ÖNEMLİ: bir DePIN ağı fiili kullanım büyürken token'ini
+  ekonominin dışına iten bir ödeme modelini denedi ve **bilinçli olarak terk etti**.
+  KÖK'ün her görevin yalnızca yerel token ile ödenmesi yaklaşımı, bu deneyimden
+  çıkarılmış bir piyasa dersidir.
+
+#### ÖLÇÜM ETİKETİ UYARISI — "compute spend" ≠ "lease revenue"
+
+İki rakam çeşitli kaynaklarda dolanır ve **farklı şeyler ölçer**:
+
+| Rakam | Kaynak | Ne ölçer | Güvenilirlik |
+|---|---|---|---|
+| **$5,000,000** "compute spend" | Akash'in kendi Q1 2026 raporu (birincil) | tümleşik fiilen ödenen compute (tüm lease tipleri; kapsamı net değil) | birincil |
+| **$253,000** "GPU lease revenue" | Messari (ikincil, hoge.gg üzerinden) | yalnızca GPU lease'lerinin on-chain geliri | ikincil, dar ama doğrulanabilir |
+| **43,540** leases, ~34% GPU utilization | Messari (ikincil) | Q1 2026 GPU lease sayısı + kullanım oranı | ikincil |
+
+**Yaklaşık 20 katlık fark ($5M vs $253K) muhtemelen kapsamdan gelir, sağlıksız veriden değil.**
+Ama bu, KÖK paper'ındaki en önemli disiplin hatlarından biridir: **pazar büyüklüğü iddia
+ederken hangi etiketi kullandığınızı yazmalısınız.** KÖK'ün kendi ledger'ında bu sınıf
+daha önce bulundu: "500 per-mille vs 500 basis-points" hatası (bug sınıfı 4). Aynı
+yanılgı şimdi pazar verilerinde karşımıza çıkıyor. **Paper bu iki rakamı yan yana
+koyup neden farklı olduklarını açıklamalıdır** — yoksa okuyucu $5M'i "GPU pazarı"
+zannedip $253K ile çelişir.
+
+#### Diğer ağlar — hala BULUNAMADI
+
+- **Render, io.net, Golem**: GPU-saat, gerçekleşen iş geliri, aktif node metrikleri
+  **BULUNAMADI**. Denenenler: `api.akash.network/v1/metrics/global` (DNS çözülemedi),
+  `stats.akash.network/api/metrics` (404, SPA HTML), `stats.io.net/api/metrics` (DNS
+  çözülemedi), CoinGecko fiyat API (429 rate-limit).
+- **Yapısal neden (düzeltme):** v1 bu boşluğu "JS yükleyen siteler" diye açıklamıştı.
+  Asıl neden daha basit: bu ağların metrik API'leri **statik fetch ile erişilebilir
+  public endpoint olarak yayınlanmıyor** (DNS hatası veya 404). Tarayıcı gerektirir.
+  **Akash için çeyreklik resmi rapor kullanılabilecek tek birincil kanıt oldu — bu,
+  diğer ağlar için de doğru yaklaşımdır: "dashboard API'si" aramak yerine "çeyreklik
+  resmi rapor" aramak.**
 
 ### 2.3 Pearl ağı (ACTUAL — ampirik ölçüm)
 
