@@ -483,7 +483,33 @@ tasarlanmış.** İşte tam da bu yüzden Faz 2'nin zorunlu kapısı insan kript
 
 **Dürüst sonuç:** puan hâlâ **83.65**. Yukarıdakilerin hiçbiri onu artırmadı, çünkü artırma yasağı altında ve çoğu zaten puanlanmışti. Ama **kalan ~21 puanın kompozisyonu değişti**: "kâğıt hatası" olduğu düşünülen kısımların bir kısmı aslında "güncel kaynakla desteklenmiş ama henüz empirik olarak kanıtlanmamış" kategorisine taşındı. **100/100 hâlâ ulaşılamaz — ve nedeni dürüstçe yazılı:** insan kriptograf incelemesi (mail YASAK + Demirel zaten ret etti), canlı ağ φ>0 (F3b inşası YASAK), gerçek güvenlik bütçesi (finanse değil). Bunlar bu oturumun araç setinin dışındadır ve öyle kalacaktır.
 
-**Burn vergi analizi hâlâ AÇIK** (Hukuk −3,75'in bir parçası): IRS birincil kaynağına bu oturumda erişilemedi (web search anahtarı HTTP 401; ccaf.io ve IRS PDF'leri sıkıştırılmış binary). Phantom-tax argümanı dosyada "çözülmemiş argüman, IRS görüşü değil" olarak doğru konumlandırıldı.
+**BURN VERGİ ANALİZİ HÂLÂ AÇIK** (Hukuk −3,75'in bir parçası): IRS birincil kaynağına bu oturumda erişilemedi (web search anahtarı HTTP 401; ccaf.io ve IRS PDF'leri sıkıştırılmış binary). Phantom-tax argümanı dosyada "çözülmemiş argüman, IRS görüşü değil" olarak doğru konumlandırıldı.
+
+### 9.2 2026-09-26 — 4 GERÇEK BUG BULUNDU, PUAN AYNI (83.65) — VE NEDEN AYNI OLMASI DOĞRU
+
+**Önce ne oldu:** bu blokta "her açıdan" direktifinin teknikboyutunu adversarial hardening olarak ele aldım — ve bulduğum şey, bu projenin daha önce adını koymadığı bir hata sınıfıydı: **"same-tolerance leak"** (bug sınıfı 7). Bir fonksiyon absent girdileri bilinççe tolere ediyorsa, **aynı girdiyi kaydeden her site'i denetle** — tolerans genellikle sadece yarım uygulanmış. **Dört örneği ölçümle bulup kapattım:**
+
+| Commit | Bulgu | Parayla ilgisi |
+|---|---|---|
+| `7bed3b5` | `u_consensus_weight` plain `.sum()` — u64::MAX'ı geçince **BÜYÜK değil KÜÇÜK** sayı; "U layer zero weight" invariant'ı **büyüklükle değil KILIKLA** ihlal edilirdi | consensus ağırlığı |
+| `25fcc30` | **PHANTOM ANCESTORS**: partial-DAG toleransı scoring'de doğru ama `children` registration filtresizdi → `future(999)` gerçek blok döner; `past_uncached` varlığı `seen.insert`'ten ÖNCE kontrol etmiyordu → absent parent computed past'ta kalıyordu | anticone + mergeset'in temeli |
+| `345e0b8` | `pay_set`: is_blue kaydı olmayan üye sessizce RED sayılıp **hiç ödenmiyordu** — dürüst madenci ödülü hatasız kaybederdi; ayrıca phantom bir parent bir **gerçek pay slot yiyebilirdi** | **DOĞRUDAN PARA** |
+| `25ef7cc` | `reward_split(bid, height)` — **height bir CALLER PARAMETRESİYDİ ve `bid` KULLANILMIYORDU**. Bir BlockDAG'de sadece forgeable değil, ANLAMSIZ: paralel bloklar aynı anda meşru farklı derinlikte. Artık `blue_score`'den türetiliyor | **DOĞRUDAN PARA — emisyon eğrisi** |
+
+**HEPSİ ÖLÇÜMLE BULUNDU, okuyarak değil:** önce niyet edilen davranışı PIN'leyen testler yazdım, onlar **başarısız oldu**, ve başarısızlıklar sızıntıları lokalize etti. İlk testin diğer 4 assertion'ı zaten geçiyordu — bu teşhisi keskinleştirdi: **scoring tolerant, bookkeeping phantom.**
+
+**Bir başarısızlık bulgu olarak kaydedildi:** emisyon testimin ilk yeniden yazımı **OOM-killed** oldu. `past_cache` her blok için full ancestor BTreeSet memoize eder → **O(N²) bellek**; ÖLÇÜLDÜ: 12,000 blok = 1.48 GB, tail'in ihtiyaç duyduğu ~10.3M blok **yavaş değil ERİŞİLEMEZ** (terabaytlar). İkinci hata aritmetikti: eğri her interval'de 1 KOK düşürür, `630004/210000 = 3` → **47, 1 değil**. Düzeltme: `#[cfg(test)] set_depth_for_test` (kuadratik limit doc comment'inde ÖLÇÜLMÜŞ prototip kısıtı olarak yazılı) + eğri 3 noktada pinned (1 interval → 49, R_0 interval → floor 1, 100× geç → hâlâ 1). Test 0.12 s / 203 MB.
+
+**PUAN NEDEN AYNI?** Üç dürüst neden, hepsi yazılı:
+1. **Bu bulgular kategorinin zaten puanlanmış kısmında.** Tablonun Uygulanabilirlik satırı toy sınırları ve "hiçbiri adı veya parası riskte olan bir taraf tarafından yapılmadı" diye not düşmüş — bu bulgular o hesabın içine zaten dahildi. Yeni bulgular **o hesabın doğruluğunu artırdı**, puanı değil.
+2. **Yukarıdaki kalan ~15 puan EMPİRİK KANIT** — insan kriptograf (mail YASAK + Demirel zaten ret etti), canlı φ>0 (F3b inşası YASAK), güvenlik bütçesi (finanse değil). Bu oturumun araç setinin **dışında** ve öyle kalacak.
+3. **"85 tavanı" notunun ta kendisi:** "mükemmel bir kâğıt çalışan bir zincire eşit değildir." Bu bloğun bulguları tam da o noktayı kanıtlıyor — para yolu kâğıtta doğru duruyordu ve **dört sızıntıyı yine de barındırıyordu.**
+
+**Yine de bir şey değişti — kalanın KALİTESİ:** bu blok öncesi "kalan ~8 puanlık saf kâğıt işi" varsayımı vardı. Bu blok gösterdi ki kâğıdın **kendisinde** bile taranmamış yüzeyler var. Bu, "100/100" hedefine giden yolun ölçümle yürünebileceğini ve her adımın gerçek bir bulgu getirebileceğini gösterdi — ama son sınırların insan, canlı ağ ve para olduğu gerçeğini değiştirmiyor.
+
+**DURUM — 172 TEST, 0 UYARI, audit CLEAN, suite gate 39/39.**
+
+ (Hukuk −3,75'in bir parçası): IRS birincil kaynağına bu oturumda erişilemedi (web search anahtarı HTTP 401; ccaf.io ve IRS PDF'leri sıkıştırılmış binary). Phantom-tax argümanı dosyada "çözülmemiş argüman, IRS görüşü değil" olarak doğru konumlandırıldı.
 
 **Pearl referansı bağlamında:** Pearl'in canlı ağı (24 EH/s, 320 bin GPU) kâğıt puanı
 alamaz — **kanıtı var ama E-gap'i mimariye yedirmemiş** (kendi itirafı). KÖK v2 ters
