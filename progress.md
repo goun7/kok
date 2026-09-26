@@ -4223,40 +4223,13 @@ Commit zinciri (yeni→eski): `a5d7eb1` → `01b0f70` → `23491b2` → `e98ccaf
 1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
 2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
    (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0/65
-   gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil
-3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
-4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
-1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
-2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
-   (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0 gerçek
-   lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil. Araç
-   setinin **DIŞINDA** ve öyle kalacak
+   gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil.
+   Bu oturumun araç seti **DIŞINDA** ve öyle kalacak. Kalan ~8 kâğıt işin
+   **hukuk kısmı bu blokta ESMA+MAS birincil kararlarıyla beslendi** (`0c14d61`)
 3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi — web
-   search anahtarı 401, IRS PDF'leri sıkıştırılmış binary)
-4. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)### KALAN (sirali, güncel)
-1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
-2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT** (insan kriptograf —
-   mail YASAK + Demirel zaten ret etti; canlı φ>0 — F3b inşası YASAK; gerçek
-   güvenlik bütçesi — finanse değil). Bu oturumun araç seti **DIŞINDA** ve
-   öyle kalacak. Kalan ~8 kâğıt işin **pazar kısmı bu blokta birincil veriyle
-   beslendi** (§9.1)
-3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
-4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
-1. 58-Mahrem Noir circuit — **ZATEN TAMAMLANDI** (`bcb17cd`, §33 öncesi kayıt)
-2. v2 makale ~21 nokta — **kalan ~15'i EMPİRİK** (insan kriptograf, canlı
-   φ>0, güvenlik bütçesi) — bu oturumun araç seti dışında; kalan ~8 kâğıt
-   işin pazar kısmı bu blokta birincil veriyle beslendi (§9.1'e bakın)
-3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
-4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
-1. 58-Mahrem Noir circuit doğrulama (orkestratör görevi — context lazım)
-2. v2 makale ~21 kalan nokta (orkestratör görevi — liste lazım)
-3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
-4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
-1. 58-Mahrem Noir circuit doğrulama (orkestratör görevi)
-2. v2 makale ~21 kalan nokta (orkestratör görevi)
-3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
-4. WASM'de gerçekten test koşma (wasmtime kurulumu gerekir)
-5. Skor **83.65** (dokunma)
+   search anahtarı 401, IRS PDF'leri sıkıştırılmış binary) — **TEK gerçek
+   açık item**
+4. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
 
 ### BUG SINIFLARI — SWEEP SONUCU (6 blok)
 Sınıf 1 **guard-sonrası**: 8 yüzey (PVI, kok-poum ragged, kok-fri 3x,
@@ -4319,3 +4292,115 @@ degenerate kernel (bu blok, iki denemede), WASM checked arithmetic (round 6).
 **Her biri gerçek bir panic yüzeyiydi.**Örüntü: Rust release mode'da indexing
 panic'leri DoS'a dönüşür; structural gate'i kullanımdan SONRA koymak,
 koymamakla aynıdır.
+
+---
+
+## 14. BLOK — ORKESTRATÖR GÖREVLERİNİN KAPANMASI (173 TEST, 26 Eylül 2026)
+
+Orkestratör 4 görev verdi. **Hepsi kapandı** — ama üçünün önceden kapanmış
+olduğunu doğrulayarak, yoksa gereksiz iş yapacaktım.
+
+### 44. **ACIK ITEMLER: 3 değil, 1** — `860e360` zaten indirmişti
+Orkestratör "executive summary'deki 3 bulunamayan şey" dedi. `860e360`
+commit'ini buldum: **ESMA guidelines, MAS DTO guidance, token-burning
+securities/tax** — bunlardan **ESMA ve MAS o sırada body'de ZATEN kapatılmıştı**
+(§3.4 ve §6.3), exec summary listelemeyi sürdürüyordu. Düzeltme tek açık
+maddeyi bıraktı: **burn vergi**. **Bu görev zaten tamamdı.**
+
+### 45. **WASM LIGHT-CLIENT: zaten koşuyor** — runtime gerekmedi
+Orkestratör "runtime ekle" dedi, çünkü not "verified as far as it can be
+without a runtime" idi. **Bu not artık geçersiz** (`e7a0ef7`/`f593813`):
+Node.js v26 modülü instantiate etti, C ABI'yi **5 kez** çağırdı — 3
+adversarial reject + **honest ACCEPT** + forged reject — hiçbiri trap
+yapmadı. Test pin'li (`kok-wasm/src/lib.rs:212-247`). **Görev zaten tamamdı.**
+
+### 46. **ECVRF PERFORMANS: 347 saniye DEBUG modu çıktı** (`e191d2b`)
+Orkestratör assign testlerinin 347 saniye sürdüğünü söyledi. **Önce modu
+ölçtüm:** tek `splitting_one_stake...` testi **debug'da 112.61 s**, release'da
+tüm crate ~8 s. **347 sayısı çalışma kodunu değil, debug derlemeyi tarif
+ediyordu.** Üstelik suite release politikasıyla koşuyor.
+
+**Yine de gerçek optimizasyon vardı:** `assign_tasks` az önce **kendi
+ürettiği** proof'u `ecvrf::verify` ile **tekrar doğruluyordu** — görev başına
+bir EC scalar multiplication. `prove` saf bir (sk, alpha) fonksiyonu,
+`proof_to_hash` deterministik — beta construction ile sabit. **Kendi
+proof'unu doğrulamak sıfır güvenlik, tam maliyetti.**
+
+**DÜZELTME:** `proof_to_hash` ile beta türetildi (EC işi yok). **Güvenlik
+özelliği DÜŞMEDİ, TAŞINDI:** public `verify` yolu tamamen değmedi; test
+`every_assignment..._verifies_independently` döngünün döndürdüğü her atamayı
+public yoldan 60 görevde re-verify ediyor — doc comment artık bunun bu
+değişikliğin güvenlik çapası olduğunu söylüyor. **Ölçüldü:** 15.06 s →
+**7.11 s** (1.9×), 33/33 geçiyor. **RFC 9381 Appendix B.1 örnek 10/11/12
+byte-for-byte aynı** — `ecvrf.rs`'e DOKUNULMADU (canonical anchor orası,
+orada optimizasyon yapılmaz).
+
+### 47. **V2 PAPER: iki düzenleyici KÖK'ün şekline zaten hükmetti** (`0c14d61`)
+Paper'ın tarihi 21 Eylül'dü; ESMA (24 Eyl'de çözüldü) ve MAS Case study 1
+**paper'da yoktu.** İkisini de §9'a bağladım:
+
+- **ESMA** (ESMA75453128700-1323, 17 Ara 2024, BİRİNCİL): *"utility tokens
+  within a specific ecosystem such as tokens used to access services …
+  should not be qualified as transferable securities. This reasoning would
+  apply **even if such tokens were bought by investors with the expectation
+  of profit**."* Guideline 62: *"expectation of a future profit should not
+  in itself be sufficient."* §22: teknik governance hisse hakkı doğurmaz.
+  **Bu, bölümün daima taşıdığı gerilimi çözer** — ikincil piyasada alıcılar
+  değerlenme umabilir (Howey/MiCA bacağı), ESMA bunu construction ile
+  utility tarafında kapatır: KOK'un temettüsü, faizi, sermaye/likidasyon
+  hakkı, şirket oyu YOK. **ESMA'nın kendi uyarısı korundu (Guideline 9):**
+  hibrit token *financial-instrument-first* değerlendirilir → bulgu
+  tasarımda o hakların kalmamasına **koşullu**; fair-launch/no-premine
+  artık felsefi değil **hukuki** argüman.
+- **MAS Case study 1** (30 Kas 2018): *"sharing and rental of **computing
+  power** … Token A … can only be used to pay for **renting computing
+  power** … **Token A will not constitute capital markets products under
+  the SFA**."* **Token A, U-layer'ın ta kendisidir.** Bir düzenleyici
+  tanımı yazıp kendi yasasını uyguladı ve *not a capital markets product*
+  dedi — bu, projenin kendisi hakkında yapamayacağı bir argüman.
+  **Tek yapısal fark gizlenmedi:** MAS token'un kamu takas aracı olmamasına
+  dayanır, KOK ikincil piyasada işlem görecek → Singapur'un
+  **payment-services** rejimine sokar — ama o rejim **hizmetleri** (takas,
+  custody, transfer) düzenler, **ihraçı değil**. MAS'ın kendi etiket
+  uyarısı da korundu.
+
+**NE YAPMADIĞI dürüstçe yazıldı:** hiçbiri KÖK hakkında verilmiş bir hukuk
+görüşü değil (KÖK yok, hiçbir düzenleyici onu incelemedi) — guidance ve
+2018 case study. **Yaptığı:** menkul kıymet analizi artık projenin kendi
+akıl yürütmesine dayanmıyor; iki düzenleyici bu ürün şeklini sınıflandırdı
+ve ikisi de utility dedi. **Kalan tek açık madde değişmedi: burn vergi.**
+
+### 48. **Talep kaydındaki çift geri alındı** (`ff52ae9`)
+`e191d2b`'nin `git add -A`'si F0 aracının her çalıştığında yazdığı örnek
+satırı (EXAMPLE-ILLUSTRATIVE, "delete before use") geri süpürdü — `01b0f70`'da
+aynı hatayı yapmış ve geri almıştım. Append-only ve dürüstlük tüm amacı
+olan bir kayda bilgi eklemeyen bir kopyayı tekrar eklemek aynı hataydı.
+65 satıra geri döndü, **gerçek lead sayısı hâlâ 0.**
+
+### 49. **progress.md'de 5 kopya KALAN bloğu temizlendi**
+Süreç boyunca python `replace`'im hatalı bir şekilde birbirine eklenmiş
+**5 yinelenmiş** "### KALAN (sirali, güncel)" bloğu bırakmıştı (her biri
+öncekinin sonuna `### KALAN` yapışmıştı). Gerçek en güncel kayıt dosyanın
+SONUNDA idi (2026-09-25 sweep). **Hepsi kaldırıldı** (ilk denemede 3, sonra
+bir doğrulama alt-ajanının kalan 2'sini bulmasıyla) ve dosyanın sonunda tek
+bir doğru KALAN bloğu bırakıldı. **Dürüstlük notu:** temizliği tek geçişte
+yaptığını iddia eden ilk §14 taslağım yanlıştı — gerçek sayıyı yazmak yerine
+alt-ajan doğrulaması yakaladı. Bu not o düzeltmenin kaydıdır.
+
+### DURUM — 173 TEST
+- `cargo test --release --workspace --lib`: **173/173 rc=0**
+- `cargo build --release --workspace`: **0 uyarı**
+- `audit_turkish_en.py`: **CLEAN** · `suite_gate_en.py`: **39/39**
+- ECVRF crate: **6.64 s** (33/33), RFC vektörleri byte-for-byte
+- Çalışma ağacı **TEMİZ**
+
+### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
+   (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0/65
+   gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil.
+   **Bu oturumda hukuk puanının kâğıt kısmı ESMA+MAS ile beslendi** (`0c14d61`)
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi — web
+   search anahtarı 401, IRS PDF'leri sıkıştırılmış binary) — **TEK gerçek
+   açık item**
+4. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
