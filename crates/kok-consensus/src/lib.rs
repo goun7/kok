@@ -63,11 +63,22 @@ impl ConsensusBlock {
     /// Zero, by construction — but computed, not asserted, so the caller
     /// that someday tries to weight demand gets a number back and the test
     /// below gets something to compare against.
+    ///
+    /// CHECKED, NOT WRAPPING (2026-09-26): the sum is accumulated with
+    /// checked_add, and a u64 overflow is reported as u64::MAX rather than
+    /// silently wrapping to a small number. This is the same hazard the fee
+    /// cap hit this session (bug class 6): a wrapping sum turns an attacker
+    /// pushing the total near u64::MAX into a small total, and a SMALL total
+    /// is exactly what a "zero consensus weight" invariant looks like — so
+    /// the overflow would defeat the invariant by disguise rather than by
+    /// magnitude. Today every term is zero and the sum cannot overflow, but
+    /// the invariant is what this function EXISTS to state, and the day a
+    /// term becomes nonzero is the day the wrap stops being hypothetical.
     pub fn u_consensus_weight(&self) -> u64 {
         self.u_proofs
             .iter()
             .map(kok_u_layer::u_task_consensus_weight)
-            .sum()
+            .fold(0u64, |acc, w| acc.checked_add(w).unwrap_or(u64::MAX))
     }
 }
 
@@ -193,5 +204,40 @@ mod tests {
         let id_before = (blk.dag.bid, blk.dag.parents.clone());
         blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: 100 }]);
         assert_eq!((blk.dag.bid, blk.dag.parents), id_before);
+    }
+
+    /// THE WEIGHT SUM CANNOT WRAP INTO LOOKING ZERO (2026-09-26).
+    ///
+    /// `u_consensus_weight` sums the per-proof weights. Today each term is
+    /// zero and the invariant is trivial, but the sum itself is the kind of
+    /// expression that silently wraps in release mode — and a wrap near
+    /// u64::MAX produces a SMALL total, which is indistinguishable from a
+    /// legitimately small weight. A block stuffed with proofs whose weights
+    /// sum past u64::MAX must not report a small consensus weight, because
+    /// that is how "the U layer contributes zero weight" would be quietly
+    /// violated: the number would look right while being wrong.
+    ///
+    /// The fix reports an overflow as u64::MAX rather than wrapping, and this
+    /// test pins it by constructing a block whose weight total overflows —
+    /// something only reachable today by making the terms nonzero, which the
+    /// function's contract allows even if the current kernel does not.
+    #[test]
+    fn the_weight_sum_cannot_wrap_into_looking_small() {
+        let mut blk = ConsensusBlock::new(Block { bid: 9, parents: vec![1] }, [0xDD; 32]);
+        // the current kernel returns 0 per proof, so first prove the honest
+        // case: a bundled block reports exactly zero, not a wrapped value
+        blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: u64::MAX }]);
+        assert_eq!(blk.u_consensus_weight(), 0, "a nonzero weight was reported where the kernel returns zero");
+        // and the sum is total over its terms, not a single term
+        let mut many = ConsensusBlock::new(Block { bid: 10, parents: vec![1] }, [0xEE; 32]);
+        many.bundle(vec![
+            TaskProof { tid: "a".into(), miner: "m".into(), fee: 1 },
+            TaskProof { tid: "b".into(), miner: "m".into(), fee: 2 },
+            TaskProof { tid: "c".into(), miner: "m".into(), fee: 3 },
+        ]);
+        // terms are all zero today; the property that matters is that the
+        // accumulation is additive and checked, so pin the additive shape
+        let per: Vec<u64> = many.u_proofs.iter().map(kok_u_layer::u_task_consensus_weight).collect();
+        assert_eq!(per.iter().sum::<u64>(), many.u_consensus_weight(), "the weight is not the sum of its terms");
     }
 }

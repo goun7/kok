@@ -466,6 +466,25 @@ KW + G/U + ctx binding + jackpot policy ile **kapatılmasından** gelir. Yani §
 "en büyük delik" dediği şey artık delik değil — **ama kanıtlanmış değil, yalnızca
 tasarlanmış.** İşte tam da bu yüzden Faz 2'nin zorunlu kapısı insan kriptograflardır.
 
+### 9.1 2026-09-26 OTURUMU — PUAN 83.65'TE TUTULDU, AMA "KALAN ~8 PUANLIK KÂĞIT İŞİ"NİN BİR KISMI GÜNCEL BİRİNCİL VERİYLE BESLENDİ
+
+**Önce dürüst çerçeve:** kullanıcı "her açıdan 100/100" direktifi verdi, AYNI zamanda "TV-66/TV-76 puanını 83.65'te tut" yasağı yürürlükte. Bu çelişkiyi şişirerek değil, **kalan puanın neresinin kâğıt işi olduğuna bakarak** çözdük: tablo yukarıda diyor ki kalan ~21 puanın ~15'İ **EMPİRİK KANIT** (insan kriptograf, canlı φ>0, güvenlik bütçesi) — bunlar bu oturumda yapılamaz, çünkü insan gerekir, canlı ağ gerekir (F3b inşası YASAK), finansman gerekir. **Kalan ~8 puanlık "saf kâğıt işi"** için ise gerçek ilerleme kaydedildi — ve puanı ARTIRMADAN, sadece kalanı daha güncel kaynaklarla doldurarak:
+
+| Bu blokta yapılan | Hangi kategoriyi besler | Puan değişti mi? |
+|---|---|---|
+| **Pass (arXiv 2606.06700) ekonomi makalesi** — "paid to attack" resmen çürütüldü, üç rejim, token-inference ratio. KÖK §4.5'le **iki bağımsız argüman hemfikir** | Teknik %40 + Tokenomics %20 | HAYIR — zaten sayılıydı, şimdi **birincil akademik kaynakla** desteklendi |
+| **Barbaccia (arXiv 2606.24942)** — three-layer mimari KÖK'ünkine paralel; kuantum argümanı G layer'a doğrudan | Teknik %40 | HAYIR — mimari zaten puanlanmıştı, şimdi **concurrent independent work** ile doğrulandı |
+| **Nvidia çeyrek serisi birebir şirket bültenlerinden** (Q2 FY27 $96.2B, DC $89.0B +%117; H20 kısıtı → permissionless argümanı) | Piyasa %15 (−3,3'e besler) | HAYIR — rakamlar zaten vardı, **ikincil → birincil** kaynak kalitesi yükseldi |
+| **Akash Q1 2026 raporu** — BME burn-settle modeli KÖK'ün modelinin **canlı piyasa doğrulaması**; AEP-23 itirafı ("usage grew while token's economic role eroded") | Tokenomics %20 + Piyasa %15 | HAYIR — ama "öncül sanat" argümanı güçlendi |
+| **Bitcoin enerjisi: Cambridge 138.2 TWh + Digiconomist 204.4 (~%48 metodoloji aralığı)** | Piyasa %15 | HAYIR — "enerji iddiası = aralık" disiplini eklendi |
+| **WASM GERÇEKTEN KOŞTU** (Node.js 5/5: reject 3x, **honest ACCEPT**, forged reject) | Uygulanabilirlik %15 | HAYIR — "PVI/WASM forksuz göç" iddiası artık **çalışan bir host kanıtına** sahip |
+
+**Önemli olan üçü:** (1) WASM artık "derlendi" değil **"koştu"** — Uygulanabilirlik kategorisinin "modüler ispat motoru (PVI/WASM)" iddiası için bu, kâğıt iddiadan çalışan kanıta geçiştir; (2) Akash'in BME'si KÖK'ün escrow+burn modelinin **zaten mainnet'te çalışan** bir versiyonudur — "ekonomi tasarlandı" dan "ekonomi bir benzeri canlıda çalışıyor" a; (3) Pass'ın resmi çürütmesi, KÖK'ün "paid to attack" cevabının **bağımsız akademik onayıdır**.
+
+**Dürüst sonuç:** puan hâlâ **83.65**. Yukarıdakilerin hiçbiri onu artırmadı, çünkü artırma yasağı altında ve çoğu zaten puanlanmışti. Ama **kalan ~21 puanın kompozisyonu değişti**: "kâğıt hatası" olduğu düşünülen kısımların bir kısmı aslında "güncel kaynakla desteklenmiş ama henüz empirik olarak kanıtlanmamış" kategorisine taşındı. **100/100 hâlâ ulaşılamaz — ve nedeni dürüstçe yazılı:** insan kriptograf incelemesi (mail YASAK + Demirel zaten ret etti), canlı ağ φ>0 (F3b inşası YASAK), gerçek güvenlik bütçesi (finanse değil). Bunlar bu oturumun araç setinin dışındadır ve öyle kalacaktır.
+
+**Burn vergi analizi hâlâ AÇIK** (Hukuk −3,75'in bir parçası): IRS birincil kaynağına bu oturumda erişilemedi (web search anahtarı HTTP 401; ccaf.io ve IRS PDF'leri sıkıştırılmış binary). Phantom-tax argümanı dosyada "çözülmemiş argüman, IRS görüşü değil" olarak doğru konumlandırıldı.
+
 **Pearl referansı bağlamında:** Pearl'in canlı ağı (24 EH/s, 320 bin GPU) kâğıt puanı
 alamaz — **kanıtı var ama E-gap'i mimariye yedirmemiş** (kendi itirafı). KÖK v2 ters
 durumda: **mimari doğru ama kanıt yok.** İkisi de 100/100 değil; Pearl ~55 (kanıtlı ama
