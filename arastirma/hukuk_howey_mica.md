@@ -103,24 +103,27 @@ yazılmıştır.**
 
 ### 1.1 Torres'in 13 Temmuz 2023 özet kararı — üç kategorik ayrım
 
-Kararın **kendi metni** bu oturumda CourtListener üzerinden alınamadı (API anonım erişimi
-reddetti: `{"detail":"Anonymous users don't have permission to access the API."}`; HTML
-arama sonuç vermedi). Aşağıdaki verbatim pasajlar, kararı **yeniden üreten** bir hukuk
-firması analizinden alınmıştır:
+**★ GÜNCELLEME (27.09.2026) — ARTIK BİRİNCİL:** Kararın **tam metni**
+çıkarıldı (**Document 874, 34 sayfa, 1.802 satır**, bkz. §6 madde 7) —
+SDNY'nin kendi sunucusundan `curl` ile indirilip `pdftotext` ile çıkarıldı.
+Aşağıdaki verbatim pasajlar artık **mahkemenin kendi metnünden**;
+ortadaki ikincil kaynak (Gordon Law) çapraz kontrol için korunur.
 
-> **Tokenin kendisi:** "XRP, as a digital token, is not in and of itself a 'contract,
-> transaction[,] or scheme' that embodies the Howey requirements of an investment contract."
-> **Programatik (borsa) alıcılar:** "the majority of individuals who purchased XRP from crypto
-> exchanges did not invest their money in Ripple at all"; bu alıcılar "could not have known
-> if their payments of money went to Ripple, or any other seller of XRP."
-> **Kurumsal satışlar:** SEC lehine; **$728 milyon** kurumsal satış değerlendirilmiş;
-> "common enterprise" testinde "the investors' assets are pooled and the fortunes of each
-> investor are tied to the fortunes of other investors, as well as to the success of the
-> overall enterprise."
-> — *Kaynak:* Gordon Law Group, "Partial Ripple Victory: Judge Rules That XRP Is Not a
-> Security" (**13 Temmuz 2023**, güncelleme 17 Mart 2026),
-> https://gordonlaw.com/learn/judge-xrp-not-security/ (**İKİNCİL kaynak — kararın aslı için
-> bkz. §6 madde 7.**)
+> **Tokenin kendisi (birincil):** "XRP, as a digital token, is not in and of
+> itself a 'contract, transaction[,] or scheme' that embodies the Howey
+> requirements of an investment contract."
+> **Kurumsal satışlar (birincil):** *"Therefore, having considered the
+> economic reality and totality of circumstances surrounding the
+> Institutional Sales, the Court concludes that Ripple's Institutional Sales
+> of XRP constituted the unregistered offer and sale of investment contracts
+> in violation of Section 5 of the Securities Act."* (≈$728.9M değerlendirildi)
+> **Programatik (borsa) satışlar (birincil):** *"Therefore, having considered
+> the economic reality and totality of circumstances, the Court concludes
+> that Ripple's Programmatic Sales of XRP did not constitute the offer and
+> sale of investment contracts."* — **özellikle:** "the record does not
+> establish the third Howey prong as to the Programmatic Sales" (≈$757.6M).
+> — *Kaynak:* SDNY Document 874, `nysd.uscourts.gov` (**BİRİNCİL**);
+> ikincil çapraz kontrol: Gordon Law Group, "Partial Ripple Victory..."
 
 **Yorum (TAMGA):** Torres'in yeniliği **transaction-by-transaction** analiz: aynı token
 kurumsal satışta menkul kıymet, borsada perakende satışta menkul kıymet değil olabilir.
@@ -159,6 +162,29 @@ KÖK dersi: belirleyici olan tokenin kendisi değil, **hangi işlemin yapıldı�
 > (**26 Haziran 2025**, yazar Anas Hassan),
 > https://cryptonews.com/news/ripple-settlement-denied-as-judge-torres-rejects-50m-deal-xrp-institutional-sales-remain-limited/
 > (**İKİNCİL kaynak — kararın aslı için bkz. §6 madde 8.**)
+
+**★ GÜNCELLEME (27.09.2026) — ARTIK BİRİNCİL:** Kararın **tam metni**
+çıkarıldı (**Document 989, 5 sayfa**, bkz. §6 madde 8). Cryptonews'un
+özeti doğrulandı ve **iki önemli detay eklendi**:
+
+> *"Plaintiff ... and Defendant, Ripple Labs, Inc. ('Ripple'), ask the Court
+> to state that it would (1) 'dissolve' the Court's permanent injunction
+> ordering Ripple to obey the law, and (2) cut the monetary penalty imposed
+> against Ripple by more than half. ... **The request is DENIED.**"*
+
+> *"But the parties do not have the authority to agree not to be bound by a
+> court's final judgment that a party violated an Act of Congress in such a
+> manner that a permanent injunction and a civil penalty were necessary to
+> prevent that party from violating the law again. ... For that, the parties
+> must show exceptional circumstances that outweigh the public interest or
+> the administration of justice. ... **They have not come close to doing so
+> here.**"*
+
+**TAMGA'nın 2026-09 yorumu keskinleşti:** "taraflar anlaştı, mahkeme
+boşversin" diye bir yol bulunmadı — Torres, mahkeme emirlerinin
+**tarafların ortak iradesiyle kaldırılamayacağını** yazdı; tek iki çıkış
+yolu temyizi **geri çekmek** veya **temyiz etmek** ("primary route"). Yani
+kalıcı injunction, anlaşma onaylansa bile yürürlükte kalır.
 
 ### 1.4 7 Ağustos 2025 — Temyizlerin reddi; DAVA KAPALI, final karar aynen yürürlükte (BİRİNCİL)
 
@@ -1202,10 +1228,10 @@ burn", "proof-of-burn regulation", "Türkiye'de token yakma vergi".
 | ~~6~~ | ~~**Token burning** menkul kıymet~~ | **KISMEN ÇÖZÜLDÜ (24.09.2026)** — §5 | — |
 | 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
 | 6 | **Token burning — VERGİ** (ABD IRS / AB / Türkiye'de fee-burn vergi görüşü) | **BİRİNCİL IRS KAYNAĞI BULUNDU (26.09.2026)** — Rev. Rul. 2023-14 (IRB 2023-33) + IRS newsroom 04.04.2024: "rewards income" resmen adlandırılmış gelir kategorisidir ve FMV "dominion and control" anında gelir yazılır. **Burn'a ÖZEL görüş hâlâ YOK** — Rev. Rul. staking hakkındadır, burn'ü ele almaz; phantom-income argümanı artık birincil kural üzerine inşa edilir, havada değil | ~~SSRN/Google Scholar; IRS guidance~~ → **YAPILDI (kısmen)**; kalan: burn'e özel görüş (yok) |
-| 7 | ~~**Torres'in 13 Temmuz 2023 kararının asıl metni**~~ | **KISMEN ÇÖZÜLDÜ (26.09.2026)** — **kararın kendi URL'si bulundu ve teyit edildi:** SDNY'nin kendi sunucusunda, `nysd.uscourts.gov/sites/default/files/2023-07/SEC%20vs%20Ripple%207-13-23.pdf` (HTTP 200, 34 sayfa). **Operatif cümle doğrulandı** (aranın snippet'i + decrypt.co alıntısı): *"having considered the economic reality and totality of circumstances surrounding the Institutional Sales, the Court concludes that Ripple's Institutional Sales of XRP constituted the unregistered offer and sale of investment contracts in violation of Section 5 of the Securities Act"*. **PDF'in tamamı ikili döndüğü için TAM METİN alınamadı** — bu yüzden yalnızca operatif cümle ve mahkemenin kendi URL'i birincil olarak kaydedilir; programmatic-sales ve diğer başlıklar ikincil kaynaklardan | ~~CourtListener docket 17643223~~ → **URL BULUNDU (mahkemenin kendi sunucusu)**; kalan: tam metin (PDF ikili) |
-| 8 | ~~**Torres'in 26 Haziran 2025 kararının asıl metni**~~ | **KISMEN ÇÖZÜLDÜ (26.09.2026)** — kararın **içeriği** iki bağımsız ikincil kaynakla (cryptonews + coinedition) teyit edildi: Torres, Ripple ve SEC'in **$50M'lik ortak anlaşmasını REDDETTİ** — talep "indicative ruling" ile **kalıcı injunction'ı kaldırmak** ve $125M cezayı indirmekti. **Torres reddetti → $125,035,150 ceza ve kurumsal XRP satışlarını kısıtlayan kalıcı injunction YÜRÜRLÜKTE kaldı.** ★ **KÖK için doğrudan önemi:** bir mahkeme, kurumsal token satışları üzerindeki **injunction'ı çözülemez** olarak ele aldı — yani kurumsal satış kısıtlaması, taraflar anlaşsa bile kalıcı sayılır. **Tam metin (PDF) alınamadı** — yalnızca içerik teyit edildi | ~~CourtListener / SDNY docket~~ → **İÇERİK BULUNDU**; kalan: asıl metin |
-| 9 | **Regulation Crypto Assets teklifine gelen yorumlar / yürürlük takvimi** | Zaman kısıtı | Federal Register docket S7-2026-27 |
-| 10 | **AB Komisyonu'nun MiCA uygulama değerlendirme raporu (2025–2026)** | Arama motorları kapalı | EUR-Lex / Commission sayfaları |
+| 7 | ~~**Torres'in 13 Temmuz 2023 kararının asıl metni**~~ | **TAMAMEN ÇÖZÜLDÜ — TAM METİN BİRİNCİL (27.09.2026)** — PDF `curl` ile indirildi (321.952 bayt, iText 7.1.6, SDNY üretimi) ve `pdftotext -layout` ile **1.802 satıra** çıkarıldı: **Document 874, 34 sayfa, 20 Civ. 10832 (AT)**. Üç karar başlığı **verbatim doğrulandı:** (1) *Institutional*: *"having considered the economic reality and totality of circumstances surrounding the Institutional Sales, the Court concludes that Ripple's Institutional Sales of XRP constituted the unregistered offer and sale of investment contracts in violation of Section 5 of the Securities Act"*; (2) *Programmatic* (≈$757.6M): *"the Court concludes that Ripple's Programmatic Sales of XRP did not constitute the offer and sale of investment contracts"* — **üçüncü Howey prong'un kayıtta kurulmadığına** karar verdi, birinci/ikinci prong'a ulaşmadı; (3) *Other Distributions*: *"did not constitute the offer and sale of investment contracts"*. **★ Programmatic-sales bulgusunun teyit edilmesi bu proje için kritikti** — borsa satışlarının menkul kıymet olmadığına dair tek güçlü ABD emsalini artık birincil metinden taşıyor; daha önce ikincil kaynaktı | ~~CourtListener docket 17643223~~ → **TAM METİN BİRİNCİL (mahkemenin kendi sunucusu)** — kalan alt-gap YOK |
+| 8 | ~~**Torres'in 26 Haziran 2025 kararının asıl metni**~~ | **TAMAMEN ÇÖZÜLDÜ — TAM METİN BİRİNCİL (27.09.2026)** — **Document 989, 5 sayfa, 20 Civ. 10832 (AT)**, bir hukuk firması barındırma kopyasından (`nutter.com/assets/htmldocuments/SEC v. Ripple Labs 2025.06.26.pdf`, 196.391 bayt, yaratılış tarihi 26.06.2025 15:12) indirilip çıkarıldı. Operatif cümle verbatim: *"the parties' motion for an indicative ruling is DENIED"*; *"if jurisdiction were restored to this Court, the Court would deny the parties' request to vacate the injunction and reduce the Civil Penalty"*. **DOĞRULANAN DETAYLAR (önceki ikincil kayıtta eksik):** talep %60 indirimdi ("cut the Civil Penalty by sixty percent" — $125.035.150'den ~$50M'ye) VE "dissolve" kalıcı injunction; **U.S. Bancorp Mortgage Co. v. Bonner Mall** "exceptional circumstances" standardı uygulandı; **"parties do not have the authority to agree not to be bound by a court's final judgment"**; iki çıkış yolu: temyizi geri çekmek veya temyiz etmek ("primary route"). **★ KÖK için olan kısmı keskinleşti:** mahkeme "taraflar anlaşınca emri kaldırmak" diye bir şey olmadığını söyledi — kalıcı injunction **temyiz geri çekilse veya anlaşma onaylansa bile yürürlükte kalır**; yalnızca "exceptional circumstances" bozabilir ve Torres *"have not come close to doing so here"* dedi | ~~CourtListener / SDNY docket~~ → **TAM METİN BİRİNCİL**; kalan alt-gap YOK (not: mahkemenin kendi sunucusu yerine hukuk firması kopyası — SDNY e-filing doğrudan indirme henüz bulunamadı; belge mahkeme üretimi, başlık/ECF numarası birebir) |
+| 9 | ~~**Regulation Crypto Assets teklifine gelen yorumlar / yürürlük takvimi**~~ | **BULUNDU — BİRİNCİL + CANLI (26.09.2026)** — Federal Register: **91 FR 54510–54655 (146 sayfa)**, 21 Ağustos 2026, **Release Nos. 33-11434; 34-106150; File No. S7-2026-27; RIN 3235-AN38**. **★ İKİ MUAFİYET:** (1) **4 yıllık dönemde $5M'a kadar**; (2) **her 12 ayda $75M'a kadar** — ikincisi finansal tablo + sürekli raporlama gerektirir. **★ KOŞULLU GÜVENLİ LİMAN (safe harbor):** koşullar sağlanırsa kripto varlık "investment contract"e tabi DEĞİL sayılır. **Yorumlar 20 Ekim 2026'ya kadar — HÂLÂ AÇIK (24 gün kaldı).** Önemli: hâlâ ÖNERİLEN kural, kesinleşmedi | ~~Federal Register docket S7-2026-27~~ → **YAPILDI; yorumların içeriği henüz yayımlanmadığı için okunamadı (dürüst sınır)** |
+| 10 | ~~**AB Komisyonu'nun MiCA uygulama değerlendirme raporu (2025–2026)**~~ | **BULUNDU — CANLI BİRİNCİL KAYNAK (26.09.2026)** — Komisyon'un kendi sayfası: `finance.ec.europa.eu/.../targeted-consultation-review-mica-regulation_en` (HTTP 200). **Değerlendirme henüz rapor DEĞİL, AÇIK BİR İSTİŞARE'dir:** açılış **20 Mayıs 2026**, deadline **30 Eylül 2026'ye UZATILDI** (orijinali 31 Ağustos'tu), DG FISMA yürütüyor. "assess whether MiCA remains fit for purpose in light of the initial implementation and market and policy developments" — **yani değerlendirme SÜRÜYOR, sonuç raporu henüz yok**. EBA'nın resmi yanıtı da teyit edildi (EBA, 20 Mayıs 2026'da yayımlanan istişareye yanıt verdi; PDF ikili alınamadı) | ~~EUR-Lex / Commission sayfaları~~ → **YAPILDI — istişare canlı ve açık; rapor henüz yayımlanMADI (dürüst sınır: tarihi bir rapor değil, devam eden bir süreç)** |
 | 11 | **MAS DTO Rehberi'nin Mayıs 2020 sürümü** (§4.2'deki alıntılar 30.11.2018 sürümüne ait) | mas.gov.sg 404; yalnızca 2018 sürümü erişilebildi | mas.gov.sg guidelines arşivi |
 
 ---
