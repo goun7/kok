@@ -151,4 +151,42 @@ mod tests {
         let now_final = is_final(&g, early);
         assert!(now_final >= was_final, "finality went backwards");
     }
+
+    /// SELECT ON AN EMPTY DAG returns None rather than a phantom tip. A node
+    /// that has seen no blocks must not select one — the alternative is a
+    /// selection rule that fabricates a chain to follow, which is how a node
+    /// ends up building on a block that does not exist.
+    #[test]
+    fn an_empty_dag_selects_nothing() {
+        let g = Ghostdag::new(18);
+        assert!(select(&g).is_none(), "an empty DAG selected a tip");
+        // and finality on that empty DAG is false for every bid
+        assert!(!is_final(&g, 1), "finality was claimed on an empty DAG");
+        assert!(final_set(&g).is_empty(), "the final set of an empty DAG is not empty");
+    }
+
+    /// THE TIE-BREAK IS DETERMINISTIC AND IT IS THE LOWEST BID. Two blocks
+    /// with the same blue_score must always select the same one across
+    /// rebuilds and across nodes, and the one selected must be the lowest
+    /// bid — otherwise two honest nodes holding the same DAG select
+    /// different tips and fork for nothing. This is the property that makes
+    /// the rule a consensus rule rather than a preference.
+    #[test]
+    fn ties_break_by_lowest_bid_deterministically() {
+        fn build() -> Ghostdag {
+            // two forks off genesis with equal scores, then a block merging
+            // neither — so the two forks stay tied
+            let mut g = Ghostdag::new(18);
+            g.add(Block { bid: 1, parents: vec![] });
+            g.add(Block { bid: 2, parents: vec![1] });
+            g.add(Block { bid: 3, parents: vec![1] }); // the fork
+            g
+        }
+        let g1 = build();
+        let g2 = build();
+        assert_eq!(select(&g1), select(&g2), "the tie-break is not deterministic");
+        // the two forks: 2 and 3 have equal blue_score, so the tie-break is
+        // what decides, and it must pick the lower bid
+        assert_eq!(select(&g1), Some(2), "the tie-break did not pick the lowest bid");
+    }
 }
