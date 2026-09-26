@@ -219,25 +219,46 @@ iddiaları doğrulanmıştır.
 
 ## 3. GÖREV 2C — Bitcoin Madencilik 2026 (CANLI VERİ, ACTUAL)
 
-Kaynak: blockchain.info açık API (`https://blockchain.info/q/*`), **erişim 24 Eylül 2026**.
+Kaynak: blockchain.info açık API (`https://blockchain.info/q/*`). Erişim: 24 Eylül 2026 (1.+2. okuma) ve **26 Eylül 2026 (3. okuma)** — her oklama HTTP 200.
 
 | Metrik | Değer | API | Durum |
 |---|---|---|---|
-| Hashrate | **857,920,689,134 TH/s ≈ 857.9 EH/s** (1. okuma, 24.09.2026) — **957,920,689,134 TH/s ≈ 957.9 EH/s** (2. okuma, ~10 dk sonra, aynı gün); v1'de 956.9 EH/s (21.09.2026) | `/q/hashrate` | ACTUAL (ancak yüksek varyans — aşağıdaki not) |
-| Fiyat | **$84,461.74** (24.09.2026) — v1'de $81,162.26 (21.09.2026) | `/q/24hrprice` | ACTUAL |
+| Hashrate | **857,920,689,134 TH/s ≈ 857.9 EH/s** (1. okuma 24.09.2026) — **957,920,689,134 TH/s ≈ 957.9 EH/s** (2. okuma, ~10 dk sonra) — **851,321,299,217 TH/s ≈ 851.3 EH/s** (3. okuma 26.09.2026); v1'de 956.9 EH/s (21.09.2026) | `/q/hashrate` | ACTUAL (3 oklama, yüksek varyans — aşağıdaki not) |
+| Fiyat | **$84,461.74** (24.09.2026) — **$84,038.62** (26.09.2026) — v1'de $81,162.26 (21.09.2026) | `/q/24hrprice` | ACTUAL |
 | Difficulty | **1.3276 × 10¹⁴** | `/q/getdifficulty` | ACTUAL |
-| Blok yüksekliği | **968,473** (24.09.2026) | `/q/getblockcount` | ACTUAL |
+| Blok yüksekliği | **968,473** (24.09.2026) — **968,620** (26.09.2026; +147 blok ≈ 1 gün, 10 dk/blok ile tutarlı) | `/q/getblockcount` | ACTUAL |
 | Blok ödülü | **3.125 BTC subsidy** — blok 968,473 coinbase çıkışı **3.13072657 BTC** (subsidy + ~0.006 fee) olarak **canlı bloktan doğrulandı** | `/rawblock/968473` | ACTUAL (doğrulandı) |
 | İşlem sayısı | **6,945 işlem** (blok 968,473) | `/rawblock/968473` | ACTUAL |
 
-**Hashrate notu (dürüst):** blockchain.info `/q/hashrate` uç noktası bir **anlık/yuvarlanan
-tahmin** döndürür; **aynı gün, ~10 dakika arayla yapılan iki okuma arasında 857.9 EH/s ile
-957.9 EH/s (~%12) fark çıkmıştır** — yani bu uç noktanın çıktısı **yüksek varyanslıdır** ve
-"958 EH/s" değeri bir **yaklaşıktır**, kesin bir ağ ölçüsü değildir. Resmi (difficulty'den
-hesaplanan) ortalama hashrate için zorluktan hesap yapmak gerekir.
-**Enerji tüketimi (Cambridge CBECI TWh/yıl) BULUNAMADI** — `ccaf.io` API uç noktaları bu
-oturumda 404 döndürdü (site SPA olarak veri yüklemektedir); bilinen ~204 TWh değeri v1
-kaydından gelir ve **bu oturumda doğrulanmamıştır**.
+**Hashrate notu (dürüst, ARTIK 3 NOKTAYLA):** blockchain.info `/q/hashrate` uç noktası bir
+**anlık/yuvarlanan tahmin** döndürür. Üç oklama — **857.9, 957.9, 851.3 EH/s** (24, 24, 26
+Eylül 2026) — aralığı **~851–958 EH/s** yani **~%12 varyans** gösterir. Bu, uç noktanın
+çıktısının yüksek varyanslı olduğunu tek noktaya kıyasla çok daha güçlü kanıtlar: "958 EH/s"
+değeri bir **yaklaşıktır**, kesin bir ağ ölçüsü değildir. Resmi (difficulty'den hesaplanan)
+ortalama hashrate için zorluktan hesap yapmak gerekir.
+
+**Enerji tüketimi (Cambridge CBECI) — DOLDURULDU (26 Eylül 2026):** v1 ve önceki sürümde
+BULUNAMADI idi. `ccaf.io/cbeci/` bizzat denendi (HTTP 200 döndü ama **sıkıştırılmış ikili
+payload**, metin çıkarılamadı — PDF sorunuyla aynı). Bunun yerine rakam **üç bağımsız
+ikincil kaynakta** bulundu:
+
+| Kaynak | Rakam | Tarih | Güvenilirlik |
+|---|---|---|---|
+| solcard.cc/blog/how-much-energy-does-bitcoin-use | **138.2 TWh/yıl** (CBECI'den) | 29 Temmuz 2026 | ikincil, düşük-orta |
+| coinlaw.io/bitcoin-energy-consumption-statistics | **138 TWh** (Cambridge survey tabanlı); Digiconomist **204.44 TWh** | 2026 | ikincil, düşük-orta |
+| sqmagazine.co.uk | **138 TWh** (≈ global tüketimin %0.5'i); Digiconomist 204.44 TWh | 2026 | ikincil, düşük-orta |
+
+- **Üç kaynakta da aynı 138 TWh rakamı** çıkıyor → rakam muhtemelen gerçek CBECI değerini
+  yansıtıyor, ama **CCAF'ın kendi sitesinden alınmadı** — ikincil kaynak olarak işaretlenmelidir.
+- **Metodoloji aralığı (KÖK tezi için kritik):** Cambridge **138.2 TWh** vs Digiconomist
+  **204.4 TWh** — yaklaşık **%48 fark**, çünkü metodolojiler farklı (Cambridge survey-tabanlı,
+  Digiconomist varsayımsal verim). Bu aralık, "Bitcoin ne kadar enerji harcıyor?" sorusunun
+  **kendisinin bir tahminler-aralığı** olduğunu gösterir; KÖK paper'ı herhangi bir enerji
+  rakamı kullanırken kaynağını ve metodolojisini açıklamalıdır.
+- **KÖK ile ilgili:** 138–204 TWh/yıl, ~17–23 GW sürekli yük'e karşılık gelir — bu
+  **kayıp/çöp iş** (secure-by-waste). KÖK'ün tezi bu enerjiyi useful work'a yönlendirmektir;
+  yukarıdaki aralık PoUW'ın adreslediği sorunun **ölçülebilir büyüklüğüdür**.
+
 
 **Paper ile tutarlılık (v1'den gelen, hâlâ geçerli):** KÖK v2 paper'ı BTC için spesifik bir
 hashrate/fiyat iddiasında bulunmaz; paper'daki "24 EH/s" Pearl'e aittir (Basu'dan kaynaklı)
