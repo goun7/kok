@@ -4785,8 +4785,48 @@ Commit mesajına bu not düştü.
 5. **YENİ — pub-API sınır sınıfı taraması:** kok-fri ✓, kok-net ✓, kok-poum ✓
    — kalan adaylar: kok-pvi (2 pub), kok-u-layer (4 pub), kok-ledger,
    kok-consensus, kok-chain. Sınıfın patern'i netleşti: **her `pub` fn,
-   declared input domain'inin tamamı için total mi?**
-6. Kalan düşük öncelikli maddeler: Singapur FISA, Torres karar asılları,
+   declared input domain'inin tamamı için total mi?**6. Kalan düşük öncelikli maddeler: Singapur FISA, Torres karar asılları,
    Reg Crypto Assets yorumları, AB MiCA raporu, MAS DTO 2020, io.net fiyatı,
    Pearl finansman, Leinweber kimliği, Dikshit SoK tam metni
 7. Skor **83.65** (dokunma)
+
+---
+
+## BLOK 19 — 26 Eylül 2026, hedef turu (devam): sınır taraması tamamlandı
+
+**Blok 18'in sorusu şuydu: "workspace'teki her `pub` fn, declared ettiği input
+domain'inin TAMAMINDA total mi, yoksa yazarın aklındaki alt kümede mi?"**
+Kalan 5 crate tarandı — **8/8 tamamlandı, hiçbir yeni düzeltme gerekmedi.**
+
+- **kok-pvi (2 pub):** `verify_raw` "Total: returns a Verdict for EVERY
+  input... Never panics" olarak yazılmış. `decode` her yapısal özelliği
+  gate'liyor (kare matris, byte uzunluğu, tile grid içinde, m = n/r,
+  q/target nonzero). **Tek gözlem:** line 131 `unwrap_or(0)` ile `r` okuyor
+  → `r == 0` mümkün. **Ama kok-poum'un `verify`'i zaten `q == 0 || r == 0`'ı
+  reddediyor** (line 250) ve kok-poum'daki testler bunu pin'liyor (462-463)
+  → **kötü durum doğrulayıcıdan geçemiyor. İyi tasarlanmış.**
+- **kok-u-layer (4 pub):** `from_probability(num, den)` tam total: `den == 0`
+  → threshold 0 (hiçbir şey reddetme yerine admit etme), `num >= den` →
+  `u64::MAX`, aritmetik **u128'de** (wrap'leyemez). `passes`'in katı `<`
+  kullanması spec'in `w < p` okunuşuyla **birebir doğru** — p=1'de hariç
+  tutulan tek değer `beta_top64 == u64::MAX` (2^-64 kütle, matematiksel
+  olarak doğru cevap, hata değil). Grinding yüzeyi **belgelendi ve ölçüldü**
+  (splitting testi ratio ~2.0).
+- **kok-ledger:** **12 `checked_*` çağrı yeri** (deposit/post_task/settle/
+  refund'ın tüm toplamları), `LedgerError::Overflow` varyantı mevcut,
+  `conserved()` koruma yasası `saturating` aritmetikle. **Sınıf kapatılmış.**
+- **kok-consensus:** `u_consensus_weight` **bu oturumda** hardened
+  (`7bed3b5`): `checked_add` ile, overflow → `u64::MAX` (wrap'le disguise
+  edilmesini engelliyor). Testi mevcut. **Kapatılmış.**
+- **kok-chain:** `saturating_sub` doğru; phantom toleransı kapatılmış
+  (`is_final` `None => return false` → "absence = not-final, zero değil").
+
+**★ SONUÇ:** pub-API sınır sınıfı **8/8 crate'te kapatılmış.** Üç düzeltme
+(kok-fri, kok-net, kok-poum) yalnızca **boundary** düzeltmesiydi — hiçbiri
+crate içinden ulaşılabilir bir sızıntı değildi. Bu sınıfın taranması
+bittiğinde, üretime yakın kod tabanının her public girişinde toplam
+olduğunu iddia edebiliriz — **bu, 184 testin ölçtüğü bir özelliktir.**
+
+### DURUM — 184 TEST (değişmedi; tarama yalnızca okuma)
+- `cargo test --release --workspace --lib`: **184/184 rc=0**
+- Çalışma ağacı **TEMİZ**
