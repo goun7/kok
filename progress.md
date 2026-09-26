@@ -4903,3 +4903,59 @@ ile teyit. **Ders: `$` içeren commit mesajları her zaman `-F` ile.**
    Assets yorumları, AB MiCA raporu, MAS DTO 2020, Pearl finansman,
    Leinweber kimliği, Dikshit SoK tam metni, CoinGecko market-cap/YTD
 7. Skor **83.65** (dokunma)
+
+---
+
+## BLOK 21 — 26 Eylül 2026: kendi hatamı yakaladım ve geri çevirdim
+
+**★ Bu blok bir ÖZ-DÜZELTME'dir — hata benimdi, ve düzeltme kaydedilmelidir.**
+
+### Ne oldu
+Basu arXiv 2606.04819'u "doğrulamak" için `arxiv.org/html/2606.04819v1`'i
+çektim. **URL'deki `v1` son ekini FARK ETMEDİM.** v1 (3 Haziran 2026) ekonomik
+bulguyu **tamamen farklı** veriyordu: $0.21'de "unprofitable", **−54..−72% ROI**,
+atıf "Hoffmann". Mevcut alıntımızın ($0.76, −1..+67%, "near breakeven",
+"Leinweber et al.") **bozuk olduğu sonucuna vardım ve yanlış olarak v1'e
+çevirdim.**
+
+**Sonra canonical `abs` sayfasını çektim — ve her şey netleşti:**
+> "[v1] Wed, 3 Jun 2026 (37 KB) — [v2] Fri, 5 Jun 2026 (39 KB)
+>  **(last revised — this version, v2)**"
+
+**v2 (güncel) bizim alıntımızın TA KENDİSİYDİ.** **Yazar 3 Haziran'da
+gönderip 5 Haziran'da revize etmiş ve ekonomik bulguyu bütünüyle
+değiştirmişti.** **Alıntımız başından beri doğrudu — ben bir v1'i "gerçek"
+sanıp doğru alıntıyı bozmuştum.** `5b52eeb` ile geri çevrildi.
+
+### Üç rendering'in karşılaştırması (dosyaya kazındı)
+| Kaynak | Fiyat | ROI | Atıf | Sürüm |
+|---|---|---|---|---|
+| `abs` (canonical) | $0.76 | −1..+67% "marginal" | Leinweber et al. | **v2 GÜNCEL** |
+| ar5iv | $0.76 | aynı | **Hoffmann** | v2 (atıf adı farklı!) |
+| `/html/...v1` | $0.21 | −54..−72% "unprofitable" | Hoffmann | v1 — REVİZE EDİLDİ |
+
+### Kazınan ders (memory 4831)
+**`/html/<id>` güncel sürümü, `/html/<id>vN` belirli bir sürümü verir — ve
+ardışık iki revizyon ekonomik sonucu TERSİNE çevirebilir.** **Kural: bir
+arXiv sayısal alıntısına güvenmeden önce MUTLAKA `abs` sayfasını çek ve
+"last revised (this version, vN)" satırını oku.** Sadece `/html/` çekmek,
+sürümün güncel olup olmadığını söylemez.
+
+**Not:** memory 4830'un öncülü artık yanlış (alıntı ikincil kaynaktan değil,
+v1'den kaynaklanıyordu) — 4831 doğru dersi taşır.
+
+### ÇÖZÜLEMEMİŞ açık item (dürüst bırakıldı)
+**v2'nin KENDİ İÇİNDE** iki rendering atıf adında ayrılır: canonical abs
+**"Leinweber et al."**, ar5iv **"Hoffmann"** der — **tüm sayılar aynı, yalnızca
+ad farklı.** Hangisinin doğru olduğu **belirlenemedi** (iki rendering da tam
+referans listesini yüklemedi). **KÖK'ün tezi için kritik değil** (φ=0 bulgusu
+fiyat/atıf bağımsız), ama **alıntı bütünlüğü için doğrulanmamış ad olarak
+kayıtlı.**
+
+### DURUM — 184 TEST
+- `cargo test --release --workspace --lib`: **184/184 rc=0**
+- `audit_turkish_en.py`: **CLEAN**
+- Çalışma ağacı **TEMİZ** — HEAD `5b52eeb`
+- **KOK_V2_PAPER.md DOKUNULMADI** (bu alıntıyı taşımıyordu — üç yerindeki
+  $0.76'ları tarihsel Pass-simülasyon kalibrasyon sabiti, doğru olduğu
+  gibi bırakıldı)
