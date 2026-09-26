@@ -626,6 +626,59 @@ and we intend to measure it rather than to assume it."**
   *"look beyond labels and examine the features and characteristics of each token"* — which is
   the same substance-over-label rule the section above already applies to MiCA Art. 3(9).
 
+  **What MAS actually did, step by step — the reasoning, not just the
+  verdict (added 27 September 2026).** It is worth being precise about how
+  the conclusion follows, because the verdict alone is a citation and the
+  reasoning is what transfers. MAS applied the Securities and Futures Act
+  definition of a *capital markets product* — which turns on whether the
+  token embodies a right or interest in a collective investment scheme, a
+  share, a debt instrument, or a derivatives contract. Token A's entire
+  function was access plus payment for rented compute, and MAS found it
+  embodied none of these: *"Token A will not provide its holder any other
+  rights or functions attached to it. Hence, Token A will not constitute
+  capital markets products under the SFA."* MAS then applied the Financial
+  Advisers Act and the Payment Services Act, and excluded the token from
+  both — *not* a digital payment token under the PSB, because it is
+  *"not or is not intended to be, a medium of exchange accepted by the
+  public."*
+
+  **The conclusion that follows, and the one that does not.** What the case
+  study licenses is the *offer* of a pure compute-rental token: *"Company A's
+  offer of Token A will not be subject to any requirement under the SFA or
+  the FAA."* What it explicitly does **not** license is the conduct of the
+  business around it: MAS added the qualifier that *"Company A must abide by
+  all Singapore laws, including the CDSA, the TSOFA and the UN Regulations,
+  in the conduct of its business"* — the Corruption, Drug Trafficking and
+  Other Serious Crimes (Confiscation of Benefits) Act, the Terrorism
+  Suppression of Financing Act, and the Mutual Legal Assistance regulations.
+  For KÖK this maps cleanly onto the two things this design already
+  separates: the **token offer**, which is the U layer's shape and the part
+  the case study speaks to, and the **operating entity's compliance
+  posture**, which is a matter for whoever runs the marketplace and is
+  unaffected by the token's classification. The case study says nothing
+  about a permissionless network with no Singapore operating entity at all —
+  which is this design's actual posture — and the honest reading is that it
+  is a strong analogue for the layer where the analogy holds and silent
+  where the network has no entity to be the subject of it.
+
+  **A second structural difference, in the direction that weakens the
+  transfer, stated alongside the first.** MAS's exclusion from the PSB
+  rests on the token not being a medium of exchange. KÖK's token is expected
+  to trade on secondary markets and may meet that description, which is the
+  difference already noted above. But there is a further asymmetry the case
+  study does not reach: Token A's compute was rented *within one company's
+  platform*, a closed counterparty set, whereas KÖK's task market is an
+  open network where any miner may serve any client's task. MAS had before
+  it a platform operator with customers, not a permissionless protocol with
+  anonymous participants. The securities conclusion in the case study was
+  reached on the token's features, which is why it survives that
+  difference — but the PSB exclusion is a conclusion about a token nobody
+  treated as money, and a liquid secondary market is precisely the
+  development that would make that premise false. Both differences are
+  recorded here rather than one of them, because the first narrows the
+  conclusion and the second is a live risk to the narrower conclusion
+  itself.
+
   **What these two findings do and do not do.** They do not make KÖK legal in any jurisdiction;
   they are regulator guidance and a 2018 case study, not a legal opinion on a token that does
   not exist, and neither was issued about KÖK. What they do is narrow the open question: the
