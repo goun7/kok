@@ -104,6 +104,105 @@ System date: 19 September 2026.
    prototype takes `k`, `max_parents` and `mergeset` as **parameters**, so the
    code is correct even if a figure were stale.
 
+## 2026 NEW ACADEMIC SOURCES (added 2026-09-26)
+
+Two June-2026 papers found and verified against arXiv's own abstract pages this session
+(both HTTP 200, abstracts read from arxiv.org/abs/...). Both are directly on KÖK's thesis
+and **neither was in the earlier reference set**.
+
+### Pass — "The Economics of Proof-of-Useful-Work" (BİRİNCİL, arXiv 2606.06700)
+
+> **Rafael Pass** (Cornell Tech / Tel Aviv), arXiv **2606.06700**, submitted **4 June 2026**,
+> cs.GT + cs.CR + econ.TH. *https://arxiv.org/abs/2606.06700* — abstract read verbatim
+> 2026-09-26.
+
+**Why this paper matters to KÖK — it is the academic resolution of KÖK §4.5's own argument.**
+KÖK v2 answers the "paid to attack" objection by separating the consensus-weight layer (G,
+MatMat PoW) from the fee-paid compute layer (U, zero consensus weight). Pass now gives the
+**formal** version of that answer:
+
+- Builds a **competitive-equilibrium model** where compute splits across pure mining, pure
+  useful work (instantiated as **ML inference**), or **"duplex" work that produces both with
+  computational overheads**. That duplex category is KÖK's G layer — the work is
+  simultaneously a security-producing puzzle and (in KÖK's case) useful matrix multiplication.
+- **Complete closed-form characterization** of equilibrium allocations and prices as a
+  function of the duplex overheads and a single parameter: the **token-inference ratio**
+  (token adoption relative to the inference market).
+- **Three regimes** named in the paper: **"Bitconia"** (reduces to classical PoW),
+  **"Fortessia"** (duplex replaces mining — security *increases* while useful output is
+  unchanged), and **"Duplexia"** (token rewards subsidize inference — prices fall, inference
+  supply expands).
+- **THE RESULT KÖK SHOULD CITE (verbatim from the abstract):** *"Contrary to the common
+  strawman argument, PoUW does not make attacks economically cheap: once equilibrium prices
+  are taken into account, the economic cost of a majority attack remains tied to the block
+  reward."* — This is the "paid to attack" criticism, refuted formally. KÖK v2 §4.5 argues
+  this from the two-layer design; Pass argues it from equilibrium pricing. **The two
+  arguments are independent and agree** — that agreement is much stronger than either alone.
+- **Second result (verbatim):** *"in Duplexia, block rewards act as rebates on inference
+  prices, generating additional socially useful computation that would not arise without the
+  blockchain — an expansion monotonically increasing in token adoption and technological
+  efficiency."* This is a positive welfare claim KÖK can cite rather than assert.
+
+**Honest limitation of this access:** the abstract and metadata were read from arxiv.org
+verbatim; the full 377 KB PDF was **not** fetched (ar5iv/ePrint have returned raw binary or
+403 in this environment before). The three regimes and both quoted results are from the
+abstract, so nothing about theorem statements or proof structure is claimed here.
+
+### Barbaccia, Vhaduri, Dibbo — "Quantum-Resilient Decentralized AI Economies" (BİRİNCİL, arXiv 2606.24942)
+
+> arXiv **2606.24942**, submitted **22 Jun 2026**, cs.CR, 15 pages / 4 figures / 4 tables.
+> *https://arxiv.org/abs/2606.24942* — abstract read verbatim 2026-09-26.
+
+**Why this matters — an independent three-layer architecture that mirrors KÖK's own.**
+The paper proposes a decentralized AI economy where nodes are rewarded for **useful
+machine-learning work (inference and training)** instead of hashing, and it separates into
+**three layers: compute, validation, and economic coordination**. Read against KÖK:
+
+| This paper | KÖK v2 |
+|---|---|
+| compute layer | G layer — MatMat PoW (leader election) |
+| validation layer | PVI / FRI verification boundary |
+| economic coordination layer | ledger escrow + U layer task market |
+| $(\theta_c, \theta_w, W)$-**closed-loop token economy** | task fee → escrow → settle (assignee) / refund → burn |
+| **sufficient-stake condition for honest participation** | anti-aggregation fee cap C_FEE + bond-margin (TV-17) |
+
+**Quantum argument (relevant to KÖK's PQ posture):** Grover gives only a **quadratic**
+speedup against hash puzzles and does **not** accelerate ML-native linear algebra, while
+Shor threatens classical signatures; the paper concludes useful-work consensus therefore has
+**both economic and quantum-security advantages** over classical PoW. KÖK's G layer is
+exactly ML-native linear algebra, so the argument applies directly: the useful work is
+quantum-harder to shortcut than the hashing it replaces, and the signature layer is a
+separate, lattice/hash-migratable concern.
+
+**Honest limitation:** abstract + metadata read verbatim from arxiv.org; the full PDF was
+**not** fetched, so the sufficient-stake theorem's assumptions are not verified here. The
+paper is **concurrent independent work** — KÖK's two-layer split was designed from its own
+negative results (see the next section), not from this paper.
+
+### MEASURED CORRECTION to the Kaspa k=18 note above (2026-09-25)
+
+§6b records Kaspa's `calculate_ghostdag_k` producing **k=18 as "the minimal k bounding
+anticone probability."** This session **measured** the actual required k in KÖK's own
+parent-pool DAG model (`kok-ghostdag/src/sim.rs::mine_chain`, parents drawn from a
+2×MAX_BLOCK_PARENTS=20-block tip neighbourhood) and found the claim does not hold *in that
+model*: the required k is **8, flat across an 8× load range** (fork rates
+0.05/0.10/0.20/0.30/0.40, seed 1000+i, 200 blocks, tolerance 0.02, sweep
+ks=[1,2,4,8,16,18,32,64]); max anticone observed 7,7,7,8,7 — all below
+2×MAX_BLOCK_PARENTS=20. **Neither k∝L (predicts 64) nor k∝√L (predicts 22.6) fits.**
+
+**The resolution is not that Kaspa is wrong — it is a model difference, and it must be
+stated rather than glossed:** Kaspa's `calculate_ghostdag_k` derives k from a **network
+delay** assumption (the delay band relative to block interval), not from load alone. KÖK's
+simulator has no delay model; its anticone is bounded by the parent-pool window. So the two
+numbers answer different questions, and §6b's phrasing "the minimal k bounding anticone
+probability" is **Kaspa's claim under its delay model**, not a measurement in KÖK's. The
+measured conclusion for KÖK is: **k is a function of the delay band, not of load**, Kaspa's
+production k=18 carries roughly **2.25× headroom** against the load-only requirement, and
+KÖK inherits k=18 as a safe conservative choice rather than as a tight bound. §6b's wording
+should be read with this in mind.
+
+---
+
 ## 2026 negative results (evidence forcing the G/U separation in KÖK v2)
 
 8. **Basu — an empirical measurement of the Pearl Network.** arXiv **2606.04819** (2026):
