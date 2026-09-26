@@ -28,6 +28,22 @@
 //! Mitigating it needs one-key-per-bonded-identity at the REGISTRATION layer
 //! (out of this crate's scope), and the test below MEASURES the multiplier
 //! rather than asserting it away.
+//!
+//! THE LITERATURE NAMES THE CLASS (2026-09-26, arXiv 2607.26734): "once the
+//! public key is published, the induced function is fixed and is a
+//! deterministic function of the input. This determinism can enable
+//! collusion and grinding-style attacks in which adversaries precompute and
+//! selectively exploit favorable input-output pairs." Yeoh Wei Zhu et al.,
+//! "Verifiable Random Sampling" (29 July 2026), propose sample freshness as
+//! the property that removes it. RECORDED AS A MAPPED FUTURE RATHER THAN AN
+//! ADOPTION CANDIDATE, because the two threat models are not the same: this
+//! crate's surface is the NUMBER of keys a stake is split across, not the
+//! choice of input-output pairs, so a freshness fix does not stop a
+//! registration-layer split; and the paper's construction is random quantum
+//! circuit sampling, which assumes hardware this chain cannot. It is the
+//! citation the paragraph above would move under if a classical,
+//! hardware-free construction with freshness emerges — see
+//! `KOK_V2_REFERENCES.md` §2026 sources.
 
 use crate::ecvrf;
 

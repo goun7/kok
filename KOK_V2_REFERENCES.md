@@ -106,12 +106,15 @@ System date: 19 September 2026.
 
 ## 2026 NEW ACADEMIC SOURCES (added 2026-09-26)
 
-Four papers found and verified against arXiv's own abstract pages this session
-(all HTTP 200, abstracts read from arxiv.org/abs/...). All four are directly on KÖK's thesis
+Five papers found and verified against arXiv's own abstract pages this session
+(all HTTP 200, abstracts read from arxiv.org/abs/...). All five are directly on KÖK's thesis
 and **none was in the earlier reference set**. The two of June 2026 (Pass, Barbaccia) are
-the economics and quantum arguments; the two of October 2025 and June 2026 revisions
-(SNARKChain, SEDULity) are **prior art for the G-layer design**, and both independently
-confirm properties KÖK argued from its own negative results.
+the economics and quantum arguments; SNARKChain and SEDULity are **prior art for the G-layer
+design** and both independently confirm properties KÖK argued from its own negative results;
+and the July-2026 VRS paper names the grinding class that KÖK's own assignment layer
+documents as its open surface — recorded as a mapped future, not an adoption candidate,
+because its construction needs quantum hardware and its threat model is per-input
+precomputation rather than KÖK's per-key registration.
 
 ### Pass — "The Economics of Proof-of-Useful-Work" (BİRİNCİL, arXiv 2606.06700)
 
@@ -258,6 +261,49 @@ block to be honest. **No derivation is claimed in either direction.**
 **Honest limitation:** abstract + metadata read verbatim; the full PDF was **not** fetched, so
 the theoretical incentive result and its parameter conditions are not verified here, and the
 simulation results are not reproduced.
+
+### Yeoh Wei Zhu et al. — "Verifiable Random Sampling" (BİRİNCİL, arXiv 2607.26734)
+
+> Yeoh Wei Zhu, Soorya Rethinasamy, Anthony Alexiades Armenakas, Yash Satsangi,
+> Shaltiel Eloul, Ruslan Shaydulin, arXiv **2607.26734**, submitted **29 July 2026**, cs.CR.
+> *https://arxiv.org/abs/2607.26734* — abstract read verbatim from arXiv (HTTP 200, 26 Sept 2026).
+
+**Verbatim, the exact limitation KÖK's own assignment layer admits to:**
+
+> "once the public key is published, the induced function is fixed and is a deterministic
+> function of the input. **This determinism can enable collusion and grinding-style attacks
+> in which adversaries precompute and selectively exploit favorable input-output pairs.**
+> To address these limitations, we introduce the formal notion of **verifiable random
+> sampling (VRS)**."
+
+**Why this matters to KÖK, and why the honest verdict is "mapped future, not a fix".**
+KÖK's U layer assigns tasks through an ECVRF gate (`kok-u-layer/src/assign.rs`), and that
+module's own header documents the grinding surface in the plainest terms: the miner
+evaluates the VRF under **its own key**, so splitting one stake across N registered keys
+multiplies the independent draws by N — one identity gets N tickets. The mitigation is
+explicitly out of crate scope: one-key-per-bonded-identity at the **registration** layer,
+and the `splitting_one_stake_into_two_keys_doubles_the_draws` test **measures** the ~2.0
+multiplier so a future fix has a number to beat rather than a vague worry.
+
+This paper names the *class* of that problem from an independent direction: VRF determinism
+itself is what grinding exploits, and the authors propose sample freshness as the property
+that removes it. **What it does NOT do is solve KÖK's specific instance.** KÖK's grinding
+surface is per-key registration, not per-input precomputation — the adversary's leverage is
+the *number of keys*, not the choice of input-output pairs. A VRS keyed to a quantum circuit
+would not stop a stake split across identities, because the draw count is a registration
+property. And the paper's construction is based on **random quantum circuit sampling**, which
+requires quantum hardware KÖK cannot assume today; KÖK runs RFC 9381 ECVRF on P-256, verified
+byte-for-byte against the standard's own test vectors.
+
+**The honest placement in the roadmap:** this is a mapped direction for the F3+ horizon
+rather than an adoption candidate — if a classical, hardware-free VRS-like construction with
+freshness emerges, it is the citation the assignment layer's grinding paragraph would move
+under. Recorded here so that the limitation stays connected to the literature that names it,
+instead of sitting as a project-internal worry with no external anchor.
+
+**Honest limitation:** abstract + metadata read verbatim; the full PDF was **not** fetched, so
+the constructive-cryptography security proof and the RCS construction details are not verified
+here, and no claim is made that the paper's threat model matches KÖK's.
 
 ### MEASURED CORRECTION to the Kaspa k=18 note above (2026-09-25)
 
