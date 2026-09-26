@@ -4703,3 +4703,90 @@ gelen sayı değildir ve okuyan hangisi olduğunu görebilir.
    (rate-limit), Pearl finansman durumu, Leinweber kimliği, Dikshit SoK
    tam metni
 6. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
+
+---
+
+## BLOK 18 — 26 Eylül 2026, hedef turu (devam): pub-API sınır düzeltmeleri 2 ve 3
+
+**Blok 16'nın kok-fri bulgusu bir sınıfı tanımladı: "pub bir fonksiyon, sadece
+yazarın aklındaki girdi alt kümesi için doğruysa, bu bir sınırlar hatasıdır,
+ulaşılabilir bir sızıntı değil." O sınıfın kalan adaylarını taradım — 2 tane
+daha.**
+
+### 18.1 — `016f948`: kok-net Rng — bölme sıfıra bölünme + sessiz çürüme
+
+`Rng` (xorshift64*), bu crate'teki **her yayılma ölçümünün yeniden
+üretilebilirlik sözleşmesidir**. İki tehlike:
+
+- **`below(n)` → `next_u64() % n` ile n=0'da sıfıra bölme** → genel
+  aritmetik panic mesajıyla çökme. Sözleşme `n > 0` diyordu ama **kodla
+  zorlanmıyordu — yorumdu.** İletişim (relay) bağlamında bu bir çökmedir;
+  bir çağırıcı sınırı saldırgan verisinden hesaplarsa (peer sayısı, mesajdan
+  okunan fanout), **uzaktan tetiklenebilir**. `assert!(n > 0, "below(0) is a
+  violated contract...")` ile değiştirildi → artık sözleşmeyi adlandırıyor,
+  tanı konulabilir ve yerel.
+- **Sessiz çürüme (daha sinsi):** sıfır state'li xorshift **sonsuza kadar 0 üretir**
+  ve bu bir çökme DEĞİLDİR — `below(n)` sabit döner, ölçümler yine yazdırılır,
+  sayılar yine ölçüm gibi görünür. Sıfır-tohum pertürbasyon guard'ı zaten
+  vardı ama **onu pinleyen bir test yoktu → korumasız guard.**
+
+**Dört pin:** sıfır tohum nonzero+nonconstant stream vermeli; pertürbasyon
+sabiti sıfır tohumun stream'ini üretmeli ve kendisi nonzero olmalı (guard'ın
+guard'ı); `below` 1/2/3 sınırlarında hem kapsam hem de kapsama; `below(0)`
+sözleşmenin adıyla panic (should_panic).
+
+**Dürüst çerçeve:** sıfıra bölme crate içinden **ulaşılamazdı** (her çağırıcı
+pozitif literal geçiyor) — kok-fri gibi bu da bir **sınır düzeltmesidir, canlı
+bir sızıntının onarımı değil.** Farkı şu: bu sınır, bir düşmanca peer'ın
+önce nişan alacağı yer.
+
+### 18.2 — `1084436`: kok-poum `h_num` — 160-byte stack buffer overflow
+
+`h_num(prefix, nums)` `[u8; 160]` stack buffer'ına yazar. Her sayısal parça
+en fazla **21 byte** (1 separator + u64::MAX için 20 basamak) → buffer
+**7 geniş parça** alır. Crate'in tüm çağrı yerleri 3 parça ("E"/"F") veya
+5 parça ("tile") — en kötü durum 4+5×21 = **109 byte**, güvenli.
+
+**Ama `h_num` pub** → 8+ parça geçen veya 160 byte'tan uzun prefix geçen
+çağırıcı dizinin dışına yazar. **Aynı sınır sınıfı.** Guard eklendi:
+`prefix.len() as u64 + nums.len() as u64 * 21 <= 160`. **Aritmetik u64'da**
+— usize 64-bit hedefte u64 olduğu için çarpım wrap'leyemez, yani guard'ın
+kendisi ikinci bir tehlikeye dönüşemez.
+
+**Eşik aritmetikle doğrulandı (varsayım değil):** 7 parça = 147 ✓ sığar,
+8 parça = 168 ✗ sığmaz, üretim şekilleri sığar.
+
+**Dört pin:** üretim şekilleri en kötü durumda da digest vermeli (guard
+meşru girdiyi reddetmemeli — bu, bir düzeltmenin kıyafetini giymiş bir
+regresyondur); 8 parça guard tarafından reddedilmeli (copy_from_slice
+panic'iyle değil), 7 sığmalı; 200-byte prefix reddedilmeli (bir prefix
+tek başına, sayısal katkı olmadan buffer'ı geçebilir); `h_num` ve `h` aynı
+parçalarda hemfikir olmalı (iki giriş noktası tek hash fonksiyonudur —
+cross-language parity path'in mikrokozmosu; 0 "0" olarak render olmalı).
+
+**★ KENDİ HATAM VE YAKALANMASI:** ilk edit'im bir fazla `}` bıraktı → crate
+derlenmedi. Doğrulama pass'i **compile failure'da commit'i reddetti.**
+Düzeltmem belirsiz bıraktı (brace count -1), ve **çözüm bracket saymaktan
+değil derleyicinin delimiter tracking'inden geldi** — tek güvenilir yöntem.
+Commit mesajına bu not düştü.
+
+### DURUM — 184 TEST
+- `cargo test --release --workspace --lib`: **184/184 rc=0** (+8 bu blokta)
+- `cargo build --release --workspace`: **0 uyarı**
+- `audit_turkish_en.py`: **CLEAN**
+- Çalışma ağacı **TEMİZ** — commitler: `016f948` → `1084436`
+
+### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT** (insan kriptograf /
+   canlı φ>0 / güvenlik bütçesi — hepsi araç-erişilemez değil, BELGELENDİ)
+3. ~~Burn vergi analizi~~ — **DARALTILDI** (`7df4454`)
+4. ~~WASM test runtime~~ — **TAMAMLANDI** (`a6f4a67`)
+5. **YENİ — pub-API sınır sınıfı taraması:** kok-fri ✓, kok-net ✓, kok-poum ✓
+   — kalan adaylar: kok-pvi (2 pub), kok-u-layer (4 pub), kok-ledger,
+   kok-consensus, kok-chain. Sınıfın patern'i netleşti: **her `pub` fn,
+   declared input domain'inin tamamı için total mi?**
+6. Kalan düşük öncelikli maddeler: Singapur FISA, Torres karar asılları,
+   Reg Crypto Assets yorumları, AB MiCA raporu, MAS DTO 2020, io.net fiyatı,
+   Pearl finansman, Leinweber kimliği, Dikshit SoK tam metni
+7. Skor **83.65** (dokunma)
