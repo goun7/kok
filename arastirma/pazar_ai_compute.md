@@ -140,7 +140,7 @@ rate-limit'e** düştüğü için market-cap / 24h-change / io.net fiyatı alın
 | Akash | `akash-network` | **$0.677272** | ACTUAL, 24.09.2026 |
 | Golem | `golem` | **$0.125794** | ACTUAL, 24.09.2026 |
 | io.net (IO) | `io-net` | **BULUNAMADI** | CoinGecko 429 (ilk çağrıda yanlış ID, sonra rate-limit) |
-| Pearl (PRL) | — | **$1.27** (26.09.2026) — **ATH $1.67** (23.09.2026) | ACTUAL — CryptoRank, token açıklaması "L1 blockchain with Proof-of-Useful-Work based on AI matrix multiplications" ile **doğru proje teyit edildi**; Basu'nun $0.76'sı Haziran 2026 ölçüm anındaydı |
+| Pearl (PRL) | — | **$1.27** (26.09.2026) — **ATH $1.67** (23.09.2026) | ACTUAL — CryptoRank, token açıklaması "L1 blockchain with Proof-of-Useful-Work based on AI matrix multiplications" ile **doğru proje teyit edildi**; Basu v2'nin ölçüm anı **$0.76** (canonical abs ile teyit; **v1 $0.21'di, revize edildi** — aşağıdaki sürüm tuzağına bak) |
 ### 2.2 Ağ kullanım metrikleri — KISMEN DOLDURULDU (26 Eylül 2026)
 
 **v1'de tamamen BULUNAMADI idi; bu oturumda Akash için BİRİNCİL kaynak bulundu.**
@@ -296,26 +296,66 @@ G/U iki-katmanlı mimarisini zorlayan **negatif sonuçların** kaynağıdır.
 > identified theoretically by Leinweber et al., providing concrete measurements of its
 > magnitude and economic consequences in a deployed system."
 
-> **★ FİYAT GÜNCELLEMESİ (26 Eylül 2026) — Basu'nun ROI bulgusu artık güncel değildir:**
-> Basu'nun "(4) mining economics are marginal at current PRL prices (**$0.76**)" bulgusu
-> **Haziran 2026 ölçüm anında** doğrudur ve alıntılanan verinin tarihlenmiş halidir. **Ama
-> PRL o tarihten beri sert yükseldi** (CryptoRank, HTTP 200 ile teyit):
-> - **PRL $1.27** (26.09.2026), 24h aralık $1.05–$1.33
-> - **ATH $1.67 (23 Eylül 2026)**, ATL $0.194 (23 Temmuz 2026)
-> - ATH'ten **%24.3** aşağıda; ATL'den **+%555** yukarıda
-> - **FDV $253.51M**, Max Supply 2.1B, Total Supply 199.4M
+> **★ ÖNEMLİ SÜRÜM TUZAĞI (26 Eylül 2026) — bu kağıdın İKİ FARKLI HALİ VAR, ve
+> yanlış olanı çekmek çok kolaydır:**
+> arXiv 2606.04819'un **iki rendering'i birbiriyle ÇELİŞİYOR**:
 >
-> **Bu, Basu'nun ROI aralığını (−1%..+67%) GEÇERSİZLEMEZ — onu TARİHLENDİRİR.** Basu
-> $0.76'da ölçtü; fiyat $1.27'ye gelince aynı donanımın ROI'si yaklaşık **1.67× daha
-> yüksek** gelirle karşılaşır, yani "marginal, near breakeven for most hardware" bulgusu
-> **artık muhtemelen geçerli değildir**. **Dürüst davranış şudur:** paper'da Basu'nun
-> ROI'sini $0.76'ya bağlı bir tarih olarak alıntıla, güncel ekonomik durum olarak DEĞİL.
-> **Bu projenin kendi tezi için bir risktir, bir kazanç değil:** PRL'nin yükselmesi,
-> "Pearl ekonomisi marjinal" argümanını zayıflatır — ama Basu'nun asıl bulgusu
-> **φ=0'dır** (sıfır faydalı hesaplama) ve **fiyat onu değiştirmez**: 8.012 worker'ın
-> hiçbirinde inference kodu yoktu, random matrix'ler kabul edildi. **Faydalılık
-> bulgusu fiyat-bağımsızdır; yalnızca ekonomik-marjinalite bulgusu fiyat-bağımlıdır.**
-> İkisini ayırmak, alıntıyı çarpıtmamak için gereklidir.
+> | Kaynak | Fiyat | ROI | Kime atıf | Sürüm |
+> |---|---|---|---|---|
+> | `arxiv.org/abs/2606.04819` (canonical abstract) | **$0.76** | **−1% .. +67%**, "marginal, near breakeven" | **Leinweber et al.** | **v2 (5 Haz 2026) — GÜNCEL** |
+> | `ar5iv.labs.arxiv.org/html/2606.04819` | $0.76 | −1% .. +67%, aynı | **Hoffmann** | **v2** (ama kime-atıf adı farklı!) |
+> | `arxiv.org/html/2606.04819v1` | **$0.21** | **−54% .. −72%**, "unprofitable" | Hoffmann | **v1 (3 Haz 2026) — REVİZE EDİLDİ** |
+>
+> **Submission history (abs sayfasından):** "[v1] Wed, 3 Jun 2026 (37 KB)",
+> "[v2] Fri, 5 Jun 2026 (39 KB) — **last revised (this version, v2)**".
+> **Yazar 3 Haziran'da gönderdi, 5 Haziran'da REVİZE ETTİ, ve revizyon ekonomik
+> bulguyu bütünüyle değiştirdi: $0.21 → $0.76, −54..−72% → −1..+67%,
+> "unprofitable" → "marginal, near breakeven".**
+>
+> **★ BU DOSYANIN ALINTISI DOĞRUDUR (v2, güncel sürüm):** "mining economics are
+> marginal at current PRL prices ($0.76), with ROI ranging from −1% to +67%
+> depending on GPU tier -- near breakeven for most hardware". Bu, canonical
+> abs sayfasıyla birebir aynıdır. **Bu not, önceki hatalı bir "düzeltme"
+> girişiminin yerini alır** — 26 Eylül'de `arxiv.org/html/2606.04819v1`
+> çekilip v1'in ekonomik figürleri "gerçek" zannedilmiş ve alıntı yanlış
+> olarak v1'e çevrilmiştir; **sonra canonical abs sayfası v2'yi gösterdiği
+> için geri çevrildi.** Hata, sürüm numarası URL'de açıkça yazmasına rağmen
+> `v1` son ekinin FARK EDİLMEMESİYDİ.
+>
+> **★ DERS (en önemlisi):** arXiv HTML endpoint'i `.../html/XXXX.XXXXX`
+> **güncel sürümü**, `.../html/XXXX.XXXXXv1` **belirli bir sürümü** verir —
+> ve bu kağıtta **ardışık iki sürümün ekonomik sonucu tamamen farklıdır**.
+> **Bir alıntıyı doğrularken her zaman `abs` sayfasını (canonical abstract +
+> submission history) çekin** — o, "last revised (this version, v2)" satırını
+> verir ve hangi sürümün güncel olduğunu söyler. **Sadece `/html/` çekmek,
+> ister v1 ister v2 olsun, sürümün GÜNCEL olup olmadığını söylemez.**
+>
+> **★ KALAN ÇELİŞKİ (dürüst açık item):** v2'nin **kendi içinde** iki rendering'i
+> farklıdır — canonical abstract **"Leinweber et al."** derken, ar5iv'in v2'si
+> **"Hoffmann"** der (fiyat ve ROI aynı, yalnızca atıf adı farklı). **Bu,
+> ar5iv'in bağımsız bir rendering'i olmasından veya yazarın v2'de atıf adını
+> değiştirip abstract'u güncellememesinden kaynaklanıyor olabilir** — hangisi
+> olduğu bu oturumda ÇÖZÜLEMEDİ, çünkü iki rendering da tam referans listesini
+> (sırasıyla) yükleyemedi. **Açık item olarak kalır:** "Leinweber et al."
+> kimdir, henüz **belirlenemedi**. Bu projenin tezi için kritik değildir
+> (KÖK'ün φ=0 bulgusu fiyat/atıf bağımsızdır), ama **alıntı bütünlüğü için
+> doğrulanmamış bir ad olarak kaydedilir.**
+>
+> **★ FİYAT HAREKETİ (gerçek taban = $0.76, güncel):** Basu **$0.76'da** ölçtü
+> (Haziran 2026, v2'ye göre). PRL o tarihten beri **$1.27'ye yükseldi**
+> (26.09.2026, CryptoRank HTTP 200): ATH **$1.67** (23 Eyl 2026), ATL $0.194
+> (23 Tem 2026), FDV $253.51M. **$0.76 → $1.27, ~1.7×'lik bir artıştır** —
+> yani Basu'nun −1..+67% ROI'si **ölçüm anında doğruydu ama güncel ekonomik
+> durum olarak alıntılanmamalıdır**: fiyat ~1.7× artınca aynı donanımın
+> gelirle ROI'si daha da yukarı kayar. **Tarih olarak alıntıla, güncel olarak
+> değil.**
+>
+> **★ YİNE DE FİYAT-BAĞIMSIZ OLAN BULGU AYNIDIR:** Basu'nun asıl bulgusu
+> **φ=0'dır** (sıfır faydalı hesaplama): 8.012 worker'ın hiçbirinde inference
+> kodu yoktu, random matrix'ler kabul edildi, istatistiksel kontroller
+> adversarial Gaussian sampling'le kolayca alt edildi. **Fiyat onu
+> değiştirmez.** Yalnızca ekonomik analiz fiyat-bağımlıdır; **faydalılık
+> bulgusu değildir. İkisini karıştırmak alıntıyı çarpıtır.**
 >
 > **★ TOKEN KİMLİĞİ TUZAĞI (neden üç farklı fiyat göründü):** "Pearl" araması en az
 > **üç farklı projeyi** döndürür — Pearl Network (PoUW L1, doğru olan), "Perle" (tamamen
