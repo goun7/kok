@@ -82,8 +82,16 @@ yazılmıştır.**
     "únicamente" istisnasına girmez. **Net kontrast:** İsviçre/Singapur/ADGM'de lisans
     gerekmezken, El Salvador'da yetkilendirme gerekir. Böylece **1D'nin dört yargısı da tamam**.
      **Hâlâ BULUNAMADI (kalan tek madde):** token burning'in **vergi** açısından
-     kesin analizi — bkz. §6.E, ikincil kaynaklarla KISMEN belgelenmiş, kesin
-     görüş yok; §6.5'teki phantom-tax riski *çözülmemiş bir argüman* olarak
+     kesin analizi — **AMA 26 Eylül 2026'da DURUM DEĞİŞTİ.** **IRS birincil
+     kaynağı bulundu** (Rev. Rul. 2023-14, IRB 2023-33 + IRS newsroom 04.04.2024):
+     "rewards income" IRS'nin resmen adlandırdığı bir gelir kategorisidir ve
+     ödülün FMV'si **"dominion and control" anında** gelir yazılır. Bu,
+     KÖK'ün phantom-income endişesini bir ikincil blog yorumundan **IRS'nin
+     yazılı kuralına** taşır. **Hâlâ burn'A ÖZEL bir görüş yok** — Rev. Rul.
+     staking hakkındadır, burn'ü ele almaz; bkz. §6.E. Yani tek kalan boşluk
+     **daha da daraldı**: birincil kural phantom-income'ın "gelir yazılma
+     anını" cevaplar, **sadece burn'ün o yükümlülüğü azaltıp azaltmadığını**
+     cevaplamaz. §6.5'teki phantom-tax riski *çözülmemiş bir argüman* olarak
      duruyor, *yerleşmiş bir kural* olarak değil. Bu listedeki öteki üç madde
      v2.6'da kapatıldı ve listenin güncel kalması için buradan çıkarıldı:
      ESMA rehberleri (§6.2, Guideline 9 + ESMA75453128700-1323), MAS'ın DTO
@@ -1073,6 +1081,52 @@ girilmez; zaten KÖK için geçerli olan 4(3)(b) madencilik ödülü istisnasıd
 
 **E. Vergi açısından — ikincil yorumla KISMEN belgelendi (kesin görüş hâlâ BULUNAMADI):**
 
+> **★ 2026-09-26 GÜNCELLEME — IRS BİRİNCİL KAYNAĞI BULUNDU ve phantom-income
+> argümanını bir "çözülmemiş argüman"dan "yazılı kural" durumuna yükseltti:**
+>
+> **Kaynak (BİRİNCİL):** IRS, **Rev. Rul. 2023-14**, Internal Revenue Bulletin
+> **2023-33**, 14 Ağustos 2023, sayfa 484 (erişim 26 Eylül 2026, **HTTP 200**).
+> https://www.irs.gov/irb/2023-33_IRB · PDF: https://www.irs.gov/pub/irs-drop/rr-23-14.pdf
+>
+> > **Verbatim (IRS'nin kendi kuralı):** *"This revenue ruling provides that if
+> > a taxpayer stakes cryptocurrency native to a proof-of-stake blockchain and
+> > receives additional units of cryptocurrency as rewards when validation
+> > occurs, **the fair market value of the rewards received is included in the
+> > taxpayer's gross income in the taxable year in which the taxpayer gains
+> > dominion and control over the rewards**."*
+>
+> **Neden bu KÖK için doğrudan:** KÖK'ün G katmanı PoS DEĞİL, PoW'dur — bu
+> görünüşte alakasızdır. **Ama alakalıdır ve alaka şu şekildedir:** kuralın
+> operatif kısmı "rewards received ... gross income ... when the taxpayer
+> gains dominion and control" ifadesidir. KÖK'ün madencisi bir blok kazandığında
+> **block reward'ı dominion'ına alır** — bu, kuralın öngördüğü andır. Ödül
+> sonradan **burn component** içeriyorsa (KÖK'ün escrow+burn modeli), madenci
+> o andaki **tüm ödülün FMV'sini** gelirine dahil etmiş olabilir; burn'un
+> azalttığı kısım sonradan gerçekleşir. **İşte phantom-income burada bir
+> argüman olmaktan çıkıp IRS'nin yazılı kuralına dayanır hale geliyor.**
+>
+> **İkinci birincil kaynak (IRS newsroom, 4 Nisan 2024, son güncelleme
+> 25 Ağustos 2026, HTTP 200):**
+> https://www.irs.gov/newsroom/report-income-from-transactions-involving-digital-assets-including-cryptocurrency-on-your-tax-return
+> > **Verbatim:** *"Any income from transactions involving digital assets must
+> > be reported on your federal tax return. Common digital assets include:
+> > Convertible virtual currency and cryptocurrency Stablecoins
+> > Non-fungible tokens (NFTs) **Rewards income from staking or earn programs**"*
+>
+> Bu, "rewards income" kategorisini IRS'nin kendi listesinde **resmen adlandırılmış
+> bir gelir kategorisi** yapar — KÖK'ün block reward'ı bu kategorinin dışında
+> değildir.
+>
+> **NE HÂLÂ BULUNAMADI (dürüst sınır):** **Burn'a ÖZEL** bir IRS görüşü hâlâ
+> yoktur. Rev. Rul. 2023-14 staking reward'ları hakkındadır; aşağıdaki
+> phantom-income argümanını **destekler** (dominion anı + FMV dahil etme),
+> ama **burn'ün kendisini** ele almaz. Yani: madencinin ödülün TAM FMV'sini
+> bildirme yükümlülüğü yazılı bir kuraldır; **burn'ün o yükümlülüğü azaltıp
+> azaltmadığı** açıktır ve **hiçbir birincil kaynak bunu doğrudan cevaplamaz.**
+> Aşağıdaki ikincil argüman bu boşluğu dolduruyor — ama artık birincil
+> kuralın üzerine inşa edilmiş bir argüman olarak, havada asılı bir iddia
+> olarak değil.
+
 > **Kaynak 3 (ikincil, hukuk-teknoloji blog'u — orta-düşük güvenilirlik, IRS GÖRÜŞÜ DEĞİLDİR):**
 > "Why Token Burning Mechanisms Create Phantom Taxable Income", ChainScore Labs
 > https://chainscorelabs.com/blog/legal-tech-smart-contracts-and-the-law/taxation-of-automated-systems/why-token-burning-mechanisms-create-phantom-taxable-income
@@ -1147,7 +1201,7 @@ burn", "proof-of-burn regulation", "Türkiye'de token yakma vergi".
 | ~~4~~ | ~~**MAS "A Guide to Digital Token Offerings"**~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.2 (30.11.2018 sürümü, IOSCO arşivi) | — |
 | ~~6~~ | ~~**Token burning** menkul kıymet~~ | **KISMEN ÇÖZÜLDÜ (24.09.2026)** — §5 | — |
 | 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
-| 6 | **Token burning — VERGİ** (ABD IRS / AB / Türkiye'de fee-burn vergi görüşü) | Birincil vergi görüşü/kılavuzu bulunamadı; ikincil kaynak "AI yazımı" uyarısı taşıyor | SSRN/Google Scholar; IRS guidance; Türkiye GİB/KDV görüşü |
+| 6 | **Token burning — VERGİ** (ABD IRS / AB / Türkiye'de fee-burn vergi görüşü) | **BİRİNCİL IRS KAYNAĞI BULUNDU (26.09.2026)** — Rev. Rul. 2023-14 (IRB 2023-33) + IRS newsroom 04.04.2024: "rewards income" resmen adlandırılmış gelir kategorisidir ve FMV "dominion and control" anında gelir yazılır. **Burn'a ÖZEL görüş hâlâ YOK** — Rev. Rul. staking hakkındadır, burn'ü ele almaz; phantom-income argümanı artık birincil kural üzerine inşa edilir, havada değil | ~~SSRN/Google Scholar; IRS guidance~~ → **YAPILDI (kısmen)**; kalan: burn'e özel görüş (yok) |
 | 7 | **Torres'in 13 Temmuz 2023 kararının asıl metni** | CourtListener API anonım reddi; HTML aramada çıkmadı | CourtListener docket 17643223 veya Justia |
 | 8 | **Torres'in 26 Haziran 2025 kararının asıl metni** | Yalnızca ikincil haber kaynağı bulundu | CourtListener / SDNY docket |
 | 9 | **Regulation Crypto Assets teklifine gelen yorumlar / yürürlük takvimi** | Zaman kısıtı | Federal Register docket S7-2026-27 |

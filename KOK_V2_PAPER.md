@@ -631,9 +631,21 @@ and we intend to measure it rather than to assume it."**
   not exist, and neither was issued about KÖK. What they do is narrow the open question: the
   securities analysis no longer rests on the project's own reasoning alone, because two
   regulators have already classified this product shape and both classified it as utility.
-  The remaining open item is unchanged and is still the honest one — **the definitive tax
-  treatment of the burn** (§6.E of the source document), documented only from secondary
-  commentary, with the phantom-income risk an unresolved argument rather than a settled rule.
+  The remaining open item is narrowed further than it was, and is still the honest one — **the
+  definitive tax treatment of the burn** (§6.E of the source document), which on 26 September
+  2026 gained a **primary IRS anchor** even though it did not close: Rev. Rul. 2023-14 (IRB
+  2023-33) states that the fair market value of rewards is included in gross income *"in the
+  taxable year in which the taxpayer gains dominion and control over the rewards"*, and the
+  IRS's own newsroom page names *"rewards income from staking or earn programs"* as a reportable
+  income category. The operative phrase — dominion and control at the moment of receipt — is
+  what makes the phantom-income risk real under a written rule rather than under commentary: a
+  KÖK miner takes the block reward into dominion when it is won, so the reward's fair market
+  value is income at that moment, whether or not a burn component later removes part of it.
+  **What is still not answered:** no primary source anywhere addresses a burn specifically.
+  The ruling is about staking rewards; it supports the timing argument but says nothing about
+  whether a burn reduces the already-recognised liability. That narrower question remains an
+  unresolved argument — and it is now an argument built on the IRS's own rule rather than
+  floating above it.
 
 ---
 
