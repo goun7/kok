@@ -4538,3 +4538,86 @@ kontrol, geçene kadar gevşetilmek yerine **fail-closed** vermeli.
    FISA 2025-26, Torres kararlarının asıl metinleri, Reg Crypto Assets
    yorumları, AB MiCA değerlendirme raporu, MAS DTO 2020 sürümü
 5. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
+
+---
+
+## BLOK 16 — 26 Eylül 2026, hedef turu (devam): adversarial probing + tarama
+
+**Öncelik (1) bitti, öncelik (3)'e geçildi: "ölçülmemiş iddia kalmaması" ve
+"her crate'te tekrar eden bug sınıflarını probela".**
+
+### 16.1 — `2f4176f` (amend öncesi `ce55b09`): kok-fri field helpers — bug sınıfı #6
+
+kok-fri'nin `fp_add`, `fp_sub`, `fp_mul`, `fp_pow`, `fp_inv`'in hepsi **pub**.
+Eski body'ler:
+- `fp_add`: `(a + b) % q` — iki indirgenmemiş operand u64::MAX'ı geçince
+  **overflow**. Release'de **sessizce wrap'leyip küçük değer** verir, ve küçük
+  bir field elementi tam da meşru sonucun göründüğü şeydir → **wrap-in-disguise**.
+- `fp_sub`: `(a + q - b % q) % q` — `a + q` simetrik tehlike.
+
+**Dürüst sınırlama kaydedildi:** crate'in **içindeki** tüm çağrı yerleri
+`fp_mul`'un çıktısıyla (her zaman indirgenmiş) beslendiği için güvensiz
+patika crate içinden **ulaşılamazdı**. Bu bir **boundary bug**'ı — API u64
+domain'i declare ediyor ve subset'i için doğru. Düzeltme operand başına
+bir `%` ile her durumda doğru.
+
+**Pin'ler önce hesaplandı, üç test eklendi (176 toplam):**
+- `fp_add_does_not_wrap_when_both_operands_are_near_u64max`
+- `fp_sub_does_not_overflow_on_a_near_u64max`
+- `field_helpers_agree_with_the_reduced_domain_on_unreduced_input` —
+  8×8 exhaustive grid: [0,1,96,97,200,1009,u64::MAX-1,u64::MAX]
+
+**★ KENDİ DOĞRULAMAM HATALIYDI VE DÜZELTİLDİ:** overflow pin'ini doğrulamak
+için yazdığım python3 `differ: False` döndürdü — çünkü Python **arbitrary-precision**
+gerçek matematiksel toplamı hesaplar, asla wrap'lemez → **debug semantiklerini
+modelledi, release-mode u64 wraparound'u değil.** `% 2**64` ile tekrar
+çalıştırılınca: fp_add eski residue **56** vs yeni **20**; fp_sub eski **36**
+vs yeni **0** — **her iki pin de gerçek.** Ders memory_id **4816**'ya yazıldı:
+*doğrulama, kodun çalıştığı mode'u modellemeli.* Alt-ajan bunu yakaladı.
+
+**★ COMMIT MESAJINDAKİ OFF-BY-ONE amend edildi:** "wraps to u64::MAX-5"
+yazmıştım, doğru değer **u64::MAX-4** (a+b = 2^65-5, mod 2^64 = 2^64-5).
+`2f4176f`. Substring tuzağı da not edildi: `grep u64::MAX-5`, `u64::MAX-50`'i
+eşleştirdi — whole-word `grep -ow` ile doğrulandı.
+
+### 16.2 — Workspace geneli wrap taraması: TEMİZ
+
+`+ b) % |`, `.sum()`, `a + q` pattern'leri tüm crate'lerde tarandı. 14 eşleşme:
+
+- **kok-mempool 219, 282:** her ikisi de **test içi** `.sum()` — küçük bilinen
+  değerler (100/1000 byte/fee). **Üretim `total_fee`'si zaten `checked_add`**
+  (`a5d7eb1`'de düzeltildi, `the_fee_total_cannot_wrap_into_looking_cheap`
+  pin'iyle). **KAPATILDI.**
+- **kok-ledger 553:** exhaustion testi içinde `balances + total_escrowed` —
+  ama test yalnızca `amt ≤ 500` ve `fee ≤ 400` ekliyor, 20.000 adım, 8 hesap →
+  maksimum teorik ≈ 500×20.000 = **10^7**, u64'ten **çok uzak**. **Sarma
+  imkansız.** Ayrıca her adımda `conserved()` assert'i var.
+- **kok-fri:** yeni düzeltilen body'ler + testler.
+
+**Sonuç: üretim kodunda sarma tehlikesi kalmadı.**
+
+### 16.3 — Bug sınıfı #7 (tolerans→kayıt sızıntısı) workspace taraması: KAPATILMIŞ
+
+37 `unwrap_or(false/0/default)` çağrısı tarandı. En kritik yer kok-chain:
+
+- **`is_final` (kok-chain 61-72):** phantom block için `unwrap_or(0)`
+  **kullanılmıyor** — `None => return false` ile **"absence = not-final"**
+  doğru karar. Eski kod phantom'ı 0 skorlayıp FINALITY_GAP geçince **TRUE**
+  döndürüyordu → **final-by-omission** (node, hiç sahip olmadığı block'u
+  prune edebilir). Düzeltme ve pinleyen test yorumda kayıtlı.
+- **`probe_finality_rejects_an_unknown_block`** (kok-probes 178): hem
+  DAG'de olmayan block'u hem de **boş DAG**'i kapsıyor — "absence from the DAG
+  is a not-final verdict, not a zero score".
+- **`select` (kok-chain 47):** `max_by_key` içindeki `unwrap_or(0)` güvenli —
+  yalnızca `g.blocks.keys()` (her zaman var) üzerinde dolaşıyor.
+- kok-ghostdag `pay_set`, `past_uncached`, `children` kaydı — `25fcc30`'da
+  zaten kapatıldı (phantom ancestors).
+
+**Taramanın sonucu: bug sınıfı #7 kod tabanında kapatılmış durumda.**
+
+### DURUM — 176 TEST
+- `cargo test --release --workspace --lib`: **176/176 rc=0** (+3 kok-fri)
+- `cargo build --release --workspace`: **0 uyarı**
+- `audit_turkish_en.py`: **CLEAN**
+- `suite_gate_en.py`: **39/39 self-consistent, 0 broken**
+- Çalışma ağacı **TEMİZ** — HEAD `2f4176f`
