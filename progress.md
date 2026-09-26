@@ -4830,3 +4830,76 @@ olduğunu iddia edebiliriz — **bu, 184 testin ölçtüğü bir özelliktir.**
 ### DURUM — 184 TEST (değişmedi; tarama yalnızca okuma)
 - `cargo test --release --workspace --lib`: **184/184 rc=0**
 - Çalışma ağacı **TEMİZ**
+
+---
+
+## BLOK 20 — 26 Eylül 2026, hedef turu (devam): pazar verisi + VRS
+
+### 20.1 — `0d3bd1a`: beşinci akademik kaynak — grinding sınıfı literatürde
+
+**arXiv 2607.26734 "Verifiable Random Sampling"** (Yeoh Wei Zhu ve 5 yazar,
+29 Temmuz 2026, HTTP 200 ile teyit). Verbatim:
+
+> "once the public key is published, the induced function is fixed and is a
+> deterministic function of the input. This determinism can enable collusion
+> and **grinding-style attacks in which adversaries precompute and selectively
+> exploit favorable input-output pairs**."
+
+**KÖK'ün assign.rs'inin kendi header'ında itiraf ettiği sınıf.** **Ancak
+"MAPPED FUTURE" olarak kaydedildi, adoption DEĞİL — üç dürüst neden:**
+(1) KÖK'ün grinding yüzeyi **registration-layer** (stake'in kaç key'e
+bölündüğü), makareninki **input-output precomputation** — freshness, split'i
+durdurmaz; (2) makalenin inşası **quantum circuit sampling**, KÖK varsayamaz;
+(3) KÖK RFC 9381 ECVRF P-256'da, vektörlerle byte-for-byte. **Doc-comment-only
+değişiklik** — kod/test/davranış yok.
+
+### 20.2 — `4baf8c4`: PRL fiyatı + io.net — ama bu KÖK'ün tezini ZAYILATIYOR
+
+**Pearl (PRL) güncel fiyatı bulundu** (CryptoRank, HTTP 200): **$1.27**
+(24h $1.05–$1.33), **ATH $1.67** (23 Eyl 2026), ATL $0.194 (23 Tem 2026),
+FDV $253.51M. Token açıklaması "L1 blockchain with Proof-of-Useful-Work
+based on AI matrix multiplications" **doğru projeyi teyit etti**.
+
+**★ BU GÜNCELLEME PROJENİN KENDİ ARGÜMANINI ZAYILATIYOR — risk olarak
+kaydedildi, kazanç olarak değil:** Basu'nun "mining economics are marginal
+at current PRL prices ($0.76)" bulgusu Haziran 2026 ölçüm anında doğrudur,
+AMA fiyat $1.27'ye gelince aynı donanım ~**1.67×** gelir görür → "near
+breakeven" bulgusu **muhtemelen artık geçerli değil**. **Dürüst ayırım
+yazıldı:** Basu'nun **φ=0** bulgusu (8.012 worker, hiç inference kodu yok,
+random matrix kabulü) **FİYAT-BAĞIMSIZDIR ve değişmedi** — yalnızca
+**ekonomik-marjinalite** bulgusu fiyat-bağımlıdır. **İkisini karıştırmak
+alıntıyı çarpıtırdı.** Basu'nun ROI'si **tarihlenmiş olarak korundu**,
+silinmedi.
+
+**★ TOKEN KİMLİĞİ TUZAĞI:** "Pearl" araması **en az üç farklı proje**
+döndürür (Pearl Network PoUW L1; "Perle" $0.12–$0.38; "pearlresearch.ai") —
+**hepsinin sembolü PRL**. İlk aramada görünen $0.0412 ve $0.3801 **yanlış
+projelerdi**. **Sembol proje kimliği için yeterli değildir** — açıklama
+metni ayırt eden tek sinyal.
+
+**io.net (IO) da bulundu:** $0.17, 24h $0.1593–$0.1731. **KOK_V2_PAPER.md
+DOKUNULMADI** — onun üç $0.76'sı tarihsel Pass-simülasyon kalibrasyon
+sabiti, fiyat iddiası değil.
+
+**★ SHELL EXPANSION HATASI (memory 4827):** ilk commit denemesinde `$0.76`
+→ `bash.76`, `$1.27` → `.27` oldu — **kaçırılan `$` bozuldu, kaçırılmayan
+sağ kaldı** (paradoksal). `-F file` ile amend edildi, `grep -c bash → 0`
+ile teyit. **Ders: `$` içeren commit mesajları her zaman `-F` ile.**
+
+### DURUM — 184 TEST
+- `cargo test --release --workspace --lib`: **184/184 rc=0**
+- `cargo build --release --workspace`: **0 uyarı**
+- `audit_turkish_en.py`: **CLEAN** · `suite_gate_en.py`: **39/39**
+- Çalışma ağacı **TEMİZ** — HEAD `4baf8c4`
+
+### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT** (insan kriptograf /
+   canlı φ>0 / güvenlik bütçesi)
+3. ~~Burn vergi analizi~~ — **DARALTILDI** (`7df4454`)
+4. ~~WASM test runtime~~ — **TAMAMLANDI** (`a6f4a67`)
+5. ~~pub-API sınır taraması~~ — **TAMAMLANDI** 8/8 (`0828613`)
+6. Kalan düşük öncelikli: Singapur FISA, Torres karar asılları, Reg Crypto
+   Assets yorumları, AB MiCA raporu, MAS DTO 2020, Pearl finansman,
+   Leinweber kimliği, Dikshit SoK tam metni, CoinGecko market-cap/YTD
+7. Skor **83.65** (dokunma)
