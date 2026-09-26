@@ -4162,7 +4162,43 @@ YOK, hiçbir pay_set'te yok.
 - `cargo test --release --workspace`: **172/172 rc=0** (ghostdag 23, 0.12s)
 - 4 commit: `7bed3b5` → `25fcc30` → `345e0b8` → `25ef7cc`
 
+## 12. BLOK — F0 TALEP KAYDI: 66 SATIR, 0 GERÇEK MÜŞTERİ (dürüst kayıt)
+
+`f0_demand_log.jsonl` — append-only talep keşfi kaydı. **66 satırın HER BİRİ**
+tek bir `"candidate": "EXAMPLE-ILLUSTRATIVE (not a real lead)"` yer tutucusu,
+her biri `"seeded by the tool itself to demonstrate the format; delete before
+use"` notu taşıyor. **GERÇEK MÜŞTERİ SAYISI: 0.**
+
+Bu, §9.1/§9.2'deki "kalan ~15 puan EMPİRİK KANIT — canlı φ>0 (gerçek görev
+talebi)" boşluğunun **somut ölçümüdür**: F0 aracı ÇALIŞIYOR (rubrik + fiyat
+testi + append-only log), ama **hiçbir görüşme yapılmadı**. Araç, kendi
+formatını göstermek için her çalıştığında bir örnek satır ekliyor.
+
+**Bu oturumda yapılan:** bir önceki çalıştırmanın bıraktığı **eklenmemiş
+çift** satırı (2026-09-25 satırının birebir kopyası, sadece tarih farklı)
+geri aldım — append-only bir kayıda bilgi eklemeyen bir duplicate
+eklemek, kaydın kendi dürüstlüğünü zayıflatırdı. **Kayıtlı 65 örnek
+satırına DOKUNMADIM**: append-only'nin anlamı budur ve bunlar commit
+geçmişinde zaten var.
+
+**KILL-CRITERIA hatırı:** yol haritası diyor ki "F3a sonunda 1 gerçek ödeyen
+task yoksa pure-PoW fallback'e dönüş (§A.9)". **Bugün o noktadayız** — 0
+gerçek lead, 0 imzalı niyet mektubu. F3a yapılmadı (ve F3b inşası YASAK),
+yani bu kriter **henüz tetiklenmedi**; ama tetiklenirse fallback §A.9'da
+yazılı. Bu, projenin kendi dürüst mekanizmasıdır — ben yalnızca ölçümü
+netleştirdim.
+
+### DURUM — 172 TEST, 0 UYARI, audit CLEAN, suite gate 39/39, çalışma ağacı TEMİZ
+
 ### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
+   (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0 gerçek
+   lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil. Araç
+   setinin **DIŞINDA** ve öyle kalacak
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi — web
+   search anahtarı 401, IRS PDF'leri sıkıştırılmış binary)
+4. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)### KALAN (sirali, güncel)
 1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
 2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT** (insan kriptograf —
    mail YASAK + Demirel zaten ret etti; canlı φ>0 — F3b inşası YASAK; gerçek
