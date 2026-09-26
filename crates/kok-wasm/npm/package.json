@@ -1,0 +1,34 @@
+{
+  "name": "@kok-network/light-verifier",
+  "version": "0.1.0",
+  "description": "KÖK Network light-client verifier — a WASM boundary that cannot trap on adversarial input",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./index.cjs"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.cjs",
+    "kok_wasm_bg.js",
+    "kok_wasm_bg.wasm",
+    "README.md"
+  ],
+  "keywords": [
+    "blockchain",
+    "light-client",
+    "wasm",
+    "proof-of-useful-work",
+    "verifier"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test ../kok-wasm/npm/tests/"
+  }
+}
