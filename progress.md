@@ -4621,3 +4621,85 @@ eşleştirdi — whole-word `grep -ow` ile doğrulandı.
 - `audit_turkish_en.py`: **CLEAN**
 - `suite_gate_en.py`: **39/39 self-consistent, 0 broken**
 - Çalışma ağacı **TEMİZ** — HEAD `2f4176f`
+
+---
+
+## BLOK 17 — 26 Eylül 2026, hedef turu (devam): WASI runtime + CBECI
+
+### 17.1 — `a6f4a67`: WASI light-client doğrulaması artık tekrarlanabilir
+
+Hedefin öncelik #2 maddesi "WASM test runtime (wasmtime kurulumu dene)"
+idi. `wasmtime` PATH'de yok ve kurulamadı, **ama WASI yolu açık ve daha
+küçük:** `wasm32-wasip1` build'i **105,916 byte** (unknown-unknown build'inin
+518,605 byte'ının ~5×'ı — wasm-bindgen/js glue yerine std `getrandom`
+linklediği için).
+
+**Kritik dürüst bulgu:** Node'un yerleşik `node:wasi`'si **bu modülü
+çalıştıramıyor** — `start()`/`initialize()`, bir `_start`/`_initialize`
+export'u ister ve bu bir **reactor module** (yalnızca `memory` +
+`kok_verify_packet` export'ları) → `ERR_WASI_NOT_STARTED`. Bu yüzden script
+**WASI host'unun kendisini yazıyor**: modülün declare ettiği beş import'ın
+tamamı, fazlası yok:
+- `random_get` — **gerçek `node:crypto` entropisi** (bu önemli olan —
+  verifier tile noise örnekler, sıfırlara sabitlemek olasılıksal bir kontrolü
+  deterministik gibi gösterir)
+- `environ_sizes_get` / `environ_get` — boş environment
+- `fd_write` — byte-sayan sink
+- `proc_exit` — **trap** (asla erişilmemeli; ABI kötü girdiyi reddeder,
+  process'i sonlandırmaz — tetiklenirse verifier return 0 yerine panic
+  etmiş demektir)
+
+**Beş probe, `verify_under_node.mjs` ile birebir aynı** ki iki runtime
+like-for-like karşılaştırılsın: null/zero-length reddetme (trap yok), kısa
+buffer reddetme, 2^32-1 iddia edilen uzunluk reddetme, **dürüst 1104-byte
+packet KABUL etme**, sahte accumulated value reddetme. **Hepsi `ok`, exit 0.**
+İki runtime aynı cevapları verdi.
+
+**★ NEDEN SCRIPT?** Doğrulama önce keşif sırasında ad-hoc `node -e` olarak
+çalıştırıldı — modül'ün çalıştığını kanıtladı ama **yazılan host'u geçici
+bıraktı**; bulgu yalnızca hatırlayan biri için çoğaltılabilirdi. Script olarak
+yazıldı: standart build komutu + `node` ile herkes çalıştırabilir.
+
+### 17.2 — `83a478b`: CBECI enerji rakamı — üç nokta, çelişki korunarak
+
+`pazar_ai_compute.md`'de BULUNAMADI idi (ccaf.io sıkıştırılmış binary/SPA,
+API 404). **Üç ikincil kaynakla bulundu:**
+- **138.2 TWh** (CBECI live estimate, 29 Tem 2026; Digiconomist 204.4 verir)
+- **170–180 TWh** (9 Tem 2026, "world electricity'in %0.7–0.8'i")
+- **138–205 TWh aralığı** (Mayıs 2026, "17–23 GW", "global'ın %0.5–0.6'ı")
+
+**★ ÇELİŞKİ KASİTLI OLARAK KORUNUR, ORTALANMAZ.** CBECI'nin kendi
+metodolojisi bir **aralıktır** (alt/orta/üst bantlar) ve farklı
+özetleyiciler farklı bandı alır → tek bir sayı, bir ölçümün içine gizlenmiş
+bir *seçimdir*. Üç tepe noktası görünür: 138, 175, 204. Makale kendisine
+aralığı sunma talimatı kaydetti — bu aynı zamanda projenin "her sayı için en
+az 3 nokta" kuralının ta kendisidir.
+
+**Dürüst sınır kullanım noktasında:** üçünün hiçbiri CBECI'nin kendi
+API'sinden değildir (hâlâ erişilemez) → hepsi **ikincil**, düşük-orta
+güvenilirlik olarak işaretlendi. Bir blog alıntısından gelen sayı, Cambridge'den
+gelen sayı değildir ve okuyan hangisi olduğunu görebilir.
+
+### DURUM — 176 TEST
+- `cargo test --release --workspace --lib`: **176/176 rc=0**
+- `cargo build --release --workspace`: **0 uyarı**
+- `audit_turkish_en.py`: **CLEAN**
+- `suite_gate_en.py`: **39/39, 0 broken**
+- Çalışma ağacı **TEMİZ** — commitler: `a6f4a67` → `83a478b`
+
+### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
+   (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0/65
+   gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil
+3. ~~Burn vergi analizi~~ — **DARALTILDI** (`7df4454`): IRS Rev. Rul. 2023-14
+   "dominion and control" + "rewards income" kategorisi; **burn'a özel görüş
+   hâlâ YOK**
+4. ~~WASM test runtime~~ — **TAMAMLANDI** (`a6f4a67`): WASI build 105.9 KB,
+   beş probe iki runtime'da byte-identical; wasmtime kendisi yok ama Node
+   host ile gerçek runtime doğrulaması yapıldı
+5. Kalan düşük öncelikli maddeler: Singapur FISA, Torres karar asılları,
+   Reg Crypto Assets yorumları, AB MiCA raporu, MAS DTO 2020, io.net fiyatı
+   (rate-limit), Pearl finansman durumu, Leinweber kimliği, Dikshit SoK
+   tam metni
+6. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
