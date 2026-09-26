@@ -395,12 +395,19 @@ sistem ya güvensiz ya da verimsiz hale gelir. KW'nin MatMul PoUW'unda bu, gür�
 ### 4.3 SoK: "utility does not contribute to the security budget" (2025)
 
 > **Başlık:** "Is Proof-of-Useful-Work Really Useful?" (SoK) · **Yazarlar:** Pratyush Dikshit,
-> Emami, Sedlmeir, Fridgen · **ePrint 2025/1814**, 3 Ekim 2025 · *Kaynak:*
-> https://eprint.iacr.org/2025/1814 · **Not:** Bu oturumda ePrint sayfasından **yalnızca
-> başlık/yazar** doğrulandı; yukarıdaki özet cümle `KOK_V2_REFERENCES.md` satır 119-122'den
-> gelmektedir (paper'ın kendisinden alınmış, önceden doğrulanmış).
-> **Ana sonuç (projemizin kaydından):** "50+ constructions; **utility does not contribute to
-> the security budget**; proposal of verifiable computation + partial incentive allocation."
+> Emami, Sedlmeir, Fridgen · **ePrint 2025/1814**, 3 Ekim 2025 (onay 8 Ekim 2025) · *Kaynak:*
+> https://eprint.iacr.org/2025/1814 ·
+> **★ 26.09.2026 GÜNCELLEME — tam abstract artık DOĞRULANDI** (ePrint'in kendi sayfasından,
+> HTTP 200): "We examine more than **50 PoUW constructions** where we find recurring
+> shortcomings. We introduce a formal economic model of PoUW for miner incentives, **solution
+> reusability**, and external market value to the security budget... Our findings show that
+> **PoUW is actually not as useful as expected, since the economic and societal utility do not
+> contribute to the security budget.**" Ayrıca yazarların **tümü, kurumları ve tarihleri**
+> ilk kez bu çekimle teyit edildi (Luxembourg ×3, Münster ×1; CC0). **Tam PDF hâlâ
+> alınamadı** (`.pdf` ikili döndü; arXiv mirror'u yok — yanlış ID denendi, alakasız bir
+> biyoloji makalesi geldi), dolayısıyla taksonomi, formal ekonomi modeli ve Toulmin
+> değerlendirmesi **doğrulanmamış olarak kalır** — yalnızca abstract'ın kendi cümleleri
+> alıntılanır. `KOK_V2_REFERENCES.md`'deki giriş bu güncellemeyi yansıtır.
 
 ### 4.4 Dış ödül teşvik saldırısı: görev tek blokta toplanması (2025)
 
@@ -664,7 +671,7 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 | ~~5~~ | ~~**Cambridge CBECI güncel TWh/yıl**~~ | **BULUNDU (26.09.2026)** — ccaf.io sayfası sıkıştırılmış binary (SPA), bu yüzden üç ikincil kaynak alınd: 138.2 TWh (CBECI'ye atıf, 29 Tem 2026), 170-180 TWh (9 Tem 2026), 138-205 aralık (Mayıs 2026). **Aralık korunur, tek nokta verilmez; hepsi ikincil** | ~~ccaf.io API'sini bulmak~~ → **YAPILDI (ikincille)**; kalan: birincil API |
 | 6 | **Pearl finansman durumu (seed/VC/değerleme)** | Sitede finansman sayfası yok; sosyal medyaya ulaşılamadı | Crunchbase/PitchBook veya X duyuruları |
 | 7 | **Pearl Together AI endpoint işlem hacmi** | Açıklanmamış | Together AI dashboard / Pearl X |
-| 8 | **Dikshit SoK (ePrint 2025/1814) tam özet metni** | ePrint sayfasından yalnızca başlık/yazar doğrulandı | ar5iv.org üzerinden tam metin |
+| 8 | ~~**Dikshit SoK (ePrint 2025/1814) tam özet metni**~~ | **BULUNDU (26.09.2026)** — ePrint'in kendi sayfasından **tam abstract + metadata** çekildi (HTTP 200): "PoUW is actually not as useful as expected, since the **economic and societal utility do not contribute to the security budget**" — 50+ PoUW inşası incelendi. **Tam PDF alınamadı** (`.pdf` ikili döndü, arXiv mirror'u yok) ama abstract tam metni KÖK'ün iki-katmanlı tezinin **bağımsız teyididir**. `KOK_V2_REFERENCES.md`'de tam giriş | ~~ar5iv.org üzerinden tam metin~~ → **YAPILDI (abstract seviyesinde)** |
 | 9 | **"Leinweber et al." makalesinin gerçek kimliği** | Basu özetinde geçiyor; bağımsız doğrulanamadı | Basu'nun referans listesinden çıkarmak |
 | 10 | **Torres kararları hariç diğer tüm hukuk boşlukları** için bkz. `hukuk_howey_mica.md` §6 | Arama motorları kapalı | Aynı liste |
 

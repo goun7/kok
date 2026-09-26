@@ -106,15 +106,18 @@ System date: 19 September 2026.
 
 ## 2026 NEW ACADEMIC SOURCES (added 2026-09-26)
 
-Five papers found and verified against arXiv's own abstract pages this session
-(all HTTP 200, abstracts read from arxiv.org/abs/...). All five are directly on KÖK's thesis
-and **none was in the earlier reference set**. The two of June 2026 (Pass, Barbaccia) are
-the economics and quantum arguments; SNARKChain and SEDULity are **prior art for the G-layer
-design** and both independently confirm properties KÖK argued from its own negative results;
-and the July-2026 VRS paper names the grinding class that KÖK's own assignment layer
-documents as its open surface — recorded as a mapped future, not an adoption candidate,
-because its construction needs quantum hardware and its threat model is per-input
-precomputation rather than KÖK's per-key registration.
+Six papers found and verified against their own canonical pages this session
+(all HTTP 200, abstracts read from arxiv.org/abs/... or eprint.iacr.org/...). All six are
+directly on KÖK's thesis and **none was in the earlier reference set**. The two of June 2026
+(Pass, Barbaccia) are the economics and quantum arguments; SNARKChain and SEDULity are
+**prior art for the G-layer design** and both independently confirm properties KÖK argued from
+its own negative results; the July-2026 VRS paper names the grinding class that KÖK's own
+assignment layer documents as its open surface — recorded as a mapped future, not an adoption
+candidate, because its construction needs quantum hardware and its threat model is per-input
+precomputation rather than KÖK's per-key registration; and the **October-2025 SoK by Dikshit
+et al.** is the most confirming external paper of all, since its headline negative result over
+more than fifty PoUW constructions — that utility does not contribute to the security budget —
+is precisely the separation KÖK's two-layer design is built on.
 
 ### Pass — "The Economics of Proof-of-Useful-Work" (BİRİNCİL, arXiv 2606.06700)
 
@@ -304,6 +307,67 @@ instead of sitting as a project-internal worry with no external anchor.
 **Honest limitation:** abstract + metadata read verbatim; the full PDF was **not** fetched, so
 the constructive-cryptography security proof and the RCS construction details are not verified
 here, and no claim is made that the paper's threat model matches KÖK's.
+
+### Dikshit, Emami, Sedlmeir, Fridgen — "SoK: Is Proof-of-Useful-Work Really Useful?" (BİRİNCİL, IACR ePrint 2025/1814)
+
+> Pratyush Dikshit (University of Luxembourg), Ashkan Emami (University of Luxembourg),
+> Johannes Sedlmeir (University of Münster), Gilbert Fridgen (University of Luxembourg),
+> IACR ePrint **2025/1814**, received **3 Oct 2025**, approved **8 Oct 2025**.
+> *https://eprint.iacr.org/2025/1814* — abstract + metadata read verbatim from IACR's own
+> page (HTTP 200, 26 Sept 2026). Short URL `https://ia.cr/2025/1814`. License CC0.
+
+**Verbatim, the finding that states KÖK's two-layer premise from the outside:**
+
+> "We examine more than **50 PoUW constructions** where we find recurring shortcomings. We
+> introduce a formal economic model of PoUW for miner incentives, **solution reusability**,
+> and **external market value to the security budget**... Our findings show that **PoUW is
+> actually not as useful as expected, since the economic and societal utility do not
+> contribute to the security budget.** Finally, we highlight design recommendations for PoUW
+> that integrate **verifiable computation, partial incentive allocation, and utility-aware
+> difficulty adjustment**."
+
+**Why this is the single most confirming external paper for KÖK's architecture.**
+This SoK is a systematization of the *entire* PoUW design space — over 50 constructions — and
+its headline negative result is precisely the separation KÖK v2 is built on. KÖK's two-layer
+design assigns useful work to the U layer with **zero consensus weight by construction**,
+pinned by tests (`kok-consensus::u_consensus_weight` sums to zero over every proof, computed
+with checked arithmetic so the invariant cannot disguise a wrap), because security must come
+from the G layer's certificates alone. This paper reaches the same separation from the
+economic direction: utility that *would* contribute to the security budget is the thing that
+has failed across the design space, and it names the failure mode — utility does not transfer
+to security.
+
+**Two of the paper's three design recommendations map onto choices already made here, and
+saying which is which is more useful than citing them loosely:**
+- "**verifiable computation**" — this is the G layer's reason to exist. KÖK did not adopt it
+  from this paper; the G layer predates this citation and rests on KÖK's own negative results
+  (Pearl's φ=0, the Basu measurement). The SoK is independent confirmation, not a source.
+- "**partial incentive allocation**" — KÖK's fee split is exactly this: the task's fee is
+  escrowed at task-post and settles as `pay + burn` with `TREASURY_BPS`, so the *useful* work
+  is paid by the task market while the *security* is paid by the G layer. The paper's phrase
+  is a good external description of an allocation KÖK already implements and tests
+  (`kok-ledger` conservation law, 12 checked sites).
+- "**utility-aware difficulty adjustment**" — this one KÖK deliberately does **not** do, and
+  the difference is worth stating. Difficulty adjusts on the G layer's verification work; the
+  U layer has no difficulty of its own because it carries no weight. Utility-aware adjustment
+  would re-couple the two things this paper's own finding says do not transfer — the opposite
+  of what KÖK's negative results showed.
+
+**Solution reusability, the paper's middle term, is a live open question KÖK has measured
+rather than assumed away.** If a proof of useful work is reusable across tasks or chains, its
+security contribution is not fresh, and the U layer's fee market would be buying spent work.
+This is recorded as a standing measurement obligation rather than a closed property.
+
+**Honest limitation:** the abstract, metadata, author list, affiliations, dates and license
+were read verbatim from IACR's own page (HTTP 200). The **full PDF was not fetched** —
+`eprint.iacr.org/2025/1814.pdf` returns raw binary the fetch tool cannot parse, and no arXiv
+mirror of this paper exists (a guessed arXiv ID returned an unrelated biology paper, which is
+itself a caution). So the taxonomy's 50 constructions, the formal economic model, and the
+Toulmin evaluation are **not verified here** — only the abstract's statements of them are
+quoted, verbatim, and they are attributed as the paper's claims rather than as verified
+results.
+
+
 
 ### MEASURED CORRECTION to the Kaspa k=18 note above (2026-09-25)
 
