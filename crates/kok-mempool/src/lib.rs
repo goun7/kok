@@ -133,8 +133,22 @@ impl Mempool {
     }
 
     /// The total fee the pool would pay a leader that packed all of it.
+    ///
+    /// CHECKED, NOT WRAPPING (2026-09-26): `insert` bounds neither the fee a
+    /// transaction may carry nor the size of the pool, so a pool holding two
+    /// transactions near u64::MAX in fee has a total that overflows. A plain
+    /// `.sum()` would then report a SMALL number, and small is exactly what
+    /// an honest pool with modest fees looks like — the overflow would hide
+    /// inside the answer rather than breaking it. This is the same
+    /// wrap-in-disguise class u_consensus_weight hit: the failure does not
+    /// look like a failure, it looks like a cheaper pool than it is. The
+    /// checked accumulation reports an overflow as u64::MAX so the total is
+    /// either honest or conspicuously maximal, and the caller can tell.
     pub fn total_fee(&self) -> u64 {
-        self.pack_order().iter().map(|t| t.fee).sum()
+        self.pack_order()
+            .iter()
+            .map(|t| t.fee)
+            .fold(0u64, |acc, f| acc.checked_add(f).unwrap_or(u64::MAX))
     }
 }
 
@@ -210,6 +224,30 @@ mod tests {
         for t in &sel {
             assert_eq!(t.fee, t.fee_per_byte * t.bytes, "fee accounting diverged");
         }
+    }
+
+    /// THE FEE TOTAL CANNOT WRAP INTO LOOKING CHEAP (2026-09-26).
+    ///
+    /// `insert` bounds neither the fee a transaction may carry nor the size of
+    /// the pool, so a pool holding two transactions near u64::MAX in fee has a
+    /// total that overflows. A plain `.sum()` reports a SMALL number then, and
+    /// small is exactly what an honest modest pool looks like — the overflow
+    /// hides inside the answer instead of breaking it. `total_fee` now
+    /// accumulates with checked_add and reports an overflow as u64::MAX, so
+    /// the total is either honest or conspicuously maximal.
+    #[test]
+    fn the_fee_total_cannot_wrap_into_looking_cheap() {
+        let mut p = Mempool::new();
+        // two transactions whose fees sum past u64::MAX
+        let _ = p.insert(Tx::new(1, 1, u64::MAX));
+        let _ = p.insert(Tx::new(2, 1, u64::MAX));
+        let t = p.total_fee();
+        assert_eq!(t, u64::MAX, "the overflowed fee total wrapped to {} instead of reporting itself", t);
+        // the honest case still behaves: a small pool reports its exact sum
+        let mut q = Mempool::new();
+        let _ = q.insert(Tx::new(1, 10, 100)); // fee 1000
+        let _ = q.insert(Tx::new(2, 10, 100)); // fee 1000
+        assert_eq!(q.total_fee(), 2000, "an honest pool did not report its exact total");
     }
 
     /// REMOVAL: taking a tx out of the pool drops it from BOTH the order and
