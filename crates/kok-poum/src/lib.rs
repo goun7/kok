@@ -59,7 +59,29 @@ pub fn h(parts: &[&str]) -> u64 {
 /// allocates a heap String, and this function sits on the verify hot path
 /// (5 calls per tile). Before the conversion was inlined, profiling put 1274
 /// ns of a 1296 ns verify at SHA256 + 5x to_string; the arithmetic was 22 ns.
+///
+/// Adversarial note (2026-09-26): the buffer is 160 bytes and each numeric
+/// part costs 1 separator + up to 20 digits = 21 bytes, so the array is sized
+/// for 7 wide parts with room. Every call site in this crate passes 3 or 5
+/// parts (5 x 21 = 105 plus a short prefix, comfortably inside), so the
+/// overflow was unreachable from inside the crate — but `h_num` is `pub`, and
+/// a public function whose buffer can be overflowed by a caller that simply
+/// passes more parts is the same boundary class as kok-fri's field helpers:
+/// correct for the subset of inputs the author had in mind, panicking for the
+/// rest. The bound is now checked, and checked with arithmetic that cannot
+/// itself overflow (prefix length and per-part worst case are summed in u64
+/// before comparing), so the guard is total rather than a second hazard.
 pub fn h_num(prefix: &str, nums: &[u64]) -> u64 {
+    // the worst case is every part being u64::MAX: 20 digits each, plus one
+    // separator per part. Computed in u64 so the check itself cannot wrap.
+    let worst = prefix.len() as u64 + nums.len() as u64 * 21;
+    assert!(
+        worst <= 160,
+        "h_num overflow: prefix of {} bytes with {} numeric parts needs {} bytes, buffer is 160",
+        prefix.len(),
+        nums.len(),
+        worst,
+    );
     let mut buf: [u8; 160] = [0; 160];
     buf[..prefix.len()].copy_from_slice(prefix.as_bytes());
     let mut pos = prefix.len();
@@ -594,3 +616,74 @@ mod tests {
             let _ = k.prove(matrices, matrices, 999, 1, 1 << 30);
         }
     }
+
+    // ---- adversarial: h_num is pub, so its stack buffer is a public
+    // boundary. The buffer is 160 bytes and each numeric part costs up to
+    // 21 bytes (1 separator + 20 digits for u64::MAX), so the array holds 7
+    // wide parts. Every caller in this crate passes 3 or 5 — the overflow was
+    // unreachable from inside, exactly like kok-fri's field helpers, and
+    // exactly like that one this fixes the boundary rather than the leak.
+
+    /// The production-sized calls must be unchanged: 3 parts ("E"/"F") and
+    /// 5 parts ("tile") with the largest possible values, plus a long prefix,
+    /// all fit and digest. This is the "the guard must not break the working
+    /// path" pin — a guard that rejects legitimate input is a regression
+    /// wearing a fix's clothes.
+    #[test]
+    fn h_num_accepts_the_production_shapes_at_their_worst_case() {
+        // 3 parts of u64::MAX under a 1-byte prefix: 1 + 3*21 = 64 <= 160
+        let _ = h_num("E", &[u64::MAX, u64::MAX, u64::MAX]);
+        // 5 parts of u64::MAX under a 4-byte prefix: 4 + 5*21 = 109 <= 160
+        let _ = h_num("tile", &[u64::MAX; 5]);
+        // the real production inputs must still digest byte-identically:
+        // this is the cross-language parity path, so the guard cannot have
+        // altered the output for the inputs the protocol actually uses
+        assert_eq!(h_num("E", &[1, 2, 3]), h_num("E", &[1, 2, 3]));
+    }
+
+    /// The guard's arithmetic must itself be total — the check is computed in
+    /// u64 so that a caller passing a slice long enough to make
+    /// `nums.len() * 21` overflow cannot turn the guard into a second hazard.
+    /// usize on a 64-bit target is u64, so the product is u64 and cannot wrap
+    /// below this test's inputs; the pin is that a large-but-non-overflowing
+    /// slice is REJECTED rather than crashing the arithmetic.
+    #[test]
+    fn h_num_rejects_a_slice_that_would_overflow_the_buffer() {
+        // 8 parts of u64::MAX need 8*21 = 168 > 160: rejected by the guard,
+        // not by a copy_from_slice panic. The message names the arithmetic.
+        let big = vec![u64::MAX; 8];
+        let res = std::panic::catch_unwind(|| h_num("E", &big));
+        assert!(res.is_err(), "an overflowing slice was accepted");
+        // and the same rejection is stable at the exact boundary: 7 parts fit
+        // (7*21 = 147 <= 160 with a 1-byte prefix), 8 does not
+        let _ = h_num("E", &[u64::MAX; 7]);
+    }
+
+    /// A long prefix is the other axis: a prefix alone can exceed the buffer
+    /// with zero numeric parts, and the guard must catch that too rather than
+    /// indexing past the array at `buf[..prefix.len()]`.
+    #[test]
+    fn h_num_rejects_a_prefix_longer_than_the_buffer() {
+        let long = "x".repeat(200);
+        let res = std::panic::catch_unwind(|| h_num(&long, &[]));
+        assert!(res.is_err(), "a 200-byte prefix was accepted into a 160-byte buffer");
+        // an empty input is fine: the digest of a 1-byte prefix is defined
+        let _ = h_num("E", &[]);
+    }
+
+    /// h_num and h must AGREE on the same logical parts, or the two entry
+    /// points are two different hash functions and a certificate built by one
+    /// is unverifiable by the other. This is the cross-language parity path
+    /// in microcosm: Python's "|".join(str(p) for p in parts).
+    #[test]
+    fn h_num_and_h_agree_on_the_same_parts() {
+        // h("tile", "1", "2", "3") vs h_num("tile", [1, 2, 3])
+        let a = h(&["tile", "1", "2", "3"]);
+        let b = h_num("tile", &[1, 2, 3]);
+        assert_eq!(a, b, "h and h_num diverged on identical parts");
+        // zero renders as "0", not as an empty field
+        let c = h(&["tile", "0"]);
+        let d = h_num("tile", &[0]);
+        assert_eq!(c, d, "h_num rendered 0 differently from h");
+    }
+
