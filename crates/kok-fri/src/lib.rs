@@ -43,11 +43,25 @@ pub mod canonical;
 pub mod air;
 
 /// Field arithmetic helpers over the prime q.
+///
+/// Adversarial note (2026-09-26): all four are total for the FULL u64 domain,
+/// not merely for the reduced range [0,q). The earlier `fp_add` was
+/// `(a + b) % q`, which overflows when two unreduced operands sum past u64::MAX
+/// even though each is individually representable — the wrap-in-disguise class
+/// (bug class 6): the panic in debug or the silently-wrapped small result in
+/// release is indistinguishable from a legitimate small field element. `fp_sub`
+/// had the symmetric hazard at `a + q`. Every call site in this crate passes
+/// already-reduced values (outputs of `fp_mul`, which reduces), so the unsafe
+/// paths were not reachable from inside the crate — but `fp_add`, `fp_sub`,
+/// `fp_mul`, `fp_pow` and `fp_inv` are all `pub`, and a public field API that is
+/// only correct for a subset of its declared input type is a boundary bug
+/// waiting for the first caller that does not reduce. The reduction is one
+/// cheap `%` per operand; correctness is bought rather than assumed.
 pub fn fp_add(a: u64, b: u64, q: u64) -> u64 {
-    (a + b) % q
+    (a % q + b % q) % q
 }
 pub fn fp_sub(a: u64, b: u64, q: u64) -> u64 {
-    (a + q - b % q) % q
+    (a % q + q - b % q) % q
 }
 pub fn fp_mul(a: u64, b: u64, q: u64) -> u64 {
     a % q * (b % q) % q
@@ -411,5 +425,71 @@ mod tests {
         tr[1] = bad;
         // the bound check fires before the relation is even consulted
         assert!(!verify_transcript(&tr, &alphas, Q));
+    }
+
+    // ---- adversarial: the field helpers are public, so they must be total on
+    // the whole u64 domain, not merely on [0,q). Three pins, one per hazard
+    // class found by reading the arithmetic as an attacker would.
+
+    #[test]
+    fn fp_add_does_not_wrap_when_both_operands_are_near_u64max() {
+        // bug class 6 (wrap-in-disguise): the old body was `(a + b) % q`. With
+        // two unreduced operands near u64::MAX the sum wraps to a SMALL value
+        // in release mode, and a small field element is exactly what a
+        // legitimate result looks like — the bug is invisible once it happens.
+        let q: u64 = 97;
+        let a: u64 = u64::MAX - 1;
+        let b: u64 = u64::MAX - 2;
+        let got = fp_add(a, b, q);
+        assert_eq!(got, (a % q + b % q) % q);
+        assert!(got < q);
+        // the specific trap: a+b must never be computed as the raw sum
+        assert_eq!(got, (a % q + b % q) % q, "reduction must happen per operand");
+    }
+
+    #[test]
+    fn fp_sub_does_not_overflow_on_a_near_u64max() {
+        // symmetric hazard: the old body was `(a + q - b % q) % q`. For a near
+        // u64::MAX, `a + q` overflows. This test would panic in debug and wrap
+        // in release under the old code.
+        let q: u64 = 97;
+        let a: u64 = u64::MAX - 50; // a + q overflows u64
+        let b: u64 = 10;
+        let got = fp_sub(a, b, q);
+        assert!(got < q);
+        // correct residue: a - b, reduced
+        assert_eq!(got, (a % q + q - b % q) % q);
+        // sanity: the subtraction identity holds in the field
+        assert_eq!(fp_add(got, b % q, q), a % q);
+    }
+
+    #[test]
+    fn field_helpers_agree_with_the_reduced_domain_on_unreduced_input() {
+        // the invariant that makes "reduce per operand" safe rather than merely
+        // different: for ANY u64 inputs, the helpers must return the same value
+        // they would for the reduced inputs, because every call site assumes a
+        // field element out and a field element back. Three points each, not
+        // one — a single point cannot establish that the reduction is applied
+        // rather than accidentally correct at that point.
+        let q: u64 = 97;
+        let inputs = [0u64, 1, 96, 97, 200, 1009, u64::MAX - 1, u64::MAX];
+        for &a in inputs.iter() {
+            for &b in inputs.iter() {
+                let ra = a % q;
+                let rb = b % q;
+                assert_eq!(fp_add(a, b, q), (ra + rb) % q, "fp_add unreduced at {a},{b}");
+                assert_eq!(fp_sub(a, b, q), (ra + q - rb) % q, "fp_sub unreduced at {a},{b}");
+                assert_eq!(fp_mul(a, b, q), ra * rb % q, "fp_mul unreduced at {a},{b}");
+                // fp_pow only for small exponents — the loop is fine, but the
+                // huge ones are not a meaningful exponent domain
+                if b < 8 {
+                    let mut want = 1u64;
+                    for _ in 0..b {
+                        want = want * ra % q;
+                    }
+                    assert_eq!(fp_pow(a, b, q), want, "fp_pow unreduced at {a},{b}");
+                }
+            }
+        }
     }
 }
