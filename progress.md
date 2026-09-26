@@ -4899,9 +4899,14 @@ ile teyit. **Ders: `$` içeren commit mesajları her zaman `-F` ile.**
 3. ~~Burn vergi analizi~~ — **DARALTILDI** (`7df4454`)
 4. ~~WASM test runtime~~ — **TAMAMLANDI** (`a6f4a67`)
 5. ~~pub-API sınır taraması~~ — **TAMAMLANDI** 8/8 (`0828613`)
-6. Kalan düşük öncelikli: Singapur FISA, Torres karar asılları, Reg Crypto
-   Assets yorumları, AB MiCA raporu, MAS DTO 2020, Pearl finansman,
-   Leinweber kimliği, Dikshit SoK tam metni, CoinGecko market-cap/YTD
+6. Kalan düşük öncelikli: Singapur FISA, Reg Crypto Assets yorumları, AB
+   MiCA raporu, MAS DTO 2020, Pearl finansman, Leinweber kimliği, Dikshit
+   SoK tam metni, CoinGecko market-cap/YTD
+   — ~~Torres karar asılları~~ **KISMEN ÇÖZÜLDÜ** (`dddec20`): 13.07.2023
+   kararının **mahkemenin kendi URL'i** canlı teyit edildi (SDNY, HTTP 200,
+   321.952 bayt, operatif cümle verbatim); 26.06.2025 reddi dört bağımsız
+   kaynakla (cryptonews, CoinDesk, Lexology, blockchainmagazine) doğrulandı.
+   Kalan: her iki PDF'in **tam metni** (fetch ikili döndü)
 7. Skor **83.65** (dokunma)
 
 ---
@@ -5023,3 +5028,73 @@ bu yüzden yanlış yönde dirençli — dosyayı okumadan düzeltilmezdi.
 - `cargo test --release --workspace --lib`: **184/184 rc=0**
 - 0 uyarı · audit CLEAN · suite gate 39/39
 - Ağaç TEMİZ — HEAD düzeltme commit'i
+
+---
+
+## BLOK 23 — 27 Eylül 2026: bağlam sıfırlandı, KANIT protokolüyle yeniden doğrulama
+
+DSH yeniden başlatıldı, bağlam silindi. Orkestratörün KANIT PROTOKOLÜ
+ZORUNLU talimatı: "cargo test --workspace --lib" koş, sayıyı KANIT'la ver,
+**commit mesajından OKUMA** (önceki ajan "163" dedi, lead'in canlı koşumu
+173'tü — Skill 17: sadece canlı koşum geçerli).
+
+### KANIT — canlı koşum (debug, tam workspace)
+```
+IDDIA:  workspace testleri hatasız
+KANIT:  cargo test --workspace --lib
+RC:     0
+COMMIT: 72f59a6 (HEAD, çalışma ağacı TEMİZ)
+SONUÇ:  184 passed, 0 failed
+```
+Sayım **184** — lead'in 173'ü **block-14 zamanında doğrudu**; blocks 15-21
+11 test ekledi (kok-net RNG pin'leri +4, kok-poum h_num pin'leri +4,
+kok-probes +3). Önceki ajanın "163"ü eski bir commit'ten okunmuştu.
+**Sayı canlı koşumdan gelir, commit mesajından değil.**
+
+### ECVRF — release modunda doğrulandı
+```
+cargo test --release -p kok-u-layer --lib
+33 passed, 0 failed, rc=0
+```
+- **RFC 9381 Appendix B.1 örnek 10/11/12 release'de byte-for-byte aynı** —
+  hem proof hem beta. `ecvrf.rs`'e DOKUNULMADI (canonical anchor).
+- Performans: ECVRF-only testler release'de **0.02s** (11 test). Tam crate
+  release'de **5.57s** (33/33). Optimizasyon (`e191d2b`, kendi proof'unu
+  re-verify yerine `proof_to_hash`) canlı olarak doğrulandı: 15.06s →
+  5.57-7.11s aralığı, iddia edilen ~1.9× iyileşme tutarlı.
+- Not: 347s DEBUG modu çıktısıydı; tek `splitting_one_stake` testi debug'da
+  ~97-112s sürer, release'de saniyeler. Politika release.
+
+### WASM light client — her iki hedef de canlı koştu
+- `wasm32-wasip1` (WASI, 106.295 bayt) + `wasm32-unknown-unknown`
+  (C ABI): Node.js **v26.10.0** altında 5/5 probe — 3 adversarial reject,
+  honest ACCEPT, forged reject. **RC=0.**
+- `verify_wasi_under_node.mjs` ve `verify_under_node.mjs` workspace
+  kökünden çalıştırılır (göreli path'ler target/ köküne göre).
+
+### Stale open item KAPATILDI — Torres (`dddec20`)
+Çalışma ağacında asılı kalan tek değişiklik: `arastirma/hukuk_howey_mica.md`
+BULUNAMADI tablosu satır 7-8. **Doğruladım:**
+- SDNY URL'si **canlı**: HTTP 200, 321.952 bayt, Last-Modified 13.07.2023
+- Torres'in 26.06.2025 $50M reddi **dört bağımsız kaynakla** teyit edildi
+  (cryptonews, CoinDesk, Lexology, blockchainmagazine)
+- Kayıt PARTIAL olarak kapanır — her iki PDF'in tam metni ikili döndü;
+  kalan alt-gap satır içinde isimlendirilmiş.
+
+### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — TAMAMLANDI (§33)
+2. v2 makale ~21 nokta — kalan ~15'i EMPİRİK KANIT (insan kriptograf /
+   canlı φ>0 / güvenlik bütçesi)
+3. Burn vergi analizi — DARALTILDI (`7df4454`)
+4. WASM test runtime — TAMAMLANDI (`a6f4a67` + bu blokta canlı koşum)
+5. pub-API sınır taraması — TAMAMLANDI 8/8 (`0828613`)
+6. Kalan düşük öncelikli: Singapur FISA, Reg Crypto Assets, AB MiCA,
+   MAS DTO 2020, Pearl finansman, Leinweber, Dikshit SoK, CoinGecko
+   — Torres KISMEN ÇÖZÜLDÜ (`dddec20`)
+7. Skor **83.65** (dokunma)
+
+### DURUM — 184 TEST
+- `cargo test --workspace --lib`: **184/184 rc=0** (canlı koşum)
+- `cargo test --release -p kok-u-layer`: **33/33 rc=0**, RFC 9381 aynı
+- WASM: **10/10 probe** (iki hedef × 5), Node v26.10.0
+- Çalışma ağacı TEMİZ — HEAD `dddec20`
