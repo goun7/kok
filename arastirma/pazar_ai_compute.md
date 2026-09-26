@@ -553,7 +553,34 @@ Pearl'den çıkarılacak dersleri sıralayalım:
   (API'ler bu oturumda çalışmadı; §2.2).
 - **Araştırma firmalarının resmi AI-compute TAM forecast'ları (Gartner/IDC/Precedence/Mordor)**
   — BULUNAMADI (403/timeout).
-- **Cambridge CBECI Bitcoin enerji tüketimi (TWh/yıl), güncel değer** — BULUNAMADI (API 404).
+- **Cambridge CBECI Bitcoin enerji tüketimi (TWh/yıl), güncel değer** —
+  **BULUNDU (26 Eylül 2026), ÜÇ NOKTA İLE, ÇELİŞKİYİ AÇIKÇA TUTARAK.**
+  ccaf.io'nun sayfası sıkıştırılmış binary döndürür (gzip+brotli SPA —
+  önceki oturumun "API 404" notunun sebebi), bu yüzden sayı üç bağımsız
+  ikincil kaynaktan gelmektedir:
+  - **138.2 TWh** — "Cambridge CBECI ... a live estimate of 138.2 TWh as of
+    July 29, 2026" (solcard.cc, CBECI'ye atıfla; Digiconomist'i 204.4 TWh
+    verir)
+  - **170–180 TWh** — "roughly 170–180 terawatt-hours of electricity a year
+    in 2026 — about 0.7–0.8% of world electricity"
+    (oneminers.com, 9 Temmuz 2026, HTTP 200 ile doğrulandı)
+  - **138–205 TWh aralığı** — "three independent methodologies converge on
+    Bitcoin's annualised electricity demand in a range of ≈138-205 TWh·y⁻¹,
+    corresponding to a continuous network load of ≈17–23 GW. This is
+    approximately 0.5–0.6% of global electricity"
+    (observatory.cryptoguru.org, Mayıs 2026)
+
+  **ÇELİŞKİ GERÇEK VE KASİTLI OLARAK KORUNUR.** Üç kaynak üç farklı sayı
+  veriyor çünkü CBECI'nin kendi metodolojisi tek bir nokta değil bir
+  **aralıktır** (alt/orta/üst bantlar) ve farklı özetleyiciler farklı bandı
+  alırlar. 138.2 (CBECI alt-orta), 170-180 (orta), 204.4 (Digiconomist üst)
+  aralığın üçtepe noktasıdır. **KÖK'ün enerji argümanı için kullanım:**
+  makale, tek bir sayı vermek yerine bu aralığı vermelidir — tek bir nokta
+  yanlış hissedilir ve "en az 3 nokta" kuralı zaten aralığı talep eder.
+  **ÖNEMLİ DÜRÜSTLÜK NOTU:** bunların hiçbiri CBECI'nin kendi API'sinden
+  değildir; hepsi CBECI'yi alıntılayan ikincil kaynaklardır. Birincil API
+  hâlâ erişilemez durumdadır, bu yüzden sayıların kaynağı ikincil olarak
+  işaretlenir ve düşük-orta güvenilirlik derecesiyle kaydedilir.
 
 ---
 
@@ -565,7 +592,7 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 | 2 | **CoinGecko market-cap / 24h / YTD değişim** | 429 rate-limit | Ücretli API veya bir sonraki gün |
 | 3 | **Akash/Render/io.net ağ kullanım metrikleri** (GPU-saat, gelir, node) | İstatistik siteleri JS ile veri yüklüyor; API uç noktaları 404/bağlantı hatası | JS kaynağından gerçek API uç noktasını çıkarmak |
 | 4 | **Araştırma firması TAM forecast'ları** (Gartner/IDC/Precedence/Mordor) | 403/timeout | Farklı UA/proxy ile veya özet press release'ları |
-| 5 | **Cambridge CBECI güncel TWh/yıl** | ccaf.io API 404 (SPA) | `ccaf.io` sayfasının kullandığı API'yi bulmak |
+| ~~5~~ | ~~**Cambridge CBECI güncel TWh/yıl**~~ | **BULUNDU (26.09.2026)** — ccaf.io sayfası sıkıştırılmış binary (SPA), bu yüzden üç ikincil kaynak alınd: 138.2 TWh (CBECI'ye atıf, 29 Tem 2026), 170-180 TWh (9 Tem 2026), 138-205 aralık (Mayıs 2026). **Aralık korunur, tek nokta verilmez; hepsi ikincil** | ~~ccaf.io API'sini bulmak~~ → **YAPILDI (ikincille)**; kalan: birincil API |
 | 6 | **Pearl finansman durumu (seed/VC/değerleme)** | Sitede finansman sayfası yok; sosyal medyaya ulaşılamadı | Crunchbase/PitchBook veya X duyuruları |
 | 7 | **Pearl Together AI endpoint işlem hacmi** | Açıklanmamış | Together AI dashboard / Pearl X |
 | 8 | **Dikshit SoK (ePrint 2025/1814) tam özet metni** | ePrint sayfasından yalnızca başlık/yazar doğrulandı | ar5iv.org üzerinden tam metin |
