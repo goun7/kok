@@ -131,6 +131,12 @@ impl Ghostdag {
     }
 
     /// The uncached past computation (the cache-population path).
+    ///
+    /// Absent parents are NOT recorded in the past (2026-09-26): an earlier
+    /// version inserted `p` into `seen` before checking whether the block
+    /// existed, so a block citing an unknown parent carried that parent in
+    /// its past — a phantom ancestor. The past is "blocks that precede this
+    /// one and are KNOWN to the DAG"; an unknown parent is neither.
     fn past_uncached(&self, bid: Bid) -> BTreeSet<Bid> {
         let mut seen = BTreeSet::new();
         let mut stack: Vec<Bid> = self
@@ -139,8 +145,11 @@ impl Ghostdag {
             .map(|b| b.parents.clone())
             .unwrap_or_default();
         while let Some(p) = stack.pop() {
-            if seen.insert(p) {
-                if let Some(pb) = self.blocks.get(&p) {
+            // only a block that EXISTS can be in the past; the existence
+            // check must come before seen.insert, or the absent parent is
+            // recorded as an ancestor it never was
+            if let Some(pb) = self.blocks.get(&p) {
+                if seen.insert(p) {
                     stack.extend(pb.parents.iter().copied());
                 }
             }
@@ -194,9 +203,17 @@ impl Ghostdag {
     pub fn add(&mut self, blk: Block) {
         let bid = blk.bid;
         // register this block as a child of each of its parents, so a later
-        // future() walk follows the edges instead of scanning every block
+        // future() walk follows the edges instead of scanning every block.
+        // ABSENT parents get no edge (2026-09-26): registering a child under
+        // a parent the DAG has never seen makes future(phantom) return real
+        // blocks — a phantom ancestor with descendants. The same tolerance
+        // the scoring path applies (parents filtered through
+        // blocks.contains_key) must apply to the edge bookkeeping, or the
+        // DAG's tolerant front end leaks phantoms out its side door.
         for p in &blk.parents {
-            self.children.entry(*p).or_default().push(bid);
+            if self.blocks.contains_key(p) {
+                self.children.entry(*p).or_default().push(bid);
+            }
         }
         self.blocks.insert(bid, blk.clone());
         if blk.parents.is_empty() {
@@ -638,6 +655,53 @@ mod tests {
             ac.intersection(&fut).next().is_none(),
             "the anticone contains a block that is in the future — the bug"
         );
+    }
+
+    /// A BLOCK WHOSE PARENTS ARE NOT IN THE DAG BEHAVES LIKE A GENESIS, AND
+    /// THAT IS DELIBERATE (2026-09-26).
+    ///
+    /// `add` filters a block's parents through `blocks.contains_key` and, if
+    /// none are present, falls to the genesis branch (blue_score 1, empty
+    /// mergeset, no selected parent). This is not a bug — it is a deliberate
+    /// tolerance of partial DAGs, where a node may hear about a block before
+    /// its parents arrive. But it is the SAME SHAPE as the phantom-block
+    /// hazard `is_final` had: an absent thing is silently scored rather than
+    /// rejected, and the difference between "tolerated" and "phantom" is
+    /// only whether the silence is intended. This test pins the intended
+    /// behaviour so a later change that made absent parents mean something
+    /// else — e.g. silently dropping the block, or scoring it by a parent
+    /// that does not exist — would be caught rather than mistaken for a
+    /// behaviour change.
+    #[test]
+    fn a_block_with_absent_parents_behaves_like_a_genesis() {
+        let mut g = Ghostdag::new(18);
+        // block 2 cites parent 999, which was never added
+        g.add(Block { bid: 2, parents: vec![999] });
+        assert_eq!(g.blue_score.get(&2), Some(&1), "an absent-parent block was not scored as a genesis");
+        assert_eq!(g.selected.get(&2), Some(&None), "an absent-parent block got a selected parent from nowhere");
+        assert!(g.mergesets.get(&2).map_or(false, |ms| ms.is_empty()), "an absent-parent block inherited a mergeset from nowhere");
+        assert!(g.is_blue.get(&2).copied().unwrap_or(false), "an absent-parent block was not marked blue");
+        // and it is NOT counted as a child of the absent parent
+        assert!(g.children.get(&999).map_or(true, |c| c.is_empty()), "an absent parent gained a child");
+    }
+
+    /// THE MIXED CASE: some parents present, some absent. The present ones
+    /// must drive selection; the absent ones must be ignored, and must not
+    /// contribute a blue_score they do not have. Without this, a node hearing
+    /// a block with one known and one unknown parent could weight the block
+    /// by a phantom parent's score.
+    #[test]
+    fn mixed_present_and_absent_parents_select_on_the_present_one_only() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        // 2 now has blue_score 2. Block 3 cites 2 (present) and 998 (absent)
+        g.add(Block { bid: 3, parents: vec![2, 998] });
+        assert_eq!(g.selected.get(&3), Some(&Some(2)), "the absent parent was selected over the present one");
+        assert_eq!(g.blue_score.get(&3), Some(&3), "the score did not follow the present parent's chain");
+        // the absent parent must not appear anywhere in 3's ancestry
+        assert!(g.past(3).contains(&2), "the present parent is missing from the past");
+        assert!(!g.past(3).contains(&998), "the absent parent appeared in the past");
     }
 
     /// future() is reflexively consistent with past(): if X is in past(Y)
