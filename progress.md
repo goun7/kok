@@ -4190,7 +4190,42 @@ netleştirdim.
 
 ### DURUM — 172 TEST, 0 UYARI, audit CLEAN, suite gate 39/39, çalışma ağacı TEMİZ
 
+## 13. BLOK — WRAP-IN-DISGUISE SINIFININ TAM SAYIMI (173 TEST)
+
+### 42. **Mempool: fee total wrap** (`a5d7eb1`)
+`total_fee` plain `.sum()` idi. **`insert` ne fee'i ne de pool boyutunu sınırlar**
+— iki u64::MAX fee'li tx toplamı overflow'lar, wrapping `.sum()` **KÜÇÜK** sayı
+verir, küçük de mütevazı dürüst bir pool'ın tam görüntüsüdür. **Sızıntı cevabın
+içine saklanırdı, kırmazdı.** Mempool'un tüm işi muhasebe iken, bu en zor
+fark edilen muhasebe hatası sınıfı. `checked_add` + overflow → u64::MAX.
+
+Test iki yönlü pinned: (1) **taşan pool** (iki u64::MAX fee) → total_fee
+**kendi kendini u64::MAX olarak raporlamak** zorunda (wrap'lanan küçük sayı
+değil); (2) **dürüst küçük pool** → tam 2000. Böylece düzeltmenin dürüst
+pool'ları aşırı muhafazakar yapmadığı da kanıtlandı. Probe inşası, mevcut
+`fee == fee_per_byte * bytes` muhasebe invariant'ına dayanır (zaten pinned).
+
+### 43. **Sınıfın tam sayımı: production `.sum()` KALMADI**
+Tüm para crate'larında production `.sum()` kullanan **tek site bile kalmadı**:
+- `kok-consensus/u_consensus_weight` → checked fold (`7bed3b5`)
+- `kok-mempool/total_fee` → checked fold (`a5d7eb1`)
+- kalan 5 `.sum()`(**grep ile sayıldı**) hepsi **test-içi**, sabit küçük
+  kümeler üzerinde (her biri 1000 fee, 3 tx; veya conservation testinde
+  küçük bakiyeler) — construction ile sınırlı, hazard değil.
+
+**Üç production sites kapatıldı, sıfır kaldı.**
+
+### DURUM — 173 TEST, 0 UYARI, audit CLEAN, suite gate 39/39, ağaç TEMİZ
+Commit zinciri (yeni→eski): `a5d7eb1` → `01b0f70` → `23491b2` → `e98ccaf`
+→ `25ef7cc` → `345e0b8` → `d08d7f5` → `25fcc30` → `7bed3b5`
+
 ### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
+   (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0/65
+   gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
+4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
 1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
 2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
    (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0 gerçek
