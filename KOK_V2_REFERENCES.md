@@ -106,9 +106,12 @@ System date: 19 September 2026.
 
 ## 2026 NEW ACADEMIC SOURCES (added 2026-09-26)
 
-Two June-2026 papers found and verified against arXiv's own abstract pages this session
-(both HTTP 200, abstracts read from arxiv.org/abs/...). Both are directly on KÖK's thesis
-and **neither was in the earlier reference set**.
+Four papers found and verified against arXiv's own abstract pages this session
+(all HTTP 200, abstracts read from arxiv.org/abs/...). All four are directly on KÖK's thesis
+and **none was in the earlier reference set**. The two of June 2026 (Pass, Barbaccia) are
+the economics and quantum arguments; the two of October 2025 and June 2026 revisions
+(SNARKChain, SEDULity) are **prior art for the G-layer design**, and both independently
+confirm properties KÖK argued from its own negative results.
 
 ### Pass — "The Economics of Proof-of-Useful-Work" (BİRİNCİL, arXiv 2606.06700)
 
@@ -178,6 +181,83 @@ separate, lattice/hash-migratable concern.
 **not** fetched, so the sufficient-stake theorem's assumptions are not verified here. The
 paper is **concurrent independent work** — KÖK's two-layer split was designed from its own
 negative results (see the next section), not from this paper.
+
+### Oleksak, Gazdik, Peresini, Homoliak — "SNARKChain" (BİRİNCİL, arXiv 2510.09729)
+
+> Samuel Oleksak, Richard Gazdik, Martin Peresini, Ivan Homoliak (Masaryk University),
+> arXiv **2510.09729**, v1 10 Oct 2025, **v2 13 July 2026**, cs.CR.
+> *https://arxiv.org/abs/2510.09729* — abstract read verbatim from arXiv (HTTP 200, 26 Sept 2026).
+
+**Verbatim, the part that matters to KÖK:**
+
+> "existing PoUW proposals often **fail to embed the integrity of the chain and the identity of
+> the miner into the puzzle solutions**, not meeting the necessary requirements for PoW and thus
+> rendering them vulnerable. In this work, we propose a PoUW consensus protocol that computes
+> **client-outsourced SNARK proofs as a byproduct**, which are simultaneously used to secure the
+> consensus protocol. We further leverage this mechanism to design a **decentralized marketplace
+> for outsourcing SNARK proof generation**, which is, to the best of our knowledge, the **first
+> such marketplace operating at the consensus layer** while meeting all necessary properties of PoW."
+
+**Why this is high-value for KÖK — it validates the exact hazard KÖK's ctx binding closes.**
+SNARKChain names the failure mode of prior PoUW: the useful puzzle does not bind the **chain's
+integrity** or the **miner's identity** into the solution, so the work is not actually tied to
+the block that claims it. KÖK's G layer was designed against precisely this: every solution's
+statement carries `selected_parent ‖ miner_pubkey ‖ task_ref ‖ height ‖ proof_system_id ‖ nonce`
+(spec §A.3, T-A2) — the chain binding and the miner binding are *in the statement*, which is
+why precompute and replay are closed. **A published academic paper naming the absence of that
+binding as a vulnerability class is stronger than any self-assessment.**
+
+**AND IT SHARPENS KÖK'S DIFFERENTIATION, which is the honest part.** SNARKChain puts the
+client-outsourced proofs **into the consensus** — the useful work *secures* the chain. KÖK
+deliberately does the opposite: the U layer has **zero consensus weight**, the target test
+reads only the G-layer certificate, and task fees buy fee revenue alone. The difference is
+philosophical and worth stating as such — SNARKChain pursues maximum usefulness per unit of
+consensus work; KÖK pursues a security budget that is **demand-independent**, so the chain
+survives the zero-demand equilibrium that Pass's "Bitconia" regime predicts. Both are defensible
+designs and the paper's existence is **prior art that KÖK's security argument is not novel in
+wanting** — but KÖK's separation is the rarer choice, and SNARKChain is the reference point
+against which to state it. **NOTE: this is an independent design lineage from KÖK's**; no
+claim of derivation in either direction is made, and the KÖK G-layer work is MatMul
+verification rather than SNARK generation.
+
+**Honest limitation:** abstract + metadata read verbatim; the full PDF was **not** fetched, so
+the claimed PoW-property proofs are not verified here, and the "first such marketplace" claim is
+the authors' own, not an independent assessment.
+
+### Cao, Doger, Ulukus — "SEDULity: A Proof-of-Learning Framework" (BİRİNCİL, arXiv 2512.13666)
+
+> Weihang Cao, Mustafa Doger, Sennur Ulukus (University of Maryland), arXiv **2512.13666**,
+> v1 15 Dec 2025, **v2 10 June 2026**, cs.CR + cs.DC + cs.IT + cs.LG.
+> *https://arxiv.org/abs/2512.13666* — abstract read verbatim from arXiv (HTTP 200, 26 Sept 2026).
+
+**Verbatim, the part that matters to KÖK:**
+
+> "we **encode the template block into the training process** and design a useful function that
+> is difficult to solve but relatively easy to verify, as a substitute for the PoW puzzle. …
+> we design an incentive mechanism to incentivize task verification. **We show theoretically
+> that a rational miner is incentivized to train fully honestly with well-designed system
+> parameters.**"
+
+**Why this is on-point for KÖK — it is the honest-mining question, answered theoretically by a
+third party.** SEDULity's core claim is that a rational miner's incentive is to do the useful
+work **honestly** rather than to fake it, given the right parameters. That is the same property
+KÖK's G layer buys with **prescribed hardness** (the miner's choice of MatMul input cannot
+reduce the work, which closes the sybil/easy-instance attack) and that its U layer buys with a
+**client-determined matrix** — the miner does not choose what to compute, so there is nothing
+to cheapen. SEDULity reaches a similar destination from the incentive side rather than from the
+hardness side, and **the convergence is the useful thing**: two independent designs conclude
+that honest useful work is achievable, by different mechanisms.
+
+**The honest differences, stated rather than smoothed:** SEDULity's useful function is model
+*training* (Proof-of-Learning), whereas KÖK's G layer is MatMul *verification* certificates —
+training admits iterative-approximation attacks that verification does not, which is exactly why
+KÖK chose the certificate form. And SEDULity embeds the template block into the work, which
+mirrors KÖK's ctx binding (above) and independently confirms that the work must be bound to the
+block to be honest. **No derivation is claimed in either direction.**
+
+**Honest limitation:** abstract + metadata read verbatim; the full PDF was **not** fetched, so
+the theoretical incentive result and its parameter conditions are not verified here, and the
+simulation results are not reproduced.
 
 ### MEASURED CORRECTION to the Kaspa k=18 note above (2026-09-25)
 
