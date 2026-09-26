@@ -4065,7 +4065,61 @@ farkını açıklama.**
 - Node.js WASM harness: **5/5 check ok**
 - `audit_turkish_en.py`: **CLEAN**; `suite_gate_en.py`: **39/39**
 
+## 10. BLOK — PHANTOM ANCESTORS: YENİ BUG SINIFI 7 BULUNDU (`25fcc30`)
+
+### 38. **GHOSTDAG: tolerant front end, phantom side door**
+Kullanıcının "her açıdan 100/100" direktifi yeni bir **GERÇEK bug** ortaya
+çıkardı. Araştırma sırasında `add()`'in **bilinçli bir partial-DAG toleransı**
+olduğunu gördüm (node, parent'larından önce bir blok duyabilir; parent'lar
+`blocks.contains_key` ile filtrelendir, hiçbiri yoksa genesis gibi davran).
+**Tezim yanlıştı — tolerans sadece YARIMDI:**
+
+- **Sızıntı 1 (`children`):** registration **filtresizdi** — bilinmeyen
+  parent 999 citing bir blok `children[999] = [2]` yaratıyordu →
+  `future(999)` **gerçek bloklar** döner: **soy'a sahip phantom ancestor.**
+- **Sızıntı 2 (`past_uncached`):** her aday `seen`'e **varlık kontrolünden
+  ÖNCE** ekleniyordu → absent parent'lar computed past'ta kalıyordu.
+
+**İkisi de SKOR'u bozmuyordu** (scoring path doğru filtreliydi;
+`blue_score(3)=3`, selected=present parent). **Ama past/future, anticone ve
+mergeset'in inşa taşı** — sızıntı oraya yayılıyordu.
+
+**DÜZELTME:** tolerans **tekdüze** yapıldı — `children` registration artık
+aynı `contains_key` ile; `past_uncached`'de existence check `insert`'ten
+önce. `future()` zaten güvenliydi (sadece `&self.blocks` üzerinde).
+
+**ÖLÇÜMLE BULUNDU, okuyarak DEĞİL:** önce toleransı PIN'leyen iki test
+yazdım — **başarısız oldular**. Başarısızlıklar iki sızıntıyı da lokalize
+etti. İlkinin diğer 4 assertion'ı (score 1, selected None, empty mergeset,
+blue) zaten doğru geçiyordu — bu teşhisi keskinleştirdi: **scoring tolerant,
+bookkeeping phantom.**
+
+**BUG SINIFI 7 ("same-tolerance leak"):** bir fonksiyon absent girdileri
+bilinççe tolere ediyorsa, **aynı girdiyi kaydeden her site'i denetle** —
+tolerans genellikle sadece yarım uygulanmış. Test deseni: hem tolerant
+scoring davranışını (genesis gibi score=1) hem de **hiç phantom edge
+çıkmadığını** (children[absent] yok, absent past'ta yok) birlikte assert et.
+
+### 39. **CONSENSUS: weight sum wrap-in-disguise** (`7bed3b5`)
+`u_consensus_weight` `.sum()` ile plain u64 topluyordu (release'da wrap'ler).
+Bugün her terim 0 — bug yok. **Ama başarısızlığın ŞEKLİ önemli:**
+u64::MAX'ı geçen bir toplam **BÜYÜK değil KÜÇÜK** sayı verir ve küçük total
+meşru küçük weight'ten ayırt edilemez. Bu fonksiyonun varlık nedeni olan
+"U layer zero weight katar" invariant'ı **büyüklükle değil, KILIKLA**
+ihlal edilirdi. `checked_add` + overflow→u64::MAX ile düzeltildi; test
+üç prooflu additive shape'i pinned.
+
+### DURUM — 169 TEST
+- `cargo build --release --workspace`: **0 hata, 0 uyarı**
+- `cargo test --release --workspace`: **169/169 rc=0**
+
 ### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **ZATEN TAMAMLANDI** (`bcb17cd`, §33 öncesi kayıt)
+2. v2 makale ~21 nokta — **kalan ~15'i EMPİRİK** (insan kriptograf, canlı
+   φ>0, güvenlik bütçesi) — bu oturumun araç seti dışında; kalan ~8 kâğıt
+   işin pazar kısmı bu blokta birincil veriyle beslendi (§9.1'e bakın)
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
+4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
 1. 58-Mahrem Noir circuit doğrulama (orkestratör görevi — context lazım)
 2. v2 makale ~21 kalan nokta (orkestratör görevi — liste lazım)
 3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
