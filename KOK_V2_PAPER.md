@@ -637,6 +637,104 @@ and we intend to measure it rather than to assume it."**
 
 ---
 
+### 9.1 ★ FAQ — the three questions a reader asks first (2026-09-26)
+
+*Written as plain text rather than a JS accordion, because the reference file's
+own access notes record that JS-rendered content could not be read and the
+answers therefore could not be checked. An answer that cannot be read cannot
+be verified.*
+
+**Q1. What happens in a 51% attack?**
+
+The short answer is that the attacker buys the same thing they would buy to
+attack Bitcoin — hashrate — for the same economic reason, and that the useful
+work does not make it cheaper. This is the claim the design is most often
+challenged on, so it is worth being precise about which part is argued, which
+part is proven by a third party, and which part is not either of those.
+
+The security budget comes from the **G layer alone**: a block is valid when its
+KW certificate plus the nonce satisfy a memoryless difficulty test, and the U
+layer's task fees buy *fee revenue*, never consensus weight (§3.2 — "the U
+layer has zero consensus weight; it never participates in leader election").
+So an attacker must control G-layer work. Pass (2026) formalises what that
+costs: **attack cost = PR/2 in every demand regime**, where PR is the total
+block reward, and — this is the part worth quoting — *"once equilibrium prices
+are taken into account, the economic cost of a majority attack remains tied to
+the block reward."* The useful work does not create a discount, because the
+hardware that earns the reward is priced by the same market whether the buyer
+intends to attack or to mine honestly.
+
+What the design adds over the pure-PoW case is **what the attacker cannot
+cheaply do**: because task assignment goes through a **VRF** bound to an epoch
+seed fixed 64 blocks back, the attacker cannot steer which tasks it gets; and
+because the client commits the task and fee to escrow *first* with an
+irrecoverable burn component, the attacker cannot cheaply fabricate demand to
+subsidise the attack.
+
+**Honest limits of this answer:** PR/2 is Pass's result, and this project's
+`KW_ANALIZ.md` assessment of the underlying KW construction is an **LLM read**,
+not a human cryptographer's review — the two independent reviews this paper's
+own roadmap names as F2 have not happened (Demirel declined; §10.2). And the
+attack-cost argument is about *economic* cost; it says nothing about a
+majority miner censoring the U layer, which is why the prototype measures
+censorship-resistance directly (TV-15..TV-20) rather than arguing it.
+
+**Q2. Is it quantum-safe?**
+
+**The G layer's hash-based path is; the U layer's proof system is the
+variable.** The block certificate and difficulty test are hash-based
+(SHA-256-family and a KW MatMul certificate), so Grover's quadratic speedup
+applies to the hash search and nothing sharper — no Shor-type break of an
+integer factoring or discrete-log problem sits in the leader election. This is
+ordinary for any hash-PoW chain and it is why the paper says the cryptography
+is *hash-based and post-quantum* rather than merely *designed to be*.
+
+The U layer uses a STARK-style proof over a field, which is also hash-based in
+its commitment and inherits the same quadratic-only story for the
+symmetric-crypto parts. **The honest qualification:** the ECVRF used for task
+assignment (RFC 9381, P-256-SHA256-TAI) is *not* post-quantum — a
+cryptographically relevant quantum computer breaks the ECDLP underlying it and
+therefore the VRF's uniqueness. That is a deliberate, stated trade: the VRF
+guards *task routing*, not consensus, so a broken VRF would let an attacker
+predict or forge assignments but would not let them forge a block. The paper
+records this rather than claiming blanket quantum safety; the practical
+migration path is a hash-based or lattice-based VRF at the point one becomes a
+named standard, which is a swap confined to one module. Barbaccia et al.
+(2026) make the same observation independently: Grover does nothing to
+ML-native linear algebra, so the *work* is quantum-safe even where the
+*signature layer* is not.
+
+**Q3. Does the emission ever run out?**
+
+**No — and this is a deliberate difference from Bitcoin and from Pearl.** The
+block reward follows a **tail emission**: it decreases but has a nonzero floor
+`R_∞` it can never cross (the prototype pins `R_0 = 50`, treasury 5%, tail
+floor 1). Bitcoin's geometric halving sends the subsidy to zero and thus, once
+fees alone must support security, hands the security budget to whoever the fee
+market happens to be; Pearl's curve is `1/t²`-polynomial with `R(t) → 0` and
+**no tail**, which is the same exposure sooner.
+
+The tail floor exists so that the G layer is never in the position of guarding
+nothing: there is always *some* subsidy funding the attack cost PR/2 above.
+The treasury share (5%) funds whatever the network decides to fund, and the
+total supply is therefore **not capped at a fixed integer** — it is bounded by
+the emission *rate*, which is the honest trade the design makes and states.
+The precise schedule and any future change are governance, and the paper does
+not pretend to have chosen them finally: the roadmap's F4 economic simulation
+is what would test a candidate schedule against the zero-demand equilibrium
+(the empty-block case, which is real and absorbing — TV-36).
+
+**What no FAQ answer substitutes for.** These are design arguments grounded in
+the cited third-party results, not security proofs. The 51% answer rests on
+Pass; the quantum answer rests on the standard Grover/Shore distinction plus
+this project's own honest statement that its VRF is not PQ; the emission
+answer is arithmetic about a floor the code itself defines. None of the three
+is a substitute for the audit in F6, and none of the three has been reviewed
+by an independent cryptographer. They are written down so that a reader can
+find the argument, the citation, and the limit, in that order.
+
+---
+
 ## 10. Proof, Audit and Roadmap
 
 | Phase | Content | Criterion (defined success) |

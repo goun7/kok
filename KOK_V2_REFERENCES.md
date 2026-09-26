@@ -441,8 +441,16 @@ re-checked before being cited externally.
 
 ### KNOWN GAPS (focus of external auditing)
 
-1. **NO 2 independent human cryptographer reviews** — `KOK_V2_CRYPTO_BRIEF.md` was not sent
-   out. All of `KW_ANALIZ.md` §1–6 is a **† LLM read**.
+1. **NO 2 independent human cryptographer reviews.** `KOK_V2_CRYPTO_BRIEF.md`
+   was not sent. All of `KW_ANALIZ.md` §1–6 is a **† LLM read**. **STATUS
+   (2026-09-26): not merely unsent — Demirel DECLINED** ("it is a no for now,
+   not a maybe", after rejecting the payment terms as self-contradictory; the
+   reply and the user's decision are in `EPOSTA_DEMIREL_TESEKKUR.md` and
+   `STAGE4_HUMAN_MONEY_GAP.md`). The erteleme argument the paper had been
+   making was **circular**, so the paper no longer makes it. This is the single
+   largest remaining gap and **it is not closeable by code**: it needs a human
+   who will read for pay, and payment while anonymous is hard or impossible.
+   See the paper's FAQ (§9.1) for what this gap does and does not invalidate.
 2. **FP8 low-entropy — PARTIALLY CLOSED (2026-09-20):** `fp8_noise_proto_en.py`
    now models quantization-aware noise (TV-27..TV-30). Two honest findings:
    (a) the FP8 reversal is CONFIRMED — without an absolute noise floor the
@@ -460,12 +468,30 @@ re-checked before being cited externally.
    so the margin must still be estimated by governance; the accuracy requirement is the
    F3a measurement.
 4. **Toy dimensions** — q=97, n=8, r=2, K=64: **does not test asymptotic arguments.**
+   The paper's FAQ (§9.1, 2026-09-26) now states this limit where a reader will meet
+   it, rather than leaving it here only.
 5. **~~GHOSTDAG parent-set selection is MISSING from the prototype~~ — CLOSED
    (2026-09-20):** `ghostdag_proto_en.py` now tests the GHOSTDAG greedy ordering
    with Kaspa mainnet production parameters (k=18, max_block_parents=10,
    mergeset limit 36); TV-22..TV-26 all PASS. Remaining honest limit: no PoW
    validity check (all blocks assumed valid), uniform network-delay model.
-6. **FAQ answers missing** (51% attack, PQ, PRL emission — in a JS accordion).
+   **ADDITIONALLY (2026-09-26):** the Rust GHOSTDAG now also pins the partial-DAG
+   tolerance against phantom ancestors (`25fcc30`) and the money path against
+   absent-record and wrap-in-disguise hazards (`345e0b8`, `25ef7cc`, `a5d7eb1`,
+   `7bed3b5`). Bug class 7 — "when a function tolerates absent inputs, audit every
+   site that records the same input" — was named and closed in four instances, all
+   found by measurement rather than by reading.
+6. **~~FAQ answers missing~~ — CLOSED (2026-09-26):** the paper now carries §9.1,
+   answering the 51% attack question (resting on Pass's PR/2 result, with the
+   honest limit that the KW assessment is an LLM read and the independent
+   reviews have not happened), the post-quantum question (G layer hash-based and
+   PQ; the ECVRF used for *task routing* is explicitly NOT PQ, stated as a
+   deliberate trade because it guards assignment rather than consensus), and the
+   emission question (tail emission never hits zero, deliberately unlike Bitcoin
+   and Pearl; supply is rate-bounded, not integer-capped). Written as plain text
+   rather than a JS accordion, because this file's own access notes record that
+   JS-rendered content could not be read — an answer that cannot be read cannot
+   be verified. Each answer names its citation AND its limit.
 
 ### Access method summary (tool constraints)
 
