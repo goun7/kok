@@ -140,8 +140,7 @@ rate-limit'e** düştüğü için market-cap / 24h-change / io.net fiyatı alın
 | Akash | `akash-network` | **$0.677272** | ACTUAL, 24.09.2026 |
 | Golem | `golem` | **$0.125794** | ACTUAL, 24.09.2026 |
 | io.net (IO) | `io-net` | **BULUNAMADI** | CoinGecko 429 (ilk çağrıda yanlış ID, sonra rate-limit) |
-| Pearl (PRL) | — | **$0.76** | ACTUAL — **Basu arXiv 2606.04819 ölçüm anındaki fiyat** (Haziran 2026); bugünkü fiyat BULUNAMADI |
-
+| Pearl (PRL) | — | **$1.27** (26.09.2026) — **ATH $1.67** (23.09.2026) | ACTUAL — CryptoRank, token açıklaması "L1 blockchain with Proof-of-Useful-Work based on AI matrix multiplications" ile **doğru proje teyit edildi**; Basu'nun $0.76'sı Haziran 2026 ölçüm anındaydı |
 ### 2.2 Ağ kullanım metrikleri — KISMEN DOLDURULDU (26 Eylül 2026)
 
 **v1'de tamamen BULUNAMADI idi; bu oturumda Akash için BİRİNCİL kaynak bulundu.**
@@ -296,6 +295,36 @@ G/U iki-katmanlı mimarisini zorlayan **negatif sonuçların** kaynağıdır.
 > **Teorik çapa (verbatim):** "These findings **quantify the verifiability-usefulness tension**
 > identified theoretically by Leinweber et al., providing concrete measurements of its
 > magnitude and economic consequences in a deployed system."
+
+> **★ FİYAT GÜNCELLEMESİ (26 Eylül 2026) — Basu'nun ROI bulgusu artık güncel değildir:**
+> Basu'nun "(4) mining economics are marginal at current PRL prices (**$0.76**)" bulgusu
+> **Haziran 2026 ölçüm anında** doğrudur ve alıntılanan verinin tarihlenmiş halidir. **Ama
+> PRL o tarihten beri sert yükseldi** (CryptoRank, HTTP 200 ile teyit):
+> - **PRL $1.27** (26.09.2026), 24h aralık $1.05–$1.33
+> - **ATH $1.67 (23 Eylül 2026)**, ATL $0.194 (23 Temmuz 2026)
+> - ATH'ten **%24.3** aşağıda; ATL'den **+%555** yukarıda
+> - **FDV $253.51M**, Max Supply 2.1B, Total Supply 199.4M
+>
+> **Bu, Basu'nun ROI aralığını (−1%..+67%) GEÇERSİZLEMEZ — onu TARİHLENDİRİR.** Basu
+> $0.76'da ölçtü; fiyat $1.27'ye gelince aynı donanımın ROI'si yaklaşık **1.67× daha
+> yüksek** gelirle karşılaşır, yani "marginal, near breakeven for most hardware" bulgusu
+> **artık muhtemelen geçerli değildir**. **Dürüst davranış şudur:** paper'da Basu'nun
+> ROI'sini $0.76'ya bağlı bir tarih olarak alıntıla, güncel ekonomik durum olarak DEĞİL.
+> **Bu projenin kendi tezi için bir risktir, bir kazanç değil:** PRL'nin yükselmesi,
+> "Pearl ekonomisi marjinal" argümanını zayıflatır — ama Basu'nun asıl bulgusu
+> **φ=0'dır** (sıfır faydalı hesaplama) ve **fiyat onu değiştirmez**: 8.012 worker'ın
+> hiçbirinde inference kodu yoktu, random matrix'ler kabul edildi. **Faydalılık
+> bulgusu fiyat-bağımsızdır; yalnızca ekonomik-marjinalite bulgusu fiyat-bağımlıdır.**
+> İkisini ayırmak, alıntıyı çarpıtmamak için gereklidir.
+>
+> **★ TOKEN KİMLİĞİ TUZAĞI (neden üç farklı fiyat göründü):** "Pearl" araması en az
+> **üç farklı projeyi** döndürür — Pearl Network (PoUW L1, doğru olan), "Perle" (tamamen
+> farklı bir token, $0.12–$0.38 aralığında) ve "pearlresearch.ai" (başka bir proje).
+> İlk aramada görünen $0.0412 ve $0.3801 **yanlış projelerdir**. CryptoRank'ın token
+> açıklaması ("L1 blockchain with Proof-of-Useful-Work based on AI matrix multiplications")
+> **doğru projeyi teyit eden tek kesin sinyaldir** — sembol (PRL) üçünde de aynıdır ve
+> yalnızca sembole güvenilirse yanlış fiyat alınır. **Ders: sembol, proje kimliği için
+> yeterli bir tanımlayıcı değildir.**
 
 **KÖK v2 için anlamı (TAMGA):** Bu, projenin "Pearl φ=0" bulgusunun **bağımsız akademik
 doğrulamasıdır**. Eleştirinin özü şudur: **doğrulanabilirlik ile faydalılık arasında bir
@@ -588,7 +617,7 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 
 | # | Eksik veri | Neden ulaşılamadı | Önerilen sonraki adım |
 |---|---|---|---|
-| 1 | **io.net (IO) token fiyatı** | CoinGecko 429 rate-limit (ilk çağrıda yanlış ID `io.net`, doğrusu `io-net`) | Rate-limit sonrası `io-net` ID'si ile yeniden çağrı |
+| 1 | ~~**io.net (IO) token fiyatı**~~ | **BULUNDU (26.09.2026)** — CryptoRank: **IO $0.17**, 24h $0.1593–$0.1731, açıklama "decentralized computing network... ML applications on Solana" ile doğru proje teyit edildi. CoinGecko `io-net` ID'si de çalışıyor; önceki 429 rate-limit geçti | ~~Rate-limit sonrası yeniden çağrı~~ → **YAPILDI** |
 | 2 | **CoinGecko market-cap / 24h / YTD değişim** | 429 rate-limit | Ücretli API veya bir sonraki gün |
 | 3 | **Akash/Render/io.net ağ kullanım metrikleri** (GPU-saat, gelir, node) | İstatistik siteleri JS ile veri yüklüyor; API uç noktaları 404/bağlantı hatası | JS kaynağından gerçek API uç noktasını çıkarmak |
 | 4 | **Araştırma firması TAM forecast'ları** (Gartner/IDC/Precedence/Mordor) | 403/timeout | Farklı UA/proxy ile veya özet press release'ları |
