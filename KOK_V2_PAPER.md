@@ -843,6 +843,97 @@ return. A rule that writes a conditional exclusion for that shape is welcome and
 does not alter the argument; a rule that narrows it would not break the design,
 because the design does not sell the asset as an investment either way.
 
+### 9.2 ★ Regulatory corroboration — the proposal describes this architecture (added 27 September 2026)
+
+The preceding paragraph records the proposed rule as a development the paper
+does not rely on. Reading the rule's full text changed how much of a
+development it is, and this subsection exists because the finding is stronger
+than "a proposed rule points the same way" — **the Commission's own analysis of
+where value should come from is structurally the same as this paper's, and it
+was written without reference to this project.** It is the closest thing to
+external corroboration the Howey section has, and it came from a regulator
+rather than from an academic paper.
+
+**The passage, from §II.A.4.b.i of 91 FR 54510, verbatim:**
+
+> "once an issuer has satisfied its representations or promises to engage in
+> essential managerial efforts under the covered investment contract, the
+> associated crypto network or associated crypto application **may be
+> functional**. Once such network or application is functional, it is our view
+> that services to **secure, maintain, improve, or enhance** such a network or
+> application or its functionality, or to facilitate network effects…
+> **would not constitute essential managerial efforts**. As a result, any
+> representations or promises… to provide or continue to provide or arrange for
+> the provision of such services after the network or application is functional
+> **would not satisfy the Howey test**. In this regard, rather than deriving its
+> value from the essential managerial efforts of the issuer, the relevant crypto
+> asset **should derive its value from the programmatic operation of the
+> associated crypto network** or associated crypto application, as well as the
+> market's supply and demand dynamics with respect to such crypto asset."
+
+> "the activities of and contributions made by many parties (including, for
+> example, the issuer, other developers, **validators and/or miners**, liquidity
+> providers, users, and holders of the crypto asset) would affect the failure or
+> success of the associated crypto network or associated crypto application
+> after such network or application is functional."
+
+**Why this is the G layer and the U layer stated by someone else.** The
+proposal's distinction maps onto this paper's architecture almost term for term:
+
+| The proposal's test | KÖK's architecture (§5) |
+|---|---|
+| Services to **secure** a functional network are not managerial effort | The **G layer** — MatMul PoW — is security work whose reward comes from mining, not from an issuer's efforts |
+| Value should come from **programmatic operation**, not the issuer | The **U layer** — tasks are assigned by an ECVRF seed fixed 64 blocks back, escrow settles as pay-plus-burn, and no promoter's promise stands between a holder and the service |
+| **Validators and/or miners** are among the many parties whose contributions determine success | No single party's effort is the source of a holder's return; the chain's own FAQ (§9.1 Q1) says the security budget comes from G-layer work alone |
+
+The paper's Howey thesis (§9) is that this asset is a service voucher whose
+value is a payment for work. The Commission's proposal reaches the same shape
+of conclusion by a different route: not "this asset is utility" but "**a
+functional network's value comes from its programmatic operation**, so work on
+it is not a promoter's essential effort." **Those are compatible statements
+arrived at independently**, which is what makes this corroboration rather than
+citation — the paper did not derive its argument from the rule, and the rule
+was not written about this chain.
+
+**★ The weakening, stated with the finding rather than after it.** Three things
+stop this from being a regulatory endorsement, and concealing any of them would
+make the passage do more work than it can bear:
+
+1. **This chain cannot *use* the safe harbor.** Rule 400 codifies when a covered
+   investment contract **ceases to exist** — it presupposes one existed, and
+   provides for its termination. KÖK's thesis is that **there never was one**.
+   "It ceased" and "it never was" are different arguments; the rule confirms
+   the *logic* of the second while being unavailable to it. A chain that ran an
+   initial sale and then decentralised could invoke Rule 400 — KÖK's fair-launch
+   no-premine design has no sale to decentralise from.
+
+2. **There is no issuer to file Form TR.** Rule 400(b) requires the issuer to
+   file a transition report on EDGAR. A permissionless network with no operating
+   entity has nobody to file it, so the mechanism has no agent. **This is an
+   unresolved gap in the proposal, not a defect in KÖK** — but it means the
+   corroboration is at the level of reasoning, and cannot become a compliance
+   position for this design as the rule is drafted.
+
+3. **"Functional" is a status this design cannot yet claim.** The test turns on
+   the network being functional, and KÖK is a prototype with a measured test
+   path (§10), not a running chain. Today this is a **design argument**: the
+   architecture is built to satisfy the test, and satisfying it is something
+   only a live network can do.
+
+**What the corroboration does and does not do.** It does not make KÖK legal in
+any jurisdiction, it does not substitute for the human review the project lacks
+(§9.1 Q1, §13), and it does not change any design decision — the architecture
+was built this way before the rule existed. What it does is narrow the *kind* of
+risk the Howey section carries: the paper's reading is no longer one
+interpretation of Howey standing alone, because a regulator has published its
+own view that a functional network's programmatic operation is where value
+should come from, and this chain is built to be exactly that. The analysis in
+`arastirma/federal_register_yorum_analizi.md` carries the full internal
+treatment, including the one point a comment could honestly raise: **the
+proposal's "issuer" needs clarifying for networks that have no issuer**, which
+is theoretically favourable to this design rather than a request for an
+exception.
+
 ---
 
 ## 10. Proof, Audit and Roadmap
