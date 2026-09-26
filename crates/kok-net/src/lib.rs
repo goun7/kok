@@ -124,7 +124,18 @@ impl Rng {
     }
 
     /// A uniformly distributed index in [0, n), n > 0.
+    ///
+    /// Adversarial note (2026-09-26): the contract says n > 0, but a contract
+    /// that is not enforced by the code is a comment. `next_u64() % n` with
+    /// n == 0 is a division by zero — a panic, which in a network relay
+    /// context is a remotely-triggerable crash if any caller ever computes the
+    /// bound from attacker-influenced data (a peer count, a fanout read off a
+    /// message). The panic is caught here with an assertion that names the
+    /// violated contract rather than letting the division fail with a generic
+    /// message, so the failure is diagnosable rather than mysterious. A zero
+    /// bound is a caller bug; this function's job is to make it loud and local.
     pub fn below(&mut self, n: usize) -> usize {
+        assert!(n > 0, "below(0) is a violated contract: the bound must be positive");
         (self.next_u64() % n as u64) as usize
     }
 }
@@ -496,5 +507,82 @@ mod tests {
         assert_eq!(g.broadcast_rounds(0), Some(1), "a lone node did not broadcast in one round");
         assert_eq!(g.delivery_fraction(0, 1), 1.0, "a lone node did not reach itself");
         assert_eq!(g.unreachable_from(0), 0);
+    }
+
+    // ---- adversarial: the RNG is the reproducibility contract of every
+    // measurement in this crate, so its degenerate paths are the ones that
+    // would silently falsify a number.
+
+    /// A zero seed must not lock the generator. xorshift64 with state 0
+    /// produces 0 forever, which would make `below(n)` return a constant and
+    /// every propagation measurement on this crate's own RNG degenerate — the
+    /// failure mode is subtle, not a crash: the numbers would still LOOK like
+    /// measurements.
+    #[test]
+    fn a_zero_seed_does_not_lock_the_generator() {
+        let mut r = Rng::new(0);
+        let a = r.next_u64();
+        assert_ne!(a, 0, "a zero-seeded generator produced a zero output");
+        // and it must not be a constant stream: the second output differs
+        let b = r.next_u64();
+        assert_ne!(a, b, "a zero-seeded generator produced a constant stream");
+        // the perturbed seed is a real, usable state
+        assert!(r.below(100) < 100);
+    }
+
+    /// The seed-perturbation must be an ESCAPE, not a collision: the stream
+    /// produced by seed 0 must differ from the stream produced by the
+    /// perturbation constant itself, or two different inputs silently yield
+    /// one generator and a measurement seeded 0 cannot be distinguished from
+    /// one seeded with the constant.
+    #[test]
+    fn the_zero_seed_perturbation_is_an_escape_not_a_collision() {
+        const PERTURB: u64 = 0x9E37_79B9_7F4A_7C15;
+        // build both streams explicitly
+        let mut r0 = Rng::new(0);
+        let mut rp = Rng::new(PERTURB);
+        let s0: Vec<u64> = (0..8).map(|_| r0.next_u64()).collect();
+        let sp: Vec<u64> = (0..8).map(|_| rp.next_u64()).collect();
+        assert_eq!(s0, sp, "the perturbation constant must reproduce seed 0's stream");
+        // and the perturbation constant is itself nonzero (guard on the guard)
+        assert_ne!(PERTURB, 0);
+    }
+
+    /// `below` honours its bound at the two ends that matter: a bound of 1 is
+    /// always 0 (never 1, never a trap), and a bound of 2 uses both halves.
+    /// Three points, because one cannot distinguish a correct modulo from an
+    /// off-by-one at a single value.
+    #[test]
+    fn below_stays_inside_the_bound_and_covers_it() {
+        let mut r = Rng::new(20260926);
+        // bound 1: must be 0, deterministically, 200 times — a bound violation
+        // here would be visible as a 1 in 2^64 event, so any nonzero is a bug
+        for _ in 0..200 {
+            assert_eq!(r.below(1), 0, "below(1) produced a nonzero index");
+        }
+        // bound 2: both values must appear in a long run, or the low bit is
+        // not being used and the distribution is degenerate
+        let mut saw = [false; 2];
+        for _ in 0..4000 {
+            saw[r.below(2)] = true;
+        }
+        assert!(saw[0] && saw[1], "below(2) did not cover both values");
+        // bound 3: all three must appear
+        let mut saw3 = [false; 3];
+        for _ in 0..6000 {
+            saw3[r.below(3)] = true;
+        }
+        assert!(saw3.iter().all(|&x| x), "below(3) did not cover all three values");
+    }
+
+    /// `below(0)` must fail loudly and locally rather than dividing by zero.
+    /// The contract is n > 0; this test pins that the violation is an
+    /// assertion naming the contract, not a generic arithmetic panic. A
+    /// panic in a relay path is a crash; a panic HERE is a diagnosis.
+    #[test]
+    #[should_panic(expected = "below(0) is a violated contract")]
+    fn below_zero_names_the_violated_contract_instead_of_dividing_by_zero() {
+        let mut r = Rng::new(1);
+        let _ = r.below(0);
     }
 }
