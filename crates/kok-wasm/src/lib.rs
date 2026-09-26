@@ -90,6 +90,19 @@ pub fn verify_packet(bytes: &[u8]) -> u8 {
 ///
 /// # Safety
 /// `ptr` must point to at least `len` readable bytes, or be null with len 0.
+///
+/// **HOST CONSTRAINT — DISCOVERED BY MEASUREMENT (2026-09-26):** `ptr` must
+/// not alias the bytes the module's own runtime reserves at the start of
+/// linear memory. Under wasm32-unknown-unknown the wasm-bindgen glue that
+/// this build pulls in (for getrandom's js feature) keeps internal bookkeeping
+/// near offset 0; a host that writes its packet there and calls with `ptr=0`
+/// gets its bytes partially overwritten before the ABI reads them, and the
+/// packet is rejected — not because the packet is invalid, but because the
+/// host and the module disagree about who owns the first bytes of memory.
+/// This is a HOST convention, not a verifier property: the C ABI itself is
+/// correct for any pointer whose bytes are actually the caller's. Hosts
+/// should place packets at an offset past the module's reserved area (or use
+/// the exported allocator); offset 0 is not safe for payload data.
 #[no_mangle]
 pub extern "C" fn kok_verify_packet(ptr: *const u8, len: usize) -> u8 {
     if ptr.is_null() || len == 0 {
@@ -201,5 +214,36 @@ mod tests {
         assert_eq!(kok_verify_packet(core::ptr::null(), 0), 0, "a null pointer was not a rejection");
         // a short length must reject, not read out of bounds
         assert_eq!(kok_verify_packet(wire.as_ptr(), 5), 0, "a truncated length was not a rejection");
+    }
+
+    /// THE ABI TAKES THE CALLER'S POINTER AT FACE VALUE (2026-09-26).
+    ///
+    /// This test exists because of a real cross-target investigation. A
+    /// Node.js harness drove the WASM build and the C ABI REJECTED a packet
+    /// that native Rust ACCEPTS byte-for-byte. The packet was not the
+    /// problem and the ABI was not the problem: the harness had written its
+    /// packet at linear-memory offset 0, which the wasm-bindgen glue that
+    /// this build pulls in (via getrandom's js feature) treats as its own.
+    /// The bytes were partly overwritten before the ABI read them.
+    ///
+    /// The honest conclusion is recorded in the ABI's own doc comment: the
+    /// contract is "ptr must point at len readable bytes that are YOURS",
+    /// and offset 0 is not guaranteed to be the caller's under this build.
+    /// This test pins the native half of that contract — the ABI answers
+    /// about the bytes it is given, wherever they live, and does not assume
+    /// anything about which address it was handed:
+    #[test]
+    fn the_c_abi_answers_about_the_bytes_it_is_given_not_the_address() {
+        let (wire, _) = mine_real();
+        // the same packet at two different addresses must give one answer
+        let mut buf = vec![0u8; wire.len() * 2];
+        buf[..wire.len()].copy_from_slice(&wire);
+        buf[wire.len()..].copy_from_slice(&wire);
+        let at_front = kok_verify_packet(buf.as_ptr(), wire.len());
+        let at_offset = kok_verify_packet(unsafe { buf.as_ptr().add(wire.len()) }, wire.len());
+        assert_eq!(at_front, 1, "the packet was rejected at the front of the buffer");
+        assert_eq!(at_offset, 1, "the packet was rejected at the back of the buffer");
+        // and both agree with the safe entry point
+        assert_eq!(verify_packet(&wire), 1);
     }
 }
