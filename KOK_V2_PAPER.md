@@ -1,6 +1,6 @@
 # KÖK Network v2 — PoW L1 + Verifiable-Compute Market: The Best System Possible on Paper
 
-**Date:** 21 September 2026 (KW/Pearl/Demirel update + verified bibliography, MiCA and SEC v. Ripple) · **Status:** Design document (supersedes the v1 paper)
+**Date:** 21 September 2026 (KW/Pearl/Demirel update + verified bibliography, MiCA and SEC v. Ripple) · **legal addendum 26 September 2026 (ESMA Guidelines + MAS Case study 1, both primary sources)** · **Status:** Design document (supersedes the v1 paper)
 **Symbol:** `$KOK` · **Consensus:** GHOSTDAG + KW MatMul PoUW (demand-independent security) · **Fair launch**
 **Technical spec:** `KOK_V2_TECHNICAL_SPEC.md` (Annex A task market, Annex B difficulty, Annex C economy)
 
@@ -36,7 +36,7 @@ Three of v1's five fatal gaps were converted directly into three invariants:
   "task size = difficulty" for deterministic work (full formulation: `KOK_V2_TECHNICAL_SPEC.md`,
   Annex B).
 
-The remaining two gaps (economics, law) are addressed in §7 and §9.
+The remaining two gaps (economics, law) are addressed in §7 and §9 — and §9's securities analysis is now anchored to two regulator rulings on this exact product shape (ESMA 17 Dec 2024, MAS Case study 1), both primary, both utility-side (added 26 September 2026).
 
 ---
 
@@ -566,6 +566,74 @@ and we intend to measure it rather than to assume it."**
   and it is published here so that the promise it makes — *we will disclose the risks, in the
   regulator's own words, before we ask anyone for anything* — is verifiable now rather than
   promised later.
+
+  **★ 2026-09-26: two regulator decisions that describe KÖK before it exists (added after the
+  paper's date; see the source file for full verbatim text).** The analysis above was written
+  against MiCA's text and the Howey precedent. Two further primary-source findings close the
+  loop in a way neither of those does — because both regulators have already ruled on
+  **this specific shape** of product, in advance, and both came out on the utility side.
+
+  **(a) ESMA (17 December 2024, primary, ESMA75453128700-1323): expectation of profit is not
+  itself sufficient.** The Guidelines say, verbatim: *"An example is that of crypto-assets which
+  are designed as **utility tokens within a specific ecosystem such as tokens used to access
+  services** … if the tokens do not provide any financial returns comparable to financial
+  instruments (e.g. dividends or interest payments) and are lacking the element of pertaining to
+  a class of securities, **then the tokens should not be qualified as transferable securities.
+  This reasoning would apply even if such tokens were bought by investors with the expectation
+  of profit due to their potential appreciation in value.**"* And operationally (Guideline 62):
+  *"**such expectation of a future profit should not in itself be sufficient to qualify a
+  crypto-asset as a financial instrument**."*
+
+  **Why this matters to KÖK:** the honest version of the legal section has always carried a
+  tension — the token will trade on a secondary market, and anyone buying it there *may* hope
+  for appreciation, which is the Howey prong MiCA also weighs. ESMA's Guidelines resolve the
+  tension in KÖK's direction *by construction*: KOK confers no dividend, no interest, no claim
+  on capital or liquidation surplus, and no voting right over a company (footnote 56 names
+  exactly these absences as what makes a utility token a utility token). Protocol governance —
+  upgrades, fee parameters — is expressly *not* a share (§22: governance rights *"solely on
+  technical matters and/or operational changes"* should not confer rights equivalent to shares).
+  What remains after those exclusions is a token that buys compute. ESMA's word for that shape
+  is *not a transferable security* — and that conclusion holds even under the profit-expectation
+  reading. **The one caveat ESMA itself states (Guideline 9):** a hybrid token is assessed
+  *financial-instrument-first*; if any financial-instrument feature is present it takes
+  precedence over the utility label. So the finding is conditional on KÖK's design **staying**
+  free of those rights — the paper's fair-launch, no-premine, no-dividend posture is now also a
+  legal argument and not only a philosophical one.
+
+  **(b) MAS Digital Token Offerings guidance, Case study 1 (30 November 2018): a regulator has
+  already ruled on a compute-rental token.** Verbatim: *"Company A plans to set up a platform
+  to enable **sharing and rental of computing power** amongst the users of the platform…
+  **Token A will give token holders access rights to use Company A's platform. The token can
+  only be used to pay for renting computing power provided by other platform users.** Token A
+  will not have any other rights or functions attached to it…"* MAS's conclusion: *"**Token A
+  will not constitute capital markets products under the SFA** … Company A's offer of Token A
+  will **not be subject to any requirement under the SFA or the FAA**." It is also *"not be
+  considered a digital payment token under the PSB as it is not or is not intended to be, a
+  medium of exchange accepted by the public."*
+
+  **Why this matters to KÖK:** Token A **is** the U layer. A platform whose sole function is
+  users renting compute power from each other, paid in a token that does nothing else, is the
+  exact description of §5's task market. A regulator wrote that description, applied its own
+  law, and said *not a capital markets product*. This is stronger than an argument by analogy,
+  because the regulator itself performed the analogy. **The one structural difference, stated
+  rather than hidden:** MAS's ruling leans on Token A *"not being or intended to be a medium of
+  exchange accepted by the public,"* whereas KOK is expected to trade on secondary markets and
+  may meet that description. That would bring it under Singapore's **payment-services** regime
+  (PSA) rather than the securities regime — but the PSA, if it applies at all, regulates the
+  *services* (exchange, custody, transfer), not the issuance, so the offer conclusion stands
+  while the service operations would need licensing. MAS also warns, fairly, that its case
+  studies *"deliberately avoid labelling using terms like 'utility token'"* and that one must
+  *"look beyond labels and examine the features and characteristics of each token"* — which is
+  the same substance-over-label rule the section above already applies to MiCA Art. 3(9).
+
+  **What these two findings do and do not do.** They do not make KÖK legal in any jurisdiction;
+  they are regulator guidance and a 2018 case study, not a legal opinion on a token that does
+  not exist, and neither was issued about KÖK. What they do is narrow the open question: the
+  securities analysis no longer rests on the project's own reasoning alone, because two
+  regulators have already classified this product shape and both classified it as utility.
+  The remaining open item is unchanged and is still the honest one — **the definitive tax
+  treatment of the burn** (§6.E of the source document), documented only from secondary
+  commentary, with the phantom-income risk an unresolved argument rather than a settled rule.
 
 ---
 
