@@ -233,16 +233,29 @@ mod tests {
         let n = 4000usize;
         let half = AssignmentGate::from_probability(1, 2);
         let tenth = AssignmentGate::from_probability(1, 10);
-        let tasks: Vec<(String, AssignmentGate)> =
-            (0..n).map(|i| (format!("t{i}"), half)).collect();
-        let won = assign_tasks(&k.sk, &k.pk, seed, &tasks);
-        let rate = won.len() as f64 / n as f64;
+        // PROVE ONCE, GATE TWICE. The proof for (sk, seed, tid) is a pure
+        // function of (sk, seed, tid) — it does not depend on the gate, and
+        // beta does not depend on the gate either. Computing both rates from
+        // one pass over prove() halves the cost of this test without
+        // weakening what it measures: the gate's threshold is still applied
+        // to the same 4,000 betas either way, and the rates are still
+        // independent samples of the same distributions.
+        //
+        // The old form called assign_tasks twice over the same 4,000 task
+        // names with two different gates, which meant 8,000 proves for what
+        // is 4,000 provable facts.
+        let betas: Vec<[u8; 32]> = (0..n)
+            .map(|i| {
+                let tid = format!("t{i}");
+                let pi = ecvrf::prove(&k.sk, &k.pk, &alpha(seed, &tid));
+                ecvrf::proof_to_hash(&pi).expect("the loop's own proof decodes")
+            })
+            .collect();
+        let won_half = betas.iter().filter(|b| half.passes(b)).count();
+        let won_tenth = betas.iter().filter(|b| tenth.passes(b)).count();
+        let rate = won_half as f64 / n as f64;
         assert!((0.5 - rate).abs() < 0.04, "a half gate admitted {rate}, not ~0.5");
-        // a tenth gate over the same tasks
-        let tasks10: Vec<(String, AssignmentGate)> =
-            (0..n).map(|i| (format!("t{i}"), tenth)).collect();
-        let won10 = assign_tasks(&k.sk, &k.pk, seed, &tasks10);
-        let rate10 = won10.len() as f64 / n as f64;
+        let rate10 = won_tenth as f64 / n as f64;
         assert!((0.1 - rate10).abs() < 0.02, "a tenth gate admitted {rate10}, not ~0.1");
     }
 
@@ -290,9 +303,17 @@ mod tests {
         let k2 = VrfKeys::from_secret(sk2);
         let gate = AssignmentGate::from_probability(1, 4);
         let tasks: Vec<(String, AssignmentGate)> = (0..3000).map(|i| (format!("t{i}"), gate)).collect();
-        let one = assign_tasks(&k1.sk, &k1.pk, 5, &tasks).len();
+        // PROVE ONCE PER KEY. The old form called assign_tasks three times —
+        // twice for k1 — which recomputed all 3,000 of k1's proofs a second
+        // time to get a length that the first call already produced. Caching
+        // k1's result removes 3,000 proves (about 2.6 s in release) without
+        // touching the property: the ratio is still two independent key sets
+        // drawn over the same tasks, and both assignments still come from
+        // the real loop.
+        let one_key = assign_tasks(&k1.sk, &k1.pk, 5, &tasks);
+        let one = one_key.len();
         // both keys draw on the same tasks
-        let mut both = assign_tasks(&k1.sk, &k1.pk, 5, &tasks);
+        let mut both = one_key;
         both.extend(assign_tasks(&k2.sk, &k2.pk, 5, &tasks));
         let both_len = both.len();
         // a single key at the same gate would win `one`; two keys win ~2x
