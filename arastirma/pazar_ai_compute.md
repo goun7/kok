@@ -341,6 +341,28 @@ G/U iki-katmanlı mimarisini zorlayan **negatif sonuçların** kaynağıdır.
 > (KÖK'ün φ=0 bulgusu fiyat/atıf bağımsızdır), ama **alıntı bütünlüğü için
 > doğrulanmamış bir ad olarak kaydedilir.**
 >
+> **★ 26.09.2026 GÜNCELLEME — "Leinweber et al." muhtemelen Basu'nun KENDİ
+> hatasıdır (negatif bulgu, dürüst kaydedildi):** "Leinweber" + PoUW için
+> yapılan arama **yalnızca Basu'nun kendi makalesine** atıfta döndü —
+> **bilgisayar bilimlerinde "verifiability-usefulness tension"ı teorik olarak
+> belirleyen tanımlanabilir bir "Leinweber et al." makalesi YOKTUR.** Aramada
+> öne çıkan Leinweber'ler alakasızdır: **Derek Leinweber** (Adelaide'de
+> kuantum alan teorisi profesörü, h-index 70) ve **MIT CTP-LI "A Leinweber
+> Institute"** (kuramsal fizik merkezi). Üç bağımsız rendering (arXiv `abs`,
+> alphaxiv, ar5iv) **"Leinweber et al."** konusunda hemfikirdir — yani bu ad
+> v2'nin resmi abstract'ında duruyor — **ama ar5iv'in v2'si "Hoffmann" der.**
+>
+> **Dürüst değerlendirme:** ya (a) Basu v2'de yanlış/placeholder bir atıf adı
+> bıraktı ve ar5iv'in farklı bir rendering'i bunu farklı şekilde gösteriyor,
+> ya da (b) atıf bilinmeyen/gri literatürde doğru. **Bu proje (b)'yi
+> varsayamaz.** **Kural bu projenin kendi alıntı standardıdır: doğrulanmamış
+> bir ad, alıntılanan bulgunun PARA olmayan kısımlarında bile 'doğrulanmamış'
+> olarak kalır.** Basu'nun **φ=0 bulgusu** (8.012 worker, inference kodu yok,
+> random matrix kabulü) **bu atıftan bağımsızdır** ve kendi başına kanıtlanmış
+> kalır; yalnızca **"teorik çapa"** ifadesi ("quantify the tension identified
+> theoretically by Leinweber et al.") **çözülmemiş bir atıfla** gelir ve bu
+> şekilde etiketlenmelidir.
+>
 > **★ FİYAT HAREKETİ (gerçek taban = $0.76, güncel):** Basu **$0.76'da** ölçtü
 > (Haziran 2026, v2'ye göre). PRL o tarihten beri **$1.27'ye yükseldi**
 > (26.09.2026, CryptoRank HTTP 200): ATH **$1.67** (23 Eyl 2026), ATL $0.194
@@ -672,7 +694,7 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 | 6 | **Pearl finansman durumu (seed/VC/değerleme)** | Sitede finansman sayfası yok; sosyal medyaya ulaşılamadı | Crunchbase/PitchBook veya X duyuruları |
 | 7 | **Pearl Together AI endpoint işlem hacmi** | Açıklanmamış | Together AI dashboard / Pearl X |
 | 8 | ~~**Dikshit SoK (ePrint 2025/1814) tam özet metni**~~ | **BULUNDU (26.09.2026)** — ePrint'in kendi sayfasından **tam abstract + metadata** çekildi (HTTP 200): "PoUW is actually not as useful as expected, since the **economic and societal utility do not contribute to the security budget**" — 50+ PoUW inşası incelendi. **Tam PDF alınamadı** (`.pdf` ikili döndü, arXiv mirror'u yok) ama abstract tam metni KÖK'ün iki-katmanlı tezinin **bağımsız teyididir**. `KOK_V2_REFERENCES.md`'de tam giriş | ~~ar5iv.org üzerinden tam metin~~ → **YAPILDI (abstract seviyesinde)** |
-| 9 | **"Leinweber et al." makalesinin gerçek kimliği** | Basu özetinde geçiyor; bağımsız doğrulanamadı | Basu'nun referans listesinden çıkarmak |
+| 9 | ~~**"Leinweber et al." makalesinin gerçek kimliği**~~ | **NEGATİF BULGU (26.09.2026)** — arama yalnızca Basu'ya döndü; CS'de tanımlanabilir bir "Leinweber et al." PoUW makalesi **YOK**. Öne çıkanlar alakasız fizikçiler (Derek Leinweber, MIT CTP-LI). **Üç rendering "Leinweber et al." konusunda hemfikir** ama ar5iv v2 "Hoffmann" der — çözülmedi. Basu'nun **kendi hata/placeholder'ı** olası. **φ=0 bulgusu bu atıftan bağımsızdır**; yalnızca "teorik çapa" ifadesi çözülmemiş atıfla gelir — yukarıdaki not | ~~Basu'nun referans listesinden çıkarmak~~ → **YAPILDI (negatif olarak: alıntı 'doğrulanmamış atıf' olarak etiketlendi)** |
 | 10 | **Torres kararları hariç diğer tüm hukuk boşlukları** için bkz. `hukuk_howey_mica.md` §6 | Arama motorları kapalı | Aynı liste |
 
 ---
