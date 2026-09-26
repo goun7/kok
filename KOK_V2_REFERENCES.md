@@ -633,14 +633,24 @@ re-checked before being cited externally.
 
 1. **NO 2 independent human cryptographer reviews.** `KOK_V2_CRYPTO_BRIEF.md`
    was not sent. All of `KW_ANALIZ.md` §1–6 is a **† LLM read**. **STATUS
-   (2026-09-26): not merely unsent — Demirel DECLINED** ("it is a no for now,
-   not a maybe", after rejecting the payment terms as self-contradictory; the
-   reply and the user's decision are in `EPOSTA_DEMIREL_TESEKKUR.md` and
-   `STAGE4_HUMAN_MONEY_GAP.md`). The erteleme argument the paper had been
-   making was **circular**, so the paper no longer makes it. This is the single
-   largest remaining gap and **it is not closeable by code**: it needs a human
-   who will read for pay, and payment while anonymous is hard or impossible.
-   See the paper's FAQ (§9.1) for what this gap does and does not invalidate.
+   (2026-09-26, DIRECTION CORRECTED):** no review exists and no review was
+   requested that anyone accepted or declined — the correspondence is
+   **entirely unsent drafts**. The phrase "it is a no for now, not a maybe"
+   (which an earlier version of this gap recorded as *Demirel declining*) is
+   **the project's own draft closure language TO Demirel**, not a reply FROM
+   him — see `EPOSTA_DEMIREL_TESEKKUR.md:20`, where it appears as drafted text
+   in an unsent letter. The operational log is explicit that the reply was
+   never transmitted: `EPOSTA_SOK.md` records *"Demirel'e cevap yok (gondermek
+   yasak, kullanici 'devam et' dedi ve konuyu kapatti)"* — no reply to Demirel,
+   sending prohibited, the user closed the subject — after judging the proposed
+   fee unaffordable ("$215 is more than I make an hour, this external-review
+   business is a story"). So the accurate state is: **the human review was
+   never pursued to a point where anyone could accept or decline it.** The
+   erteleme argument the paper had been making was **circular**, so the paper no
+   longer makes it. This is the single largest remaining gap and **it is not
+   closeable by code**: it needs a human who will read for pay, and payment
+   while anonymous is hard or impossible. See the paper's FAQ (§9.1) for what
+   this gap does and does not invalidate.
 2. **FP8 low-entropy — PARTIALLY CLOSED (2026-09-20):** `fp8_noise_proto_en.py`
    now models quantization-aware noise (TV-27..TV-30). Two honest findings:
    (a) the FP8 reversal is CONFIRMED — without an absolute noise floor the

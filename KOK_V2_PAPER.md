@@ -686,7 +686,8 @@ subsidise the attack.
 **Honest limits of this answer:** PR/2 is Pass's result, and this project's
 `KW_ANALIZ.md` assessment of the underlying KW construction is an **LLM read**,
 not a human cryptographer's review — the two independent reviews this paper's
-own roadmap names as F2 have not happened (Demirel declined; §10.2). And the
+own roadmap names as F2 have not happened (the review was priced at $215/hour
+and not pursued; §9.1 and §10.2). And the
 attack-cost argument is about *economic* cost; it says nothing about a
 majority miner censoring the U layer, which is why the prototype measures
 censorship-resistance directly (TV-15..TV-20) rather than arguing it.
@@ -959,19 +960,29 @@ the live security budget is what the model predicts, and that a real buyer will
 pay real money. Those are measurements, and no amount of reading substitutes
 for them.
 
-**The priced-but-unaffordable review, stated honestly.** Demirel declined on
-2026-09-23 at $215/hour, with the fee required to be independent of future
-funding and of the findings. Both conditions are correct on their own terms
-and incompatible with this project's position: a fee that cannot also wait
-for funding cannot be paid before funding, and a review whose payment depends
-on its findings is not the independent review the paper was asking for. The
-consequence is recorded rather than softened: the external cryptographic sign-off
-the rubric demands is a real, quoted obstacle and not a task on a to-do list.
-Any plan that defers it "until after funding" is circular, and this paper no
-longer makes that argument. What remains available is what the protocol
-discipline below describes — measurement, retraction, and independent
-reimplementation by the same author class, which is evidence about the
-algebra's clarity and not a substitute for a name.
+**The priced-but-unaffordable review, stated honestly.** The engagement was
+never pursued past an unsent draft. The fee quoted for an independent review
+was **$215/hour**, with the fee required to be independent of future funding
+and of the findings. Both conditions are correct on their own terms and
+incompatible with this project's position: a fee that cannot also wait for
+funding cannot be paid before funding, and a review whose payment depends on
+its findings is not the independent review the paper was asking for. **The
+project's own closure draft read "it is a no for now, not a maybe" — but that
+line was never sent**, because the user judged the price disqualifying on the
+spot ("$215 is more than I make an hour; this external-review business is a
+story") and closed the subject. **So the accurate statement is that the review
+was priced and then not pursued, not that a reviewer accepted and then
+declined it.** The distinction matters for honesty: a refusal by the reviewer
+would be a judgement on the work; a price the project cannot meet is a
+judgement on the project's resources, which is the weaker and less flattering
+of the two, and the paper records the weaker one because it is what happened.
+The consequence is the same either way: the external cryptographic sign-off the
+rubric demands is a real, quoted obstacle and not a task on a to-do list. Any
+plan that defers it "until after funding" is circular, and this paper no longer
+makes that argument. What remains available is what the protocol discipline
+below describes — measurement, retraction, and independent reimplementation by
+the same author class, which is evidence about the algebra's clarity and not a
+substitute for a name.
 
 **The protocol, written down so it is actually followed.** While the human
 reviewers are unreachable:

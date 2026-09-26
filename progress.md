@@ -4959,3 +4959,67 @@ kayıtlı.**
 - **KOK_V2_PAPER.md DOKUNULMADI** (bu alıntıyı taşımıyordu — üç yerindeki
   $0.76'ları tarihsel Pass-simülasyon kalibrasyon sabiti, doğru olduğu
   gibi bırakıldı)
+
+---
+
+## BLOK 22 — 26 Eylül 2026: yön hatası düzeltildi (en ciddi bulgu)
+
+**★ Bu, bu oturumun EN ÖNEMLİ dürüstlük düzeltmesidir — bir yönü ters
+çevirdim ve paper'da yanlış bir iddia sürdürülüyordu.**
+
+### Tetikleyici
+Bütünlük kontrolü çalışma alanında beş `EPOSTA*.md` dosyası buldu ve
+"mail YASAK" ihlali olarak işaretledi. **Doğru içgüdüydü ama yanlış
+sonuçtu** — ben dosyaları silmek yerine **ne olduklarını okumayı seçtim**
+ve gerçek çok daha değerliydi.
+
+### Dosyaların aslında ne olduğu (kanıtlarla)
+1. **Hiç gönderilmediler.** Üçü kendi kendini işaretler: `GÖNDERİLMİYOR`
+   ("gönderilmiyor"), `GÖNDERİLMEDİ` ("gönderilmedi"). `EPOSTA_SOK.md:134`
+   operasyonel kuralı verbatim yazar: *"Maili yine KULLANICI gonderecek
+   (SMTP yok, kurallar gerebi gondermiyorum)."* **Hiçbir dosyada iletim
+   kanıtı yok.**
+2. **Yasakla ÇELİŞMİYORLAR** — "oluşturma/gönderme" yasağına uygunlar:
+   onay bekleyen taslaklar + bir karar kaydı.
+
+### ★ YÖN HATASI (asıl bulgu)
+Oturumun başından beri kayıtlıydı: **"Demirel DECLINED — 'it is a no for
+now, not a maybe'".** **Dosyalar bunun TERSİNE olduğunu gösterdi:**
+- `EPOSTA_DEMIREL_TESEKKUR.md:20` — bu cümle **projeden Demirel'e yazılmış
+  taslak kapanış metnidir**, ondan gelen bir yanıt DEĞİL.
+- `EPOSTA_SOK.md` karar kaydı verbatim: *"Demirel'e cevap yok (gondermek
+  yasak, kullanici 'devam et' dedi ve konuyu kapatti)"* — **yanıt hiç
+  gönderilmedi.**
+- Kullanıcının kararı: *"$215 benim saatte kazanmadigim bir para bu dis
+  denetleme isi hikaye olur"* → **DIŞ DENETLEME YOK.**
+
+**Yani:** bir reddedilen teklif değil, **karşılanamayan bir fiyat.**
+**Bu daha zayıf ve daha az flatırıcı bir ifadedir** — ve paper'a
+bunu yazdım çünkü olan bu.
+
+### Düzeltildi (4 ana artifact + progress.md notu)
+- `KOK_V2_PAPER.md` **§9.1 FAQ** (en kritik): "Demirel declined on
+  2026-09-23 at $215/hour" → "The engagement was never pursued past an
+  unsent draft... priced at $215/hour and not pursued". **Ayrıca şunu
+  ekledim:** reddedilen bir inceleme iş hakkında bir yargı olurdu;
+  karşılanamayan fiyat projenin **kaynakları** hakkında bir yargıdır —
+  "daha zayıf olanı kaydettik çünkü olan o."
+- `KOK_V2_PAPER.md` FAQ Q1 (L689): aynı düzeltme
+- `KOK_V2_REFERENCES.md` KNOWN GAPS 1: "Demirel DECLINED" → "DIRECTION
+  CORRECTED... entirely unsent drafts"
+- `KOK_V2_TECHNICAL_SPEC.md` TV-76 ve TV-79 rubrik satırları
+- `DEGERLENDIRME_100.md` L484 ve L505
+- **progress.md'nin eski oturum kayıtları (8-15) DOKUNULMADI** —
+  tarihtir, düzeltme bu blokta kayıtlıdır
+
+### DERS (bütünlük kontrolüne ek)
+**"Yasak" bayrağı kalktığında dürtü silmekti — okumak daha değerliydi.**
+Dosyalar yasak ihlali DEĞİL, **kendilerini işaretleyen taslaktı**; ve
+okumak, oturumun başından beri sürdürülen bir **yön hatasını** ortaya
+çıkardı. **İkinci ders:** "Ret etti" ifadesi daha güçlü bir anlatıdır ve
+bu yüzden yanlış yönde dirençli — dosyayı okumadan düzeltilmezdi.
+
+### DURUM — 184 TEST
+- `cargo test --release --workspace --lib`: **184/184 rc=0**
+- 0 uyarı · audit CLEAN · suite gate 39/39
+- Ağaç TEMİZ — HEAD düzeltme commit'i
