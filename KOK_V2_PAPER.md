@@ -1422,6 +1422,8 @@ F0b (real AIR)         ─┘
 - **The kill criterion is a date, not a feeling.** If F3a ends with zero real paying tasks, the
   honest move is the specified pure-PoW fallback (§A.9) — a designed-for outcome, not a defeat.
 
+## 12. Differentiation (against the 2026 state of the art)
+
 > **2026-09-19 update:** Pearl is now compared **from the primary source** (INT whitepaper +
 > live site + GitHub; see `PEARL_DOCS_ANALIZ.md`). The previous table relied only on Basu's
 > measurement; now Pearl's own documents are also available.
