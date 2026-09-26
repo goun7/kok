@@ -704,6 +704,62 @@ mod tests {
         assert!(!g.past(3).contains(&998), "the absent parent appeared in the past");
     }
 
+    /// THE PAY SET CANNOT LOSE A BLOCK TO A MISSING is_blue ENTRY (2026-09-26).
+    ///
+    /// `pay_set` filters the mergeset through `is_blue.get(b).unwrap_or(&false)`,
+    /// so a mergeset member with no is_blue record is silently treated as RED
+    /// and never paid. Today `add` writes is_blue for every member, so no
+    /// member can be missing the entry — but this is exactly the shape bug
+    /// class 7 exposed: one site tolerates an absent record by defaulting it,
+    /// and the default (red) costs the block its reward. If a future change
+    /// ever inserts a mergeset member without its is_blue entry, the honest
+    /// miner of that block loses the reward silently. This test builds the
+    /// well-formed DAG and asserts every mergeset member carries an is_blue
+    /// entry, so the two maps stay in step and the default never fires.
+    /// PHANTOM PARENTS DO NOT EAT A PAY SLOT (2026-09-26).
+    ///
+    /// pay_set marks every block in a paid block's PAST as paid, so a block
+    /// is paid once. Before the phantom-ancestor fix, an absent parent sat in
+    /// the computed past of every block citing it; if that phantom had ever
+    /// been inserted into `paid`, a block that never existed would have
+    /// consumed a real pay slot and the honest miner would have lost the
+    /// reward without any error being raised. This test asserts the property
+    /// directly: on a DAG where a block cites an absent parent, no output of
+    /// any pay_set is absent from the DAG, and the absent parent is never in
+    /// any pay set nor in any `paid` set the walk builds.
+    #[test]
+    fn phantom_parents_do_not_eat_a_pay_slot() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        // 3 cites 2 (present) and 997 (absent)
+        g.add(Block { bid: 3, parents: vec![2, 997] });
+        for bid in g.blocks.keys() {
+            for paid in g.pay_set(*bid) {
+                assert!(g.blocks.contains_key(&paid), "pay_set of {} returned a block not in the DAG: {}", bid, paid);
+            }
+        }
+        // the absent parent must not appear in the past the pay walk uses,
+        // which is what makes the slot safe
+        assert!(!g.past(3).contains(&997), "the absent parent is in the past the pay set walks");
+        assert!(!g.pay_set(3).contains(&997), "the absent parent is in a pay set");
+    }
+
+    #[test]
+    fn every_mergeset_member_has_an_is_blue_entry() {
+        let mut g = Ghostdag::new(18);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(31);
+        mine_chain(&mut g, 60, &mut rng, &["A", "B", "C"], 0.25);
+        let mut checked = 0usize;
+        for (bid, ms) in &g.mergesets {
+            for m in ms {
+                assert!(g.is_blue.contains_key(m), "mergeset member {} of block {} has no is_blue entry", m, bid);
+                checked += 1;
+            }
+        }
+        assert!(checked > 0, "the DAG produced no mergeset members, so the invariant was not exercised");
+    }
+
     /// future() is reflexively consistent with past(): if X is in past(Y)
     /// then Y is in future(X). This is the symmetry the anticone definition
     /// leans on, so it is tested directly rather than assumed.
