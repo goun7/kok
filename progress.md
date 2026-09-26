@@ -4113,7 +4113,64 @@ ihlal edilirdi. `checked_add` + overflow→u64::MAX ile düzeltildi; test
 - `cargo build --release --workspace`: **0 hata, 0 uyarı**
 - `cargo test --release --workspace`: **169/169 rc=0**
 
+## 11. BLOK — PARANIN KAYNAĞI: 3 GERÇEK BUG DAHA (172 TEST)
+
+### 40. **Emisyon caller-controlled idi — bir BlockDAG'de yanlış kaynak** (`25ef7cc`)
+`reward_split(bid, height)` — **`bid` ALINIYOR ama KULLANILMIYORDU**, `height`
+ise bir **parametre**. Bir zincir şeklindeki coin'de bu parametre en azından
+belirsizdir; **bir BlockDAG'de hem güvensiz hem de ANLAMSIZDIR**:
+- herhangi bir caller (cüzdan, indexer, RPC) istediği height geçip hiç
+  hareket etmemiş bir blok için istediği emisyon eğrisini alabilirdi
+- paralel bloklar aynı duvar-saati anında **meşru olarak farklı derinlikte**
+  olur, yani parametre tek bir doğru değere sahip değildir
+
+**DÜZELTME:** `reward_split(bid)` — height artık `blue_score`'den türetiliyor
+(tüm dürüst düğümlerin uzlaştığı tek nicelik). Bilinmeyen blok genesis-era
+eğrisi alır, asla panic etmez. Tüm call site'lar güncellendi (consensus,
+probes, ghostdag testleri).
+
+**İlk yeniden yazım BAŞARISIZ OLDU — ve başarısızlık bulgunun parçası:**
+630k derinlikte bir zincir kurmuştum, test **OOM-killed** oldu. İki hata:
+1. `past_cache` her blok için **full ancestor BTreeSet** memoize ediyor →
+   **O(N²) bellek**. ÖLÇÜLDÜ: 12,000 blok = **1.48 GB**, marginal hız
+   düşüyor. Tail'in ihtiyaç duyduğu ~10.3M blok **yavaş değil, ERİŞİLEMEZ**
+   (terabaytlar).
+2. **Aritmetik hatam:** eğri her interval'de 1 KOK düşürür, yani
+   `630004/210000 = 3` → `50-3 = 47`, **1 değil**. Floor'a ulaşmak için
+   `R_0 × 210_000 = 10,290,000` gerek.
+
+**DÜZELTME:** `#[cfg(test)] set_depth_for_test` eklendi — doc comment'u
+kuadratik bellek limitini **ÖLÇÜLMÜŞ prototip kısıtı** olarak kaydeder ve
+`reward_split`'in değeri normal public path'inden okuduğunu belirtir. Test
+eğriyi **3 noktada** pinned: 1 interval → 49 (lineer şekil), R_0 interval →
+**floor 1**, 100× geç → hâlâ 1 (tail binds). Test artık **0.12 s / 203 MB**.
+
+### 41. **Pay set: absent record = kayıp ödme** (`345e0b8`)
+`pay_set` mergeset'i `is_blue.get(b).unwrap_or(&false)` ile filtreliyordu —
+is_blue kaydı OLMAYAN üye sessizce **RED** sayılıp ödenmiyordu. Bugün `add()`
+her üye için is_blue yazıyor (default ateşlenmez), **ama bu bug sınıfı 7'nin
+tam şekli**: tolerant front + pahalı default. Test artık 60-blokluk
+fork-heavy DAG'da **her mergeset üyesinin is_blue kaydı olduğunu** assert
+ediyor (checked > 0), böylece iki map birlikte adım atmak zorunda.
+
+Ayrıca **phantom parent'lar pay slot yemez** testi: block 3 present parent 2
++ absent parent 997 cites; her `pay_set` çıktısı DAG'de VAR, 997 `past(3)`'te
+YOK, hiçbir pay_set'te yok.
+
+### DURUM — 172 TEST
+- `cargo build --release --workspace`: **0 hata, 0 uyarı**
+- `cargo test --release --workspace`: **172/172 rc=0** (ghostdag 23, 0.12s)
+- 4 commit: `7bed3b5` → `25fcc30` → `345e0b8` → `25ef7cc`
+
 ### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT** (insan kriptograf —
+   mail YASAK + Demirel zaten ret etti; canlı φ>0 — F3b inşası YASAK; gerçek
+   güvenlik bütçesi — finanse değil). Bu oturumun araç seti **DIŞINDA** ve
+   öyle kalacak. Kalan ~8 kâğıt işin **pazar kısmı bu blokta birincil veriyle
+   beslendi** (§9.1)
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
+4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
 1. 58-Mahrem Noir circuit — **ZATEN TAMAMLANDI** (`bcb17cd`, §33 öncesi kayıt)
 2. v2 makale ~21 nokta — **kalan ~15'i EMPİRİK** (insan kriptograf, canlı
    φ>0, güvenlik bütçesi) — bu oturumun araç seti dışında; kalan ~8 kâğıt
