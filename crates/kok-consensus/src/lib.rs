@@ -190,8 +190,8 @@ mod tests {
         add_block(&mut without_u, &ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xBB; 32]));
 
         assert_eq!(
-            with_u.reward_split(5, 1),
-            without_u.reward_split(5, 1),
+            with_u.reward_split(5),
+            without_u.reward_split(5),
             "a bundled U proof changed the reward split"
         );
     }

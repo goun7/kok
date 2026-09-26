@@ -91,6 +91,28 @@ impl Ghostdag {
         }
     }
 
+    /// A TEST-ONLY DEPTH SETTER, and why it exists rather than a deep chain.
+    ///
+    /// The honest way to test the emission curve at depth D is to build a
+    /// chain D blocks deep. This prototype cannot: `past_cache` memoizes the
+    /// full ancestor BTreeSet per block, so a linear chain of N blocks costs
+    /// O(N^2) memory — measured, not assumed: 12,000 blocks reach 1.48 GB and
+    /// the marginal rate is falling, so the ~10.3 million blocks the tail
+    /// floor needs is not a slow test, it is an unreachable one on any real
+    /// machine. That quadratic cost is a known prototype limit, recorded at
+    /// the top of this module.
+    ///
+    /// Rather than fake the emission or assert against a number the curve
+    /// never actually reaches, this sets the block's blue_score directly. It
+    /// is cfg(test)-gated, it touches only blue_score, and it is named for
+    /// what it is so no production caller can reach it. The emission then
+    /// reads the value through the same public path reward_split uses, so
+    /// what is measured is the real formula on a real (if small) DAG.
+    #[cfg(test)]
+    pub fn set_depth_for_test(&mut self, bid: Bid, score: u64) {
+        self.blue_score.insert(bid, score);
+    }
+
     /// All blocks in the past of `bid` (transitive parents, excluding self).
     pub fn past(&self, bid: Bid) -> BTreeSet<Bid> {
         if let Some(hit) = self.past_cache.get(&bid) {
@@ -430,8 +452,25 @@ impl Ghostdag {
     /// never a reason to be in a pay set — it earns its fee from escrow, not
     /// from the block reward. This function deliberately takes no U argument,
     /// because there is no U input that can change the answer.
-    pub fn reward_split(&self, bid: Bid, height: u64) -> RewardSplit {
+    ///
+    /// THE HEIGHT COMES FROM THE BLOCK, NOT FROM THE CALLER (2026-09-26).
+    /// This is a BlockDAG, not a chain: the height governing emission is the
+    /// block's own depth in its selected-parent chain (its blue_score), not
+    /// an integer a caller supplies. The earlier signature took `height` as a
+    /// parameter and never used `bid` — which meant any caller (a wallet, an
+    /// indexer, an RPC handler) could pass any height it liked and get any
+    /// emission curve it wanted for a block that never moved. On a
+    /// chain-shaped coin that parameter is at least unambiguous; on a DAG it
+    /// is not, because parallel blocks at the same wall-clock moment
+    /// legitimately have different depths. Deriving it from the block makes
+    /// the emission a function of the DAG's own state, which is the only
+    /// thing all honest nodes agree on.
+    pub fn reward_split(&self, bid: Bid) -> RewardSplit {
         let pay = self.pay_set(bid);
+        // the depth is the block's blue_score, or 0 for a block the DAG does
+        // not know — an unknown block gets the genesis-era curve, never a
+        // caller-chosen one
+        let height = self.blue_score.get(&bid).copied().unwrap_or(0);
         let total = R_0.saturating_sub(height / EMISSION_HALVING_INTERVAL);
         let total = total.max(TAIL_EMISSION);
         let treasury = total * TREASURY_BPS / 10_000;
@@ -570,16 +609,22 @@ mod tests {
     }
 
     /// The reward split must conserve emission: treasury + miners == total,
-    /// always, or the monetary policy silently inflates.
+    /// always, or the monetary policy silently inflates. Checked on a chain
+    /// of blocks at increasing depth, since the height is now DERIVED from
+    /// the block's blue_score rather than passed in.
     #[test]
     fn reward_split_conserves_emission() {
         let mut g = Ghostdag::new(18);
+        let mut chain = vec![1u64];
         g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
-        for height in 0..5 {
-            let r = g.reward_split(2, height);
-            assert_eq!(r.treasury + r.miners, r.total, "emission not conserved at height {}", height);
-            assert!(r.miners > 0, "the pay set must receive something");
+        for b in 2..8 {
+            g.add(Block { bid: b, parents: vec![chain.last().copied().unwrap()] });
+            chain.push(b);
+        }
+        for &b in &chain {
+            let r = g.reward_split(b);
+            assert_eq!(r.treasury + r.miners, r.total, "emission not conserved for block {}", b);
+            assert!(r.miners > 0, "the pay set must receive something, block {}", b);
         }
     }
 
@@ -589,21 +634,59 @@ mod tests {
     fn treasury_is_five_percent_of_emission() {
         let mut g = Ghostdag::new(18);
         g.add(Block { bid: 1, parents: vec![] });
-        let r = g.reward_split(1, 0);
+        let r = g.reward_split(1);
         assert_eq!(r.total, 50);
         assert_eq!(r.treasury, 2, "5% of 50 KOK is 2 KOK");
         assert_eq!(r.miners, 48);
     }
 
     /// Tail emission must never reach zero (spec: "decreasing but never
-    /// zero"). At a height far beyond the decay interval the floor binds.
+    /// zero"). The curve subtracts 1 KOK per halving interval, so reaching
+    /// the floor needs a depth of R_0 * EMISSION_HALVING_INTERVAL.
+    ///
+    /// WHY THE DEPTH IS SET RATHER THAN MINED: building that chain is not
+    /// slow, it is unreachable — past_cache memoizes the full ancestor set
+    /// per block, so a linear chain costs O(N^2) memory. Measured growth:
+    /// 12,000 blocks reach 1.48 GB. The ~10.29 million blocks the tail
+    /// needs would be terabytes. So the depth is set through the test-only
+    /// setter and the emission reads it through the same public path
+    /// reward_split uses — the formula under test is the real one, and the
+    /// prototype's memory limit is recorded rather than hidden.
     #[test]
     fn tail_emission_never_hits_zero() {
         let mut g = Ghostdag::new(18);
         g.add(Block { bid: 1, parents: vec![] });
-        let r = g.reward_split(1, 210_000 * 100);
-        assert!(r.total >= 1, "emission hit zero; the tail floor failed");
-        assert_eq!(r.total, 1);
+        // mid-curve: one interval consumed, 49 to go — the curve is linear
+        // in the interval count, so this pins the shape
+        g.set_depth_for_test(1, EMISSION_HALVING_INTERVAL);
+        assert_eq!(g.reward_split(1).total, 49, "the curve did not decay by one per interval");
+        // exactly at the floor: R_0 intervals consumed
+        g.set_depth_for_test(1, R_0 * EMISSION_HALVING_INTERVAL);
+        assert_eq!(g.reward_split(1).total, 1, "emission hit zero; the tail floor failed");
+        // far beyond the floor: the tail binds and the answer stays 1
+        g.set_depth_for_test(1, R_0 * EMISSION_HALVING_INTERVAL * 100);
+        assert_eq!(g.reward_split(1).total, 1, "the tail floor did not bind past the decay");
+    }
+
+    /// THE EMISSION IS A FUNCTION OF THE DAG, NOT OF THE CALLER (2026-09-26).
+    /// The height that governs emission is now derived from the block's own
+    /// blue_score. Two consequences this test pins: (1) asking about a block
+    /// twice gives the same answer, because the DAG is the only input; (2) a
+    /// block the DAG does not know gets the genesis-era curve — not a
+    /// caller-chosen one, and not a panic.
+    #[test]
+    fn the_emission_is_derived_from_the_block_not_the_caller() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        let a = g.reward_split(2);
+        let b = g.reward_split(2);
+        assert_eq!(a, b, "the same block gave two different reward splits");
+        // block 2's blue_score is 2, so its emission follows from depth 2
+        assert_eq!(a.total, 50, "depth 2 is still in the first halving interval");
+        // an unknown block gets the genesis-era curve, never a panic
+        let unknown = g.reward_split(999);
+        assert_eq!(unknown.total, 50, "an unknown block did not get the genesis curve");
     }
 
     /// THE U-AYER ZERO-WEIGHT CONSTRAINT, at the consensus boundary: the
@@ -617,8 +700,8 @@ mod tests {
         g.add(Block { bid: 2, parents: vec![1] });
         // the signature has no U parameter: the only way to change the split
         // is height, and a U task cannot change height either
-        let a = g.reward_split(2, 7);
-        let b = g.reward_split(2, 7);
+        let a = g.reward_split(2);
+        let b = g.reward_split(2);
         assert_eq!(a, b);
         assert_eq!(a.pay_set_size, b.pay_set_size);
     }

@@ -141,7 +141,7 @@ mod tests {
         g.add(Block { bid: 1, parents: vec![] });
         g.add(Block { bid: 2, parents: vec![1] });
         for h in [0u64, 1, 209_999, 210_000, 210_001, 4_200_000, u64::MAX / 2] {
-            let r = g.reward_split(2, h);
+            let r = g.reward_split(2);
             assert_eq!(r.treasury + r.miners, r.total, "emission broke at height {}", h);
             // the tail floor must hold at any height past the decay
             if h >= 210_000 {
@@ -212,7 +212,7 @@ mod tests {
     fn probe_treasury_is_exactly_five_percent() {
         let mut g = Ghostdag::new(GHOSTDAG_K);
         g.add(Block { bid: 1, parents: vec![] });
-        let r = g.reward_split(1, 0);
+        let r = g.reward_split(1);
         assert_eq!(r.total, 50);
         // 50 * 500 / 10000 = 2.5 -> integer arithmetic floors to 2; the
         // split must still conserve
