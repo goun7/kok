@@ -3955,7 +3955,121 @@ canlılık, doğruluk değil)" görevinden:
 - `cargo test --release --workspace`: **165/165 rc=0**
 - `audit_turkish_en.py`: **CLEAN**; `suite_gate_en.py`: **39/39**
 
+## 9. BLOK — WASM GERÇEKTEN KOŞTU + 2026 AKADEMİK MAKALELER + PAZAR GÜNCELLEME (26 Eylül 2026)
+
+### 35. **WASM LIGHT CLIENT: DERLENDİ → KOŞTU** (`e7a0ef7`)
+Önceki blokta "derlendi ama çalışmadı" F3+ olarak kayıtlıydı. **BU BLOKTA KOŞTU.**
+Node.js v26, wasm32-unknown-unknown modülünü instantiate etti ve C ABI'ı
+**çağırdı** — 5 check:
+- `verify(0,0)` → **0** (null reject, trap yok)
+- `verify(buf5,5)` → **0** (kısa packet reject)
+- `verify(buf5,2^32-1)` → **0** (dev length reject — bounds check tam)
+- **honest packet → 1 ACCEPT** (Rust'ın kabul ettiğiyle BAYT BAYT aynı)
+- forged value → **0** REJECT
+
+**Honest accept, negatif testlerin boşlukta geçmesini engelleyen KONTROLDÜR:**
+herşeyi reddeden bir boundary üç adversarial testi de VAKUO geçer. Accept,
+verifier'ın CANLI olduğunu kanıtlar.
+
+**GERÇEK BULGU — cross-target discrepancy:** İlk denemede honest packet
+WASM'da REDDEDİLDİ, native Rust'ta AYNI byte'lar için ACCEPT geldi. Bu
+flaky harness DEĞİL (hex native'de replay edilerek kanıtlandı). Kök neden:
+**linear-memory offset 0**. Bu build getrandom'ın js feature'ı üzerinden
+wasm-bindgen glue çekiyor ve o glue offset 0'ı kendi bookkeeping alanı
+sayıyor — byte'lar ABI okumadan önce kısmen OVERWRITTEN ediliyordu.
+Offset 8'e yazınca aynı packet ACCEPT etti.
+
+**DÜRÜST HÜKÜM:** ne verifier ne ABI hatalı — **sözleşme yazılı değildi.**
+ABI kendisine verilen byte'lara bakar nerede olurlarsa olsun; sözleşme
+"bu byte'lar ÇAĞIRANA ait olmalı" demeli, offset 0 bu build altında
+garanti DEĞİL. Bu kısıtlama artık:
+1. `kok_verify_packet`'in kendi doc comment'inde (host yazarın okuyacağı yer)
+2. `verify_under_node.mjs`'in başında aynı uyarıyla
+yazılı — gelecek host implementer'i reddedilerek yeniden keşfetmesin.
+
+**Test ile PIN'LENDİ:** packet'i iki katmanlı buffer'ın hem önüne hem
+arkasına koyup her ikisinde de ACCEPT istiyor (adrese bağımlı verifier
+başarısız olur). İlk versiyon arka yarıyı sıfır bıraktığı için başarısız
+oldu — utanç verici ama doğru: ABI tüm-sıfır packet'i doğru bir şekilde
+reddediyordu. Düzeltme her iki yarıyı da doldurmak.
+
+**Kalıcı harness:** `verify_under_node.mjs` + `dump_packet.rs` örneği
+known-good packet'i regenere edip tekrar oynatıyor — cross-target kontrol
+tek seferlik session artifact'i değil, tekrarlanabilir.
+
+### 36. **2026 AKADEMİK MAKALELER** (`8ddd668`)
+Kullanıcının "güncel tarihli akademik makaleler" talebi. İki YENİ Haziran
+2026 makalesi bulundu, her ikisi de KÖK teziyle doğrudan ilgili, ikisi de
+daha önceki referans sette YOKTU:
+- **Pass — "The Economics of Proof-of-Useful-Work" (arXiv 2606.06700,
+  4 Haziran 2026, Rafael Pass, cs.GT+cs.CR+econ.TH):** PoUW'un
+  competitive-equilibrium modeli. **KÖK §4.5'in argümanının FORMAL
+  versiyonu:** "paid to attack" eleştirisini resmen çürütüyor —
+  *"Contrary to the common strawman argument, PoUW does not make attacks
+  economically cheap: once equilibrium prices are taken into account, the
+  economic cost of a majority attack remains tied to the block reward."*
+  KÖK iki-katman tasarımdan, Pass equilibrium fiyattan aynı sonuca
+  varıyor — **iki bağımsız argüman hemfikir**, tek başına daha güçlü.
+  Ayrıca Duplexia'da block reward'ların inference fiyatlarına rebate
+  olduğu ve blokzincir olmadan ortaya çıkmayacak socially useful
+  computation ürettiği (verbatim alıntı).
+- **Barbaccia, Vhaduri, Dibbo — "Quantum-Resilient Decentralized AI
+  Economies" (arXiv 2606.24942, 22 Haziran 2026):** three-layer mimari
+  (compute/validation/economic coordination = KÖK'ün G/PVI/ledger'ı),
+  (θ_c, θ_w, W) closed-loop token economy, sufficient-stake condition.
+  **Kuantum argümanı KÖK'e doğrudan:** Grover hash'lere sadece kuadratik
+  hızlanma verir ama ML-native linear algebra'yı hızlandırmaz — KÖK'ün
+  G layer'ı tam olarak ML-native linear algebra olduğu için useful work,
+  yerini aldığı hashing'den quantum-açısından DAHA ZOR kısaltılır.
+
+**ÖLÇÜMÜŞ DÜZELTME (Kaspa k=18):** §6b "k=18 = minimal k bounding anticone
+probability" diyordu. Bu oturumun ölçümü **bunu yalanlamadı — MODEL
+farklılığını netleştirdi**: Kaspa'nın hesabı network delay band'ından,
+KÖK'ün simülatörünün delay modeli yok. İki rakam farklı soruları
+yanıtlıyor; k=18 ~2.25x headroom ile miras alınır, tight bound değil.
+**Aynı dürüst disiplin: tek noktadan şekil iddiası DEĞİL, model
+farkını açıklama.**
+
+### 37. **PAZAR VERİLERİ BİRİNCİL KAYNAKTAN** (`61b0fb3` + `2dcba0e`)
+- **Nvidia çeyrek serisi** kendi newsroom bültenlerinden doğrulandı
+  (öncesi Wikipedia özetiydi): Q1 FY26 44.062B → Q2 46.743B → Q3 57.006B
+  → **Q4/FY2026 68.1B / 215.9B (+65%)** → **Q1 FY27 81.6B** → **Q2 FY27
+  96.2B, Data Center 89.0B (+117% Y/Y)**. Her satır bülten tarihi + URL.
+  **Yeni bulgu:** gelirin **%92.5'i** artık Data Center; H20 Çin ihracat
+  kontrolü $4.5B zarar + $2.5B sevk edilemedi → **permissionless compute
+  kısıtlı tedarik alternatifi** argümanı için birincil kanıt.
+- **Akash Q1 2026 raporu (birincil):** $5M all-time compute spend;
+  **BME mainnet 23 Mart 2026** (ödeme→AKT al→burn→ACT mint→settle —
+  KÖK'ün burn modeliyle aynı); Homenode (RTX 4090/5090); AkashML günde
+  1.7B token. **AEP-23'ün açık itirafı:** "tenants pay in USDC, demand
+  for AKT weakens. Usage grew while AKT's role as the network's core
+  economic unit eroded." — KÖK'ün yerel-token-ile-ödeme yaklaşımı bu
+  piyasa dersinden.
+- **ÖLÇÜM ETİKETİ UYARISI:** Akash'in "$5M compute spend" ile Messari'nin
+  "$253K GPU lease revenue" ~20x farklı — **kapsamdan, sağlıksız veriden
+  değil**. Bu KÖK'ün kendi 500-per-mille bug sınıfının (sınıf 4) pazar
+  verilerinde karşılığı; paper hangi etiketi kullandığını yazmalı.
+- **Bitcoin:** 3. oklama (851.3 EH/s) → varyans artık **3 noktayla**
+  pinned (857.9/957.9/851.3, ~%12). Fiyat $84,038.62, blok 968,620
+  (+147 ≈ 1 gün).
+- **Cambridge CBECI DOLDURULDU (öncesi BULUNAMADI):** ccaf.io bizzat
+  denendi (sıkıştırılmış binary, metin çıkmadı); **üç bağımsız ikincil
+  kaynakta 138.2 TWh/yıl (29 Temmuz 2026)**. **Metodoloji aralığı
+  KÖK tezi için kritik:** Cambridge 138.2 vs Digiconomist 204.4 TWh =
+  ~%48 fark → "Bitcoin ne kadar enerji harcıyor" bir **sayı değil
+  aralık**; paper her enerji iddiasında kaynak + metodoloji açıklamalı.
+
+### DURUM — 166 TEST, HEPSİ YEŞİL
+- `cargo build --release --workspace`: **0 hata, 0 uyarı**
+- `cargo test --release --workspace`: **166/166 rc=0**
+- Node.js WASM harness: **5/5 check ok**
+- `audit_turkish_en.py`: **CLEAN**; `suite_gate_en.py`: **39/39**
+
 ### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit doğrulama (orkestratör görevi — context lazım)
+2. v2 makale ~21 kalan nokta (orkestratör görevi — liste lazım)
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
+4. Skor **83.65** (dokunma)### KALAN (sirali, güncel)
 1. 58-Mahrem Noir circuit doğrulama (orkestratör görevi)
 2. v2 makale ~21 kalan nokta (orkestratör görevi)
 3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
