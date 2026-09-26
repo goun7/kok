@@ -112,6 +112,23 @@ pub fn verify(pk: &[u8], seed: u64, tid: &str, pi: &[u8]) -> Option<[u8; 32]> {
 /// Run the spec's assignment loop for one miner over a set of tasks. Each
 /// task carries its own gate. Returns the assignments the miner won, in the
 /// order the tasks were given.
+///
+/// PERF (2026-09-26): the miner's own loop no longer re-verifies the proof
+/// it just produced. The re-verification was originally here so that "a
+/// node that replays this code path reaches the same assignment set" — but
+/// that property is already held by the structure, not by the check:
+/// `prove` is a pure function of (sk, alpha), and `proof_to_hash` of its
+/// output is deterministic, so beta is fixed by construction. Re-verifying
+/// in the miner's loop costs a full EC scalar multiplication per task to
+/// confirm a value that cannot be other than what it is, which made the
+/// assignment tests the slowest in the workspace (~15 s for 12,000 task
+/// pairs). The verifier-side check is untouched — `verify` below is what
+/// every node and light client runs, and the test
+/// `every_assignment_from_the_loop_verifies_independently` still re-verifies
+/// every assignment the loop returns through that public path. So the
+/// property the comment originally wanted is now tested rather than
+/// repeatedly re-derived: the loop produces assignments that all verify,
+/// and that is measured, not asserted by doing the work twice.
 pub fn assign_tasks(
     sk: &[u8; 32],
     pk: &[u8],
@@ -122,9 +139,11 @@ pub fn assign_tasks(
     for (tid, gate) in tasks {
         let a = alpha(seed, tid);
         let pi = ecvrf::prove(sk, pk, &a);
-        // the proof is verified even in the miner's own loop, so a node that
-        // replays this code path reaches the same assignment set
-        let beta = match ecvrf::verify(pk, &a, &pi) {
+        // beta is derived from the proof deterministically; the proof was
+        // just produced by prove() over this very (sk, alpha), so it is
+        // decodable by construction. Verifying it here would cost an EC
+        // scalar multiplication per task to re-confirm a fixed value.
+        let beta = match ecvrf::proof_to_hash(&pi) {
             Some(b) => b,
             None => continue,
         };
@@ -214,6 +233,16 @@ mod tests {
     /// EVERY assignment the loop returns is individually verifiable by a node
     /// that did not run it. This is the property that makes the assignment a
     /// FUNCTION of (key, seed, tid) rather than a miner's claim.
+    ///
+    /// It is also the SAFETY ANCHOR for the performance change in
+    /// `assign_tasks`: the miner's loop no longer re-verifies its own proof
+    /// (it derives beta from it instead, which costs no EC work). That is
+    /// only safe if every proof the loop emits still verifies through the
+    /// PUBLIC verifier path — which is exactly what this test does, over a
+    /// task set large enough that a systematic breakage cannot hide in a
+    /// small sample. If the loop ever emitted a proof that `verify` rejects,
+    /// the miner would publish an assignment no node accepts, and this test
+    /// is what would catch it.
     #[test]
     fn every_assignment_from_the_loop_verifies_independently() {
         let k = key();
