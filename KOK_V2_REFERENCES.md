@@ -511,16 +511,64 @@ re-checked before being cited externally.
   **(7)** e-money token, **(9)** utility token, **(10)** issuer.
   *Note: earlier working notes cited "Article 3(1)(5)" — the official numbering is (9) for
   utility token; corrected.*
-- **SEC v. Ripple — VERIFIED 2026-09-21 (case closed; new 2026 SEC interpretation).** The
-  procedural record, from the SEC litigation section of the Ripple record: filed 22 Dec 2020 in
-  SDNY; **13 July 2023** Judge Analisa Torres held **programmatic exchange sales were not
-  investment contracts** while institutional sales were; **7 Aug 2024** final judgment,
-  **$125,035,150** penalty + injunction; 2025 request to cut the penalty to $50M **refused**;
-  **7 Aug 2025 both appeals withdrawn — case closed**; **17 Mar 2026** the SEC (with CFTC
-  guidance, Federal Register 23 Mar 2026) identified **XRP with bitcoin, ether, solana and
-  stellar as digital commodities**, while stating a non-security asset **can still be sold as
-  part of an investment contract depending on the transaction**. This is the cited basis for
-  §9's US analysis. *Not a substitute for a formal securities opinion.*
+- **SEC v. Ripple — PRIMARY TEXT, UPGRADED 2026-09-27.** Both Torres rulings
+  are now read from the court's own text rather than secondary summaries, and
+  the 2023 order is from SDNY's own server. The procedural record: filed
+  **22 Dec 2020** in SDNY (Case No. 1:20-cv-10832-AT); **13 July 2023**
+  **Document 874** (34 pages, fetched as 321,952 bytes from
+  `nysd.uscourts.gov`, extracted to 1,802 lines) held **institutional sales
+  (~$728.9M) WERE investment contracts** in violation of §5, while
+  **programmatic exchange sales (~$757.6M) were NOT** — because "the record
+  does not establish the third Howey prong as to the Programmatic Sales",
+  and the court expressly did not reach the first or second prong; **other
+  distributions** were also not investment contracts. **7 Aug 2024** final
+  judgment, **$125,035,150** penalty + a permanent injunction against
+  violating §5's registration provisions. **26 June 2025 Document 989**
+  (5 pages) **DENIED** the joint motion for an indicative ruling that would
+  have dissolved the injunction and cut the penalty by sixty percent:
+  *"the parties do not have the authority to agree not to be bound by a
+  court's final judgment"*; under **U.S. Bancorp Mortgage Co. v. Bonner
+  Mall** they had to show exceptional circumstances and *"have not come
+  close to doing so here"*; the court offered two exits — withdraw the
+  appeals, or take the appeal, *"the primary route"* Congress created.
+  **7 Aug 2025** both appeals withdrawn (SEC Litigation Release No. 26369),
+  the final judgment **remaining in effect**. **17 Mar 2026** the SEC
+  identified **XRP as a digital commodity** alongside bitcoin, ether, solana
+  and stellar, while stating a non-security asset **can still be sold as
+  part of an investment contract depending on the transaction**.
+  **What this establishes for §9:** programmatic exchange sales of a token
+  are not securities per the strongest available US authority — now cited
+  from the court's own words — and an injunction on institutional token
+  sales survives even a consensual settlement. *Honest limit: the 2023
+  order is from the court's server; Document 989 was obtained from a
+  law-firm mirror (nutter.com) because a direct SDNY e-filing download
+  could not be located, though header, case number and ECF document number
+  match. Still not a substitute for a formal securities opinion, and the
+  programmatic-sales holding never received appellate review because the
+  cross-appeals were withdrawn by stipulation.*
+- **NEW — Regulation Crypto Assets, proposed rule (added 2026-09-27, comment
+  period OPEN until 20 October 2026).** Federal Register **91 FR 54510**,
+  21 Aug 2026, doc. no. **2026-17183**, Release Nos. **33-11434; 34-106150**,
+  File No. **S7-2026-27**, RIN **3235-AN38**, 146 pages. Verified against
+  the Federal Register's **own API** (`/api/v1/documents/2026-17183.json`)
+  because the HTML page serves a bot challenge; full text (13,701 lines)
+  fetched from the documents/full_text endpoint. Two offering exemptions
+  (up to **$5M** over four years; up to **$75M** per 12 months with
+  financial statements and ongoing reporting) and a **conditional safe
+  harbor** in proposed **Rule 400** from the term "investment contract",
+  codifying the **2026 Interpretation, Release No. 33-11412, 91 FR 13714**
+  (17 Mar 2026). **The passage that matters to this paper's §9 thesis** is
+  §II.A.4.b.i: once a network is functional, services to "secure, maintain,
+  improve, or enhance" it "would not constitute essential managerial
+  efforts", and the asset "should derive its value from the **programmatic
+  operation of the associated crypto network**" — with "validators and/or
+  miners" named among the many parties whose contributions determine
+  success. **The honest limit, stated in the paper too: this is a PROPOSED
+  rule, not an adopted one; the paper's Howey analysis does not depend on
+  it, and this project cannot use the safe harbor because it codifies when
+  a contract CEASES to exist, which presupposes one existed.** See
+  `arastirma/federal_register_yorum_analizi.md` for the full internal
+  analysis of KÖK's position.
 - **NVIDIA — AI compute market size, from reported earnings (2026-09-21).** Annual revenue
   ($B): **2023: 26.9 · 2024: 60.9 · 2025: 130 · 2026: 215** (net income 2026: $120B). Quarterly
   momentum: Q4 FY2026 **$68.1B**; Q2 FY2027 **$96.2B, +106% YoY** (from $46.7B). Build-out:
@@ -538,13 +586,18 @@ re-checked before being cited externally.
   ~320,000 GPU-equivalents, ~112 MW, zero useful AI computation, GPU rental +38%, utilization
   57%→94%, 8,012 workers, 44 pool-accepted shares, $0.76, ROI −1%..+67%** all confirmed ✓.
 
-**★ Bibliography status: 11/11 LIVE-VERIFIED 2026-09-21.** Every arXiv and
-  ePrint identifier in this file was fetched against the live archive this session and matched
-  on title, authors and venue. The complete 11-row table with per-entry evidence is in
-  `arastirma/uydurma_denetimi.md` §C3. Two further verifications worth noting: the SoK
-  (ePrint 2025/1814) is led by **Pratyush Dikshit of the University of Luxembourg** — the
-  reviewer this package was sent to — and Pass (2606.06700) is confirmed the **sole author**.
-  No citation in this package is unverified.
+**★ Bibliography status: 11/11 LIVE-VERIFIED 2026-09-21; Ripple upgraded
+2026-09-27.** Every arXiv and ePrint identifier in this file was fetched
+against the live archive and matched on title, authors and venue, and the
+complete 11-row table with per-entry evidence is in
+`arastirma/uydurma_denetimi.md` §C3. On 27 September 2026 the Ripple entry
+was **upgraded to primary text** — both Torres rulings now quoted from the
+court's own PDFs — and the Regulation Crypto Assets proposed rule was added,
+verified against the Federal Register's own API with its full text read.
+Two further verifications worth noting: the SoK (ePrint 2025/1814) is led by
+**Pratyush Dikshit of the University of Luxembourg** — the reviewer this
+package was sent to — and Pass (2606.06700) is confirmed the **sole author**.
+No citation in this package is unverified.
 
 ---
 
