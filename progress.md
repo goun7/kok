@@ -4399,8 +4399,142 @@ alt-ajan doğrulaması yakaladı. Bu not o düzeltmenin kaydıdır.
 2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
    (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0/65
    gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil.
-   **Bu oturumda hukuk puanının kâğıt kısmı ESMA+MAS ile beslendi** (`0c14d61`)
-3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi — web
-   search anahtarı 401, IRS PDF'leri sıkıştırılmış binary) — **TEK gerçek
-   açık item**
+   **Bu oturumda hukuk puanının kâğıt kısmı ESMA+MAS ile fedelendi** (`0c14d61`)
+3. ~~Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)~~ —
+   **DARALTILDI (26.09.2026, `7df4454`)**: **IRS BİRİNCİL KAYNAĞI BULUNDU** —
+   Rev. Rul. 2023-14 (IRB 2023-33): "fair market value ... included in gross
+   income in the taxable year in which the taxpayer gains **dominion and
+   control**"; IRS newsroom "rewards income" resmi kategori. **Burn'A ÖZEL
+   görüş hâlâ YOK** (ruling staking hakkında) — ama phantom-income artık
+   ikincil blog yorumundan **IRS'nin yazılı kuralına** dayanıyor
 4. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
+
+---
+
+## BLOK 15 — 26 Eylül 2026, hedef turu (devam): araştırma boşluklarını kapatmak
+
+**Önceki turun kompresyonundan sonra hedef yeniden aktif. Üç commit, üç farklı
+boşluk. Hepsi öncelik #1 (kullanıcının açık talebi: "güncel tarihli verilerle,
+araştırmalarla, akademik makalelerle").**
+
+### 15.1 — `9cc8ed1`: SSS bölümü (KNOWN GAP #6 KAPANDI)
+
+Referans dosyasının kendi KNOWN GAPS listesi "FAQ answers missing (51% attack,
+PQ, PRL emission — in a JS accordion)" diyordu — ve **aynı dosyanın iki bölüm
+aşağısındaki access notes "JS-rendered content could not be read"** diyordu.
+Yani cevaplar, bu projenin sahip olduğu tek doğrulama yöntemiyle **kontrol
+edilemiyordu**. Düz metin olarak, makalenin içine §9.1 olarak yazıldı:
+
+- **Q1 51% saldırı:** güvenlik bütçesi **sadece G katmanından** gelir (U
+  katmanının zero consensus weight'i); Pass PR/2 verir ve "once equilibrium
+  prices are taken into account, the economic cost of a majority attack
+  remains tied to the block reward" — useful work bir **indirim değildir**,
+  çünkü donanım aynı fiyattan satılır alıcının niyeti ne olursa olsun. Tasarımın
+  **eklediği** şey: VRF-bound assignment (epoch seed 64 blok geride) +
+  client-first escrow + irrecoverable burn → talep sübvansiyonla üretilemez.
+  **Dürüst sınırlar cevabın içinde, dipnotta değil:** PR/2 Pass'ın sonucu,
+  KW değerlendirmesi **LLM read**, ve Demirel **RET ETTİ** → erteleme argümanı
+  döngüseldi, makale artık onu yapmıyor. Ve argüman **ekonomik maliyet**
+  hakkındadır, sansür hakkında değildir → sansürdirenci prototip **ölçer**
+  (TV-15..20).
+- **Q2 kuantum:** G katmanı hash-based, Grover sadece kuadratik. **Dürüst
+  ayrım:** task assignment için kullanılan **ECVRF (RFC 9381, P-256)
+  post-quantum DEĞİLDİR** — bilinçli bir takas olarak yazıldı, çünkü kırılan
+  bir VRF atamaları taklit eder, **blokları değil**; migrasyon tek modüle
+  sınırlı bir takas. Barbaccia bağımsız teyit: Grover, ML-native linear
+  algebra'ya hiçbir şey yapmaz.
+- **Q3 emisyon:** tail emission'un nonzero floor'u vardır, asla sıfıra inmez —
+  Bitcoin (halving→0) ve Pearl (1/t², tail YOK) ile **bilinçli bir fark**.
+  Supply integer-değil **rate-bounded**; takvim governance'tır, F4 test eder.
+
+**★ YAPISAL HATA VE YAKALANMASI:** Bu bölümün ilk yerleştirilmesi `## 10`
+başlığını **önüne eklemek yerine değiştirdi** — F0-F6 roadmap tablosunu yetim
+bıraktı, 10.1/10.2 alt bölümlerini parentsız bıraktı, ve FAQ'nun kendi
+`§10.2` çapraz-başvurusunu kırıldı. **Doğrulama alt-ajanı grep'i başlık
+dizisinde çalıştırınca reddetti.** Başlık `---` separatoruyle geri eklendi.
+**Bu, bu oturumda bir commit reddinin doğru çağrı olduğu İKİNCİ andı.**
+
+### 15.2 — `7df4454`: IRS birincil kaynağı — son gerçek hukuk boşluğu daraldı
+
+Hukuk araştırmasında geriye kalan tek **gerçekten açık** madde burn'un vergi
+analiziydi; şimdiye kadar sadece bir hukuk-teknoloji blog'undan belgelenmişti
+— ki kendisi çatışmayı "significant and unresolved" diye nitelendiriyordu ve
+dayanak olarak **burn hakkında hiçbir şey söylemeyen** 2019 forks/airdrops
+ruling'ini gösteriyordu.
+
+**BİRİNCİL IRS KAYNAKLARI BULUNDU (HTTP 200):**
+- **Rev. Rul. 2023-14** (IRB 2023-33, 14 Ağu 2023, s. 484):
+  > "the fair market value of the rewards received is included in the
+  > taxpayer's gross income in the taxable year in which the taxpayer gains
+  > **dominion and control** over the rewards"
+- **IRS newsroom** (4 Nis 2024, son gözden geçirme 25 Ağu 2026):
+  "Rewards income from staking or earn programs" — IRS'nin **resmen
+  adlandırdığı bir gelir kategorisi**.
+
+**NEDEN BİR STAKING RULING'İ BİR POW ZİNCİRİ İÇİN ÖNEMLİ:** operatif kelime
+*dominion and control*'dur. KÖK'ün madencisi block reward'ı **kazanıldığı
+anda** dominion'ına alır → FMV **o anda** gelirdir, **burn bileşeni sonradan
+bir kısmını çıkarsa bile**. Phantom-income riski bir yorum olmaktan çıkıp
+**IRS'nin yazılı kuralı** üzerine inşa edildi.
+
+**NE HÂLÂ BULUNAMADI (dürüst sınır, her iki dosyada da yazılı):** **Burn'a
+özgü** hiçbir birincil kaynak yoktur. Ruling staking reward'ları hakkındadır;
+*timing* argümanını destekler (gelir alımda tanınır, elde tutmada değil) ve
+**burn'ün zaten tanınmış bir yükümlülüğü azaltıp azaltmadığı konusunda
+tamamen sessizdir**. **Boşluk kapandı değil, DARALDI:** önce "hiçbir birincil
+vergi görüşü yok" idi; şimdi "tanınma anında birincil görüş var, burn'da yok."
+
+### 15.3 — `f08c610`: dört doğrulanmış akademik kaynak (G katmanı prior art)
+
+arXiv API'sinden PoUW sorgusu, iki yeni makale daha verdi — ikisi de
+**abstract sayfalarından verbatim doğrulandı** (HTTP 200, 26.09.2026):
+
+- **SNARKChain** (Oleksak, Gazdik, Peresini, Homoliak — Masaryk, arXiv
+  2510.09729, v2 13 Tem 2026): prior PoUW'ler
+  > "fail to embed the integrity of the chain and the identity of the miner
+  > into the puzzle solutions, not meeting the necessary requirements for PoW
+  > and thus rendering them vulnerable"
+
+  **KÖK'ün ctx binding'inin kapattığı tehlikeyi kendi adıyla söyleyen,
+  yayımlanmış bir akademik makale — herhangi bir self-assessment'ten güçlü.**
+  Ayrıca **farklılaştırmayı keskinleştirir**: SNARKChain kanıtları **consensus'a
+  koyar**, KÖK bilinçli olarak U katmanına **zero consensus weight** verir →
+  güvenlik bütçesi demand-independent. Her iki tasarım savunulabilir, **türetme
+  hiçbir yönde iddia edilmedi.**
+- **SEDULity** (Cao, Doger, Ulukus — Maryland, arXiv 2512.13666, v2 10 Haz
+  2026): "a rational miner is incentivized to train fully honestly with
+  well-designed system parameters" — honest-mining sorusu **incentif tarafından**
+  teorik olarak cevaplanır; KÖK **hardness tarafından** cevaplar (prescribed
+  hardness + client-determined matrix). **Yakınsama yararlı olan şeydir.**
+  Dürüst farklar yazıldı: SEDULity model **TRAINING**'dir (iterative-approximation
+  saldırılarına açık — bu yüzden KÖK certificate formunu seçti).
+
+**Honest limitation 4/4 girdide yazılı** (full PDF fetch edilmedi, teorik
+sonuçlar burada doğrulanmadı).
+
+**★ İKİNCİ RET-ETME-ÖRNEĞİ:** ilk doğrulama pass'i `grep "full PDF was"`
+sayısının 3 döndüğünü gördü (4 bekliyordu) ve commit'i reddetti. **Teşhisi
+doğruydu, desenim yanlıştı** — en eski (Pass) girdisi "the full **377 KB** PDF
+was" diyor, aradaki metin eşleşmeyi kırıyor. Doğru desen `grep "PDF was"` →
+**4/4 girdi hayatta**. **Desenin kendisi önemli:** bir commit'i gateleyen
+kontrol, geçene kadar gevşetilmek yerine **fail-closed** vermeli.
+
+### DURUM — 173 TEST
+- `cargo test --release --workspace --lib`: **173/173 rc=0**
+- `cargo build --release --workspace`: **0 uyarı**
+- `audit_turkish_en.py`: **CLEAN**
+- Çalışma ağacı **TEMİZ** — commitler: `9cc8ed1` → `7df4454` → `f08c610`
+
+### KALAN (sirali, güncel)
+1. 58-Mahrem Noir circuit — **TAMAMLANDI** (§33)
+2. v2 makale ~21 nokta — kalan ~15'i **EMPİRİK KANIT**: (a) insan kriptograf
+   (mail YASAK + Demirel zaten ret etti), (b) canlı φ>0 — **F0'da 0/65
+   gerçek lead; F3b inşası YASAK**, (c) güvenlik bütçesi — finanse değil
+3. ~~Burn vergi analizi~~ — **DARALTILDI** (`7df4454`): IRS Rev. Rul. 2023-14
+   "dominion and control" + "rewards income" kategorisi; **burn'a özel görüş
+   hâlâ YOK** (ruling staking hakkında) — ama artık birincil kural üzerine
+   kuruluyor
+4. Kalan düşük öncelikli hukuk maddeleri (BULUNAMADI listesi §6): Singapur
+   FISA 2025-26, Torres kararlarının asıl metinleri, Reg Crypto Assets
+   yorumları, AB MiCA değerlendirme raporu, MAS DTO 2020 sürümü
+5. Skor **83.65** (dokunma — "kağıt puan artırma" yasağı)
