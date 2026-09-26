@@ -3918,11 +3918,49 @@ overflow) — ama **HEDEFİ** hiç kimse doğrulamıyordu.
 - `suite_gate_en.py`: **39/39 files, 0 broken**
 - WASM: her iki target derleniyor, tek export `kok_verify_packet`
 
+## 8. BLOK — FALSE ALARM TESPİTİ + CHAIN-SELECTION BOŞLUKLARI (2026-09-25)
+
+### ÖNCE: ACİL DURUM YOKTU — View B illüzyonu
+Orkestratör "ACİL: kok-pvi DERLEME HATASI + stash olayı + 52cf17d kayıp"
+raporladı. **Hepsi sandbox View B'nin illüzyonuydu** (subagent ile
+bağımsızca doğrulandı): `cargo build -p kok-pvi` View A'da **0 hata**,
+5/5 test; workspace **163/163 rc=0**, HEAD `c5b804b`, stash **BOŞ**.
+**Kök neden:** bash aynı PWD'de rastgele iki mount'tan birine düşer. View B
+stale/partial: `crates/` altında **SADECE kok-pvi**, kök `Cargo.toml` YOK,
+kok-pvi/src/lib.rs **328 değil 259 satır** (encode/TOY_Q/TOY_R tanımsız) —
+"4 tip hatası" bu yarımk dosyadan geliyordu. **Gerçek kodda satır 219
+`encode(..., q: u64, r: usize)` ve `TOY_Q: u64`/`TOY_R: usize` ile birebir
+uyumlu.** `52cf17d` bu oturumda **hiç var olmadı**. Önemli: `git stash`
+komutu View B'de sessizce BAŞARISIZ olmuş (`.git` yok), zarar vermemişti.
+Teşhisin tek güvenilir yolu her bash çağrısının başında
+`test -f Cargo.toml && echo VIEW_A || echo VIEW_B`; VIEW_B çıkarsa **aynı
+komutu yeni bash çağrısında tekrarla**. read/grep/glob her zaman View A'da.
+Memorandum memory_id 4750'ye yazıldı (`b1b3c71`).
+
+### 34. **CHAIN SELECTION: boş DAG + tie-break** (`47f62c9`)
+Orkestratör'ün "network layer chain-selection boşlukları (stale tip =
+canlılık, doğruluk değil)" görevinden:
+- **`an_empty_dag_selects_nothing`**: `select()` boş DAG'de None — hiç blok
+  görmemiş node uydurma chain'e takip edemez; `is_final` false, `final_set`
+  boş.
+- **`ties_break_by_lowest_bid_deterministically`**: eşit blue_score'lu iki
+  blok her node'da AYNISINI seçmeli ve en düşük bid olmalı — yoksa aynı
+  DAG'yi tutan iki dürüst node bedavaya fork eder. Test: genesis 1,
+  fork'lar 2 ve 3 (eşit skor) → kazanan **bid 2** (ölçüldü, doğrulandı).
+- **Not:** 163+2=165 (+3 değil; monotone test zaten vardı, subagent
+  düzeltti).
+
+### DURUM — PRODUCTION READY DOĞRULANDI
+- `cargo build --release --workspace`: **0 hata, 0 uyarı**
+- `cargo test --release --workspace`: **165/165 rc=0**
+- `audit_turkish_en.py`: **CLEAN**; `suite_gate_en.py`: **39/39**
+
 ### KALAN (sirali, güncel)
-1. Burn'un kesin VERGİ analizi (ikincil kaynaklarla kısmi; IRS birincil
-   kaynağına erişilemedi — web search anahtarı bu oturumda geçersiz)
-2. WASM'de gerçekten test koşma (wasmtime kurulumu gerekir — opsiyonel)
-3. Skor **83.65** (dokunma)
+1. 58-Mahrem Noir circuit doğrulama (orkestratör görevi)
+2. v2 makale ~21 kalan nokta (orkestratör görevi)
+3. Burn'un kesin vergi analizi (IRS birincil kaynağına erişilemedi)
+4. WASM'de gerçekten test koşma (wasmtime kurulumu gerekir)
+5. Skor **83.65** (dokunma)
 
 ### BUG SINIFLARI — SWEEP SONUCU (6 blok)
 Sınıf 1 **guard-sonrası**: 8 yüzey (PVI, kok-poum ragged, kok-fri 3x,
