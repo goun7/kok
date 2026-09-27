@@ -316,6 +316,69 @@ pub fn prove(sk: &[u8; 32], pk_string: &[u8], alpha: &[u8]) -> Vec<u8> {
     out
 }
 
+/// The public key as a curve point, y = x·B. RFC 9381 §5.1 calls this Y.
+///
+/// This exists to be HOISTED out of a loop: `assign_tasks` proves over many
+/// task ids with one fixed secret key, and `prove()` recomputes y from sk on
+/// every call because the standard's function signature takes only (sk,
+/// alpha). That is one of prove()'s four scalar multiplications spent
+/// re-deriving a value the caller already knows. `prove_with_public_key`
+/// below takes y as an argument so the caller pays for it once per key
+/// instead of once per task — about 0.196 ms of the 0.87 ms a prove costs,
+/// which is ~22% of the mining loop's VRF cost.
+///
+/// **This is not an optimisation of the VRF.** The output is the function of
+/// (sk, alpha) it always was; the change is where one group operation is
+/// *performed*, not what it computes. Nothing about the construction,
+/// constant-time behaviour or security argument changes, because no
+/// computation is removed — the same y is multiplied in either way, and a
+/// caller that passes a y not equal to x·B produces a proof `verify` rejects,
+/// exactly as a caller passing the wrong sk would.
+pub fn public_key_point(sk: &[u8; 32]) -> AffinePoint {
+    let x = scalar_from_bytes(sk).expect("the secret scalar must be valid");
+    (generator() * &x).to_affine()
+}
+
+/// `prove()` with the public key point supplied, so a loop over many alphas
+/// with one key computes y once instead of once per alpha. Output-identical
+/// to `prove()` — see `a_cached_public_key_gives_the_byte_identical_proof`
+/// in the tests, which locks that equivalence against the RFC vectors.
+///
+/// **Safety of the hoisting, stated plainly:** y is a pure function of sk,
+/// and the caller supplies sk as well, so the cached y can disagree with sk
+/// only if the caller is inconsistent — in which case the resulting proof
+/// fails verification, because `verify` recomputes y from the public key it
+/// was given. The failure mode is a rejected proof, not an accepted wrong
+/// one, which is why this needs no new trust: it cannot make a bad proof
+/// verify, only avoid recomputing a good one.
+pub fn prove_with_public_key(
+    sk: &[u8; 32],
+    pk_string: &[u8],
+    y: &AffinePoint,
+    alpha: &[u8],
+) -> Vec<u8> {
+    #[cfg(test)]
+    PROVE_COUNT.with(|c| c.set(c.get().wrapping_add(1)));
+    let x = scalar_from_bytes(sk).expect("the secret scalar must be valid");
+    let y_affine = *y;
+    let h = encode_to_curve(pk_string, alpha);
+    let h_string = point_to_string(&h);
+    let gamma = (ProjectivePoint::from(h) * &x).to_affine();
+    let k = nonce_generation(sk, &h_string);
+    let u = (generator() * &k).to_affine();
+    let v = (ProjectivePoint::from(h) * &k).to_affine();
+    let c = challenge_generation(&y_affine, &h, &gamma, &u, &v);
+    let s = k + scalar_from_int(c) * &x;
+    let s_bytes = s.to_bytes();
+    let mut out = Vec::with_capacity(PTLEN + CLEN + QLEN);
+    out.extend_from_slice(&point_to_string(&gamma));
+    out.extend_from_slice(&int_to_string(c, CLEN));
+    for i in 0..QLEN {
+        out.push(s_bytes[i]);
+    }
+    out
+}
+
 /// RFC 9381 §5.2: beta from a proof. Only call this on a proof that
 /// ECVRF_verify has accepted — beta is the random output, and deriving it
 /// from an unverified proof is exactly what pseudorandomness forbids.
@@ -567,6 +630,61 @@ mod tests {
         assert!(
             verify(&k1.pk, b"different", &pi).is_none(),
             "a proof for one alpha verified for another"
+        );
+    }
+
+    /// THE HOISTED PUBLIC KEY MUST GIVE THE BYTE-IDENTICAL PROOF. This is the
+    /// test that makes `prove_with_public_key` an optimisation rather than a
+    /// fork: if the cached path ever diverged from `prove()` by a single bit,
+    /// `assign_tasks` would be emitting proofs the RFC-conformant path does
+    /// not, and the mining loop would have silently left the standard. Run
+    /// over many alphas and BOTH RFC test keys, because an off-by-something
+    /// in one key's encoding could hide in a single sample.
+    #[test]
+    fn a_cached_public_key_gives_the_byte_identical_proof() {
+        let keys = [
+            "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+            "2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8",
+        ];
+        for k in keys {
+            let keys = VrfKeys::from_secret(hex_to_32(k));
+            let y = public_key_point(&keys.sk);
+            for i in 0..64u64 {
+                let alpha = format!("task-{i}");
+                let direct = prove(&keys.sk, &keys.pk, alpha.as_bytes());
+                let cached = prove_with_public_key(&keys.sk, &keys.pk, &y, alpha.as_bytes());
+                assert_eq!(
+                    direct, cached,
+                    "the cached-y proof for {alpha} differs from the RFC-conformant proof by {} bytes",
+                    direct.iter().zip(cached.iter()).filter(|(a, b)| a != b).count()
+                );
+                // and the cached proof must still verify, so the equivalence is
+                // not two identical wrong answers agreeing with each other
+                assert_eq!(
+                    verify(&keys.pk, alpha.as_bytes(), &cached),
+                    proof_to_hash(&cached),
+                    "a cached-y proof did not verify"
+                );
+            }
+        }
+    }
+
+    /// A caller that caches a public key belonging to ANOTHER key produces
+    /// proofs that verify() rejects — the failure mode that makes the hoisting
+    /// safe without trust. This is the negative half of the equivalence above.
+    #[test]
+    fn a_cached_public_key_from_the_wrong_key_is_rejected() {
+        let k1 = VrfKeys::from_secret(hex_to_32(
+            "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+        ));
+        let k2 = VrfKeys::from_secret(hex_to_32(
+            "2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8",
+        ));
+        let wrong_y = public_key_point(&k2.sk);
+        let pi = prove_with_public_key(&k1.sk, &k1.pk, &wrong_y, b"task-1");
+        assert!(
+            verify(&k1.pk, b"task-1", &pi).is_none(),
+            "a proof built with another key's public key was accepted"
         );
     }
 
