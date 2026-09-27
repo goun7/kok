@@ -2,7 +2,7 @@
   "name": "@kok-network/light-verifier",
   "version": "0.1.0",
   "description": "KÖK Network light-client verifier — a WASM boundary that cannot trap on adversarial input",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "type": "module",
   "main": "./index.js",
   "exports": {
@@ -14,21 +14,26 @@
   "files": [
     "index.js",
     "index.cjs",
-    "kok_wasm_bg.js",
     "kok_wasm_bg.wasm",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "blockchain",
     "light-client",
     "wasm",
     "proof-of-useful-work",
-    "verifier"
+    "verifier",
+    "zero-knowledge"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test ../kok-wasm/npm/tests/"
+    "test": "node --test tests/",
+    "prepublishOnly": "echo '\\nNOT PUBLISHED: this package is staged but the publish was not authorised. Run npm publish manually.' && exit 1"
+  },
+  "publishConfig": {
+    "access": "restricted"
   }
 }
