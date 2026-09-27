@@ -492,4 +492,115 @@ mod tests {
             }
         }
     }
+
+    // ---- DIRECT UNIT COVERAGE (2026-09-27). The functions below were
+    // previously reached only THROUGH recursive_prove or TileAir::prove, which
+    // means a regression in them could only fail as a downstream symptom — and
+    // a wrapper that tolerates the broken primitive would hide it entirely.
+    // Each test below names the primitive as the unit under test.
+
+    #[test]
+    fn fold_is_the_relation_on_residues_and_halves_the_degree() {
+        // fold must (a) halve the degree and (b) satisfy the FRI relation at
+        // every quadratic residue the verifier would sample. The wrapper
+        // recursive_prove asserts only the end-to-end transcript, so a fold
+        // that returned the WRONG-but-consistent degree would pass it.
+        let p: Vec<u64> = vec![3, 1, 4, 1, 5]; // degree 4
+        let f = fold(&p, 42, Q).expect("fold over F_97 with a degree-4 poly must succeed");
+        assert_eq!(deg(&f), 2, "fold must halve the degree");
+        // the relation must hold at every residue, checked directly
+        assert!(verify_round(&p, 42, &f, Q), "fold must satisfy the round relation");
+        // the relation must FAIL on a broken fold, which is the check that
+        // makes the one above meaningful rather than vacuous
+        let mut wrong = f.clone();
+        wrong[1] = (wrong[1] + 1) % Q;
+        assert!(!verify_round(&p, 42, &wrong, Q),
+                "a fold that breaks the relation must be rejected");
+    }
+
+    #[test]
+    fn fold_matches_the_interpolation_builder_on_shared_coefficients() {
+        // make_fold and fold are two constructions of the same object: make_fold
+        // evaluates over ALL (q-1)/2 residues and returns a length-48 vector,
+        // fold stops at new_deg + 1 points and returns the minimal polynomial.
+        // They are not byte-equal as vectors, so this asserts the agreement
+        // that actually exists — fold's coefficients must be make_fold's
+        // leading coefficients, or the port diverged from the prototype.
+        let p: Vec<u64> = vec![3, 1, 4, 1, 5];
+        let f = fold(&p, 42, Q).expect("fold must succeed");
+        let full = make_fold(&p, 42);
+        assert_eq!(f.len(), 3, "a degree-4 fold yields a degree-2 polynomial");
+        assert!(!full.is_empty(), "the interpolation builder must produce output");
+        assert_eq!(&f[..], &full[..f.len()],
+                   "fold's coefficients diverged from the interpolation builder's");
+    }
+
+    #[test]
+    fn fold_rejects_a_field_too_small_to_supply_the_needed_squares() {
+        // the round-5 F3 guard, tested at the point it protects rather than
+        // through a transcript that happens to hit it. q=5 supplies 2 distinct
+        // squares; a degree-6 fold needs 4. The guard must fail LOUDLY (Err),
+        // because the silent alternative is _interpolate returning a
+        // lower-degree polynomial that is not the true fold and still verifies.
+        let p: Vec<u64> = vec![1, 2, 3, 4, 5, 6, 7]; // degree 6
+        let err = fold(&p, 1, 5).expect_err("q=5 must be too small for a degree-6 fold");
+        assert!(err.contains("field too small"), "the error must name the cause: {err}");
+        // the useful half of the guard: a small polynomial over the same tiny
+        // field DOES succeed, so this is a size check, not a blanket rejection
+        let small: Vec<u64> = vec![2, 1]; // degree 1 -> needs 1 square
+        assert!(fold(&small, 1, 5).is_ok(), "a degree-1 fold over q=5 must succeed");
+    }
+
+    #[test]
+    fn fold_is_deterministic_in_alpha_and_in_p() {
+        // a fold that silently depended on iteration order or HashSet order
+        // would produce different transcripts from the same input — the exact
+        // divergence the canonical parity test guards end-to-end. Test it at
+        // the primitive, twice, including with a polynomial whose leading
+        // coefficients are zero (the trailing-zero case deg() must normalize).
+        let p: Vec<u64> = vec![3, 1, 4, 1, 5, 0, 0];
+        let a = fold(&p, 42, Q).unwrap();
+        let b = fold(&p, 42, Q).unwrap();
+        assert_eq!(a, b, "fold must be deterministic in (p, alpha)");
+        assert_eq!(a, fold(&vec![3, 1, 4, 1, 5], 42, Q).unwrap(),
+                   "trailing zeros must not change the fold");
+        // different alpha must (almost surely) give a different fold
+        let c = fold(&p, 7, Q).unwrap();
+        assert_ne!(a, c, "a different challenge must change the fold");
+    }
+
+    #[test]
+    fn challenge_is_deterministic_and_lands_in_one_to_q_minus_one() {
+        // the Fiat-Shamir challenge: deterministic (or the prover could
+        // influence it) and reduced into [1, q) (or 0 makes the odd part
+        // vanish and the fold degenerates to the even part alone).
+        let p: Vec<u64> = vec![3, 1, 4, 1, 5];
+        let a1 = challenge(&p, Q);
+        let a2 = challenge(&p, Q);
+        assert_eq!(a1, a2, "challenge must be deterministic — it is Fiat-Shamir");
+        assert!(a1 >= 1 && a1 < Q, "challenge must lie in [1, q), got {a1}");
+        // different polynomial must (almost surely) give a different challenge
+        assert_ne!(a1, challenge(&vec![3, 1, 4, 1, 6], Q),
+                   "challenge must depend on the polynomial");
+        // the canonical parity anchor: this is the exact value the Python
+        // prototype produces, so a change here breaks cross-language parity
+        assert_eq!(challenge(&canonical::CANON_POLY, Q), 73,
+                   "the canonical challenge diverged from Python");
+    }
+
+    #[test]
+    fn fold_and_challenge_compose_the_way_the_recursion_assumes() {
+        // recursive_prove composes these two; test the composition contract at
+        // the primitives: challenge over the CURRENT polynomial, then fold with
+        // it. If challenge were taken over the wrong polynomial the transcript
+        // would still be self-consistent and the bug would be invisible.
+        let p: Vec<u64> = canonical::CANON_POLY.to_vec();
+        let alpha = challenge(&p, Q);
+        let f = fold(&p, alpha, Q).unwrap();
+        let alpha2 = challenge(&f, Q);
+        // the real recursion's second alpha, reproduced by hand
+        assert_eq!(alpha, 73, "first challenge is the canonical value");
+        assert_eq!(alpha2, 22, "second challenge is taken over the FOLDED polynomial");
+        assert!(verify_round(&p, alpha, &f, Q));
+    }
 }

@@ -585,4 +585,29 @@ mod tests {
         let mut r = Rng::new(1);
         let _ = r.below(0);
     }
+
+    /// The two accessors the other tests never call directly. They are one
+    /// line each, but they are the public surface a peer count or a relay
+    /// readiness check reads, and an accessor that silently disagrees with
+    /// `len` is how a "seen" set reports itself empty while still suppressing
+    /// relays.
+    #[test]
+    fn the_seen_set_reports_emptiness_consistently_with_len() {
+        let mut s = SeenSet::new();
+        assert!(s.is_empty(), "a fresh seen set must report itself empty");
+        assert_eq!(s.len(), 0);
+        s.first_sight(7);
+        assert!(!s.is_empty(), "a set with one entry must not report empty");
+        assert_eq!(s.len(), 1);
+    }
+
+    #[test]
+    fn the_admission_gate_known_count_tracks_admissions() {
+        let mut g = AdmissionGate::new([1, 2]);
+        assert_eq!(g.known_count(), 2, "the seeded parents must be counted");
+        g.admit(9);
+        assert_eq!(g.known_count(), 3, "a newly validated block must be counted");
+        g.admit(9); // idempotent: a set, not a counter
+        assert_eq!(g.known_count(), 3, "admitting the same block twice must not double-count");
+    }
 }

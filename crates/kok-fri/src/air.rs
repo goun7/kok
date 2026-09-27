@@ -599,4 +599,95 @@ mod tests {
             "r == 0 verified"
         );
     }
+
+    // ---- DIRECT UNIT COVERAGE OF THE MERKLE PRIMITIVES (2026-09-27). These
+    // were reached only through TileAir::prove/verify, so a regression in one
+    // could only surface as a downstream symptom — and a proof that happened
+    // not to exercise the failing path would hide it. Each test below makes
+    // the primitive the unit under test.
+
+    #[test]
+    fn merkle_layers_and_root_match_for_power_of_two_and_odd_leaf_counts() {
+        // the layer stack must terminate in a single root for both an even and
+        // an odd leaf count; the odd case exercises the duplication path
+        // (parent(h,h)) that merkle_open marks with Dup.
+        for leaves in [vec![3u64, 1, 4, 1], vec![5, 9, 2, 6, 5]] {
+            let layers = merkle_layers(&leaves);
+            assert_eq!(layers[0].len(), leaves.len(), "the base layer is the leaves");
+            assert_eq!(layers.last().unwrap().len(), 1, "the stack must end in one root");
+            // the root is the first 8 bytes of the top node, big-endian
+            let top = &layers.last().unwrap()[0];
+            assert_eq!(merkle_root(&leaves), u64::from_be_bytes(top[..8].try_into().unwrap()));
+        }
+        // an empty leaf list is the documented degenerate case: root 0
+        assert_eq!(merkle_root(&[]), 0, "an empty leaf list must commit to 0");
+        // a single leaf: the root IS that leaf's hash, no duplication needed
+        let one = merkle_root(&[42]);
+        assert_eq!(one, u64::from_be_bytes(leaf_hash(0, 42)[..8].try_into().unwrap()));
+    }
+
+    #[test]
+    fn merkle_open_and_check_roundtrip_on_every_index() {
+        // for a leaf at ANY index, the path the prover opens must verify
+        // against the root a verifier computes independently. Test every index
+        // so the odd-tail Dup path and both sibling sides are each exercised.
+        let leaves: Vec<u64> = vec![10, 20, 30, 40, 50, 60, 70]; // odd -> Dup path
+        let root = merkle_root(&leaves);
+        for idx in 0..leaves.len() {
+            let path = merkle_open(&leaves, idx);
+            assert!(merkle_check(root, idx, leaves[idx], &path),
+                    "path for index {idx} failed to verify against the root");
+        }
+    }
+
+    #[test]
+    fn merkle_check_is_position_bound_and_value_bound() {
+        // round-2 adversarial finding F9, tested at the primitive: leaf_hash
+        // mixes the INDEX in, so a path from one index must NOT verify at
+        // another. Without position binding, two leaves sharing a value let a
+        // path replay — which is exactly the input-residual commitment bug
+        // this hash exists to prevent.
+        let leaves: Vec<u64> = vec![7, 7, 13, 7, 7]; // duplicate values, by design
+        let root = merkle_root(&leaves);
+        let path0 = merkle_open(&leaves, 0);
+        assert!(merkle_check(root, 0, leaves[0], &path0), "the honest path must verify");
+        // the same VALUE at a different index must NOT verify with index 0's path
+        assert!(!merkle_check(root, 2, leaves[0], &path0),
+                "a path replayed at a foreign index must fail");
+        // the wrong value at the right index must fail
+        assert!(!merkle_check(root, 0, 99, &path0),
+                "a wrong leaf value must fail");
+        // a path built for index 2 must not verify index 0's leaf
+        let path2 = merkle_open(&leaves, 2);
+        assert!(!merkle_check(root, 0, leaves[0], &path2),
+                "a foreign path must not verify an honest leaf");
+    }
+
+    #[test]
+    fn merkle_check_rejects_a_truncated_and_an_extended_path() {
+        // the verifier folds leaf up through every step; a path of the wrong
+        // LENGTH must not accidentally reach the root. A truncated path folds
+        // fewer times and an extended path folds more — both must fail, which
+        // is what makes the length an implicit part of the commitment.
+        let leaves: Vec<u64> = vec![10, 20, 30, 40];
+        let root = merkle_root(&leaves);
+        let path = merkle_open(&leaves, 1);
+        assert!(merkle_check(root, 1, leaves[1], &path));
+        assert!(!merkle_check(root, 1, leaves[1], &path[..path.len() - 1]),
+                "a truncated path must not verify");
+        // an extended path: duplicate the last step, which changes the fold
+        let mut extended = path.clone();
+        extended.push(path.last().unwrap().clone());
+        assert!(!merkle_check(root, 1, leaves[1], &extended),
+                "an extended path must not verify");
+    }
+
+    #[test]
+    fn leaf_hash_is_position_and_value_sensitive() {
+        // the primitive at the bottom: same value at two positions must hash
+        // differently, and two values at the same position must differ.
+        assert_ne!(leaf_hash(0, 5), leaf_hash(1, 5), "leaf_hash must bind the index");
+        assert_ne!(leaf_hash(0, 5), leaf_hash(0, 6), "leaf_hash must bind the value");
+        assert_eq!(leaf_hash(0, 5), leaf_hash(0, 5), "leaf_hash must be deterministic");
+    }
 }

@@ -687,3 +687,30 @@ mod tests {
         assert_eq!(c, d, "h_num rendered 0 differently from h");
     }
 
+    /// `validate` is the peer-facing name for `verify`. It is a one-line
+    /// delegator, so no existing test calls it directly — but it is the
+    /// function a full node actually runs on a received block, so a
+    /// divergence between the two entry points would be exactly the bug that
+    /// a miner accepts and a peer rejects. Pin the alias here: same answer as
+    /// verify, on an accept and on a forgery.
+    #[test]
+    fn validate_agrees_with_verify_on_an_accept_and_a_forgery() {
+        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+        let k = KwKernel::new(TOY_Q, TOY_R);
+        let target = 1u64 << 8;
+        let (nonce, cert) = k.mine(&a, &b, 777, target);
+        let cert = cert.unwrap();
+        // the honest case: both entry points accept
+        assert_eq!(k.validate(&cert, &a, &b, 777, nonce, target),
+                   k.verify(&cert, &a, &b, 777, nonce, target),
+                   "validate and verify disagreed on an honest certificate");
+        assert!(k.validate(&cert, &a, &b, 777, nonce, target),
+                "an honestly mined certificate failed the peer-facing check");
+        // a foreign ctx: both must reject (the TV-1 replay guard)
+        assert_eq!(k.validate(&cert, &a, &b, 778, nonce, target),
+                   k.verify(&cert, &a, &b, 778, nonce, target),
+                   "validate and verify disagreed on a replayed certificate");
+        assert!(!k.validate(&cert, &a, &b, 778, nonce, target),
+                "a replayed certificate passed the peer-facing check");
+    }

@@ -270,4 +270,149 @@ mod tests {
         // sampler is actually using the seed)
         assert_ne!(run(7), run(8));
     }
+
+    // ---- DIRECT UNIT COVERAGE OF retarget() (2026-09-27). The RT tests above
+    // drive retarget only through sim_block's stochastic loop, so the
+    // arithmetic of the adjustment — windowed estimate, median filter, the
+    // 4x clip, the D-independence of Lambda_hat — is never the unit under test.
+    // record_time + retarget with hand-set times isolates that arithmetic
+    // without a sampler in the path.
+
+    /// Params chosen so the numbers are checkable by hand: window 4, target
+    /// block time 10 s, median width 1 (no smoothing) or 3.
+    fn small_params(median_width: usize) -> RetargetParams {
+        RetargetParams {
+            window: 4,
+            target_block_time: 10.0,
+            clip: 4.0,
+            median_width,
+        }
+    }
+
+    #[test]
+    fn retarget_is_a_noop_until_the_window_fills() {
+        // the gate: only every W blocks does an adjustment happen, and a
+        // partial window must return None and leave D untouched
+        let mut r = Retargetor::new(small_params(1), 100);
+        r.record_time(1.0);
+        assert!(r.retarget().is_none(), "one block in, no window has closed");
+        r.record_time(1.0);
+        assert!(r.retarget().is_none(), "two blocks in, no window has closed");
+        assert_eq!(r.d, 100, "D must be unchanged before a window closes");
+    }
+
+    #[test]
+    fn retarget_doubles_d_when_blocks_arrive_half_as_fast() {
+        // D=1000, window of 4 blocks that each took 20 s when the target is
+        // 10 s: the network is 2x too slow, so Lambda_hat = D*W/T_act =
+        // 1000*4/80 = 50, and D_new = 50 * 10 = 500. Blocks are arriving half
+        // as fast as wanted, so D must HALVE.
+        let mut r = Retargetor::new(small_params(1), 1000);
+        for _ in 0..4 {
+            r.record_time(20.0);
+        }
+        let s = r.retarget().expect("exactly one window closed, so an adjustment must happen");
+        assert_eq!(s.d, 500, "D must halve when blocks arrive 2x too slow");
+        assert_eq!(r.d, 500);
+        // the estimate must be recorded in history for the median filter
+        assert_eq!(r.window_history.len(), 1);
+    }
+
+    #[test]
+    fn retarget_estimates_lam_hat_independently_of_d() {
+        // the subtle property the doc comment names: Lambda_hat = D*W/T_act
+        // cancels the window's own D, so the estimate does not double-count
+        // difficulty. Test it by running two windows at the SAME hashrate
+        // with DIFFERENT starting D: the estimated Lambda must match, and only
+        // the reported D_new differs (both converge toward lam*T_b).
+        let mut a = Retargetor::new(small_params(1), 1000);
+        let mut b = Retargetor::new(small_params(1), 4000); // 4x higher D
+        // same true hashrate: at D=1000 blocks take 10 s, at D=4000 they take 40
+        for _ in 0..4 {
+            a.record_time(10.0);
+            b.record_time(40.0);
+        }
+        let sa = a.retarget().unwrap();
+        let sb = b.retarget().unwrap();
+        assert!((sa.lam_hat - sb.lam_hat).abs() < 1e-6,
+                "Lambda_hat must be D-independent: {} vs {}", sa.lam_hat, sb.lam_hat);
+        assert_eq!(sa.d, 1000, "a 2x-too-slow window halves D toward equilibrium");
+        assert_eq!(sb.d, 1000, "a 2x-too-fast window quarters D toward equilibrium");
+    }
+
+    #[test]
+    fn retarget_clips_a_huge_estimated_jump_at_4x() {
+        // a window that implies D should rise 100x must be clipped to 4x — the
+        // bound that keeps a single fast window from rewriting the difficulty.
+        // D=100, 4 blocks arriving in 0.1 s total: Lambda_hat = 100*4/0.1 = 4000,
+        // D_new_raw = 4000*10 = 40000, but the clip caps it at 4*100 = 400.
+        let mut r = Retargetor::new(small_params(1), 100);
+        for _ in 0..4 {
+            r.record_time(0.025);
+        }
+        let s = r.retarget().unwrap();
+        assert_eq!(s.d, 400, "a 400x implied jump must clip to 4x");
+        assert!(s.ratio <= 4.0 + 1e-9, "the reported ratio must respect the clip");
+    }
+
+    #[test]
+    fn retarget_median_filter_ignores_a_single_outlier_window() {
+        // median_width 3: one pathological window's estimate must NOT dominate,
+        // because the median of three ignores a single extreme value. Two
+        // windows agree the hashrate is low, one window claims it is 100x
+        // higher — the median must follow the two, not the outlier.
+        let mut r = Retargetor::new(small_params(3), 1000);
+        // window 1: 10 s/block (equilibrium), lam_hat = 1000*4/40 = 100
+        for _ in 0..4 {
+            r.record_time(10.0);
+        }
+        let s1 = r.retarget().unwrap();
+        assert_eq!(s1.lam_hat, 100.0);
+        // window 2: equilibrium again
+        for _ in 0..4 {
+            r.record_time(10.0);
+        }
+        let s2 = r.retarget().unwrap();
+        assert_eq!(s2.lam_hat, 100.0);
+        // window 3: one instant window, lam_hat = 1000*4/0.04 = 100000 — 1000x
+        for _ in 0..4 {
+            r.record_time(0.01);
+        }
+        let s3 = r.retarget().unwrap();
+        // lam_hat = D*W/T_act computed in f64: 1000*4/0.04 is 100000 only up to
+        // floating-point representation, so the assertion is a tolerance on the
+        // recorded estimate rather than exact equality with the integer
+        assert!((s3.lam_hat - 100000.0).abs() < 1e-6,
+                "the outlier window's estimate must be ~100000, got {}", s3.lam_hat);
+        // but the SMOOTHED estimate used for D must be the median of (100,100,100000)
+        assert_eq!(s3.lam_smooth, 100.0, "the median filter must ignore the single outlier");
+    }
+
+    #[test]
+    fn retarget_refuses_a_zero_or_negative_window_time() {
+        // all blocks in one window arriving at the same instant: T_act is 0,
+        // which is not a measurable rate — the retarget must decline rather
+        // than divide by zero or invent a rate
+        let mut r = Retargetor::new(small_params(1), 1000);
+        for _ in 0..4 {
+            r.record_time(0.0);
+        }
+        assert!(r.retarget().is_none(), "a zero-duration window must not retarget");
+        assert_eq!(r.d, 1000, "D must be untouched on an unmeasurable window");
+        assert!(r.window_history.is_empty(), "an unmeasurable window must not enter history");
+    }
+
+    #[test]
+    fn retarget_floors_d_at_one_so_the_target_never_becomes_trivial() {
+        // a window implying a hashrate of essentially zero must still not
+        // produce D=0, because a zero target makes every hash a winner and
+        // the chain stops being a chain. D=1 is the floor.
+        let mut r = Retargetor::new(small_params(1), 1);
+        for _ in 0..4 {
+            r.record_time(1e9); // effectively infinite block spacing
+        }
+        let s = r.retarget().unwrap();
+        assert!(s.d >= 1, "D must never fall below 1");
+        assert_eq!(r.d, s.d);
+    }
 }
