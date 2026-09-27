@@ -244,6 +244,10 @@ mod tests {
         // The old form called assign_tasks twice over the same 4,000 task
         // names with two different gates, which meant 8,000 proves for what
         // is 4,000 provable facts.
+        // Reset the thread-local counter before the work, then read it after —
+        // the guard below needs the count to cover exactly this loop, not
+        // whatever another test left on this thread of the test pool.
+        ecvrf::take_prove_count();
         let betas: Vec<[u8; 32]> = (0..n)
             .map(|i| {
                 let tid = format!("t{i}");
@@ -251,6 +255,21 @@ mod tests {
                 ecvrf::proof_to_hash(&pi).expect("the loop's own proof decodes")
             })
             .collect();
+        // REGRESSION GUARD, inside the test it protects. A prove costs ~0.87 ms
+        // of P-256 scalar multiplication, so the count IS the cost up to a
+        // machine-independent constant — and a wall-clock threshold is not a
+        // guard at all under a load average that has swung between 10.8 and
+        // 13.4 while these tests were being written. This assertion is what
+        // makes the prove-once-gate-twice form above STICKY: reverting to the
+        // two-assign_tasks form is 8,000 proves instead of 4,000, which is a
+        // silent 2x slowdown — no property fails, the suite just gets slower —
+        // and it now fails this assert loudly. The counter is thread-local, so
+        // in the parallel test binary it counts only this test's own proves.
+        let proves = ecvrf::take_prove_count();
+        assert_eq!(
+            proves, n as u64,
+            "the gate-rate property proved {proves} times over {n} tasks — one prove per task is all it needs, and one per gate is the 2x regression this assert exists to catch"
+        );
         let won_half = betas.iter().filter(|b| half.passes(b)).count();
         let won_tenth = betas.iter().filter(|b| tenth.passes(b)).count();
         let rate = won_half as f64 / n as f64;
@@ -310,11 +329,21 @@ mod tests {
         // touching the property: the ratio is still two independent key sets
         // drawn over the same tasks, and both assignments still come from
         // the real loop.
+        // Reset the prove counter here too — this test pays 6,000 proves
+        // (3,000 per key), and the guard below catches a third redundant
+        // assign_tasks call for k1, which used to be 9,000.
+        ecvrf::take_prove_count();
         let one_key = assign_tasks(&k1.sk, &k1.pk, 5, &tasks);
         let one = one_key.len();
         // both keys draw on the same tasks
         let mut both = one_key;
         both.extend(assign_tasks(&k2.sk, &k2.pk, 5, &tasks));
+        let proves = ecvrf::take_prove_count();
+        let expected = 2 * 3000u64;
+        assert_eq!(
+            proves, expected,
+            "two keys over 3,000 tasks must prove {expected} times (one per task per key) — a count of {proves} means a key's work was repeated"
+        );
         let both_len = both.len();
         // a single key at the same gate would win `one`; two keys win ~2x
         let ratio = both_len as f64 / one as f64;

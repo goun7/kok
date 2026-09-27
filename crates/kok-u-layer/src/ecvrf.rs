@@ -36,6 +36,32 @@ use p256::{AffinePoint, EncodedPoint, FieldBytes, ProjectivePoint, Scalar};
 use p256::elliptic_curve::PrimeField;
 use sha2::{Digest, Sha256};
 
+// TEST-ONLY PROVE COUNTER. `prove()` costs about 0.87 ms under this build
+// because four P-256 scalar multiplications are the bulk of it (measured:
+// 1.499 ms for the four mults, 0.05 ms for everything else). A test that
+// proves over N tasks therefore has a cost you can predict from N alone, so
+// the way to guard a performance property of the assignment tests is to
+// count proves, not to measure seconds — a wall-clock threshold flakes with
+// machine load, and this machine has run at a load average of ~13.4 while
+// these tests were being timed.
+//
+// Thread-local on purpose. The test binary runs its tests on a thread pool,
+// so a process-global counter would accumulate another test's proves and
+// make the count meaningless; a thread-local counter sees only the proves
+// the test that reset it made on its own thread. (A doc comment cannot
+// attach to a macro item, which is why this is an ordinary comment.)
+#[cfg(test)]
+thread_local! {
+    static PROVE_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Read and reset the prove counter. Returns how many proves ran on this
+/// thread since the last reset.
+#[cfg(test)]
+pub(crate) fn take_prove_count() -> u64 {
+    PROVE_COUNT.with(|c| c.replace(0))
+}
+
 /// suite_string for ECVRF-P256-SHA256-TAI (RFC 9381 §5.5).
 const SUITE: u8 = 0x01;
 /// cLen for P-256 suites: 16 octets.
@@ -267,6 +293,8 @@ pub fn decode_proof(pi: &[u8]) -> Option<(AffinePoint, u128, Scalar)> {
 
 /// RFC 9381 §5.1: ECVRF_prove. Returns the ptLen+cLen+qLen = 81-byte proof.
 pub fn prove(sk: &[u8; 32], pk_string: &[u8], alpha: &[u8]) -> Vec<u8> {
+    #[cfg(test)]
+    PROVE_COUNT.with(|c| c.set(c.get().wrapping_add(1)));
     let x = scalar_from_bytes(sk).expect("the secret scalar must be valid");
     let y = generator() * &x;
     let y_affine = y.to_affine();
