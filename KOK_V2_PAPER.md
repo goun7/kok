@@ -1812,6 +1812,32 @@ F0b (real AIR)         ─┘
 | Work | KW MatMul PoUW (G) + zkVM proof (U) | **KW INT kernel** (r ∈ {32..1024}, 16r ≤ k ≤ 4r²) | deterministic LLM inference | SNARK proof | hash |
 | Overhead | 1+o(1) (G) / high (U) | 1+o(1); **+12.7% throughput on certified models** (its own benchmark) | 1:1 re-execution | high | n/a |
 | Consensus | **GHOSTDAG (BlockDAG)**, ~10 BPS target | **Bitcoin fork: UTXO + linear longest-chain, 194 s blocks (NO GHOSTDAG)** | single chain | single chain | **GHOSTDAG** |
+
+  **★ A constraint on the BPS target, from the implementation this design
+  calibrates against (2026-09-27).** The GHOSTDAG parameters this prototype
+  uses (`k = 18`, `max_block_parents = 10`, `mergeset_size_limit = 36` at
+  BPS = 1) were re-verified against rusty-kaspa's own `config/bps.rs`, and the
+  same file carries a scaling caveat this design must not treat as optional.
+  Kaspa's maintainers cap parent references at 16 for a stated reason — parent
+  count grows quadratically with BPS — and write that beyond BPS 10 blocks
+  would reference fewer parents than the average number of DAG tips, leaving
+  tip merging to inter-peer randomness, and that "for mainnet this requires an
+  increase to the value of GHOSTDAG K accompanied by a short security
+  analysis, or moving to the parameterless DAGKNIGHT." The same file bounds
+  `mergeset_size_limit` at 512 citing storage complexity of `O(#headers ×
+  mergeset_limit)`.
+
+  **What this means for this design, stated without inflation.** This paper's
+  ~10 BPS target sits at the edge of the range Kaspa's table covers without a
+  new analysis, and the design's response is to treat BPS as a parameter the
+  prototype measures rather than a number the paper claims: `k`,
+  `max_parents` and `mergeset` are inputs to the simulation, so the code is
+  correct whatever value is eventually chosen, and the choice is explicitly
+  left open. **The honest limit is that no security analysis for a BPS above
+  10 exists in this project or in Kaspa's own code** — the caveat above is
+  Kaspa's, and this design inherits it rather than resolving it. Raising BPS
+  past 10 would require the security analysis Kaspa names or the move to
+  DAGKNIGHT it suggests, and neither has been done here.
 | Difficulty | **window + median filter** (RT-1..3 verified) | **WTEMA** (per-block EMA, 7-day decay) | deterministic | "—" | classical |
 | Cryptography | **PQ suite mandatory** (TV-10) + Lean/ZEBRA + agility + emergency fallback | Plonky2 ZK (input privacy!); **XMSS reserved but disabled**; P2MR | re-exec | SNARK | hash |
 | Economy | **tail emission (R_∞ floor)** + 5% treasury + Pass simulation | S≈2.1M GPUs (Pearl's own published figure; note the project's model-implied count from the same revenue data is 338,707 GPU-op/block, so the two figures describe different quantites — the 2.1M is not reproduced by this project's code and is reported as Pearl's claim, not as a measurement here); **1/t² polynomial (no halving, R(t)→0 — NO tail)**; 24 EH/s, 1.06× revenue/cost | — | marketplace | **exhausted** (96.5%) |

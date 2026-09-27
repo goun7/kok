@@ -95,14 +95,43 @@ System date: 19 September 2026.
    parent-reference performance); `mergeset_size_limit = 2k = 36`. **Note:** these are
    Kaspa's parameters, used as a template; KÖK v2's own BPS is not yet chosen.
 
-   **Verification-status note (2026-09-21):** these figures were read from the
-   live repository during an earlier session. A re-verification attempt on
-   2026-09-21 could not reach github.com (network unreachable from this host).
-   The figures are therefore marked **"verified earlier, not re-verified this
-   session."** Before citing them in any external document they must be
-   re-read; the review package does not depend on their exact values — the
-   prototype takes `k`, `max_parents` and `mergeset` as **parameters**, so the
-   code is correct even if a figure were stale.
+   **Verification-status note (2026-09-21 → ★ RE-VERIFIED 2026-09-27):**
+   these figures were originally read from the live repository in an earlier
+   session, and a re-verification attempt on 2026-09-21 could not reach
+   github.com. **They are now RE-VERIFIED against the repository's own
+   source**, fetched directly from `raw.githubusercontent.com/kaspanet/
+   rusty-kaspa/master/consensus/core/src/config/bps.rs` (HTTP 200, read
+   verbatim). Every figure matches: `ghostdag_k()` for `BPS=1` is **`18`**
+   (the table reads `1 => 18, 2 => 31, 3 => 43, 4 => 55, 5 => 67, 6 => 79, 7
+   => 90, 8 => 102, 9 => 113, 10 => 124, … 32 => 362`); `max_block_parents()`
+   is `ghostdag_k() / 2` **floored at 10 and capped at 16**;
+   `mergeset_size_limit()` is `ghostdag_k() * 2` **floored at 180 and capped
+   at 512**; and `calculate_ghostdag_k` is the minimal *k* bounding anticone
+   probability by `delta` per PHANTOM §4.2 eq. 1. The prototype takes `k`,
+   `max_parents` and `mergeset` as **parameters**, so the code stays correct
+   whatever the calibration — but the calibration itself is now confirmed from
+   the source rather than from memory.
+
+   **★ Kaspa's own scaling caveat, read from the same file (2026-09-27).**
+   The cap comment is not incidental boilerplate; it is a stated condition on
+   raising BPS: *"We currently limit the number of parents by 16 in order to
+   preserve processing performance and to prevent number of parent references
+   per network round from growing quadratically with BPS. As BPS might grow
+   beyond 10 this will mean that blocks will reference less parents than the
+   average number of DAG tips. Which means relying on randomness between
+   network peers for ensuring that all tips are eventually merged. We
+   conjecture that with high probability every block will be merged after a
+   log number of rounds. For mainnet this requires an increase to the value
+   of GHOSTDAG K accompanied by a short security analysis, or moving to the
+   parameterless DAGKNIGHT."* This matters for KÖK because the BPS choice is
+   still open here, and Kaspa's own maintainers treat raising it past 10 as
+   requiring **new security analysis or a different protocol** — not merely
+   plugging a larger number into the table above. The same file also bounds
+   `mergeset_size_limit` at 512 for a stated storage reason: *"Bounded
+   relatively low because we have storage complexity of O(#headers *
+   mergeset_limit) coming from reachability and GHOSTDAG stores."* Both are
+   constraints on a parameter this project has not yet chosen, from the
+   implementation it calibrates against.
 
 6c. **Keller — "Automated Selfish Mining Analysis for DAG-Based PoW Consensus
     Protocols."** arXiv **2501.10888v3** (submitted 18 Jan 2025, v3 revised 21
