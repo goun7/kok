@@ -70,8 +70,29 @@ impl Retargetor {
     /// Record a block that arrived `delta` seconds after the previous one.
     /// Ported from Chain.record_time.
     pub fn record_time(&mut self, delta: f64) {
+        // THE INPUT IS UNTRUSTED, AND REJECTING IT HERE IS CHEAPER THAN
+        // REPAIRING IT LATER. A delta of NaN or infinity does not crash this
+        // function — it accumulates into `self.times` as a poison value and
+        // sits there until a later `retarget()` subtracts it into `t_act`,
+        // producing a NaN span. The is_finite guard in `retarget` catches
+        // that span and returns None, so the chain does not halt; but this is
+        // the difference between "the guard held" and "the input was never
+        // accepted". Validating on entry is what keeps a corrupt or hostile
+        // timestamp from entering the estimator's state at all, and it makes
+        // the invariant below — that every time in `self.times` is finite —
+        // provable by construction rather than by reaching the guard.
+        if !delta.is_finite() || delta < 0.0 {
+            return;
+        }
         let last = *self.times.last().unwrap_or(&0.0);
         self.times.push(last + delta);
+    }
+
+    /// The invariant `record_time`'s validation maintains, so the median
+    /// filter's `partial_cmp` can never see a NaN even if the caller
+    /// misbehaved. Every element of `self.times` is finite and non-negative.
+    pub fn times_are_all_finite(&self) -> bool {
+        self.times.iter().all(|&t| t.is_finite() && t >= 0.0)
     }
 
     /// Every W blocks, estimate the hashrate and rebuild D.
@@ -481,5 +502,80 @@ mod tests {
         r2.times = vec![0.0, 10.0, 5.0, 5.0, 5.0]; // span 0 -> 5 is positive; force negative
         r2.times = vec![100.0, 90.0, 80.0, 70.0, 60.0];
         assert!(r2.retarget().is_none(), "a negative span must be rejected");
+    }
+
+    /// `record_time` must reject a NaN delta at the boundary, because a NaN
+    /// here does not crash anything — it POISONS `self.times` and waits for a
+    /// later subtraction to turn it into a NaN span. The guard inside
+    /// `retarget` would still catch that span, so this is not the fix for a
+    /// crash; it is the difference between "the guard held" and "the bad input
+    /// was never accepted into the estimator's state."
+    #[test]
+    fn record_time_rejects_a_nan_delta_before_it_poisons_the_times() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        r.record_time(10.0);
+        r.record_time(f64::NAN);
+        r.record_time(10.0);
+        // the NaN was dropped, so times stays finite and monotone
+        assert!(
+            r.times_are_all_finite(),
+            "a NaN delta must never enter self.times, found {:?}",
+            r.times
+        );
+        assert_eq!(r.times.len(), 3, "the NaN delta was dropped, not pushed");
+        assert_eq!(r.times, vec![0.0, 10.0, 20.0]);
+    }
+
+    /// Infinity is the same hazard one step removed: it does not propagate as
+    /// NaN, but an infinite cumulative time makes every later span inf, which
+    /// drives `lam_hat` toward zero and pushes D toward its floor through the
+    /// clip — a silent wrong answer, which is the class this project keeps
+    /// hitting.
+    #[test]
+    fn record_time_rejects_an_infinite_delta() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        r.record_time(10.0);
+        r.record_time(f64::INFINITY);
+        assert!(
+            r.times_are_all_finite(),
+            "an infinite delta must never enter self.times"
+        );
+        assert_eq!(r.times.len(), 2, "the infinite delta was dropped");
+    }
+
+    /// A NEGATIVE delta is the third form of untrustworthy input, and here the
+    /// rejection is what preserves the cumulative-sum property rather than
+    /// the finite check: without it, a negative delta could make times
+    /// non-monotone, which is how the negative-span case in
+    /// `retarget_rejects_a_negative_window_time` becomes reachable through
+    /// the public API instead of only by direct mutation.
+    #[test]
+    fn record_time_rejects_a_negative_delta_and_keeps_times_monotone() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        r.record_time(10.0);
+        r.record_time(-5.0);
+        r.record_time(10.0);
+        assert_eq!(r.times, vec![0.0, 10.0, 20.0], "the negative delta was dropped");
+        // monotone, which is what makes a negative span unreachable via the API
+        for w in r.times.windows(2) {
+            assert!(w[0] <= w[1], "times must stay non-decreasing: {:?}", r.times);
+        }
+    }
+
+    /// The invariant itself is what the median filter relies on:
+    /// `est.sort_by(|a, b| a.partial_cmp(b).unwrap())` is only total because
+    /// every element it sees is finite. This pins that contract as a property
+    /// of the public type rather than an assumption inside `retarget`.
+    #[test]
+    fn times_are_all_finite_holds_after_mixed_good_and_bad_input() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        r.record_time(f64::NAN);
+        r.record_time(10.0);
+        r.record_time(f64::NEG_INFINITY);
+        r.record_time(-1.0);
+        r.record_time(10.0);
+        r.record_time(f64::INFINITY);
+        assert!(r.times_are_all_finite());
+        assert_eq!(r.times, vec![0.0, 10.0, 20.0]);
     }
 }
