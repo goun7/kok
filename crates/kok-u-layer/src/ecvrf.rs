@@ -62,6 +62,25 @@ pub(crate) fn take_prove_count() -> u64 {
     PROVE_COUNT.with(|c| c.replace(0))
 }
 
+// TEST-ONLY GENERATOR-MULTIPLICATION COUNTER. Every x·B on the prove path
+// goes through `gen_mult` below, so this counts the exact unit the 1.24x
+// optimisation removed from `assign_tasks`: with the hoisting in place the
+// loop pays ONE generator mult per task (u = k·B) plus one for the hoisted
+// y = x·B, i.e. N+1 over N tasks; a revert to `prove()` per task would pay
+// two per task, i.e. 2N. That difference is what the regression guard in
+// `assign.rs` asserts — again as a count and not as seconds, because the
+// machine's load average has swung from 10.8 to 21 during this work and a
+// 1.24x wall-clock threshold would have flaked on both sides of it.
+#[cfg(test)]
+thread_local! {
+    static GEN_MULT_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+pub(crate) fn take_gen_mult_count() -> u64 {
+    GEN_MULT_COUNT.with(|c| c.replace(0))
+}
+
 /// suite_string for ECVRF-P256-SHA256-TAI (RFC 9381 §5.5).
 const SUITE: u8 = 0x01;
 /// cLen for P-256 suites: 16 octets.
@@ -153,6 +172,17 @@ fn scalar_from_int(v: u128) -> Scalar {
 /// The base point B as a projective point.
 fn generator() -> ProjectivePoint {
     ProjectivePoint::from(AffinePoint::GENERATOR)
+}
+
+/// x·B, the generator scalar multiplication — the one operation the
+/// `assign_tasks` hoisting removed from the per-task loop. All generator
+/// multiplications on the prove path go through here so the test-only counter
+/// below covers the operation uniformly. The result is unchanged; only a
+/// counter moves.
+fn gen_mult(x: &Scalar) -> ProjectivePoint {
+    #[cfg(test)]
+    GEN_MULT_COUNT.with(|c| c.set(c.get().wrapping_add(1)));
+    generator() * x
 }
 
 /// SHA-256 over concatenated slices, without building one big Vec.
@@ -265,7 +295,7 @@ pub struct VrfKeys {
 impl VrfKeys {
     pub fn from_secret(sk: [u8; 32]) -> Self {
         let x = scalar_from_bytes(&sk).expect("the secret scalar must be a valid P-256 scalar");
-        let y = generator() * &x;
+        let y = gen_mult(&x);
         let pk = point_to_string(&y.to_affine());
         Self { sk, pk }
     }
@@ -296,13 +326,13 @@ pub fn prove(sk: &[u8; 32], pk_string: &[u8], alpha: &[u8]) -> Vec<u8> {
     #[cfg(test)]
     PROVE_COUNT.with(|c| c.set(c.get().wrapping_add(1)));
     let x = scalar_from_bytes(sk).expect("the secret scalar must be valid");
-    let y = generator() * &x;
+    let y = gen_mult(&x);
     let y_affine = y.to_affine();
     let h = encode_to_curve(pk_string, alpha);
     let h_string = point_to_string(&h);
     let gamma = (ProjectivePoint::from(h) * &x).to_affine();
     let k = nonce_generation(sk, &h_string);
-    let u = (generator() * &k).to_affine();
+    let u = gen_mult(&k).to_affine();
     let v = (ProjectivePoint::from(h) * &k).to_affine();
     let c = challenge_generation(&y_affine, &h, &gamma, &u, &v);
     let s = k + scalar_from_int(c) * &x;
@@ -336,7 +366,7 @@ pub fn prove(sk: &[u8; 32], pk_string: &[u8], alpha: &[u8]) -> Vec<u8> {
 /// exactly as a caller passing the wrong sk would.
 pub fn public_key_point(sk: &[u8; 32]) -> AffinePoint {
     let x = scalar_from_bytes(sk).expect("the secret scalar must be valid");
-    (generator() * &x).to_affine()
+    gen_mult(&x).to_affine()
 }
 
 /// `prove()` with the public key point supplied, so a loop over many alphas
@@ -365,7 +395,7 @@ pub fn prove_with_public_key(
     let h_string = point_to_string(&h);
     let gamma = (ProjectivePoint::from(h) * &x).to_affine();
     let k = nonce_generation(sk, &h_string);
-    let u = (generator() * &k).to_affine();
+    let u = gen_mult(&k).to_affine();
     let v = (ProjectivePoint::from(h) * &k).to_affine();
     let c = challenge_generation(&y_affine, &h, &gamma, &u, &v);
     let s = k + scalar_from_int(c) * &x;
@@ -398,7 +428,7 @@ pub fn verify(pk_string: &[u8], alpha: &[u8], pi: &[u8]) -> Option<[u8; 32]> {
     let h = encode_to_curve(pk_string, alpha);
     // U = s*B - c*Y ; V = s*H - c*Gamma (RFC 9381 writes it this way; the
     // prover computed U = k*B and V = k*H, and s = k + c*x makes them equal)
-    let s_b = generator() * &s;
+    let s_b = gen_mult(&s);
     let c_y = y * &scalar_from_int(c);
     let u = (s_b - c_y).to_affine();
     let s_h = ProjectivePoint::from(h) * &s;

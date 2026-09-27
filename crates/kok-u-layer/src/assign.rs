@@ -362,6 +362,50 @@ mod tests {
         assert!(both.len() > one, "a second key did not increase the win count at all");
     }
 
+    /// REGRESSION GUARD for the 1.24x cached-y optimisation. The optimisation
+    /// hoisted `y = x·B` — the public key, a pure function of sk — out of the
+    /// per-task loop, because sk is fixed for one `assign_tasks` call and the
+    /// RFC's (sk, alpha) signature cannot see that the caller already knows y.
+    /// That removed one of the four scalar multiplications per prove, measured
+    /// at 1.24x by an interleaved A/B.
+    ///
+    /// THE GUARD COUNTS GENERATOR MULTIPLICATIONS, not seconds. Under a load
+    /// average that has swung between 10.8 and 21 during this work, a 1.24x
+    /// wall-clock threshold flaked on both sides of the real number, while the
+    /// mult count is the cost up to a machine-independent constant. Over N
+    /// tasks the hoisted form pays N+1 generator mults — one for y via
+    /// `public_key_point`, plus u = k·B per task — and a revert to `prove()`
+    /// per task pays two per task, 2N. A future "simplification" that drops the
+    /// hoisting therefore fails this assertion loudly instead of quietly
+    /// costing 22% more.
+    ///
+    /// SMALL N ON PURPOSE: this asserts an exact count, so it needs no
+    /// statistical power — a 2x regression is 2N against N+1 at any N — and
+    /// 200 tasks keeps the guard at a fraction of a second rather than
+    /// duplicating a property test's runtime.
+    #[test]
+    fn the_cached_public_key_is_hoisted_out_of_the_task_loop() {
+        let k = key();
+        let tasks: Vec<(String, AssignmentGate)> = (0..200)
+            .map(|i| (format!("t{i}"), AssignmentGate::from_probability(1, 2)))
+            .collect();
+        // Reset AFTER building the key: VrfKeys::from_secret itself does a
+        // generator mult, and the guard must count only assign_tasks's work.
+        ecvrf::take_gen_mult_count();
+        let won = assign_tasks(&k.sk, &k.pk, 42, &tasks);
+        let gen_mults = ecvrf::take_gen_mult_count();
+
+        let n = tasks.len() as u64;
+        assert_eq!(
+            gen_mults,
+            n + 1,
+            "assign_tasks over {n} tasks paid {gen_mults} generator multiplications — the hoisted form pays n+1 (one y = x·B plus u = k·B per task), so a count of {gen_mults} means y is being recomputed inside the loop and the 1.24x optimisation has been reverted"
+        );
+        // The guard is only honest if the loop actually ran: a loop that proves
+        // nothing could satisfy an arithmetic assertion vacuously.
+        assert!(!won.is_empty(), "the gate admitted nothing over {n} tasks");
+    }
+
     /// A proof cannot be recycled across keys: another miner's assignment
     /// does not verify under the first miner's public key.
     #[test]

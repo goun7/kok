@@ -1,6 +1,6 @@
 # KÖK Network v2 — PoW L1 + Verifiable-Compute Market: The Best System Possible on Paper
 
-**Date:** 21 September 2026 (KW/Pearl/Demirel update + verified bibliography, MiCA and SEC v. Ripple) · **legal addendum 26 September 2026 (ESMA Guidelines + MAS Case study 1, both primary sources)** · **Status:** Design document (supersedes the v1 paper)
+**Date:** 21 September 2026 (KW/Pearl/Demirel update + verified bibliography, MiCA and SEC v. Ripple) · **legal addendum 26 September 2026 (ESMA Guidelines + MAS Case study 1, both primary sources)** · **§9.2 regulatory corroboration 27 September 2026 (Reg Crypto Assets proposed rule, full text)** · **Status:** Design document (supersedes the v1 paper)
 **Symbol:** `$KOK` · **Consensus:** GHOSTDAG + KW MatMul PoUW (demand-independent security) · **Fair launch**
 **Technical spec:** `KOK_V2_TECHNICAL_SPEC.md` (Annex A task market, Annex B difficulty, Annex C economy)
 
@@ -37,6 +37,8 @@ Three of v1's five fatal gaps were converted directly into three invariants:
   Annex B).
 
 The remaining two gaps (economics, law) are addressed in §7 and §9 — and §9's securities analysis is now anchored to two regulator rulings on this exact product shape (ESMA 17 Dec 2024, MAS Case study 1), both primary, both utility-side (added 26 September 2026).
+
+**A third authority arrived on 21 August 2026, and it is the closest thing to independent corroboration the legal section has (§9.2).** The SEC's proposed *Regulation Crypto Assets* (91 FR 54510) states in its own analysis that once a network is functional, services to secure, maintain or improve it "would not constitute essential managerial efforts", that promises to keep providing them "would not satisfy the Howey test", and that the asset "should derive its value from the programmatic operation of the associated crypto network" — with "validators and/or miners" named among the parties whose contributions determine success. **That is the G layer and the U layer described by a regulator, written without reference to this project.** The paper's Howey argument does not depend on it — the rule is proposed, not adopted, and this design cannot even *use* its safe harbor, because that codifies when a contract *ceases* to exist while this project's thesis is that there never was one. Corroboration, not confirmation: two compatible conclusions arrived at independently (§9.2).
 
 ---
 
