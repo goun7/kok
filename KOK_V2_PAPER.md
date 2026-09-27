@@ -167,6 +167,89 @@ The remaining two gaps (economics, law) are addressed in §7 and §9 — and §9
   is addressed by automatic **solution-set cardinality** verification in the **ZEBRA**
   (arXiv 2609.15020, Sept. 2026) style + AIR soundness in **Lean** (the S-two model, arXiv 2606.04311)
   + independent audit. (ZEBRA found 11 zero-days in 5 real zkVMs; this is the real attack surface.)
+
+  **★ Honest correction on how far the soundness tooling actually reaches
+  (2026-09-27, after reading Kolozyan et al., arXiv 2607.23752v1, in full
+  rather than as an abstract).** The sentence above stacks three mitigations
+  — automatic cardinality verification, Lean AIR soundness, and independent
+  audit — and reads as though together they close the under-constraint risk.
+  The empirical study of exactly that tooling says they do not close it, and
+  the specific shape of what they miss is worth stating rather than burying.
+
+  *What the study measured, precisely.* Six open-source non-interactive
+  Circom tools across 70 known vulnerabilities: "at least one tool detects 32
+  of the 70 bugs (45.7%)" in isolated mode, and in project mode
+  "effectiveness drops sharply: at least one tool detects only 11 of the 56
+  bugs (19.6%)" — the denominators differ because 14 projects failed to
+  compile. The study measures true-positive detection only and explicitly
+  leaves false positives to future work, so these are upper bounds on
+  bug-finding capability, not deployment performance.
+
+  *The direction of the finding is not the flattering one for this design, but
+  it is partly in this design's favour and that is said too.* The
+  assigned-but-unconstrained class — the one the ZEBRA-style cardinality
+  check targets — is the **best-detected class in the whole study**: 6/6
+  (100%) isolated, 2/5 (40%) in project mode (Table IV; note the paper's §V
+  prose says "20%" for the same cell and disagrees with its own table — the
+  auditable counts are the table's, and 2/5 = 40%). So the check this design
+  leans on is the most mature one available, and it degrades from 100% to 40%
+  the moment it is run against a whole codebase rather than an isolated
+  snippet. What the tools miss lies **elsewhere**: circuit-design issues 0/6,
+  specification misimplementation 1/3 then 0/2, and the study's own
+  practitioners rate proof-system issues 15% covered, system integration 5%
+  covered, crypto-primitive misuse 12% covered. The paper also broadens the
+  term beyond what this design's sentence implies: "a circuit is also
+  underconstrained whenever semantic mismatches occur: constraints accept
+  witnesses that do not correspond to valid executions, even when
+  deterministic" — and semantic mismatches are rated 30% covered by the
+  practitioners surveyed. **The honest statement is that the cardinality
+  check is the strongest single mitigation available and it is not
+  sufficient; it is a well-covered narrow class inside a poorly covered
+  broader one.**
+
+  *The evaluation contains no zkVM at all.* All six tools are Circom tools and
+  the entire dataset is Circom, extended from a Circom benchmark. zkVMs
+  appear in the study only as targets of *formal verification*, never as
+  targets of bug-detection tooling. This matters because this design's proof
+  layer is a zkVM: the 45.7%/19.6% numbers were never measured on anything
+  resembling it, and the study's external-validity caveat says so directly —
+  "the RQ2 results may not generalize beyond Circom and the six tools we
+  evaluated." Citing the study as evidence about zkVM soundness would
+  overstate it; it is evidence about the *state of the tooling* this design
+  intends to use, measured on the DSL where that tooling is strongest.
+
+  *The Lean leg, and why it is narrower than the sentence implies.* The study
+  supports choosing Lean — zkVM formal verification is "converging on Lean
+  and the Sail RISC-V specification," and constraint soundness is "the most
+  mature goal" — and then immediately bounds it: "it is, however, only one
+  direction of one layer of the stack… No zkVM has end-to-end formal
+  verification, and verified components are isolated. Constraint-correctness
+  proofs cover instruction semantics, but the witness generator, the
+  lookup/permutation arguments, the proof-system backend, and the on-chain
+  verifier remain largely unverified." Precompiles "remain largely
+  unverified" and can be auto-generated, "thereby multiplying their number
+  into an open-ended, shifting set that cannot be chased circuit by
+  circuit." And the trusted-computing-base caveat is the sharpest line in the
+  paper: "a proof of a vacuous or misstated theorem passes the kernel while
+  establishing nothing, so what is proven is as much part of the TCB as the
+  machinery that checks it." For this design that means the Lean AIR proof
+  would need to state precisely which properties and components it covers,
+  and to be re-run in CI — the paper's own warning is that "guarantees not
+  checked on every commit silently decay."
+
+  *The audit leg is the one the study actually endorses, and it is already
+  in the design.* The study's own conclusion: "current defenses are useful
+  but incomplete… The picture is thus not one of push-button security, as
+  tooling is layered around human-led review" — manual code review is
+  reported by 79% of developers and 83% of auditors. So the third leg of
+  this design's mitigation, independent human audit, is the part the
+  evidence supports most strongly, and the first two are the part it
+  qualifies. **Nothing in this section changes the soundness error bound or
+  the parameter choice; what changes is that the three mitigations are no
+  longer presented as a closed stack. They are a partially-verified narrow
+  class inside a broader poorly-covered one, plus a human process the study
+  identifies as still load-bearing.**
+
 - **T4 (Economic attacks):** Pass (arXiv 2606.06700): **once equilibrium prices are taken into
   account, the cost of a majority attack remains tied to the block reward** (`PR/2`, in every
   regime); the "pay the attacker" straw man collapses. The design targets the **Fortessia regime**:

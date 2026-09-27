@@ -206,6 +206,123 @@ System date: 19 September 2026.
     and that KÖK's `k=18` sits outside the analyzed range. **Cited as a limit
     and a direction, NOT as support for a selfish-mining-resistance claim.**
 
+6d. **Kolozyan, Sorger, Hicks, Chaliasos — "ZKP Security Tools and
+    Verification: Coverage, Effectiveness, Adoption, and Challenges."**
+    arXiv **2607.23752v1** (submitted 26 Jul 2026; cs.CR; DOI
+    10.48550/arXiv.2607.23752; affiliations MPI-SP, KTH, Ethereum Foundation,
+    Athens & zkSecurity). **Verified 2026-09-27** against the canonical `abs`
+    page and the full HTML v1 text (all ten sections + references).
+
+    **★ Why this is the empirical check on the soundness story the paper
+    tells in T3.** T3 stacks three mitigations for under-constrained-circuit
+    risk — automatic solution-set cardinality verification (ZEBRA style),
+    AIR soundness in Lean (S-two), and independent audit. This paper measures
+    the first two classes of tooling empirically and, read in full, it
+    qualifies both and endorses the third. Recorded here in both directions
+    because the finding is partly favourable to this design and partly
+    unfavourable, and only the unfavourable half was being used to write the
+    paper's correction.
+
+    **The numbers, verbatim and with their denominators.** Six open-source
+    non-interactive Circom tools across 70 known vulnerabilities, extended
+    from Chaliasos et al.'s Circom dataset: *"In isolated mode, at least one
+    tool detects 32 of the 70 bugs (45.7%). … In project mode, effectiveness
+    drops sharply: at least one tool detects only 11 of the 56 bugs (19.6%)."*
+    The 70/56 split exists because 14 projects failed to compile in project
+    mode. The study measures **true-positive detection only** — *"We do not
+    measure false positives, as our goal is to assess current bug-finding
+    capability"* — so these are upper bounds on capability, not measured
+    false-positive rates in deployment.
+
+    **THE CARDINALITY LEG IS THE BEST-COVERED CLASS, NOT A GAP.** From the
+    paper's Table IV: **assigned-but-unstrained is 6/6 (100%) isolated and
+    2/5 (40%) in project mode** — the highest-isolated rate of any class in
+    the study. Missing input constraints 10/22 (45.5%) → 3/18 (16.7%);
+    logic-to-constraint translation 9/18 → 3/13; unsafe circuit reuse 4/10 →
+    2/7; **circuit design issue 0/6 → 0/6**; arithmetic field issues 2/4 →
+    1/4; **spec. misimplementation 1/3 → 0/2**; other programming errors
+    0/1 → 0/1. ⚠ **The paper's §V prose and Table IV disagree** on this cell:
+    the prose says *"assigned-but-unconstrained bugs fall from 100% to 20%"*
+    while the table reports 2/5 = 40%. **The table carries the auditable
+    counts; cite the table.** The class this paper finds uncovered lies
+    beyond cardinality — circuit design and specification misimplementation
+    are 0%, and practitioners rate proof-system issues 15% covered, system
+    integration 5%, crypto-primitive misuse 12%, semantic mismatches 30%.
+    The paper also widens the term: *"A circuit is also underconstrained
+    whenever semantic mismatches occur: constraints accept witnesses that do
+    not correspond to valid executions, even when deterministic"* — and that
+    broader reading is the poorly-covered one.
+
+    **THE EVALUATION CONTAINS NO ZKVM — a direct scope limit for this
+    project.** All six evaluated tools are Circom tools and the whole 70-bug
+    dataset is Circom; zkVMs appear only as targets of *formal verification*
+    in §VI (SP1, OpenVM, RISC Zero, Jolt, zkWasm, Cairo/StarkWare, Plonky3,
+    Scroll, ZKsync Era), never as bug-detection targets. Its own
+    external-validity caveat: *"The RQ2 results may not generalize beyond
+    Circom and the six tools we evaluated, although Circom is currently the
+    best-supported DSL by automated tools."* **So 45.7%/19.6% was never
+    measured on anything resembling this project's zkVM proof layer; the
+    study is evidence about the state of the tooling, measured where that
+    tooling is strongest.**
+
+    **THE LEAN LEG: SUPPORTED AS THE MOST MATURE GOAL, AND BOUNDED BY THE
+    PAPER'S OWN WORDS.** *"zkVM verification is converging on Lean and the
+    Sail RISC-V specification, but results remain isolated: they mostly prove
+    constraint soundness, leave key artifacts unverified, and rely on trusted
+    extraction and modeling."* §VI-C: *"Constraint soundness is the most
+    mature goal … It is, however, only one direction of one layer of the
+    stack, and significant gaps remain elsewhere. No zkVM has end-to-end
+    formal verification, and verified components are isolated.
+    Constraint-correctness proofs cover instruction semantics, but the
+    witness generator, the lookup/permutation arguments, the proof-system
+    backend, and the on-chain verifier remain largely unverified."* On
+    precompiles: *"most precompiles remain unverified across all zkVMs"* and
+    can be auto-generated *"thereby multiplying their number into an
+    open-ended, shifting set that cannot be chased circuit by circuit."* On
+    maintenance: *"several efforts we cite target code that is now
+    deprecated"* and *"Guarantees not checked on every commit silently
+    decay, while AI-generated proofs remain a poor fit for CI."* The
+    trusted-computing-base line is the one to quote in the paper: *"a proof
+    of a vacuous or misstated theorem passes the kernel while establishing
+    nothing, so what is proven is as much part of the TCB as the machinery
+    that checks it."* (AIR appears once, as an API surface: *"it is possible
+    to intercept the circuit-builder API (e.g., Plonky3's Air trait) and
+    export the constraints to a proof assistant."*)
+
+    **THE AUDIT LEG IS THE ONE THIS PAPER ENDORSES — it is already in the
+    design.** Its §X conclusion: *"current defenses are useful but
+    incomplete… Practitioners likewise report human-led workflows."* §VII:
+    *"Manual code review remains dominant, reported by 79% of developers and
+    83% of auditors… The picture is thus not one of push-button security, as
+    tooling is layered around human-led review."* And on AI: *"LLMs may
+    reduce the cost of authoring, translating, and maintaining these
+    artifacts, but cannot establish that they faithfully capture protocol
+    intent."* **The third leg of T3 is the strongest; the first two are the
+    qualified ones.**
+
+    **WHAT THE PAPER DOES NOT PROVE (recorded so it is not over-cited).** It
+    does **not** mention ZEBRA, "zero-day," or "11 zero-days in 5 zkVMs" —
+    **zero occurrences in the full text** — so it cannot support or rebut
+    that claim; ZEBRA (2609.15020) stands on its own. The six tool names are
+    mostly not in the text (only Civer, Circomspect, Ecne appear in §V
+    prose); the full list is in Figure 2, which is an image, and in the
+    artifact at `github.com/t-sorger/zkp-security-tools`. The benchmark is
+    **known-bug biased** (bugs from audits and public disclosures), so it
+    cannot support claims about bug prevalence. Several Table IV project-mode
+    cells are ≤5 bugs, so those percentages are fragile. Tool versions are
+    not stated in the paper. And its §V notes *"Results differ substantially
+    from tool-specific benchmarks presented in their own research papers,
+    highlighting the bias introduced by narrow evaluation suites."*
+
+    **Net status for KÖK:** the ZEBRA-style cardinality check is the single
+    best-served mitigation available and it is Circom-only, never measured on
+    a zkVM, and drops from 100% to 40% at whole-project scale; the Lean AIR
+    proof is the most mature verification goal and covers "one direction of
+    one layer"; independent human audit is what the study identifies as
+    still load-bearing. **Cited as a qualification of the soundness stack,
+    and as evidence for keeping the audit leg prominent — not as evidence
+    that zkVM soundness is measured, because it is not.**
+
 ## 2026 NEW ACADEMIC SOURCES (added 2026-09-26)
 
 Six papers found and verified against their own canonical pages this session
