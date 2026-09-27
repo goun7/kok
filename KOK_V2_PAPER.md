@@ -177,6 +177,54 @@ The remaining two gaps (economics, law) are addressed in §7 and §9 — and §9
   **protocol-determined** (not free), adds protocol-controlled commitments and a small-block penalty
   against the pooling tendency, and continuously regression-tests against the ACNS 2025 solver for
   selfish mining.
+
+  **★ Honest correction on what the ACNS 2025 solver licenses (2026-09-27,
+  written after reading Keller's full text rather than its abstract).** The
+  sentence above read as though Keller (arXiv 2501.10888v3, ACNS '25) were
+  supporting evidence for this design's incentive posture. Read in full it is
+  not support, it is a live open question, and it bounds this claim rather
+  than backing it. Three specific limits.
+
+  *The headline finding is bidirectional, and only the flattering half was in
+  use.* Keller §7.3: "GhostDAG seems to be incentive incompatible for
+  relatively weak attackers (low α) although it clearly outperforms Bitcoin
+  and Byzantium for strong attackers." Its §1 flags "relatively weak miners
+  can benefit from selfish mining in GhostDAG" and names **Parallel
+  Proof-of-Work**, not GhostDAG, as the most resilient protocol analysed.
+  Citing this paper for GhostDAG's strength while dropping the weak-attacker
+  half is keeping only the part that reads well.
+
+  *The paper's `k = 3` is not this design's `k = 18`.* Keller: "We here set
+  k = 3, while the designers of both protocols propose much higher values",
+  and how `k` changes the results it lists as an open question. This design's
+  `GHOSTDAG_K = 18` is six times outside the analysed range, so the paper says
+  nothing about it in either direction.
+
+  *Every number in the paper is a lower bound on the attacker's advantage, and
+  the model excludes the vector this design's own retargetor represents.* Its
+  §7.2: "the BlockDAG size limit restricts the attacker. In a real setting,
+  there is no BlockDAG size limit and the attacker's reward per progress could
+  be even higher." Its A8/A9 assume "the attacker may withhold and ignore
+  blocks but otherwise behaves honestly" with the difficulty adjuster held
+  stable — the paper notes the DAA *can* be gamed by faked timestamps and
+  excludes that on purpose. It also analyses a GhostDAG that is **not
+  Kaspa's**: it invents the reward scheme ("the publication does not specify
+  rewards and progress — we fill these gaps", blue pays one unit and red pays
+  zero where Kaspa pays both at different rates), mines on `tips(G)` rather
+  than a selected parent, and breaks ties with Python's `hash()` instead of
+  blue score.
+
+  **What is kept and what is stopped.** Kept: the protocol-determined
+  selection rule, the commitments and the small-block penalty, which are this
+  design's answers to the RTS non-equilibrium result of 2109.01102 and
+  2305.16757 and do not depend on Keller at all. **Stopped: any suggestion
+  that the ACNS 2025 solver validates this design.** A solver over one reward
+  unit per blue block at k=3 in six-block DAGs with no DAA gaming is a solver
+  for a different protocol, and a regression test against it would test that
+  protocol. The accurate record is that weak-attacker incentive compatibility
+  at `k = 18` is unmeasured here and unmeasured by Keller, and the references
+  file now carries the paper as a limit and a direction rather than as
+  support.
 - **T6 (ASIC / hardware):** Because the work is the **MatMul that GPUs already perform** (KW 1+o(1)),
   there is **no natural market** for special-purpose mining ASICs — miners are consumers of AI
   compute, and their hardware retains its value after an attack (Pass §1.8's GPU-vs-ASIC stock
@@ -430,6 +478,76 @@ vendor's promotional number, and an academic reader who checks the footnote woul
 figures above are reported earnings — they survive the check. **The honest market claim is:
 "the spend exists and it is growing at ~100%/yr; the addressable permissionless subset is unknown,
 and we intend to measure it rather than to assume it."**
+
+### 8.2 ★ The tokenomics model, as one table (added 27 September 2026)
+
+The economics above is narrative. A submission-ready paper needs the model in a
+form a reader can check against the code, so this subsection states every
+monetary parameter, where it comes from, and — the part that is usually missing
+— **which of them are measured and which are still choices**. The full
+derivation is `KOK_V2_TECHNICAL_SPEC.md` Annex C; what follows is the model at
+reading distance, and the discipline is that **every number is either a primary
+citation, a measured result, or an explicit design choice never presented as a
+discovery.**
+
+**The fee flow, as an accounting identity.** A task carries `fee` and
+`burn_rate ∈ (0.0, 0.5]`, chosen by the client:
+
+```
+submit:  escrow ← fee + bond           (bond = fee · BOND_RATIO, sybil cost, Demirel Lemma 1)
+         burn    ← fee · burn_rate     (irrecoverable, taken at submission — NOT from escrow)
+settle:  miner   ← fee − burn          (the payable part; the burn never sat in escrow)
+slash:   buyer   ← fee (refunded in full, nothing burned, nothing paid)
+timeout: buyer   ← fee (the full fee incl. the earmarked burn — TV-44's correction)
+```
+
+The identity the prototype maintains is **`fees_in == refunded + burned + paid`**,
+and it is enforced by tests rather than by assertion (TV-44, TV-51). The burn is
+**Demirel's irrecoverable tax** — the thing that makes a zero-demand network
+unable to fake activity for free, and the reason the honest GHOSTDAG fallback in
+§11 item 3 is a floor rather than a collapse.
+
+**The parameter table.** "M" = measured by a runnable file, "C" = cited from a
+primary source, "D" = design choice, stated as a choice:
+
+| Parameter | Value | Status | Source / what it is |
+|---|---|---|---|
+| `R_0` initial block reward | 50 KOK | **D** | fair launch; chosen, not discovered |
+| `T_half` halving period | 4 years | **D** | the descent to the tail; Bitcoin-convention interval |
+| `R_∞` tail emission | **2 KOK**, never zero | **D** | the floor of the security budget; prevents Kaspa's 2026 exhaustion (96.5% of max supply mined) |
+| `τ` treasury share | **5%** of `R(t)` | **D** | escrow + milestone vesting; no VCs, no premine — Kaspa ran this way too |
+| `burn_rate` | `(0.0, 0.5]`, client-chosen | **D** | the irrecoverable tax; bounded at 0.5 so the task cannot burn more than half its own fee |
+| `BOND_RATIO` | task bond = `fee · BOND_RATIO` | **D** | sybil cost; the bond is slashed and refilled, so it ends at its level, not 0 (TV-16, TV-81) |
+| Attack cost | **PR/2** in every regime | **C** | Pass 2606.06700 Thm; verified in §3.1 |
+| Pearl calibration `S = PR/e` | **338,707** GPUs vs **320,000** measured → **5.8%** deviation | **M** | `pass_sim_en.py`, Tullock full-payment condition; revenue/cost 1.058 vs Basu's measured 1.06 |
+| Fortessia security gain | **3.33×** security, utility unchanged | **M** | `1/(γ(1−1/α))`, α=γ=1.3; matches theory exactly |
+| Zero-demand outcome | `Q→0`, **`S → PR/e = 338,707`** | **M** | the chain survives as pure PoW; security Bitcoin-equal (Demirel Thm 2) |
+| Attack cost at Pearl scale | **$1,016** | **M** | heterogeneous cost b=1; total S drops 38% but PR/2 holds |
+| Pearl's implied regime | **θ = 1.6571**, pure Duplexia | **M** | corrected 2026-09-24 (was 1.05, wrong equation); reproduces input PR to 2.24e-16 |
+| Tail-attack floor | **$0.76**, `R_∞ = 2` | **M** | the tail does not go to zero, unlike Kaspa |
+| Demand elasticity `ε` | 2 | **D** | the Jevons assumption; a choice, and labelled as one |
+| Model validity scale | **mainnet only** | **M** | F3a's ~1,200 miners **cannot** recalibrate — an 86% deviation; Pass's own calibration is over a $30B market / 52,560 block-years |
+
+**★ What the table is honest about, and what a reader should therefore challenge.
+Three of the load-bearing numbers are choices, not findings** — `R_0`, `T_half`
+and `R_∞` are picked, and the paper says so rather than presenting them as
+derived. The one that carries the security argument, `R_∞ = 2`, is a choice whose
+*consequence* is measured (the $0.76 attack-cost floor), so the claim is "this
+choice produces that floor," not "this choice is optimal." The calibration row is
+the strongest evidence in the table and it is a **5.8% miss**, not a hit — stated
+as a miss because that is what it is. And the last row is the honest ceiling on
+the whole model: **the economics is valid at the scale where it can be checked
+against a real network, and F3a's small testnet cannot check it**, which is why
+F3a measures demand (φ) and does not calibrate the model (spec C.7).
+
+**What this closes and what it does not.** It closes the "the paper has no
+concrete tokenomics model" gap — the parameters, the fee flow and the
+measured/cited/chosen status of each are now in one place a referee can audit.
+It does not close §11 item 3: **the permissionless priced subset of the AI
+compute market has never been measured by anyone**, and no table makes it
+measured. What the table does is make that gap visible at reading distance
+rather than buried in an annex, so the reader who reaches §11 item 3 has already
+seen the numbers that define it.
 
 ---
 
@@ -935,6 +1053,64 @@ treatment, including the one point a comment could honestly raise: **the
 proposal's "issuer" needs clarifying for networks that have no issuer**, which
 is theoretically favourable to this design rather than a request for an
 exception.
+
+### 9.3 ★ Where the law section actually stands, and the four things it still needs (added 27 September 2026)
+
+The §9 above is long, and length can masquerade as completeness. This subsection
+says plainly what the section has, what it does not, and the shortest honest path
+from here to something a lawyer could sign — because the gap is not analytical,
+it is that **no counsel has been engaged**, and no amount of primary-source
+reading substitutes for that (Stage 4 §4.2).
+
+**What the section has established, each from a primary source rather than a
+summary:**
+
+| Jurisdiction | Source (primary) | What it establishes | Status |
+|---|---|---|---|
+| **US** | SEC v. Ripple, Doc 874 (13 Jul 2023) | Programmatic exchange sales are **not** investment contracts; institutional sales are | Cited, primary; not appellate-reviewed (appeals withdrawn) |
+| **US** | SEC interpretation, 91 FR 13714 (17 Mar 2026) | XRP named a **digital commodity**; a non-security can still be sold *as part of* an investment contract | Cited, primary |
+| **US** | Reg Crypto Assets proposed rule, 91 FR 54510 (21 Aug 2026) | A functional network's programmatic operation is where value should come from; "validators and/or miners" named (§9.2) | **Proposed**, not adopted; comment period open until 20 Oct 2026 |
+| **EU** | MiCA, Reg (EU) 2023/1114 Art. 3 (5)(6)(9) | KÖK's token is a **crypto-asset other than ART/EMT** — not a utility token under (9), because it is also mined | Cited, primary; jurisdiction question open |
+| **EU** | ESMA Guidelines ESMA75453128700-1323 (17 Dec 2024) | Profit expectation alone is **not sufficient** to make a utility token a transferable security | Cited, primary; conditional on staying free of financial-instrument rights |
+| **SG** | MAS Digital Token Offerings, Case study 1 (30 Nov 2018) | A **compute-rental** token is not a capital markets product — a regulator ruled on this exact shape | Cited, primary; closed-platform vs open-network asymmetry stated |
+| **US (tax)** | Rev. Rul. 2023-14 (IRB 2023-33) | Rewards are income at **dominion and control**; the burn's treatment remains unanswered | Cited, primary; the narrow question is open |
+
+**The four things the section still needs, in the order they become decidable.
+This is the honest roadmap, and the first three are not research — they are
+ engagements:**
+
+1. **A counsel letter on the offer.** Every row above is a reading by
+   non-lawyers. The MiCA classification, the Howey position and the MAS analogy
+   are all analytically sound and none of them is legal advice. This is the
+   single highest-value item and it is the one no amount of reading closes.
+2. **The jurisdiction decision.** MiCA binds the EU *offer*; the US analysis
+   turns on the circumstances of sale. A decision about where the offer is made
+   from, and by whom, determines which of the two regimes is operative — and
+   while the project is anonymous **there is no "whom"**, which is why the
+   disclosure text (§9) is drafted but the legal vehicle is not.
+3. **The "issuer" clarification in Reg Crypto Assets.** §9.2's finding rests on
+   a network being *functional* and value coming from *programmatic operation*,
+   but the proposed rule's mechanics (Rule 400, Form TR) all assume an issuer
+   files something. **This is the one place the regulation does not yet speak to
+   a fair-launch network**, and it is genuinely open — the comment period runs
+   until **20 October 2026**, which makes it a live question rather than a
+   historical one. KÖK's interest is in the clarification, not in the safe
+   harbour: the design's thesis is that there was never a contract to terminate.
+4. **The burn's tax treatment.** Rev. Rul. 2023-14 fixes the *timing* (dominion
+   at receipt) but no primary source addresses whether a burn reduces the
+   already-recognised liability. This is a narrow, technical question and it is
+   honestly unresolved — it is now anchored to the IRS's own rule rather than
+   floating above it, which is progress of the *kind* that precedes an answer.
+
+**Why the section is nonetheless submission-ready as written.** A paper is not
+required to have a legal opinion; it is required not to misrepresent one. The
+section's discipline is that **every claim is sourced to a primary document,
+every limit is stated where a reader will meet it, and no regulator's words are
+presented as advice about this token** — the corroboration in §9.2 is called
+*corroboration* precisely because it was written without reference to this
+project. A referee who checks any citation above lands on the actual document,
+and a referee who asks "but is it legal?" is pointed at item 1 of the four,
+which is the honest answer.
 
 ---
 

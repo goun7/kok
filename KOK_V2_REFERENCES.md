@@ -104,6 +104,79 @@ System date: 19 September 2026.
    prototype takes `k`, `max_parents` and `mergeset` as **parameters**, so the
    code is correct even if a figure were stale.
 
+6c. **Keller — "Automated Selfish Mining Analysis for DAG-Based PoW Consensus
+    Protocols."** arXiv **2501.10888v3** (submitted 18 Jan 2025, v3 revised 21
+    Jun 2025; *to be published in ACNS '25 proceedings*; University of
+    Innsbruck; cs.CR + cs.DC; DOI 10.48550/arXiv.2501.10888). **Verified
+    2026-09-27** against the canonical `abs` page and the full HTML v3 text.
+
+    **★ Why this paper is the relevant external check on KÖK's GhostDAG
+    posture:** it is, by its own claim, the first *generic MDP-based*
+    selfish-mining analysis to cover GhostDAG — the exact attack class KÖK's
+    consensus layer must withstand, and one that, per the paper, DAG protocols
+    had previously escaped because enumerating arbitrary DAG states is
+    intractable. The headline finding cuts **both ways and is recorded both
+    ways**: *"GhostDAG seems to be incentive incompatible for relatively weak
+    attackers (low α) although it clearly outperforms Bitcoin and Byzantium
+    for strong attackers"* (§7.3), and *"relatively weak miners can benefit
+    from selfish mining in GhostDAG"* (§1). *"The most resilient protocol is
+    Parallel Proof-of-Work."* The honest read is that GhostDAG's advantage
+    over Bitcoin is real **for strong attackers** and its disadvantage is real
+    **for weak ones** — not a clean "GhostDAG resists selfish mining" claim,
+    and KÖK does not get to make one from this source.
+
+    **WHAT THE PAPER DOES NOT GIVE (stated plainly — a source that cannot
+    support a claim must not be cited as though it can):**
+    - **No numbers for GhostDAG.** Its results are plotted curves only
+      (Fig. 5 §7.3, Fig. 6 §7.4); the data series are raster images and no
+      per-α values appear in the text. Fig. 5's y-axis spans 0–~0.20 "reward
+      per progress minus α", which bounds the surplus's *order*, not its value.
+    - **No GhostDAG profitability threshold.** Searched: the only "threshold"
+      sentence is §1's reference to *prior* Bitcoin/linear-chain work
+      (Eyal–Sirer, Sapirshtein et al.); the paper never converts its curves
+      into an α* for GhostDAG. **Any KÖK claim of a specific GhostDAG
+      threshold is unsupported by this paper.**
+    - **No k-scaling evidence.** Stated as an open question: *"We are
+      particularly interested in how GhostDAG's and Parallel's k-parameters
+      affect the results… We here set k = 3, while the designers of both
+      protocols propose much higher values."* KÖK's `GHOSTDAG_K = 18` is
+      **6× the analyzed value and outside this paper's evidence.**
+    - **The 6-block ceiling makes every number a LOWER BOUND on the
+      attacker's advantage.** §7.2 verbatim: *"reward per progress grows
+      monotonically for increasing BlockDAG size limit, independent of the
+      model. This indicates that the BlockDAG size limit restricts the
+      attacker. In a real setting, there is no BlockDAG size limit and the
+      attacker's reward per progress could be even higher."* This cuts
+      **against** using the paper to argue GhostDAG is safe.
+    - **Keller's GhostDAG is NOT Kaspa's.** `"Kaspa" appears nowhere in the
+      paper` (full-text searched). The modeled source is PHANTOM-GHOSTDAG
+      (Sompolinsky–Wyborski–Zohar, AFT '21) with Keller **inventing** the
+      economics: *"the publication [17] does not specify rewards and progress—
+      we fill these gaps"* — blue blocks pay 1 unit, red blocks pay 0, whereas
+      **Kaspa pays both, red at a discount**. His mining rule is `tips(G)`
+      (parent every leaf), not Kaspa's selected-parent + k-bounded merge set.
+      Tie-breaks use Python's `hash()`, not blue score. `k = 3`, DAG ≤ 6
+      blocks, and §6 adds that canonization *"is an invalid operation for
+      GhostDAG"*, so its budget could not be raised past 6. **Transfer: the
+      qualitative direction at low k may transfer; the numbers must be treated
+      as not-transferable to `GHOSTDAG_K = 18`.**
+    - **The attack model excludes other vectors** (Appendix 0.A): A1/A2 no
+      transactions or out-of-band communication; A3 all blocks the same PoW;
+      A4 topological delivery order; A5 deterministic honest behaviour; A7 a
+      single colluding attacker; **A8 "the attacker may withhold and ignore
+      blocks but otherwise behaves honestly" — no DAA gaming**, and the paper
+      itself notes the DAA *can* be gamed by faking timestamps but assumes it
+      stable (A9). For KÖK this matters: KÖK's own retargetor is a
+      first-class component, and Keller's model deliberately excludes
+      attacking it. **A source that excludes a vector does not prove that
+      vector closed.**
+
+    **Net status for KÖK:** independent external evidence that GhostDAG's
+    incentive-compatibility is a genuine open question at the parameters
+    actually analyzed, that weak-attacker selfish mining in GhostDAG is real,
+    and that KÖK's `k=18` sits outside the analyzed range. **Cited as a limit
+    and a direction, NOT as support for a selfish-mining-resistance claim.**
+
 ## 2026 NEW ACADEMIC SOURCES (added 2026-09-26)
 
 Six papers found and verified against their own canonical pages this session
