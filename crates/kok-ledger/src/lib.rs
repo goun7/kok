@@ -138,7 +138,12 @@ impl Ledger {
         // checked against overflow above the bound: fee > 0 and burn_rate <=
         // 500 keeps the product well under u64::MAX, but the settle path
         // asserts it again rather than trusting this
-        *self.balances.get_mut(&poster).unwrap() = bal - fee;
+        // The balance key must exist here because bal >= fee and fee > 0 were
+        // both established above, which makes bal nonzero and therefore makes
+        // the key present. Held by .expect rather than .unwrap so the safety
+        // rests on a stated reason instead of on the reader reconstructing it,
+        // and so a future edit that breaks the ordering fails loudly here.
+        *self.balances.get_mut(&poster).expect("bal >= fee > 0 was checked above, so the poster has a balance entry") = bal - fee;
         self.total_escrowed = self
             .total_escrowed
             .checked_add(fee)
@@ -217,7 +222,10 @@ impl Ledger {
             .checked_add(burn)
             .ok_or(LedgerError::Overflow)?;
 
-        let t = self.tasks.get_mut(&tid).unwrap();
+        // The task entry exists because it was looked up at the top of this
+        // function; nothing between there and here removes it. .expect rather
+        // than .unwrap so the reason is at the point of use, not inferred.
+        let t = self.tasks.get_mut(&tid).expect("the task was looked up above and is not removed in this function");
         t.status = TaskStatus::Settled;
         Ok(Settlement { pay, burn })
     }
@@ -238,7 +246,11 @@ impl Ledger {
             .ok_or(LedgerError::Overflow)?;
         let bal = self.balances.entry(poster).or_insert(0);
         *bal = bal.checked_add(fee).ok_or(LedgerError::Overflow)?;
-        self.tasks.get_mut(&tid).unwrap().status = TaskStatus::Refunded;
+        // The task entry exists because it was looked up at the top of this
+        // function; nothing between there and here removes it. Same reasoning
+        // as the settle path — the invariant is real but it was held only by
+        // a comment, so it is now stated at the point of use.
+        self.tasks.get_mut(&tid).expect("the task was looked up above and is not removed in this function").status = TaskStatus::Refunded;
         Ok(())
     }
 

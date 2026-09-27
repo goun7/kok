@@ -91,7 +91,17 @@ impl Retargetor {
             return None;
         }
         let t_act = self.times[self.times.len() - 1] - self.times[self.times.len() - 1 - w];
-        if t_act <= 0.0 {
+        // THE GUARD MUST BE `is_finite`, NOT `<= 0.0`. A NaN t_act fails the
+        // numeric comparison — every comparison against NaN is false, so
+        // `t_act <= 0.0` lets NaN through. NaN would then propagate into
+        // lam_hat, into the window history, and into the median sort below,
+        // whose `partial_cmp().unwrap()` PANICS on NaN — a chain-halting crash
+        // reachable from a single corrupt or hostile timestamp. Infinity is
+        // the same hazard one step removed: it makes lam_hat zero rather than
+        // crashing, but a zero estimate pushes D toward the floor through the
+        // clip. Rejecting both is what makes the guard total on the whole f64
+        // domain rather than on the values the author had in mind.
+        if !t_act.is_finite() || t_act <= 0.0 {
             return None;
         }
         let lam_hat = self.d as f64 * w as f64 / t_act;
@@ -414,5 +424,62 @@ mod tests {
         let s = r.retarget().unwrap();
         assert!(s.d >= 1, "D must never fall below 1");
         assert_eq!(r.d, s.d);
+    }
+
+    /// THE NaN PANIC — a real defect this test exists to pin. For a long time
+    /// the guard read `t_act <= 0.0`, which a NaN t_act does NOT trip, because
+    /// every comparison against NaN is false. A NaN would flow into lam_hat,
+    /// into the window history, and into the median sort, whose
+    /// `partial_cmp().unwrap()` panics on NaN. That is a chain-halting crash
+    /// reachable from a single corrupt timestamp — and a corrupt timestamp is
+    /// exactly the kind of input a peer-controlled clock supplies.
+    #[test]
+    fn retarget_survives_a_nan_timestamp_without_panicking() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        for _ in 0..4 {
+            r.record_time(f64::NAN);
+        }
+        // must NOT panic, must decline, and must leave D and history clean
+        assert!(r.retarget().is_none(), "a NaN window must be rejected, not averaged");
+        assert_eq!(r.d, 1000, "D must be untouched on a NaN window");
+        assert!(r.window_history.is_empty(), "a NaN window must not enter the history");
+    }
+
+    /// Infinity is the same hazard one step removed: it does not panic, but it
+    /// makes lam_hat zero, which pushes D toward the floor through the clip.
+    /// A window claiming infinite block spacing is not a measurement of
+    /// anything and must not influence difficulty.
+    #[test]
+    fn retarget_rejects_an_infinite_window_time() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        for _ in 0..4 {
+            r.record_time(f64::INFINITY);
+        }
+        assert!(r.retarget().is_none(), "an infinite window must be rejected");
+        assert!(r.window_history.is_empty(), "an infinite window must not enter history");
+    }
+
+    /// A negative timestamp difference is arithmetically reachable if the
+    /// clock goes backwards (a real NTP correction, or a peer lying about
+    /// arrival order). The original `<= 0.0` guard catches this one, but the
+    /// finite check must not have regressed it while widening the guard.
+    #[test]
+    fn retarget_rejects_a_negative_window_time() {
+        let mut r = Retargetor::new(small_params(1), 1000);
+        r.record_time(100.0);
+        r.record_time(1.0); // clock went backwards
+        r.record_time(1.0);
+        r.record_time(1.0);
+        // the last window's t_act is negative: times went 100, 101, 102, 103
+        // — actually the cumulative sums keep it positive; to force a negative
+        // span we need times to DECREASE, which the cumulative sum cannot do.
+        // The honest statement: a negative SPAN is not reachable through
+        // record_time because times are cumulative, but it IS reachable if a
+        // caller mutates `times` directly — so this pins the guard's contract
+        // rather than a path through the public API.
+        let mut r2 = Retargetor::new(small_params(1), 1000);
+        r2.times = vec![0.0, 10.0, 5.0, 5.0, 5.0]; // span 0 -> 5 is positive; force negative
+        r2.times = vec![100.0, 90.0, 80.0, 70.0, 60.0];
+        assert!(r2.retarget().is_none(), "a negative span must be rejected");
     }
 }
