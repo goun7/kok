@@ -5098,3 +5098,105 @@ BULUNAMADI tablosu satır 7-8. **Doğruladım:**
 - `cargo test --release -p kok-u-layer`: **33/33 rc=0**, RFC 9381 aynı
 - WASM: **10/10 probe** (iki hedef × 5), Node v26.10.0
 - Çalışma ağacı TEMİZ — HEAD `dddec20`
+
+---
+
+## Blok — 27 Eylül 2026 (oturum 3, hedef goal-8c0817ee tur 1)
+
+### Yapılanlar — ARAŞTIRMA DÜZELTMELERİ (öncelik 1, kullanıcının isteği)
+1. **Keller (arXiv 2501.10888v3, ACNS '25) — ATIFTAN SINIRA DÖNÜŞTÜRÜLDÜ.**
+   Makale T5'te GhostDAG selfish-mining direnci için "ACNS 2025 çözücüsüne
+   karşı regression-test" diyordu. Tam metin okununca üç sorun: (a) Keller'in
+   başlık bulgusu **çift yönlü** — "GhostDAG seems to be incentive
+   incompatible for relatively weak attackers (low α) although it clearly
+   outperforms Bitcoin and Byzantium for strong attackers" — eski atıf yalnız
+   güçlü-saldırgan yarısını kullanıyordu; (b) **k=3** kullanıyor, bu tasarımın
+   `GHOSTDAG_K = 18`'inden 6× dışında; (c) model **DAA oyunlaştırmayı bilerek
+   dışlıyor** (A8/A9) ama bu tasarımın retargetor'u birinci sınıf hedef;
+   (d) her sayı **6-blok tavan** nedeniyle saldırganın avantajı için ALT SINIR
+   (§7.2: "In a real setting, there is no BlockDAG size limit and the
+   attacker's reward per progress could be even higher"); (e) Keller'in
+   GhostDAG'i **Kaspa'nın değil** — Kaspa makalede hiç geçmiyor, ödül
+   şemasını kendisi uyduruyor. **Düzeltme:** "ACNS 2025 çözücüsü bu tasarımı
+   doğruluyor" iması KALDIRILDI; RTS cevapları (2109.01102, 2305.16757)
+   bağımsız kaynaklarda duruyor ve korundu. Commit `11fa3cd`.
+2. **Kaspa parametreleri KAYNAKTAN YENİDEN DOĞRULANDI.** Daha önce
+   "verified earlier, not re-verified" idi. `raw.githubusercontent.com`
+   (github.com'un aksine) ulaşılabiliyor — `config/bps.rs` HTTP 200 ile
+   okundu: BPS=1 ⇒ `ghostdag_k = 18` ✓, `max_block_parents = k/2` floor 10
+   cap 16 ✓, `mergeset_size_limit = k*2` floor 180 cap 512 ✓.
+   **★ YENİ BULGU:** aynı dosya bir ölçekleme uyarısı taşıyor — Bakımcılar
+   BPS >10'i "increase to the value of GHOSTDAG K accompanied by a short
+   security analysis, or moving to the parameterless DAGKNIGHT" gerektiriyor.
+   Makalenin ~10 BPS hedefi bu aralığın TAM SINIRINDA; sınırlar makaleye
+   eklendi. Commit `18ee0b7`.
+3. **Kolozyan et al. (arXiv 2607.23752v1) — T3 SESLEŞME YIGİNINI NİTELLEDİ.**
+   ZKP güvenlik araçlarının tek ampirik ölçümü: 6 araç × 70 bug — izole modda
+   **%45.7**, proje modunda **%19.6**. **Kardinalite ayağı EN İYİ kapsanan
+   sınıf** (6/6 izole → 2/5 proje, Tablo IV; §V'deki "yazı %20" Tablo IV ile
+   tutarsız, tablo kaynak alındı) — yani bu tasarımın seçtiği azaltma en
+   olgun olanı. ANCAK: değerlendirmede **HİÇ zkVM yok** (hepsi Circom), bu
+   tasarımın proof layer'ı için ölçülmedi. Lean ayağı en olgun hedef ama
+   "one direction of one layer of the stack… No zkVM has end-to-end formal
+   verification." **İnsan denetimi en güçlü ayak** (%79/%83 manuel inceleme).
+   Commit `58356c4`.
+
+### Yapılanlar — KOD (kanıtlanmış)
+4. **`retarget.rs` `record_time` girdi doğrulaması.** NaN/inf/negatif delta
+   eskiden `self.times`'a zehir olarak birikiyordu; guard downstream'deydi.
+   Artık sınırda reddediliyor. **KANIT:** `git worktree add /tmp/kok_rt_check
+   58356c4` — eski kodda test `len==4, NaN mevcut` ile PASSES; yeni kodda
+   `len==3, hepsi finite` ile PASSES. **GERÇEK DÜZELTME.** Commit `18ddf23`.
+   +4 test: NaN, inf, negatif, ve `times_are_all_finite` invariantı.
+5. **f64→i64 "wrap" düzeltmesi GERİ ALINDI.** Rust 1.45'ten beri bu cast
+   **saturate** ediyor, wrap etmiyor. Düzeltme öncesi koda karşı test
+   çalıştırınca her iki kodda da PASSES görüldü — olmayan bir hatayı
+   "düzeltmek" yerine geri alındı. **Negatif bulgu olarak kaydedildi.**
+
+### Durum
+- Test: **184 → 187 → 214 → 217 → 221 passing**, 0 failed, 0 warnings
+- Skor: **83.65** (dokunulmadı, 1 eşleşme)
+- Türkçe denetim: **CLEAN** (0 ambiguous)
+- Commit'ler: `11fa3cd`, `18ee0b7`, `58356c4`, `18ddf23`
+- HEAD: `18ddf23`, ağaç TEMİZ
+
+### Blok 2 — KOD HARDENING (denetim bulguları, hepsi worktree ile kanıtlandı)
+6. **`kok-pvi/src/lib.rs` — `(n*n) as usize * 8` overflow → SIGABRT.**
+   `n = 2^32`'de `n*n = 2^64` → **0**'a sarmalar → `need = 0` → boş buffer'lar
+   uzunluk kontrolünü geçer → `Vec::with_capacity(2^32)` **~96 GB allocation
+   talebi → SIGABRT**. `kok-wasm::parse_packet` aynı ifadeyi `checked_mul` ile
+   doğruladığı için WASM suite'i asla tetiklemedi — **"wrapper primitive'i
+   gizliyor"** sınıfı. `checked_mul` ile düzeltildi. KANIT: worktree'de
+   `memory allocation of 103079215104 bytes failed` → SIGABRT. Commit `fcc5bee`
+7. **`kok-poum/src/lib.rs` — `KwKernel::prove` hiçbir şeyi guard etmiyordu.**
+   `verify` q==0/r==0/ragged'i reddediyordu; `prove` hiçbirini. **`target == 0`**
+   `h_num(...) % target`'ta **bölme sıfıra panic**; `mine` ise `prove` üzerinde
+   sınırsız döngü → madenci ilk iterasyonda crash. KANIT: worktree'de
+   "attempt to calculate the remainder with a divisor of zero" (lib.rs:214).
+   6 guard eklendi. Commit `fcc5bee`
+8. **`kok-ghostdag/src/lib.rs` — `past()` iki dalı anlaşmıyordu.**
+   `past()` ebeveyni `seen.insert`'ten ÖNCE ekliyordu (varlık kontrolü sonradan)
+   → **olmayan ebeveyn "ata" olarak döndü**. `past_uncached()` doğru sırada.
+   `add()` her blok için cache doldurduğu için fallback dalı asla test edilmedi.
+   `past()` → `anticone`/`order_within_past`/`pay_set` → **sessiz sıralama ve
+   ödül bozulması**. KANIT: worktree'de `past(2)` → `{1, 999}` (999 phantom);
+   düzeltilmiş kodda `{1}`. Commit `83d2678`
+9. **`kok-probes/src/lib.rs` — "test edilemez" probe düzeltildi.**
+   `probe_emission_is_conserved_at_extreme_heights` 7 yükseklik üzerinden
+   dönerken `h`'yi SADECE hata mesajlarında kullanıyordu; `reward_split(2)`
+   yüksekliğini `blue_score`'den alıyordu → **özelliği 6 kez hep 2. yükseklikte
+   test etti**. Artık her iterasyonda `blue_score.insert(2, h)` + formül
+   doğrulaması. Commit `83d2678`
+   **NOT:** ilk treasury iddiam `treasury*10000 == total*500` FALSE çıktı
+   (50*500/10000 = 2 tamsayı bölme) → **floored product** olarak düzeltildi.
+   Kod doğruydu, iddiam yanlıştı.
+
+### Toplam (bu oturum)
+- **184 → 227 passing** (43 yeni: 27+3+4+2+2+2+2+1), 0 failed, 0 warnings
+- **6 commit:** `11fa3cd` (Keller), `18ee0b7` (Kaspa), `58356c4` (ZKP araçları),
+  `18ddf23` (retarget input), `fcc5bee` (PVI+PouW crash), `83d2678` (ghostdag+probe)
+- Skor **83.65** (1 eşleşme, dokunulmadı)
+- HEAD: `83d2678`, ağaç TEMİZ
+- **3 olumsuz bulgu kaydedildi:** f64→i64 wrap YOK (Rust saturate),
+  yeni PoUW/GHOSTDAG/STARK akademik kaynak KALMADI (arXiv cs.CR'de 3 PoUW
+  makalesi, hepsi doğrulandı), ghostdag `past_uncached` zaten doğruydu
