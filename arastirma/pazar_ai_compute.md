@@ -647,10 +647,61 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 
 - **Pearl Together AI endpoint'inin işlem hacmi** (token sayısı, ücret dolar) — BULUNAMADI
   (Pearl veya Together AI açıklamamış).
-- **Akash/Render/io.net'in gerçekleşen GPU-saat / iş geliri metrikleri** — BULUNAMADI
-  (API'ler bu oturumda çalışmadı; §2.2).
+- **Akash/Render/io.net'in gerçekleşen GPU-saat / iş geliri metrikleri** —
+  **KISMEN ÇÖZÜLDÜ (28 Eylül 2026, BİRİNCİL: Akash'ın KENDİ REST/RPC API'si).** Önceki
+  oturum "API'ler çalışmadı" dedi; bu oturum doğrudan Akash node'una ulaştı
+  (`rest-akash.ecostake.com`, `rpc-akash.ecostake.com`, HTTP 200):
+
+  > **★ Akash ağının gerçek on-chain durumu (28.09.2026, Cosmos SDK REST + Tendermint RPC —
+  > hiçbir ara katman yok, node'un kendi yanıtı):**
+  > - **Bonded validator sayısı: 81** (`BOND_STATUS_BONDED`, `status` filtresiyle doğrudan
+  >   `cosmos/staking/v1beta1/validators`'dan; pagination ile TAM set döngülendi)
+  > - **Hapiste (jailed) validator: 0** — yani 81'in hepsi aktif imzalıyor
+  > - **Toplam bonded: 90.112.577.988.202 uakt = 90,11M AKT** (denom birimi `uakt`,
+  >   **6 ondalık** — `cosmos/bank/v1beta1/supply`'den teyit: toplam arz
+  >   **298.274.645.871.531 uakt = 298,27M AKT**)
+  > - **Staking oranı: 90,11M / 298,27M ≈ %30,2** — ağ arzının yaklaşık üçte biri güvende
+  > - **Blok yüksekliği: 28.825.631** (`rpc-akash.ecostake.com/status`, `latest_block_height`),
+  >   zaman damgası **2026-09-28T10:28:44Z** — canlı zincir
+
+  **Bu neyi gösterir, neyi göstermez (dürüst sınır):** 81 validator ve %30,2 stake oranı,
+  Akash'ın *güvenlik* katmanının canlılığını birincil olarak kanıtlar — KÖK'ün G-katmanı
+  analoji yaptığı şey budur. **Ancak bu hâlâ "GPU-saat / iş geliri" DEĞİLDİR:** Cosmos SDK
+  staking API'si *data-plane* kullanımını (kiralanmış GPU-saatleri, lease geliri) doğrudan
+  raporlamaz; o, Akash'ın deployment/escrow modüllerinde olup bu node'da bu oturumda
+  sorgulanamadı. **Yani boşluk "tamamen kapandı" değil — "ağ canlılığı birincil olarak
+  çözüldü, talep-tarafı gelir hâlâ yok" olarak güncellendi.** Render ve io.net için
+  benzer birincil uçlar bu oturumda bulunamadı (JS tabanlı paneller).
+
+  > **Bu veri neden bu proje için önemli:** KÖK'ün G-katmanı "güvenlik bütçesi = bonded
+  > varlık" üzerine kuruludur ve Akash bunu 81 validator ile %30,2 oranla fiilen
+  > sergiliyor. Bu, KÖK'ün hedeflediği ekonomik yapının sadece teorik olmadığını gösteren
+  > **bağımsız birincil kanıttır** — bir GPU marketplace'inin aynı anda bir PoS güvenlik
+  > katmanı taşıyabildiğinin canlı ispatı. KÖK'ün PoUW varyantı için analoji tam değildir
+  > (Akash'ın güvenliği useful-work değil bonded-stake üzerine), ama ortak olan şey
+  > *aynı ağın hem compute marketplace hem de güvenlik katmanı olmasıdır*.
 - **Araştırma firmalarının resmi AI-compute TAM forecast'ları (Gartner/IDC/Precedence/Mordor)**
-  — BULUNAMADI (403/timeout).
+  — **ÇÖZÜLDÜ (28 Eylül 2026, Precedence Research'ün KENDİ sayfasından, HTTP 200):**
+
+  > **★ "Artificial Intelligence (AI) Infrastructure Market" (Precedence Research, report code
+  > 4145, "Last Updated: 15 Jul 2026", yazar Gautam Mahajan, "Reviewed By: Aditi Shivarkar",
+  > "✓ Fact Checked"):**
+  > - **Market Size in 2025: USD 72.02 Billion**
+  > - **Market Size in 2026: USD 91.21 Billion**
+  > - **2035'e kadar: USD 518.26 Billion**, **2026–2035 CAGR: %21.82**
+  > - **ABD pazarı: 2025'te USD 26.29B → 2035'te USD 184.79B (CAGR %21.53)**
+  > - Segmentasyon: Hardware/Software, On-premises/Cloud/Hybrid, ML/DL, Enterprises/Government/CSP
+  >
+  > **Kaynak (canlı):** `precedenceresearch.com/artificial-intelligence-infrastructure-market`
+  >
+  > **DÜRÜST SINIR, AÇIKÇA:** Bu bir **araştırma firmasının tahminidir, bir ölçüm değildir.**
+  > Precedence'ın metodolojisi bu sayfada açıklanıyor olsa da, sayıların dayandığı anketler ve
+  > şirket açıklamaları bu oturumda doğrulanamadı. **Bu veriyi projenin kendi iddialarında
+  > kullanırken her zaman "tahmin" olarak alıntılamak gerekir — "ARAŞTIRMA FİRMASI TAHMİNİ"
+  > etiketi bu yüzden var.** Ayrıca TAM tanımı "AI Infrastructure"dır (hardware + software +
+  > deployment), yani KÖK'ün hedeflediği **GPU-compute rental market'tan daha geniştir**;
+  > doğrudan karşılaştırma yapılırsa bu fark belirtilmelidir. Önceki "403/timeout" durumunun
+  > aksine bu oturumda sayfanın kendisine ulaşıldı ve dört sayı da sayfa içinden çıkarıldı.
 - **Cambridge CBECI Bitcoin enerji tüketimi (TWh/yıl), güncel değer** —
   **BULUNDU (26 Eylül 2026), ÜÇ NOKTA İLE, ÇELİŞKİYİ AÇIKÇA TUTARAK.**
   ccaf.io'nun sayfası sıkıştırılmış binary döndürür (gzip+brotli SPA —
@@ -688,8 +739,8 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 |---|---|---|---|
 | 1 | ~~**io.net (IO) token fiyatı**~~ | **BULUNDU (26.09.2026)** — CryptoRank: **IO $0.17**, 24h $0.1593–$0.1731, açıklama "decentralized computing network... ML applications on Solana" ile doğru proje teyit edildi. CoinGecko `io-net` ID'si de çalışıyor; önceki 429 rate-limit geçti | ~~Rate-limit sonrası yeniden çağrı~~ → **YAPILDI** |
 | 2 | **CoinGecko market-cap / 24h / YTD değişim** | 429 rate-limit | Ücretli API veya bir sonraki gün |
-| 3 | **Akash/Render/io.net ağ kullanım metrikleri** (GPU-saat, gelir, node) | İstatistik siteleri JS ile veri yüklüyor; API uç noktaları 404/bağlantı hatası | JS kaynağından gerçek API uç noktasını çıkarmak |
-| 4 | **Araştırma firması TAM forecast'ları** (Gartner/IDC/Precedence/Mordor) | 403/timeout | Farklı UA/proxy ile veya özet press release'ları |
+| 3 | ~~**Akash/Render/io.net ağ kullanım metrikleri** (GPU-saat, gelir, node)~~ | **KISMEN ÇÖZÜLDÜ (28.09.2026)** — Akash'ın KENDİ Cosmos REST + Tendermint RPC'si (HTTP 200): **81 bonded validator, 0 jailed, 90,11M AKT bonded = %30,2 staking oranı, blok 28.825.631 (28.09.2026 10:28Z)**. GPU-saat/iş geliri HÂLÂ YOK (Cosmos staking API'si data-plane'i raporlamaz; deployment/escrow modülleri bu node'da sorgulanamadı) | ~~JS kaynağından gerçek API uç noktasını çıkarmak~~ → **YAPILDI (staking katmanı, birincil)**; kalan: lease/gelir |
+| 4 | ~~**Araştırma firması TAM forecast'ları** (Gartner/IDC/Precedence/Mordor)~~ | **ÇÖZÜLDÜ (28.09.2026)** — Precedence Research sayfası HTTP 200: **AI Infrastructure 2025: $72,02B, 2026: $91,21B, 2035: $518,26B, CAGR %21,82 (2026–2035); ABD 2025 $26,29B → 2035 $184,79B (%21,53)**. **Tahmin, ölçüm değil — TAM "AI Infrastructure" KÖK'ün GPU-rental hedefinden geniş** | ~~Farklı UA/proxy ile veya özet press release'ları~~ → **YAPILDI (sayfanın kendisinden)**
 | ~~5~~ | ~~**Cambridge CBECI güncel TWh/yıl**~~ | **BULUNDU (26.09.2026)** — ccaf.io sayfası sıkıştırılmış binary (SPA), bu yüzden üç ikincil kaynak alınd: 138.2 TWh (CBECI'ye atıf, 29 Tem 2026), 170-180 TWh (9 Tem 2026), 138-205 aralık (Mayıs 2026). **Aralık korunur, tek nokta verilmez; hepsi ikincil** | ~~ccaf.io API'sini bulmak~~ → **YAPILDI (ikincille)**; kalan: birincil API |
 | 6 | **Pearl finansman durumu (seed/VC/değerleme)** | Sitede finansman sayfası yok; sosyal medyaya ulaşılamadı | Crunchbase/PitchBook veya X duyuruları |
 | 7 | **Pearl Together AI endpoint işlem hacmi** | Açıklanmamış | Together AI dashboard / Pearl X |
@@ -718,6 +769,14 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 6. **GitHub API** — `https://api.github.com/repos/pearl-research-labs/pearl` — 24.09.2026
 7. **Nvidia finansal sonuçları** (Wikipedia tablosu üzerinden özetlenmiş şirket verileri,
    v1'den) — FY2022–FY2026 gelir/net gelir/çalışan tablosu
+8. **★ Akash ağının KENDİ API'si (28.09.2026, TAM BİRİNCİL — node'un doğrudan yanıtı):**
+   - `https://rest-akash.ecostake.com/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=200`
+     — **81 bonded validator, 0 jailed, toplam 90.112.577.988.202 uakt bonded**
+   - `https://rest-akash.ecostake.com/cosmos/bank/v1beta1/supply?pagination.limit=500`
+     — **298.274.645.871.531 uakt toplam arz (6 ondalık → 298,27M AKT)**
+   - `https://rpc-akash.ecostake.com/status` — **blok 28.825.631, 2026-09-28T10:28:44Z**
+   - **Hiçbir scraper veya JS katmanı yok: bu bir Cosmos SDK node'unun kendi REST/RPC yanıtı.**
+     Staking oranı türetildi: 90,11M / 298,27M = **%30,2**
 
 **Projedeki önceden doğrulanmış kaynaklar (bu oturumda kullanıldığı yerde belirtilmiştir):**
 8. `KOK_V2_REFERENCES.md` — 11/11 arXiv/ePrint ID'si 21 Eylül 2026'da canlı doğrulanmış
