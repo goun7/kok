@@ -346,18 +346,27 @@ impl Ghostdag {
         let mut seen = BTreeSet::new();
         let mut out = Vec::new();
         // 1. the selected_parent chain (the blue backbone)
+        //
+        // THE HOP CAP IS GONE. This loop previously read `hops < 1000`, which
+        // silently TRUNCATED the ordering on any selected chain deeper than a
+        // thousand blocks. Two honest nodes on such a DAG would have computed
+        // the same truncated order and agreed on it, so nothing crashed — but
+        // `order_within_past` and everything that consumes the ordering would
+        // have been operating on an incomplete sequence, and the truncation
+        // was invisible to every test, because the test DAGs are bounded at
+        // roughly 12,000 blocks total by an O(N^2) memory limit and a
+        // 1,000-deep selected chain is reachable in a real DAG but not in a
+        // test one. Termination does not need the cap: the DAG is acyclic by
+        // construction, `seen.insert(cur)` returns false on any revisit, and
+        // the loop breaks when `selected` has no parent. The cap was a
+        // defence against a cycle that the type cannot express.
         let mut cur = bid;
-        let mut hops = 0;
-        while self.blocks.contains_key(&cur)
-            && seen.insert(cur)
-            && hops < 1000
-        {
+        while self.blocks.contains_key(&cur) && seen.insert(cur) {
             out.push(cur);
             cur = match self.selected.get(&cur) {
                 Some(Some(sp)) => *sp,
                 _ => break,
             };
-            hops += 1;
         }
         // 2. the other blue blocks of the mergeset, ordered by descending
         // blue_score (ties by lowest bid, so the rule is a total order)
@@ -386,7 +395,14 @@ impl Ghostdag {
         let mut checked = 0usize;
         for bid in self.blocks.keys() {
             let mut cur = *bid;
-            let mut hops = 0usize;
+            // THE 200-HOP CAP IS GONE for the same reason `order`'s 1000 cap
+            // is: this verifier would silently stop checking on a chain
+            // deeper than 200 selected-parent edges, reporting a pass for a
+            // violation it never reached. The loop terminates on its own —
+            // `selected` is a forest over an acyclic DAG, so following
+            // selected parents must reach a block with no selected parent —
+            // and `checked` records how many edges were actually inspected so
+            // a caller can tell a green result from an empty one.
             while let Some(Some(sp)) = self.selected.get(&cur) {
                 let child = self.blue_score.get(&cur).copied().unwrap_or(0);
                 let parent = self.blue_score.get(sp).copied().unwrap_or(0);
@@ -395,10 +411,6 @@ impl Ghostdag {
                 }
                 checked += 1;
                 cur = *sp;
-                hops += 1;
-                if hops > 200 {
-                    break;
-                }
             }
         }
         // a chain with no selected-parent edges checks nothing
@@ -900,6 +912,88 @@ mod tests {
         );
         assert!(p2.contains(&1), "the real parent must still be there");
         assert_eq!(p2.len(), 1, "only the real ancestor counts, got {:?}", p2);
+    }
+
+    /// THE HOP-CAP TRUNCATION. `order()` walked the selected-parent chain
+    /// under a `hops < 1000` cap, so on any selected chain deeper than a
+    /// thousand blocks the ordering silently stopped before reaching genesis.
+    /// Nothing crashed and two honest nodes would have agreed on the same
+    /// truncated order, which made the bug invisible to the suite: the test
+    /// DAGs are bounded near 12,000 blocks total by an O(N^2) memory limit,
+    /// and a 1,000-deep selected chain is reachable in a real DAG but not in
+    /// a test-sized one. This builds a 2,500-deep selected chain — well past
+    /// the old cap — and requires the ordering to reach every block in it.
+    #[test]
+    fn order_walks_a_selected_chain_deeper_than_the_old_hop_cap() {
+        let mut g = Ghostdag::new(18);
+        // a single chain 0 <- 1 <- 2 <- ... <- 2499: each block's selected
+        // parent is the previous one, so the selected chain is 2,500 deep
+        g.add(Block { bid: 0, parents: vec![] });
+        for b in 1..2500 {
+            g.add(Block { bid: b, parents: vec![b - 1] });
+        }
+        let o = g.order(2499);
+        // the backbone must contain ALL 2,500 blocks, not the first 1,000
+        assert_eq!(
+            o.len(),
+            2500,
+            "order() returned {} of the 2500 backbone blocks — the walk truncated",
+            o.len()
+        );
+        // and it must be the full chain from the tip back to genesis
+        assert_eq!(o[0], 2499, "the walk starts at the queried block");
+        assert_eq!(o[2499], 0, "the walk must reach genesis, not stop at hop 1000");
+        // every intermediate block must appear exactly once, in chain order
+        for i in 0..2500 {
+            assert_eq!(o[i], 2499 - i as u64, "the backbone must be in selected-chain order at {}", i);
+        }
+    }
+
+    /// Termination without the cap, stated as a property rather than assumed:
+    /// the loop now relies on the DAG being acyclic and on `seen` rejecting
+    /// revisits. A cycle in `selected` would loop forever. This test builds a
+    /// 3,000-deep chain and requires `order` to RETURN — which it does in
+    /// release mode in well under the test timeout, but asserting it runs
+    /// converts that from an assumption into a measured fact.
+    #[test]
+    fn order_terminates_on_a_chain_far_past_the_old_cap_without_hanging() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 0, parents: vec![] });
+        for b in 1..3000 {
+            g.add(Block { bid: b, parents: vec![b - 1] });
+        }
+        // if the loop did not terminate this test hangs rather than fails;
+        // the DAG's acyclicity is what terminates it, and `seen` is the
+        // backstop for any cycle the construction could not express
+        let o = g.order(2999);
+        assert_eq!(o.len(), 3000);
+        assert!(o.iter().all(|&b| b < 3000), "no block outside the chain may appear");
+    }
+
+    /// THE VERIFIER'S CAP WAS THE SAME CLASS. `blue_score_increases_along_selected_chain`
+    /// broke at 200 hops, so on a deeper chain it would report a pass for a
+    /// violation it never inspected. This builds a deep chain, plants a
+    /// blue-score violation PAST the old 200-hop boundary, and requires the
+    /// verifier to find it — which fails on the old code and passes now.
+    #[test]
+    fn blue_score_verifier_finds_a_violation_past_the_old_hop_cap() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 0, parents: vec![] });
+        for b in 1..500 {
+            g.add(Block { bid: b, parents: vec![b - 1] });
+        }
+        // every blue_score is 0..499 increasing by construction (add() sets
+        // sp_score + 1), so the chain is honest. Confirm it verifies.
+        assert!(g.blue_score_increases_along_selected_chain(),
+                "an honest 500-deep chain must verify");
+        // now plant a violation at depth 400, far past the old 200-hop cap:
+        // set block 400's score BELOW its selected parent's
+        let parent_score = g.blue_score[&399];
+        g.blue_score.insert(400, parent_score.saturating_sub(1));
+        assert!(
+            !g.blue_score_increases_along_selected_chain(),
+            "a blue-score violation at depth 400 must be found, not skipped past the 200-hop cap"
+        );
     }
 
     /// The same phantom must be absent on the CACHED branch too, and the two

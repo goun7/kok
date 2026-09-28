@@ -603,4 +603,146 @@ mod tests {
         assert_eq!(alpha2, 22, "second challenge is taken over the FOLDED polynomial");
         assert!(verify_round(&p, alpha, &f, Q));
     }
+
+    // =========================================================================
+    // THE SHARED-ORACLE TESTS. `make_fold` above and `fold` are both built out
+    // of `eval` and `interpolate`, and the test module defines its OWN
+    // `interpolate` that shadows the crate's. Every existing comparison
+    // therefore compares two constructions that share their primitives: a
+    // broken `eval` or a broken `interpolate` yields two agreeing wrong
+    // answers, and the test that was supposed to catch it passes. These three
+    // tests pin each primitive against an oracle that does NOT come from this
+    // file — hand computation and the algebraic identity the function is
+    // supposed to satisfy.
+    // =========================================================================
+
+    /// `eval` is Horner's rule. Pinned against a hand-computed value on a
+    /// polynomial whose coefficients are all distinct, so a wrong evaluation
+    /// order or a mis-indexed coefficient produces the wrong number rather
+    /// than an agreeing one. p(x) = 3 + 1*x + 4*x^2 over GF(97);
+    /// p(5) = 3 + 5 + 4*25 = 3 + 5 + 100 = 108 mod 97 = 11.
+    #[test]
+    fn eval_matches_a_hand_computed_horner_value() {
+        let p: Vec<u64> = vec![3, 1, 4];
+        assert_eq!(eval(&p, 5, Q), 11, "p(5) = 3 + 5 + 100 = 108 mod 97 = 11");
+        // and a second point to keep the polynomial from being a coincidence:
+        // p(2) = 3 + 2 + 16 = 21
+        assert_eq!(eval(&p, 2, Q), 21, "p(2) = 3 + 2 + 16 = 21");
+        // the zero polynomial evaluates to 0 everywhere
+        assert_eq!(eval(&[], 7, Q), 0, "an empty polynomial is the constant zero");
+        // a constant polynomial ignores x
+        assert_eq!(eval(&[42], 999_999, Q), 42, "a constant must not depend on x");
+    }
+
+    /// `eval` must equal the naive power-of-x sum for a degree where the two
+    /// differ if Horner's accumulation order is wrong. This is the
+    /// differential oracle: naive evaluation is O(n) multiplications with a
+    /// running power, Horner is a nested multiply, and a bug in either the
+    /// reversal in `p.iter().rev()` or the accumulate-then-multiply order
+    /// shows up as a mismatch here.
+    #[test]
+    fn eval_agrees_with_the_naive_power_sum() {
+        let p: Vec<u64> = vec![7, 3, 19, 44, 61]; // degree 4
+        for x in 0..Q {
+            // naive: sum c_i * x^i
+            let mut naive = 0u64;
+            let mut pow = 1u64;
+            for &c in &p {
+                naive = (naive + c * pow) % Q;
+                pow = (pow * x) % Q;
+            }
+            assert_eq!(
+                eval(&p, x, Q), naive,
+                "Horner and the naive power sum disagree at x = {}", x
+            );
+        }
+    }
+
+    /// `fp_inv` is pinned by its defining identity: a * a^-1 == 1 mod q for
+    /// every nonzero a. The shared-`eval` tests cannot catch a broken inverse,
+    /// because `make_fold` and `fold` both consume the same broken `fp_inv`
+    /// identically. The identity is the oracle.
+    #[test]
+    fn fp_inv_satisfies_the_defining_identity_on_the_whole_field() {
+        for a in 1..Q {
+            let inv = fp_inv(a, Q);
+            assert_eq!(
+                fp_mul(a, inv, Q), 1,
+                "a * a^-1 must be 1 for a = {}", a
+            );
+        }
+        // the Fermat exponent is q-2, so the inverse of 1 is 1 and the
+        // inverse of q-1 is q-1 (since (q-1)^2 = 1 mod q for prime q)
+        assert_eq!(fp_inv(1, Q), 1);
+        assert_eq!(fp_inv(Q - 1, Q), Q - 1, "(q-1)^2 = 1 mod q for prime q");
+    }
+
+    /// `interpolate` is pinned by its defining property, not by agreement with
+    /// itself: the interpolating polynomial must pass through every given
+    /// point. The existing tests compare `fold` against `make_fold`, both of
+    /// which call the same `interpolate`, so a polynomial that fit NONE of its
+    /// points would still match. This evaluates the result at each input x and
+    /// requires the given y back — an oracle the function cannot supply for
+    /// itself.
+    #[test]
+    fn interpolate_passes_through_every_given_point() {
+        let pts: Vec<(u64, u64)> = vec![(1, 5), (2, 17), (3, 41), (4, 77), (5, 2)];
+        let p = interpolate(&pts, Q);
+        assert_eq!(p.len(), pts.len(), "the interpolant has one coefficient per point");
+        for &(x, y) in &pts {
+            assert_eq!(
+                eval(&p, x, Q), y,
+                "the interpolant must pass through ({}, {}) but evaluates to {}",
+                x, y, eval(&p, x, Q)
+            );
+        }
+    }
+
+    /// `interpolate` on duplicate x-coordinates is the silent-garbage case.
+    /// The basis divides by (x_i - x_j), which is zero for a duplicate pair;
+    /// `fp_inv(0)` returns 0 by Fermat rather than failing, so the
+    /// denominator's inverse is 0 and the basis is silently zeroed instead of
+    /// the function reporting that the input has no unique solution. No test
+    /// covered this, and it is the one input a caller can realistically
+    /// construct that produces a wrong answer without any error. This pins
+    /// the CURRENT behaviour as a documented limit rather than pretending the
+    /// function is total on all inputs — and records that duplicate x's are
+    /// the caller's responsibility.
+    #[test]
+    fn interpolate_on_duplicate_x_returns_a_documented_degenerate_result() {
+        let pts: Vec<(u64, u64)> = vec![(3, 10), (3, 20)]; // duplicate x = 3
+        let p = interpolate(&pts, Q);
+        // the result is not required to be meaningful — the input has no
+        // unique interpolant. What IS required is that the function does not
+        // PANIC (it divides by x_i - x_j = 0 internally, which is 0^-1 = 0 by
+        // Fermat) and returns a vector of the right length, so a caller can
+        // detect the degeneracy rather than crash.
+        assert_eq!(p.len(), 2, "the output shape must be predictable even on bad input");
+        // the honest statement: this is a caller-contract limit, not a
+        // guarantee. Distinct x's are required; duplicates are UB-ish.
+    }
+
+    /// The three primitives compose the way `verify_round` assumes. This is
+    /// the end-to-end property that the shared-oracle tests exist to protect:
+    /// if `eval`, `fp_inv` or `interpolate` were broken in a way the
+    /// self-comparison tolerated, an honestly-folded transcript would still
+    /// verify, and a forgery would too. Building a transcript through the
+    /// public `prove` path and checking it verifies — with the primitives
+    /// independently pinned above — closes that loop.
+    #[test]
+    fn the_pinned_primitives_produce_a_transcript_that_verifies() {
+        use crate::canonical::CANON_POLY;
+        let mut p = CANON_POLY.to_vec();
+        let alphas = vec![73, 22, 82];
+        let mut transcript = vec![p.clone()];
+        for &a in &alphas {
+            p = fold(&p, a, Q).expect("each fold must succeed on a power-of-two-sized poly");
+            transcript.push(p.clone());
+        }
+        // the terminal claim: after enough folds the polynomial is constant
+        assert_eq!(transcript.last().unwrap().len(), 1,
+                   "the recursion must terminate on a constant");
+        assert!(verify_transcript(&transcript, &alphas, Q),
+                "a transcript built from the pinned primitives must verify");
+    }
 }

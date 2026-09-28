@@ -419,4 +419,86 @@ mod tests {
         let a = prove(&k1.sk, &k1.pk, 5, "task-1");
         assert!(verify(&k2.pk, 5, "task-1", &a.pi).is_none(), "a proof verified under another key");
     }
+
+    // =========================================================================
+    // THE INPUT-BINDING ORACLE. `alpha` is the ONLY formatter that binds a VRF
+    // proof to (seed, task). prove() and verify() both consume it, so every
+    // existing test that checks task- or epoch-binding passes even if alpha
+    // dropped the seed bytes, dropped the separator, or hashed the tid before
+    // use — both sides would be broken identically. These tests pin the byte
+    // layout against the specification in the doc comment, which is an oracle
+    // that does not come from this file.
+    // =========================================================================
+
+    /// The byte layout, exactly as documented: `b"kok-assign|" || seed_be || b'|' || tid`.
+    /// Pinned byte-for-byte so a change to the format is a visible break in
+    /// the wire protocol, not a silent renegotiation that both prove and
+    /// verify accept together.
+    #[test]
+    fn alpha_layout_is_the_documented_byte_sequence() {
+        let a = alpha(0x0102030405060708, "t7");
+        // prefix, big-endian seed, separator, task id — in that order
+        let mut expected = b"kok-assign|".to_vec();
+        expected.extend_from_slice(&0x0102030405060708u64.to_be_bytes());
+        expected.push(b'|');
+        expected.extend_from_slice(b"t7");
+        assert_eq!(a, expected, "the layout must match the documented wire format");
+        assert_eq!(a.len(), 11 + 8 + 1 + 2, "prefix 11 + seed 8 + sep 1 + tid 2");
+    }
+
+    /// The seed must appear BIG-ENDIAN. An endianness flip would break no
+    /// prove/verify pair (both sides read the same bytes), but it would change
+    /// WHICH bytes the VRF sees — and the layout is a published protocol
+    /// constant, so this pins it against a future "cleanup".
+    #[test]
+    fn alpha_uses_big_endian_for_the_seed() {
+        let a = alpha(1, "x");
+        // seed 1 big-endian is 00 00 00 00 00 00 00 01; the last seed byte
+        // before the separator must be 0x01
+        let seed_bytes = &a[11..19];
+        assert_eq!(seed_bytes, &[0, 0, 0, 0, 0, 0, 0, 1], "seed must be big-endian");
+        assert_eq!(a[19], b'|', "the separator must follow the seed");
+        assert_eq!(&a[20..], b"x", "the tid must follow the separator");
+    }
+
+    /// DOMAIN SEPARATION: the prefix must actually be present, and changing
+    /// ANY of the three inputs must change the bytes. This is the property
+    /// that makes the VRF bind to its task and epoch: if two different (seed,
+    /// tid) pairs produced the same alpha, an assignment would transfer
+    /// between them and no downstream test would catch it, because prove and
+    /// verify would both see the same input.
+    #[test]
+    fn alpha_changes_when_any_input_changes() {
+        let base = alpha(777, "task-9");
+        // different seed
+        assert_ne!(alpha(778, "task-9"), base, "the seed must affect the bytes");
+        // different task
+        assert_ne!(alpha(777, "task-10"), base, "the tid must affect the bytes");
+        // a task that is a PREFIX of another must not collide
+        assert_ne!(alpha(777, "task"), alpha(777, "task-9"),
+                   "a tid prefix must not collide with the longer tid");
+        // different prefix would be a different protocol: pin it is present
+        assert!(base.starts_with(b"kok-assign|"), "the domain separator must be present");
+    }
+
+    /// The tid-length-delimiting hazard, stated rather than assumed: because
+    /// the tid is variable-length and appended last, a caller could construct
+    /// two tids that are ambiguous only without a length or terminator. The
+    /// separator before the tid is what makes the boundary unambiguous, and
+    /// this pins that two tids cannot collide by choosing the tid bytes to
+    /// fake the separator position.
+    #[test]
+    fn alpha_cannot_collide_by_faking_a_separator_in_the_tid() {
+        // tid "a|b" vs a tid that splits differently: the layout is
+        // ...|seed|'|'|tid, and the tid is taken verbatim, so "a|b" and any
+        // other tid are distinct byte strings. There is no way to make
+        // alpha(s, "a|b") equal alpha(s2, "b") for any s2, because the seed is
+        // fixed-width: the tid starts at a fixed offset.
+        let a1 = alpha(5, "a|b");
+        // the tid starts at offset 20 always (11 prefix + 8 seed + 1 sep)
+        assert_eq!(&a1[20..], b"a|b", "the tid is the verbatim tail at a fixed offset");
+        // so two different tids always differ in the tail
+        assert_ne!(alpha(5, "a|b"), alpha(5, "a"), "different tids must differ");
+        assert_ne!(alpha(5, "a|b"), alpha(5, "|b"), "the tid is verbatim, not re-parsed");
+    }
 }
