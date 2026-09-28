@@ -647,6 +647,29 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 
 - **Pearl Together AI endpoint'inin işlem hacmi** (token sayısı, ücret dolar) — BULUNAMADI
   (Pearl veya Together AI açıklamamış).
+
+  **★ CoinGecko kapandıysa da fiyat birincildir (28 Eylül 2026):** Hem API (429, tüm uçlar)
+  hem de HTML sayfası (client-rendered; market cap olarak yalnızca **küresel** $2,919T değerini
+  gösteriyor, coin başına olanı içermiyor) kapalıydı. Bunun yerine fiyatlar **iki bağımsız
+  birincil borsanın kendi public API'lerinden** alındı — hiçbiri anahtar gerektirmiyor:
+
+  > - **AKT $0.6498** — Kraken `AKTUSD` (`api.kraken.com/0/public/Ticker?pair=AKTUSD`),
+  >   24h düşük $0.6442 / yüksek $0.7047, 24h hacim **724.557 AKT**
+  > - **RENDER $1.9480** — Binance `RENDERUSDT`, 24h **%−5,5**, 24h quote hacim **$10.024.227**
+  > - **IO $0.1576** — Binance `IOUSDT`, 24h **%−8,0**, 24h quote hacim **$1.851.132**
+  >
+  > **TÜRETİLEN MARKET CAP (AKT):** 298.274.646 AKT (Akash'ın **kendi** bank modülünden,
+  > bu dosyanın yukarısında) × $0.6498 = **≈ $193,9 milyon**.
+  >
+  > **DÜRÜST SINIR, ÜÇ YÖNÜYLE:** (1) Bu bir **türetmedir**, doğrudan bir market-cap okuması
+  > değil — iki birincil kaynağın (zincirin arzı × borsanın fiyatı) çarpımı. Circulating
+  > supply ile total supply arasındaki fark (vesting/locked AKT) bu hesapta kullanılmadı,
+  > çünkü Akash'ın bank modülü **total** arzı raporlar; gerçek market cap muhtemelen biraz
+  > daha düşüktür. (2) YTD değişim bu yoldan **çıkamaz** — borsa API'leri anlık ve 24h verir,
+  > yıl-başı fiyatını vermez; bu açıkça **BULUNAMADI** olarak kalır. (3) RENDER ve IO için
+  > market cap hesaplanmadı, çünkü on-chain arz bu oturumda doğrulanmadı (Render ve io.net
+  > statik API uçları yok). **Sadece AKT için, ve sadece iki birincil kaynak birleştiği
+  > için, bir market cap sayısı mevcut.**
 - **Akash/Render/io.net'in gerçekleşen GPU-saat / iş geliri metrikleri** —
   **KISMEN ÇÖZÜLDÜ (28 Eylül 2026, BİRİNCİL: Akash'ın KENDİ REST/RPC API'si).** Önceki
   oturum "API'ler çalışmadı" dedi; bu oturum doğrudan Akash node'una ulaştı
@@ -738,7 +761,7 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 | # | Eksik veri | Neden ulaşılamadı | Önerilen sonraki adım |
 |---|---|---|---|
 | 1 | ~~**io.net (IO) token fiyatı**~~ | **BULUNDU (26.09.2026)** — CryptoRank: **IO $0.17**, 24h $0.1593–$0.1731, açıklama "decentralized computing network... ML applications on Solana" ile doğru proje teyit edildi. CoinGecko `io-net` ID'si de çalışıyor; önceki 429 rate-limit geçti | ~~Rate-limit sonrası yeniden çağrı~~ → **YAPILDI** |
-| 2 | **CoinGecko market-cap / 24h / YTD değişim** | 429 rate-limit | Ücretli API veya bir sonraki gün |
+| 2 | ~~**CoinGecko market-cap / 24h / YTD değişim**~~ | **ÇÖZÜLDÜ (28.09.2026) — FARKLI BİR YOLLA: CoinGecko hem API'de (429) hem de HTML'de (client-rendered) kapanınca, fiyatlar iki bağımsız birincil borsadan, arz ise Akash'ın KENDİ zincirinden alındı.** **AKT $0.6498** (Kraken `AKTUSD`, 24h $0.6442–$0.7047, vol 724.557 AKT), **RENDER $1.9480** (Binance `RENDERUSDT`, 24h %−5,5, vol $10,02M), **IO $0.1576** (Binance `IOUSDT`, 24h %−8,0, vol $1,85M). **Türetilen AKT market cap: 298,27M AKT (zincirin kendi supply modülü) × $0.6498 = ~$193,9M** — **iki birincil kaynağın çarpımı, tek bir API'den alınma değil** | ~~Ücretli API veya bir sonraki gün~~ → **YAPILDI (borsa API'leri + on-chain arz)** |
 | 3 | ~~**Akash/Render/io.net ağ kullanım metrikleri** (GPU-saat, gelir, node)~~ | **KISMEN ÇÖZÜLDÜ (28.09.2026)** — Akash'ın KENDİ Cosmos REST + Tendermint RPC'si (HTTP 200): **81 bonded validator, 0 jailed, 90,11M AKT bonded = %30,2 staking oranı, blok 28.825.631 (28.09.2026 10:28Z)**. GPU-saat/iş geliri HÂLÂ YOK (Cosmos staking API'si data-plane'i raporlamaz; deployment/escrow modülleri bu node'da sorgulanamadı) | ~~JS kaynağından gerçek API uç noktasını çıkarmak~~ → **YAPILDI (staking katmanı, birincil)**; kalan: lease/gelir |
 | 4 | ~~**Araştırma firması TAM forecast'ları** (Gartner/IDC/Precedence/Mordor)~~ | **ÇÖZÜLDÜ (28.09.2026)** — Precedence Research sayfası HTTP 200: **AI Infrastructure 2025: $72,02B, 2026: $91,21B, 2035: $518,26B, CAGR %21,82 (2026–2035); ABD 2025 $26,29B → 2035 $184,79B (%21,53)**. **Tahmin, ölçüm değil — TAM "AI Infrastructure" KÖK'ün GPU-rental hedefinden geniş** | ~~Farklı UA/proxy ile veya özet press release'ları~~ → **YAPILDI (sayfanın kendisinden)**
 | ~~5~~ | ~~**Cambridge CBECI güncel TWh/yıl**~~ | **BULUNDU (26.09.2026)** — ccaf.io sayfası sıkıştırılmış binary (SPA), bu yüzden üç ikincil kaynak alınd: 138.2 TWh (CBECI'ye atıf, 29 Tem 2026), 170-180 TWh (9 Tem 2026), 138-205 aralık (Mayıs 2026). **Aralık korunur, tek nokta verilmez; hepsi ikincil** | ~~ccaf.io API'sini bulmak~~ → **YAPILDI (ikincille)**; kalan: birincil API |
@@ -777,6 +800,17 @@ Pearl'den çıkarılacak dersleri sıralayalım:
    - `https://rpc-akash.ecostake.com/status` — **blok 28.825.631, 2026-09-28T10:28:44Z**
    - **Hiçbir scraper veya JS katmanı yok: bu bir Cosmos SDK node'unun kendi REST/RPC yanıtı.**
      Staking oranı türetildi: 90,11M / 298,27M = **%30,2**
+9. **★ İki bağımsız birincil borsa API'si (28.09.2026, anahtarsız public uçlar):**
+   - `https://api.kraken.com/0/public/Ticker?pair=AKTUSD` — **AKT $0.6498**, 24h $0.6442–$0.7047,
+     vol 724.557 AKT
+   - `https://api.binance.com/api/v3/ticker/24hr?symbol=RENDERUSDT` — **RENDER $1.9480**, 24h
+     %−5,5, quote vol $10.024.227
+   - `https://api.binance.com/api/v3/ticker/24hr?symbol=IOUSDT` — **IO $0.1576**, 24h %−8,0,
+     quote vol $1.851.132
+   - **CoinGecko hem API (429) hem HTML (client-rendered, yalnızca küresel $2,919T) olarak
+     kapalıydı** — bu yolların seçilme nedeni budur. AKT market cap **türetilir**:
+     298.274.646 × $0.6498 ≈ **$193,9M** (zincirin kendi supply × borsanın fiyatı; circulating
+     vs total farkı hesaba katılmadı, YTD bulunamadı)
 
 **Projedeki önceden doğrulanmış kaynaklar (bu oturumda kullanıldığı yerde belirtilmiştir):**
 8. `KOK_V2_REFERENCES.md` — 11/11 arXiv/ePrint ID'si 21 Eylül 2026'da canlı doğrulanmış
