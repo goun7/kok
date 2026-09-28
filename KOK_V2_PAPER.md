@@ -1186,6 +1186,14 @@ This is the honest roadmap, and the first three are not research — they are
    until **20 October 2026**, which makes it a live question rather than a
    historical one. KÖK's interest is in the clarification, not in the safe
    harbour: the design's thesis is that there was never a contract to terminate.
+   **Preparation for that window, not participation in it, is recorded in
+   `docs/REG_CA_COMMENT_HAZIRLIK.md` (28 September 2026): an analysis of whether
+   PoUW mining is issuer-like activity, a draft comment that asks the Commission
+   to resolve the two readings rather than to grant anything, and the arithmetic
+   of the remaining days. The draft is NOT FILED and nothing is submitted
+   without the owner's decision — the paper cites the preparation so that the
+   record shows the question was worked on while the window was open, not so
+   that it implies a position was taken.**
 4. **The burn's tax treatment.** Rev. Rul. 2023-14 fixes the *timing* (dominion
    at receipt) but no primary source addresses whether a burn reduces the
    already-recognised liability. This is a narrow, technical question and it is

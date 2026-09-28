@@ -22,6 +22,16 @@ The E-gap (utility ≠ security) is architected exogenously rather than assumed 
 **This is a pre-testnet design.** No users, no funds, no investors. The repo
 contains the paper, the formal spec, and **runnable prototypes** — not a chain.
 
+> **⏰ Regulatory window closing 20 October 2026.** The SEC's proposed
+> *Regulation Crypto Assets* (91 FR 54510, File No. S7-2026-27) has a comment
+> period open until then, and it contains the one open question this design
+> cares about: **who is the "issuer" for a fair-launch network that never had
+> one** (Rule 400 / Form TR all assume one). Preparation — analysis and a draft
+> comment, **not filed** — is in
+> [`docs/REG_CA_COMMENT_HAZIRLIK.md`](docs/REG_CA_COMMENT_HAZIRLIK.md).
+> Whether to comment **at all** is a human decision; nothing is submitted
+> without the owner's explicit approval.
+
 | Artifact | Contents |
 |---|---|
 | `KOK_V2_PAPER.md` | Design paper: architecture, economics, competitive analysis |
