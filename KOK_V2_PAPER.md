@@ -574,7 +574,7 @@ citation, a measured result, or an explicit design choice never presented as a
 discovery.**
 
 **The fee flow, as an accounting identity.** A task carries `fee` and
-`burn_rate ∈ (0.0, 0.5]`, chosen by the client:
+`burn_rate ∈ [1, 500]` per mille, chosen by the client:
 
 ```
 submit:  escrow ← fee + bond           (bond = fee · BOND_RATIO, sybil cost, Demirel Lemma 1)
@@ -591,16 +591,19 @@ unable to fake activity for free, and the reason the honest GHOSTDAG fallback in
 §11 item 3 is a floor rather than a collapse.
 
 **The parameter table.** "M" = measured by a runnable file, "C" = cited from a
-primary source, "D" = design choice, stated as a choice:
+primary source, "D" = design choice, stated as a choice, "K" = the value the
+**prototype carries in code**, stated as a prototype value rather than a
+protocol parameter:
 
 | Parameter | Value | Status | Source / what it is |
 |---|---|---|---|
 | `R_0` initial block reward | 50 KOK | **D** | fair launch; chosen, not discovered |
 | `T_half` halving period | 4 years | **D** | the descent to the tail; Bitcoin-convention interval |
 | `R_∞` tail emission | **2 KOK**, never zero | **D** | the floor of the security budget; prevents Kaspa's 2026 exhaustion (96.5% of max supply mined) |
-| `τ` treasury share | **5%** of `R(t)` | **D** | escrow + milestone vesting; no VCs, no premine — Kaspa ran this way too |
-| `burn_rate` | `(0.0, 0.5]`, client-chosen | **D** | the irrecoverable tax; bounded at 0.5 so the task cannot burn more than half its own fee |
-| `BOND_RATIO` | task bond = `fee · BOND_RATIO` | **D** | sybil cost; the bond is slashed and refilled, so it ends at its level, not 0 (TV-16, TV-81) |
+| `τ` treasury share | **5%** of `R(t)`, i.e. `floor(R·500/10000)` | **D, K** | escrow + milestone vesting; no VCs, no premine — Kaspa ran this way too. The node floors the product, leaving the residual with the miners rather than rounding it up (prototype `probe_treasury_is_exactly_five_percent`) |
+| `burn_rate` | client-chosen, `1..=500` per mille | **D, K** | the irrecoverable tax; bounded at 500/1000 so a task cannot burn more than half its own fee (`MAX_BURN_RATE = 500` in the crate, asserted by `burn_rate_bounds`) |
+| `C_FEE` per-block useful-fee cap | **500** | **K** | the anti-aggregation bound; a block whose carried fee total exceeds 500 is rejected and the tasks shift to later blocks (T-A3, `C_FEE = 500` in the crate) |
+| `BOND_RATIO` task bond | `bond = fee · BOND_RATIO`, **`1.0` in the prototype** | **D, K** | sybil cost (Demirel Lemma 1). Not yet a protocol constant: it is 1.0 in the prototype, and the production value is an F3a calibration decision, not a number this paper can assert |
 | Attack cost | **PR/2** in every regime | **C** | Pass 2606.06700 Thm; verified in §3.1 |
 | Pearl calibration `S = PR/e` | **338,707** GPUs vs **320,000** measured → **5.8%** deviation | **M** | `pass_sim_en.py`, Tullock full-payment condition; revenue/cost 1.058 vs Basu's measured 1.06 |
 | Fortessia security gain | **3.33×** security, utility unchanged | **M** | `1/(γ(1−1/α))`, α=γ=1.3; matches theory exactly |
@@ -610,6 +613,7 @@ primary source, "D" = design choice, stated as a choice:
 | Tail-attack floor | **$0.76**, `R_∞ = 2` | **M** | the tail does not go to zero, unlike Kaspa |
 | Demand elasticity `ε` | 2 | **D** | the Jevons assumption; a choice, and labelled as one |
 | Model validity scale | **mainnet only** | **M** | F3a's ~1,200 miners **cannot** recalibrate — an 86% deviation; Pass's own calibration is over a $30B market / 52,560 block-years |
+| Retarget convergence | 2 windows from 10× off; ≤4× per window | **M** | `g_layer_tests_en.py` RT-1..RT-3, the D-independent estimator `Λ̂ = D·W/T_act` |
 
 **★ What the table is honest about, and what a reader should therefore challenge.
 Three of the load-bearing numbers are choices, not findings** — `R_0`, `T_half`
@@ -618,10 +622,13 @@ derived. The one that carries the security argument, `R_∞ = 2`, is a choice wh
 *consequence* is measured (the $0.76 attack-cost floor), so the claim is "this
 choice produces that floor," not "this choice is optimal." The calibration row is
 the strongest evidence in the table and it is a **5.8% miss**, not a hit — stated
-as a miss because that is what it is. And the last row is the honest ceiling on
-the whole model: **the economics is valid at the scale where it can be checked
-against a real network, and F3a's small testnet cannot check it**, which is why
-F3a measures demand (φ) and does not calibrate the model (spec C.7).
+as a miss because that is what it is. The `BOND_RATIO` row is deliberately marked
+prototype-only: the honest position is that **the production bond level is an
+unmeasured economic parameter**, and presenting 1.0 as settled would be asserting
+something F3a exists to find out. The last row is the honest ceiling on the whole
+model: **the economics is valid at the scale where it can be checked against a
+real network, and F3a's small testnet cannot check it**, which is why F3a measures
+demand (φ) and does not calibrate the model (spec C.7).
 
 **What this closes and what it does not.** It closes the "the paper has no
 concrete tokenomics model" gap — the parameters, the fee flow and the

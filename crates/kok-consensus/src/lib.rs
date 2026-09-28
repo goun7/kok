@@ -244,8 +244,8 @@ mod tests {
         // is zero today, so the assertions above are 0 == 0 and pass whatever
         // the accumulator does — a plain `+` would pass them too, and a plain
         // `+` is exactly the bug this test is named after: two u64::MAX fees
-        // would wrap to something small and the sum would LOOK like a modest
-        // weight instead of a saturated one. The accumulator is
+        // wrap to 2^64 − 2, and the sum would LOOK almost-saturated rather
+        // than obviously broken. The accumulator is
         // `checked_add(...).unwrap_or(u64::MAX)`, which saturates rather than
         // wraps, and that half is only checkable while the per-term weight is
         // still zero if you test it at the level the accumulator actually
@@ -255,7 +255,7 @@ mod tests {
             u64::MAX.checked_add(u64::MAX).unwrap_or(u64::MAX),
             u64::MAX,
             "the saturating accumulator is what u_consensus_weight relies on; \
-             a wrapping `+` would give 0 here and the sum would look small"
+             a wrapping `+` would give 2^64 - 2 here, one below saturation"
         );
         // and the fold's own behaviour over a saturating sequence: many MAX
         // terms must saturate at MAX, never wrap back down
@@ -263,9 +263,39 @@ mod tests {
         let folded = weights.iter().fold(0u64, |acc, w| acc.checked_add(*w).unwrap_or(u64::MAX));
         assert_eq!(folded, u64::MAX, "forty u64::MAX terms must saturate, not wrap");
         // the difference from a naive sum is the whole point: a naive `+`
-        // would produce 40 * u64::MAX mod 2^64, which is a small number
-        let naive: u64 = weights.iter().copied().sum();
-        assert_ne!(naive, u64::MAX, "a naive sum would not saturate, and this is the bug");
+        // would produce 40 * u64::MAX mod 2^64, which is a specific wrong
+        // number.
+        // CORRECTED (2026-09-28): the naive sum was computed with
+        // `iter().copied().sum()`, which is the wrapping `+` itself, so in a
+        // debug build the expression overflowed and PANICKED — the very
+        // operation this test exists to prove dangerous was crashing the
+        // test instead of demonstrating the wrap. A test that crashes cannot
+        // assert anything, so the wrap is now computed in u128, where it
+        // cannot panic, and the exact wrapped value is pinned. The u128 also
+        // corrects a wrong expectation the old `assert_ne` carried by
+        // implication: 40 × u64::MAX mod 2^64 is NOT a small number — since
+        // u64::MAX ≡ −1 (mod 2^64), the wrapped total is 2^64 − 40, which is
+        // nearly saturated and would look plausible to a reader who only
+        // checked that the sum was "large". The two-term case is the one
+        // where the wrap is genuinely deceptive, because it lands at −2.
+        const N_NAIVE: u64 = 40;
+        let naive_wrapped: u128 = (u64::MAX as u128 * N_NAIVE as u128) % (1u128 << 64);
+        assert_eq!(
+            naive_wrapped as u64, u64::MAX - N_NAIVE + 1,
+            "the naive wrapping sum of {N_NAIVE} u64::MAX terms is 2^64 - 40, which is \
+             nearly saturated and would pass a reader who only checked that the \
+             total was large — the wrap is a lie about the sum, not always a \
+             small one"
+        );
+        // and the two-term case, which is the one the accumulator's own
+        // checked_add was written for: two MAX fees must saturate to MAX
+        // rather than wrap to −2, i.e. 2^64 − 2
+        let two_wrapped: u128 = (u64::MAX as u128 * 2) % (1u128 << 64);
+        assert_eq!(
+            two_wrapped as u64, u64::MAX - 1,
+            "two u64::MAX terms wrap to 2^64 - 2, so a sum that should report \
+             saturation instead reports one less than the maximum"
+        );
         // SO: while the per-term weight is zero, this test pins the CONTRACT
         // the accumulator will have to honour the day u_task_consensus_weight
         // stops returning zero. When that day comes, change this test to
