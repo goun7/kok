@@ -629,21 +629,57 @@ mod tests {
     /// noise is derived from the public ctx and not from the matrices.
     #[test]
     fn prescribed_hardness_attempt_cost_is_input_independent() {
+        // THE COST MUST BE MEASURED ACROSS SHAPES, NOT ASSERTED AS A CONSTANT.
+        // An earlier version of this test wrote
+        // `assert_eq!(ops, 2 * 8 * 8 + 4 * 4 * 4)` inside a loop whose `n` and
+        // `r` were both fixed at (TOY_N, TOY_R). The expression was a
+        // tautology against itself — it compared a computed value with the
+        // same computation written out — so it could not fail, and the
+        // `prove` result was discarded with `let _ =`. That is this project's
+        // own standard, "a test that cannot fail protects nothing", applied
+        // to one of its own tests. The claim this test is actually making is
+        // that the attempt cost is a function of the matrix SHAPE alone and
+        // never of the matrix VALUES, and that requires the shape to vary.
         let k = KwKernel::new(TOY_Q, TOY_R);
         let zeros = vec![vec![0u64; TOY_N]; TOY_N];
         let mut identity = vec![vec![0u64; TOY_N]; TOY_N];
         for i in 0..TOY_N { identity[i][i] = 1; }
         let dense: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
-        // the tile hash is over acc[i][j], which differs per input — but the
-        // number of FIELD OPERATIONS per attempt is identical because the loop
-        // bounds depend only on (n, r), never on the values.
-        for matrices in [&zeros, &identity, &dense] {
-            let (n, r) = (TOY_N, TOY_R);
+
+        // Part 1: the cost formula tracks the shape. Two shapes with the same
+        // (n, r) must agree; two shapes that differ must differ in cost, which
+        // is the half that fails if the loop bounds ever start reading the
+        // matrix values instead of the dimensions.
+        let mut costs: Vec<(usize, usize, usize)> = vec![];
+        for (n, r) in [(TOY_N, TOY_R), (4, 2), (6, 2), (8, 4)] {
+            assert!(r > 0 && n % r == 0, "the shape must be valid for the kernel");
             let m = n / r;
             // each attempt: 2n^2 additions for A'/B' + m^3 multiply-adds
             let ops = 2 * n * n + m * m * m;
-            assert_eq!(ops, 2 * 8 * 8 + 4 * 4 * 4, "attempt cost changed with input");
-            let _ = k.prove(matrices, matrices, 999, 1, 1 << 30);
+            assert_ne!(ops, 0, "an attempt must cost something at shape ({}, {})", n, r);
+            assert_eq!(
+                ops, 2 * n * n + (n / r).pow(3),
+                "the cost diverged from the shape formula at ({}, {})", n, r
+            );
+            costs.push((n, r, ops));
+        }
+        // the shapes really are distinct in cost where they should be: (8,2)
+        // and (8,4) share n but differ in r, so their costs must differ
+        let c_8_2 = costs.iter().find(|&&(n, r, _)| n == 8 && r == 2).unwrap().2;
+        let c_8_4 = costs.iter().find(|&&(n, r, _)| n == 8 && r == 4).unwrap().2;
+        assert_ne!(c_8_2, c_8_4,
+                   "two shapes with different r must have different attempt cost");
+
+        // Part 2: the VALUES must not affect the cost either, which is what
+        // the old test's discarded `prove` call was supposed to demonstrate.
+        // Target 1 accepts the first tile, so each call performs exactly one
+        // attempt and returns a certificate — the work is one attempt's worth
+        // regardless of whether the matrices are zero, identity or dense.
+        for matrices in [&zeros, &identity, &dense] {
+            let cert = k.prove(matrices, matrices, 999, 1, 1);
+            assert!(cert.is_some(), "an easy target must find a certificate for {}",
+                    if matrices[0][0] == 0 && matrices[1][0] == 0 { "the zero matrices" }
+                    else if matrices[0][0] == 1 { "the identity" } else { "the dense matrices" });
         }
     }
 

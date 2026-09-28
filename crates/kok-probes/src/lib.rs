@@ -247,15 +247,39 @@ mod tests {
     /// monetary policy divergence.
     #[test]
     fn probe_treasury_is_exactly_five_percent() {
+        use kok_ghostdag::{R_0, TREASURY_BPS};
         let mut g = Ghostdag::new(GHOSTDAG_K);
+        let _ = R_0;
         g.add(Block { bid: 1, parents: vec![] });
         let r = g.reward_split(1);
         assert_eq!(r.total, 50);
         // 50 * 500 / 10000 = 2.5 -> integer arithmetic floors to 2; the
         // split must still conserve
         assert_eq!(r.treasury + r.miners, r.total);
-        assert!(r.treasury * 10_000 >= r.total * 400, "treasury below the 4% band");
-        assert!(r.treasury * 10_000 <= r.total * 800, "treasury above the 8% band");
+        // THE NAME SAYS "EXACTLY FIVE PERCENT" SO THE TEST MUST SAY IT TOO.
+        // The old version asserted a 4%-8% band while claiming exactness, and
+        // its own comment admitted the floor — a band that wide would accept
+        // a 4% or 8% treasury share, which are both wrong by a factor of more
+        // than one and a half in either direction. What the node actually
+        // computes is floor(total * TREASURY_BPS / 10_000), and the honest
+        // statement of that is the floored product, not a tolerance band.
+        assert_eq!(
+            r.treasury, (r.total * TREASURY_BPS) / 10_000,
+            "the treasury must be the floored bps share: floor(50 * 500 / 10000) = 2"
+        );
+        assert_eq!(r.treasury, 2, "at total 50 and 500 bps the floor is exactly 2");
+        // the residual is the rounding the floor drops: 2.5 - 2 = 0.5 of one
+        // unit, which the conservation check above absorbs into `miners`.
+        // Stating it keeps the next reader from "fixing" the 2 into a 3.
+        assert_eq!(r.miners, 48, "50 - 2, the residual stays with the miners");
+        // and the exact claim as a ratio, where it IS exact: the treasury is
+        // TREASURY_BPS bps of the total, to within one unit of rounding
+        assert!(
+            (r.treasury as i128 * 10_000 - r.total as i128 * TREASURY_BPS as i128).abs()
+                <= 10_000,
+            "the treasury share must be within one unit of {} bps",
+            TREASURY_BPS
+        );
     }
 
     /// FINALITY GAP CONSISTENCY: a block the tip's score exceeds by the gap

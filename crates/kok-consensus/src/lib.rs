@@ -239,5 +239,36 @@ mod tests {
         // accumulation is additive and checked, so pin the additive shape
         let per: Vec<u64> = many.u_proofs.iter().map(kok_u_layer::u_task_consensus_weight).collect();
         assert_eq!(per.iter().sum::<u64>(), many.u_consensus_weight(), "the weight is not the sum of its terms");
+
+        // THE WRAP HALF WAS UNTESTED, AND THIS IS WHY IT MATTERS. Every term
+        // is zero today, so the assertions above are 0 == 0 and pass whatever
+        // the accumulator does — a plain `+` would pass them too, and a plain
+        // `+` is exactly the bug this test is named after: two u64::MAX fees
+        // would wrap to something small and the sum would LOOK like a modest
+        // weight instead of a saturated one. The accumulator is
+        // `checked_add(...).unwrap_or(u64::MAX)`, which saturates rather than
+        // wraps, and that half is only checkable while the per-term weight is
+        // still zero if you test it at the level the accumulator actually
+        // runs at. This constructs the two-term case the fold is written for
+        // and pins the saturation contract directly.
+        assert_eq!(
+            u64::MAX.checked_add(u64::MAX).unwrap_or(u64::MAX),
+            u64::MAX,
+            "the saturating accumulator is what u_consensus_weight relies on; \
+             a wrapping `+` would give 0 here and the sum would look small"
+        );
+        // and the fold's own behaviour over a saturating sequence: many MAX
+        // terms must saturate at MAX, never wrap back down
+        let weights: Vec<u64> = vec![u64::MAX; 40];
+        let folded = weights.iter().fold(0u64, |acc, w| acc.checked_add(*w).unwrap_or(u64::MAX));
+        assert_eq!(folded, u64::MAX, "forty u64::MAX terms must saturate, not wrap");
+        // the difference from a naive sum is the whole point: a naive `+`
+        // would produce 40 * u64::MAX mod 2^64, which is a small number
+        let naive: u64 = weights.iter().copied().sum();
+        assert_ne!(naive, u64::MAX, "a naive sum would not saturate, and this is the bug");
+        // SO: while the per-term weight is zero, this test pins the CONTRACT
+        // the accumulator will have to honour the day u_task_consensus_weight
+        // stops returning zero. When that day comes, change this test to
+        // build real proofs and check the saturation through the public API.
     }
 }
