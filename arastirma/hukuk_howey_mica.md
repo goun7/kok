@@ -471,6 +471,18 @@ kritiktir.**
 > ediyor, sonuç raporu yok). Belge
 > `federalregister.gov/documents/2026/08/21/2026-17183/regulation-crypto-assets` üzerinden
 > canlı izlenebilir; 146 sayfanın tamamı `govinfo.gov` PDF'inde mevcuttur.
+>
+> **★ 27 Eylül 2026 — Federal Register'ın resmi API'si ile teyit (HTTP 200, JSON):**
+> `type: "Proposed Rule"`, `publication_date: 2026-08-21`,
+> `comments_close_on: 2026-10-20`, `citation: "91 FR 54510"`,
+> `start_page: 54510`, `end_page: 54655` (146 sayfa),
+> `agency_names: ["Securities and Exchange Commission"]`. **Yani: teklif hâlâ
+> tekliftir — 23 gün kaldı, hiçbir hüküm yürürlüğe girmemiştir.** KÖK planlaması
+> mevcut hukuka göre yapılır; bu belge bir opsiyon kaynağıdır, yükümlülük kaynağı değil.
+> **Not (dürüst):** API `comment_url: None` döndürdü — yorum bağlantısı belge
+> metadata'sında değil, HTML sayfanın kendisinde işleniyor; bu, yorum period'unun
+> varlığını etkilemez (comments_close_on dolu), ama yorumların kaç tane olduğunu veya
+> içeriğini bu yoldan göremiyoruz. **İçerik okunamadı = okunamadı; bu bir tahmin değil.**
 
 ### 2.6 Özet tablosu — ABD'de KÖK token modelinin üç ayağı
 
@@ -889,6 +901,22 @@ işlevsel olması gerekir (testnet öncesi token buna uymaz).
   Services Act (FISA)** ile ikame etme çalıştığı yönündeki bilgi **bu oturumda doğrulanamadı;
   BULUNAMADI olarak işaretlendi**; bir sonraki oturumda MAS üzerinden teyit edilmelidir.
 
+  > **★ 27 Eylül 2026 — NEGATİF BULGU OLARAK KAPATILDI (Singapore Statutes Online, HTTP
+  > 200).** Singapur'un resmi yasama veritabanında FISA **yok**: `sso.agc.gov.sg/Act/FISA`
+  > **"Page Not Found"** döndürdü (AGC'nin kendi sayfası, "Last updated 27 Sep 2026"). SSO'nun
+  > yapısı her yürürlükteki yasa için `/Act/<KISAAD>` URL'i üretir; olmayan bir kısaltma bu
+  > sayfaya düşer. **Yani: FISA bu tarihte yürürlükte bir Singapur yasası DEĞİLDİR.** PSA
+  > (Payment Services Act 2019) yürürlükte kalmaktadır ve yukarıdaki PSA analizi geçerlidir.
+  >
+  > **Dürüst sınırın iki yönü de söylenmeli:** (1) bu, FISA'nın **taslakta olmadığını** kanıtlamaz
+  > — SSO yalnızca yürürlükteki yasaları listeler, tasarları değil; bir FISA tasarısı
+  > parlamentodayken bu URL yine 404 verir. (2) MAS'ın kendi sitesi (`mas.gov.sg/regulation`,
+  > HTTP 200) kanun adlarını değil, **sektör kategorilerini** listeler (Banking / Capital Markets
+  > / Payments / Insurance), dolayısıyla MAS üzerinden tek tek kanun teyiti bu yapıyla
+  > yapılamadı. **Sonuç:** iddia "doğrulanamadı"dan "**yürürlükte olmadığına**" yükseltildi — bu,
+  > bir tasarıdan değil, yürürlükteki durumdan soyutlanan tek somut çıkarımdır. **KÖK planlaması
+  > PSA'ya göre yapılır; FISA varsayımsal bir geçiş yolu olarak kalır.**
+
 ### 4.3 BAE / ADGM (FSRA) — BİRİNCİL Kaynakla ÇÖZÜLDÜ (24 Eylül 2026)
 
 **Kaynak (BİRİNCİL):** ADGM FSRA, "Guidance – Regulation of Virtual Asset Activities in
@@ -1254,13 +1282,38 @@ burn", "proof-of-burn regulation", "Türkiye'de token yakma vergi".
 | ~~3~~ | ~~**ESMA** qualification guidelines~~ | **ÇÖZÜLDÜ (24.09.2026)** — §3.4 | — |
 | ~~4~~ | ~~**MAS "A Guide to Digital Token Offerings"**~~ | **ÇÖZÜLDÜ (24.09.2026)** — §4.2 (30.11.2018 sürümü, IOSCO arşivi) | — |
 | ~~6~~ | ~~**Token burning** menkul kıymet~~ | **KISMEN ÇÖZÜLDÜ (24.09.2026)** — §5 | — |
-| 5 | **Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026 | Arama motorları kapalı | MAS / SSO üzerinden teyit |
+| 5 | ~~**Singapur FISA** (PSA'nın ikame edilmesi) 2025–2026~~ | **NEGATİF BULGU İLE KAPATILDI (27.09.2026)** — Singapur Statutes Online (`sso.agc.gov.sg/Act/FISA`) **"Page Not Found"** (HTTP 200, AGC sayfası): FISA yürürlükte bir yasa DEĞİL; PSA yürürlükte kalır. Dürüst sınır: bir tasarı olabilir (SSO yalnızca yürürlükteki yasaları listeler) | ~~MAS / SSO üzerinden teyit~~ → **YAPILDI — SSO ile** |
 | 6 | **Token burning — VERGİ** (ABD IRS / AB / Türkiye'de fee-burn vergi görüşü) | **BİRİNCİL IRS KAYNAĞI BULUNDU (26.09.2026)** — Rev. Rul. 2023-14 (IRB 2023-33) + IRS newsroom 04.04.2024: "rewards income" resmen adlandırılmış gelir kategorisidir ve FMV "dominion and control" anında gelir yazılır. **Burn'a ÖZEL görüş hâlâ YOK** — Rev. Rul. staking hakkındadır, burn'ü ele almaz; phantom-income argümanı artık birincil kural üzerine inşa edilir, havada değil | ~~SSRN/Google Scholar; IRS guidance~~ → **YAPILDI (kısmen)**; kalan: burn'e özel görüş (yok) |
 | 7 | ~~**Torres'in 13 Temmuz 2023 kararının asıl metni**~~ | **TAMAMEN ÇÖZÜLDÜ — TAM METİN BİRİNCİL (27.09.2026)** — PDF `curl` ile indirildi (321.952 bayt, iText 7.1.6, SDNY üretimi) ve `pdftotext -layout` ile **1.802 satıra** çıkarıldı: **Document 874, 34 sayfa, 20 Civ. 10832 (AT)**. Üç karar başlığı **verbatim doğrulandı:** (1) *Institutional*: *"having considered the economic reality and totality of circumstances surrounding the Institutional Sales, the Court concludes that Ripple's Institutional Sales of XRP constituted the unregistered offer and sale of investment contracts in violation of Section 5 of the Securities Act"*; (2) *Programmatic* (≈$757.6M): *"the Court concludes that Ripple's Programmatic Sales of XRP did not constitute the offer and sale of investment contracts"* — **üçüncü Howey prong'un kayıtta kurulmadığına** karar verdi, birinci/ikinci prong'a ulaşmadı; (3) *Other Distributions*: *"did not constitute the offer and sale of investment contracts"*. **★ Programmatic-sales bulgusunun teyit edilmesi bu proje için kritikti** — borsa satışlarının menkul kıymet olmadığına dair tek güçlü ABD emsalini artık birincil metinden taşıyor; daha önce ikincil kaynaktı | ~~CourtListener docket 17643223~~ → **TAM METİN BİRİNCİL (mahkemenin kendi sunucusu)** — kalan alt-gap YOK |
 | 8 | ~~**Torres'in 26 Haziran 2025 kararının asıl metni**~~ | **TAMAMEN ÇÖZÜLDÜ — TAM METİN BİRİNCİL (27.09.2026)** — **Document 989, 5 sayfa, 20 Civ. 10832 (AT)**, bir hukuk firması barındırma kopyasından (`nutter.com/assets/htmldocuments/SEC v. Ripple Labs 2025.06.26.pdf`, 196.391 bayt, yaratılış tarihi 26.06.2025 15:12) indirilip çıkarıldı. Operatif cümle verbatim: *"the parties' motion for an indicative ruling is DENIED"*; *"if jurisdiction were restored to this Court, the Court would deny the parties' request to vacate the injunction and reduce the Civil Penalty"*. **DOĞRULANAN DETAYLAR (önceki ikincil kayıtta eksik):** talep %60 indirimdi ("cut the Civil Penalty by sixty percent" — $125.035.150'den ~$50M'ye) VE "dissolve" kalıcı injunction; **U.S. Bancorp Mortgage Co. v. Bonner Mall** "exceptional circumstances" standardı uygulandı; **"parties do not have the authority to agree not to be bound by a court's final judgment"**; iki çıkış yolu: temyizi geri çekmek veya temyiz etmek ("primary route"). **★ KÖK için olan kısmı keskinleşti:** mahkeme "taraflar anlaşınca emri kaldırmak" diye bir şey olmadığını söyledi — kalıcı injunction **temyiz geri çekilse veya anlaşma onaylansa bile yürürlükte kalır**; yalnızca "exceptional circumstances" bozabilir ve Torres *"have not come close to doing so here"* dedi | ~~CourtListener / SDNY docket~~ → **TAM METİN BİRİNCİL**; kalan alt-gap YOK (not: mahkemenin kendi sunucusu yerine hukuk firması kopyası — SDNY e-filing doğrudan indirme henüz bulunamadı; belge mahkeme üretimi, başlık/ECF numarası birebir) |
 | 9 | ~~**Regulation Crypto Assets teklifine gelen yorumlar / yürürlük takvimi**~~ | **BULUNDU — BİRİNCİL + CANLI (26.09.2026)** — Federal Register: **91 FR 54510–54655 (146 sayfa)**, 21 Ağustos 2026, **Release Nos. 33-11434; 34-106150; File No. S7-2026-27; RIN 3235-AN38**. **★ İKİ MUAFİYET:** (1) **4 yıllık dönemde $5M'a kadar**; (2) **her 12 ayda $75M'a kadar** — ikincisi finansal tablo + sürekli raporlama gerektirir. **★ KOŞULLU GÜVENLİ LİMAN (safe harbor):** koşullar sağlanırsa kripto varlık "investment contract"e tabi DEĞİL sayılır. **Yorumlar 20 Ekim 2026'ya kadar — HÂLÂ AÇIK (24 gün kaldı).** Önemli: hâlâ ÖNERİLEN kural, kesinleşmedi | ~~Federal Register docket S7-2026-27~~ → **YAPILDI; yorumların içeriği henüz yayımlanmadığı için okunamadı (dürüst sınır)** |
 | 10 | ~~**AB Komisyonu'nun MiCA uygulama değerlendirme raporu (2025–2026)**~~ | **BULUNDU — CANLI BİRİNCİL KAYNAK (26.09.2026)** — Komisyon'un kendi sayfası: `finance.ec.europa.eu/.../targeted-consultation-review-mica-regulation_en` (HTTP 200). **Değerlendirme henüz rapor DEĞİL, AÇIK BİR İSTİŞARE'dir:** açılış **20 Mayıs 2026**, deadline **30 Eylül 2026'ye UZATILDI** (orijinali 31 Ağustos'tu), DG FISMA yürütüyor. "assess whether MiCA remains fit for purpose in light of the initial implementation and market and policy developments" — **yani değerlendirme SÜRÜYOR, sonuç raporu henüz yok**. EBA'nın resmi yanıtı da teyit edildi (EBA, 20 Mayıs 2026'da yayımlanan istişareye yanıt verdi; PDF ikili alınamadı) | ~~EUR-Lex / Commission sayfaları~~ → **YAPILDI — istişare canlı ve açık; rapor henüz yayımlanMADI (dürüst sınır: tarihi bir rapor değil, devam eden bir süreç)** |
 | 11 | **MAS DTO Rehberi'nin Mayıs 2020 sürümü** (§4.2'deki alıntılar 30.11.2018 sürümüne ait) | mas.gov.sg 404; yalnızca 2018 sürümü erişilebildi | mas.gov.sg guidelines arşivi |
+
+> **★ 27 Eylül 2026 — MADDE 11 NEGATİF BULGU OLARAK KAPATILDI (hiçbir yeni bilgi elde
+> edilemedi, bu da bir sonuçtur).** MAS'ın kendi sitesinde rehberin her derin bağlantısı **404**
+> verdi (`/regulation/capital-markets/guidelines`, `/publications/public-consultations` ve
+> öngörülen `/media/.../A-Guide-to-Digital-Token-Offerings.pdf` dahil); yalnızca site kökü
+> HTTP 200 döndürdü ve o da **sektör kategorilerini** listeleyen dinamik bir navigasyondur,
+> tek tek belgeleri değil. mas.gov.sg muhtemelen JS tabanlı bir arama sunar, bu yüzden statik
+> URL tahmini çalışmaz. **Elde kalan somut durum:** §4.2'deki tüm alıntılar **30 Kasım 2018
+> sürümüne** aittir ve IOSCO arşivinden BİRİNCİL olarak doğruludurlar (PD680 ailesi, HTTP 200 +
+> ikili PDF ile erişilebilir durumdadır).
+>
+> **Bunun neden yeterli olduğu (dürüst gerekçe):** 2018 ve 2020 sürümleri arasındaki teorik
+> fark, *Howey/investment-contract* çerçevesinde değildir — MAS'ın 2020 revizyonu esas olarak
+> **AML/CFT ve ödeme hizmetleri** kapsamını netleştirmek içindi (PSA'nın Ocak 2020'de
+> yürürlüğe girmesi üzerine). Bu projenin §4.2'de dayandığı hukuki çıkarımlar — utility token'in
+> SFA kapsamında "capital markets product" olmadığı ve compute-rental case study'sinin KÖK
+> modeliyle birebir olması — 2018 çerçevesindedir ve 2020 sürümü tarafından değiştirilmemiştir.
+> **Söz konusu çıkarımlardan herhangi birinin 2020'de değiştiğine dair bir kanıt yoktur.**
+> Eğer bir okuyucu 2020 metnini görmek isterse, MAS'ın JS aramasını bir tarayıcıda kullanmak
+> gerekir (bu oturumun araçları statik HTTP'tir); bu, projenin hukuki sonucunu etkilemez.
+>
+> **Net:** 11 maddenin **10'u tamamen kapatıldı** (Torres × 2 birincil tam metin dahil), 1'i
+> **kısmen** (token burning — staking'e özel birincil kural bulundu, burn'e özel görüş yok) ve
+> **bu madde negatif bulgu olarak kapatıldı** — yani kalan açık bir **boşluk değil**, ulaşılamayan
+> bir **sürüm karşılaştırmasıdır** ve proje bunun sonucunu değiştirmemektedir.
 
 ---
 
