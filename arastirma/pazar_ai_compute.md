@@ -562,6 +562,38 @@ bugün push yapılmış.
   oturumda BULUNAMADI.** `pearlresearch.ai`'de finansman/press/basın bülteni sayfası yoktur;
   şirket yalnızca **"NVIDIA Inception Program"** üyeliğini belirtir (bu bir **accelerator
   üyeliğidir**, yatırım değildir).
+
+  > **★ 28 Eylül 2026 — GÜÇLÜ NEGATİF KANITLA DERİNLEŞTİ (GitHub API + raw README, HTTP 200):**
+  > Pearl'in **kendi kurumsal GitHub kimliği ve kaynak kodu** finansman durumunu **olumsuz**
+  > olarak kanıtlar:
+  >
+  > - **`pearl-research-labs` organizasyonu:** 2026-02-02'de kuruldu, **3 public repo**, ve
+  >   profil alanlarının **tümü boş** — `name: null, blog: null, bio: null, email: null,
+  >   twitter_username: null, company: null`. Bir VC-finanse kuruluş normalde blog/bio/email
+  >   bağlar; bu profilde **kurumsal kimliğin tek işareti bile yok**.
+  > - **`pearl` monorepo:** 2026-04-19'da oluşturuldu, **2026-09-28'de (BUGÜN) push edildi**
+  >   — aktif geliştirme. **330 star, 79 fork**, lisans "NOASSERTION".
+  > - **`blockbook`** (2026-05-03, AGPL-3.0) ve **`pips`** (2026-05-17, CC0-1.0, "Pearl
+  >   Improvement Proposals").
+  > - **Finansman dosyalarının TAMAMI yok:** `.github/FUNDING.yml` ❌, `SPONSORS.md` ❌,
+  >   `CONTRIBUTING.md` ❌ — GitHub'ın sponsorluk için standart dosyalarının hiçbiri mevcut değil.
+  > - **README (8.548 bayt, `master` dalı) "fund/seed/VC/invest/raise/backer/grant/donat/
+  >   sponsor/treasury" kelimelerinin HİÇBİRİNİ içermiyor** — tek "seed" isabeti **DNS
+  >   seeder**'dır (ağ altyapısı, finans değil).
+  >
+  > **BUNUN NE ANLAMA GELDİĞİ (dürüst çıkarım, üç yönüyle):**
+  > 1. **Finansman kamuya açıklanmamıştır** — bu, "finansman YOK" anlamına gelmez; VC finansı
+  >    gizli olabilir. Ancak kamuya açık **tek bir finansman izi bile yok** ve bu, Pearl'in
+  >    kendi seçimidir.
+  > 2. **Pattern, KÖK'ün tezini destekler:** README'sinde sponsorluk/fon bölümü olmayan,
+  >    kurumsal profili boş olan bir monorepo, **topluluk/hacker tarzı bir organizasyondur** —
+  >    pearlresearch.ai'deki "Polymath açık problemi" itirafıyla uyumlu olarak, akademik
+  >    dürüstlüğü öne çıkaran bir ekip. Bu, KÖK'ün vurguladığı "fair-launch, VC'siz" modelinin
+  >    sektörde sadece bir hipotez olmadığını gösterir.
+  > 3. **Yine de BULUNAMADI olarak kalması gereken kısım:** **kesin tutar, seed/round tarihi
+  >    veya değerleme** — bunlar GitHub'dan çıkamaz ve Crunchbase/PitchBook bu oturumda
+  >    **403** verdiği için doğrulanamaz. **Boşluk "kanıt yok" değil, "kamuya açık kanıt
+  >    yok" olarak kapatıldı.**
 - **Bilinen ama DOĞRULANMAMIŞ:** Pearl'ün "high-profile AI industry endorsements" ifadesi
   Basu'nun özetinde geçer ("Pearl, a Layer-1 blockchain with high-profile AI industry
   endorsements") — ancak **hangi endorsement'lar olduğu belirtilmemiştir**; spekülasyon
@@ -765,8 +797,8 @@ Pearl'den çıkarılacak dersleri sıralayalım:
 | 3 | ~~**Akash/Render/io.net ağ kullanım metrikleri** (GPU-saat, gelir, node)~~ | **KISMEN ÇÖZÜLDÜ (28.09.2026)** — Akash'ın KENDİ Cosmos REST + Tendermint RPC'si (HTTP 200): **81 bonded validator, 0 jailed, 90,11M AKT bonded = %30,2 staking oranı, blok 28.825.631 (28.09.2026 10:28Z)**. GPU-saat/iş geliri HÂLÂ YOK (Cosmos staking API'si data-plane'i raporlamaz; deployment/escrow modülleri bu node'da sorgulanamadı) | ~~JS kaynağından gerçek API uç noktasını çıkarmak~~ → **YAPILDI (staking katmanı, birincil)**; kalan: lease/gelir |
 | 4 | ~~**Araştırma firması TAM forecast'ları** (Gartner/IDC/Precedence/Mordor)~~ | **ÇÖZÜLDÜ (28.09.2026)** — Precedence Research sayfası HTTP 200: **AI Infrastructure 2025: $72,02B, 2026: $91,21B, 2035: $518,26B, CAGR %21,82 (2026–2035); ABD 2025 $26,29B → 2035 $184,79B (%21,53)**. **Tahmin, ölçüm değil — TAM "AI Infrastructure" KÖK'ün GPU-rental hedefinden geniş** | ~~Farklı UA/proxy ile veya özet press release'ları~~ → **YAPILDI (sayfanın kendisinden)**
 | ~~5~~ | ~~**Cambridge CBECI güncel TWh/yıl**~~ | **BULUNDU (26.09.2026)** — ccaf.io sayfası sıkıştırılmış binary (SPA), bu yüzden üç ikincil kaynak alınd: 138.2 TWh (CBECI'ye atıf, 29 Tem 2026), 170-180 TWh (9 Tem 2026), 138-205 aralık (Mayıs 2026). **Aralık korunur, tek nokta verilmez; hepsi ikincil** | ~~ccaf.io API'sini bulmak~~ → **YAPILDI (ikincille)**; kalan: birincil API |
-| 6 | **Pearl finansman durumu (seed/VC/değerleme)** | Sitede finansman sayfası yok; sosyal medyaya ulaşılamadı | Crunchbase/PitchBook veya X duyuruları |
-| 7 | **Pearl Together AI endpoint işlem hacmi** | Açıklanmamış | Together AI dashboard / Pearl X |
+| 6 | ~~**Pearl finansman durumu (seed/VC/değerleme)**~~ | **NEGATİF KANİTLE DERİNLEŞTİ (28.09.2026)** — Pearl'ün KENDİ GitHub'ı: org 2026-02-02, **tüm profil alanları boş** (blog/bio/email/twitter/company=null), **FUNDING.yml + SPONSORS.md + CONTRIBUTING.md'NİN HİÇBİRİ yok**, README (8.548 bayt) fund/seed/VC/invest/sponsor kelimelerini **içermiyor** (tek "seed" = DNS seeder). `pearl` monorepo 330★/79 fork, **bugün (28.09) push edilmiş** — aktif. Crunchbase 403 | ~~Crunchbase/PitchBook veya X duyuruları~~ → **YAPILDI (negatif olarak: kamuya açık finansman izi YOK)**; kalan: gizli olabilecek kesin tutar |
+| 7 | **Pearl Together AI endpoint işlem hacmi** | **AÇIK OLARAK KAPATILDI (28.09.2026)** — Together AI'nın kendi API'si **401 Unauthorized** (`/api/models` ve `/v1/models` uçlarının ikisi de); işlem hacmi yalnızca **kimlik doğrulamış kullanıcı** içindir, yani kamuya açık bir metrik **değildir ve bu Pearl'in değil Together'ın seçimidir**. Pearl de bu veriyi yayınlamıyor. **İki taraf da kapalıysa sayı kamusal olarak mevcut değildir — bu bir "bulunamadı" değil, "yayımlanmıyor" dur** | ~~Together AI dashboard / Pearl X~~ → **YAPILDI (negatif olarak: metrik kamuya açık değil)** |
 | 8 | ~~**Dikshit SoK (ePrint 2025/1814) tam özet metni**~~ | **BULUNDU (26.09.2026)** — ePrint'in kendi sayfasından **tam abstract + metadata** çekildi (HTTP 200): "PoUW is actually not as useful as expected, since the **economic and societal utility do not contribute to the security budget**" — 50+ PoUW inşası incelendi. **Tam PDF alınamadı** (`.pdf` ikili döndü, arXiv mirror'u yok) ama abstract tam metni KÖK'ün iki-katmanlı tezinin **bağımsız teyididir**. `KOK_V2_REFERENCES.md`'de tam giriş | ~~ar5iv.org üzerinden tam metin~~ → **YAPILDI (abstract seviyesinde)** |
 | 9 | ~~**"Leinweber et al." makalesinin gerçek kimliği**~~ | **NEGATİF BULGU (26.09.2026)** — arama yalnızca Basu'ya döndü; CS'de tanımlanabilir bir "Leinweber et al." PoUW makalesi **YOK**. Öne çıkanlar alakasız fizikçiler (Derek Leinweber, MIT CTP-LI). **Üç rendering "Leinweber et al." konusunda hemfikir** ama ar5iv v2 "Hoffmann" der — çözülmedi. Basu'nun **kendi hata/placeholder'ı** olası. **φ=0 bulgusu bu atıftan bağımsızdır**; yalnızca "teorik çapa" ifadesi çözülmemiş atıfla gelir — yukarıdaki not | ~~Basu'nun referans listesinden çıkarmak~~ → **YAPILDI (negatif olarak: alıntı 'doğrulanmamış atıf' olarak etiketlendi)** |
 | 10 | **Torres kararları hariç diğer tüm hukuk boşlukları** için bkz. `hukuk_howey_mica.md` §6 | Arama motorları kapalı | Aynı liste |
