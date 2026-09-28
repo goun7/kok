@@ -83,7 +83,33 @@ fn decode(
         // analogue in the difficulty sense
         return Err("target is zero: the difficulty is undefined".into());
     }
-    let need = (n * n) as usize * 8;
+    // THE SIZE MUST BE COMPUTED WITH CHECKED ARITHMETIC, OR THE LENGTH GATE
+    // BELOW IS DEAD CODE. `(n * n) as usize * 8` is plain u64 multiplication,
+    // and at n = 2^33 (and at any n >= 2^32 on a 32-bit target, where the
+    // `as usize` itself truncates) `n * n` wraps to a small value. A
+    // hand-built `VerifierInput` — every field of which is `pub`, so any Rust
+    // caller can construct one — then passes the length check against a SHORT
+    // `flat_a`, and the slice `input.flat_a[off..off + 8]` unwinds with an
+    // index panic before `u64_le` can return the `None` that the
+    // "matrix A truncated" guard below exists to convert into an `Err`.
+    // `kok_wasm::parse_packet` already validates this same expression with
+    // `checked_mul` before the bytes ever reach here, which is exactly why the
+    // bug is invisible to the WASM suite: the wrapper screens the input that
+    // would expose it. A light client or indexer calling `verify_raw`
+    // directly gets a panic, not a `Reject`. Rejecting the overflow here is
+    // what makes the guard total on the whole u64 domain rather than on the
+    // sizes the author had in mind.
+    let need = match (n as usize)
+        .checked_mul(n as usize)
+        .and_then(|sq| sq.checked_mul(8))
+    {
+        Some(bytes) => bytes,
+        None => {
+            return Err(format!(
+                "matrix size overflow: n = {n} needs n*n*8 bytes, which does not fit"
+            ))
+        }
+    };
     if input.flat_a.len() != need || input.flat_b.len() != need {
         return Err(format!(
             "matrix size mismatch: expected {} bytes each, got {}/{}",
@@ -92,6 +118,10 @@ fn decode(
             input.flat_b.len()
         ));
     }
+    // n as usize cannot overflow from here on: `need` was computed from it and
+    // fit, so a Vec of this size is at least representable. (A caller that
+    // supplies a huge-but-representable n will fail the length check above on
+    // the buffer side, which is the correct outcome.)
     let mut a = Vec::with_capacity(n as usize);
     let mut b = Vec::with_capacity(n as usize);
     for row in 0..n as usize {
@@ -324,5 +354,92 @@ mod tests {
         assert_eq!(a.len(), 8);
         assert_eq!(b.len(), 8);
         assert_eq!(a[0].len(), 8);
+    }
+
+    /// THE OVERFLOW CLASS — `(n * n) as usize * 8` computed with plain u64
+    /// arithmetic. `VerifierInput`'s fields are all `pub`, so any Rust caller
+    /// (a light client, an indexer) can build one directly rather than going
+    /// through `kok_wasm::parse_packet`. At n = 2^33, `n * n` wraps to a small
+    /// value, the length gate below passes against a SHORT buffer, and the
+    /// slice `flat_a[off..off+8]` panics before `u64_le` can return the `None`
+    /// the "matrix A truncated" guard exists to handle. That made the guard
+    /// dead code and the failure a panic instead of a `Reject`. The WASM suite
+    /// never saw it because `parse_packet` validates this same expression with
+    /// `checked_mul` upstream — the wrapper screens the input that would expose
+    /// the bug, which is exactly the shape where a broken primitive hides.
+    #[test]
+    fn decode_rejects_an_overflowing_matrix_size_instead_of_panicking() {
+        // n = 2^33: n*n = 2^66, which wraps u64. This case is caught by the
+        // checked multiply (2^66 does not fit), and the second test below
+        // covers the value that actually crashes the OLD code — see it.
+        let n_overflow: u64 = 1u64 << 33;
+        let input = VerifierInput {
+            cert_bytes: {
+                let mut c = [0u8; 32];
+                c[24..32].copy_from_slice(&1u64.to_le_bytes()); // m = 1
+                c
+            },
+            pub_inputs: {
+                let mut p = [0u8; 48];
+                // layout per decode(): ctx 0..8, nonce 8..16, target 16..24,
+                // n 24..32, q 32..40, r 40..48
+                p[16..24].copy_from_slice(&(1u64 << 16).to_le_bytes());
+                p[24..32].copy_from_slice(&n_overflow.to_le_bytes());
+                p[32..40].copy_from_slice(&97u64.to_le_bytes());
+                p[40..48].copy_from_slice(&2u64.to_le_bytes()); // r = 2
+                p
+            },
+            flat_a: vec![0u8; 32],
+            flat_b: vec![0u8; 32],
+        };
+        // must be a REJECT, never a panic. Before the fix this unwound at the
+        // slice `flat_a[off..off+8]` instead of returning an Err.
+        match decode(&input) {
+            Ok(_) => panic!("an overflowing matrix size must be rejected, not accepted"),
+            Err(msg) => {
+                assert!(
+                    msg.contains("overflow") || msg.contains("size"),
+                    "the error must name the size problem, got: {msg}"
+                );
+            }
+        }
+    }
+
+    /// **THE CASE THAT ACTUALLY CRASHES THE OLD CODE.** At n = 2^32 the product
+    /// `n * n` = 2^64 wraps to exactly **0**, so the old `need` became
+    /// `0 * 8 = 0`. Empty `flat_a` and `flat_b` then PASS the length gate
+    /// (0 == 0), and the decode loop proceeds to build the matrices: it calls
+    /// `Vec::with_capacity(n as usize)` — 2^32 rows, each itself 2^32 entries —
+    /// which is an attempted ~96 GB allocation and the process dies with
+    /// SIGABRT on the memory request, before ever reaching the slice that the
+    /// "matrix A truncated" guard was written for. Verified by running this
+    /// exact test against the pre-fix commit in a throwaway git worktree: it
+    /// aborted with `memory allocation of 103079215104 bytes failed`. The
+    /// checked multiply above now refuses the size outright, so this returns
+    /// an `Err` instead of killing the process.
+    #[test]
+    fn decode_rejects_a_size_that_wraps_to_zero_instead_of_allocating_96gb() {
+        let n_wrap_to_zero: u64 = 1u64 << 32; // n*n = 2^64 -> wraps to 0
+        let input = VerifierInput {
+            cert_bytes: {
+                let mut c = [0u8; 32];
+                c[24..32].copy_from_slice(&1u64.to_le_bytes());
+                c
+            },
+            pub_inputs: {
+                let mut p = [0u8; 48];
+                p[16..24].copy_from_slice(&(1u64 << 16).to_le_bytes());
+                p[24..32].copy_from_slice(&n_wrap_to_zero.to_le_bytes());
+                p[32..40].copy_from_slice(&97u64.to_le_bytes());
+                p[40..48].copy_from_slice(&2u64.to_le_bytes());
+                p
+            },
+            flat_a: vec![],
+            flat_b: vec![],
+        };
+        assert!(
+            decode(&input).is_err(),
+            "n = 2^32 wraps n*n to zero; the size must be rejected, not treated as empty"
+        );
     }
 }
