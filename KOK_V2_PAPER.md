@@ -452,11 +452,44 @@ with pinned test vectors.
 > output `sim_out.txt`). Below, **measured** values are bold, theoretical expectation in
 > parentheses.
 
-- **Calibration (the strongest verification hook):** Pearl's **live** network (320,000 GPUs, 800
-  blocks/day, 2,674 PRL/block, $0.76) was reproduced with the model's Tullock full-payment
-  condition `eS = PR`: **S = PR/e = 338,707** vs measured 320,000 GPUs — **5.8% deviation**;
+- **Calibration (the strongest verification hook — and the honest statement of what it
+  establishes):** Pearl's **live** network (320,000 GPUs, 800 blocks/day, 2,674 PRL/block,
+  $0.76) was reproduced with the model's Tullock full-payment condition `eS = PR`:
+  **S = PR/e = 338,707** vs measured 320,000 GPUs — **5.8% deviation**;
   revenue/cost **1.058** vs Basu's measured **1.06**. So the model predicts a real mainnet from
   first principles, not with tuned parameters.
+
+  **★ What that 5.8% actually is, stated because the number is cited five times in this
+  paper and four of those citations read it as a validation result (2026-09-27).** It is an
+  **ordering check between two quantities that are not the same kind of number**, not a
+  calibration. `e` in the simulation is derived from a GPU-hour rental rate ($0.20/hr over a
+  108-second block), so `PR/e` carries units of **GPU-operations per block**, while the
+  320,000 it is compared against is a **count of physical GPUs**. Two different magnitudes
+  that happen to land within 5.8% of each other. The agreement is closer than the assumption
+  it rests on deserves, and the assumption itself is a strong one: the Tullock full-payment
+  condition spends the *whole* block reward on compute, which belongs to the Fortessia branch
+  of the model, whereas Pearl's own θ (1.657) puts it in the pure-Duplexia regime where a
+  share of revenue is an inference subsidy rather than security spending. **The honest
+  reading is that model and measurement agree to within the regime mismatch, not to within
+  5.8%.** This caveat has been in `pass_sim_en.py` since round 6 (2026-09-24, lines 253-262)
+  and is recorded in the differentiation table at §12; it belongs here as well, because this
+  is the line a reader reaches first and the one the paper's own rubric scores as its
+  strongest empirical hook.
+
+  **★ An unresolved input, stated rather than smoothed over.** The calibration's block time
+  is 108 s while this project's own reference record of Pearl lists **194 s**
+  (`KOK_V2_REFERENCES.md` §5.4). Recomputing revenue/cost at 194 s gives **0.589 rather than
+  1.06** — under that input Pearl sits well below equilibrium and the "near-breakeven"
+  characterisation reverses. The 108 s value traces to the simulation's inputs and the 194 s
+  value to Pearl's published emission documentation, and **neither could be independently
+  confirmed**: the project's own market file records that Pearl's documentation could not be
+  independently fetched. **So the calibration rests on a number whose provenance is the
+  simulation itself, and the ratio it produces is input-sensitive enough to flip sign.** This
+  does not change what the simulation *demonstrates* — the three regimes, the zero-demand
+  outcome, the tail-emission floor — because those are properties of the model, not of
+  Pearl's specific block time. What it changes is that the **1.06 revenue/cost figure should
+  not be read as a measurement of Pearl.** The simulation's outputs remain valid as model
+  properties; this input's reconciliation remains open.
 - **Emission:** **tail emission** — a decreasing but **never zero** block reward (Monero/Grin
   tradition). The Kaspa curve that v1 copied is **exhausted** in 2026 (96.5% of the max supply
   mined, ~$40M remaining). The security budget must not fall to zero on an infinite horizon.
@@ -605,7 +638,7 @@ protocol parameter:
 | `C_FEE` per-block useful-fee cap | **500** | **K** | the anti-aggregation bound; a block whose carried fee total exceeds 500 is rejected and the tasks shift to later blocks (T-A3, `C_FEE = 500` in the crate) |
 | `BOND_RATIO` task bond | `bond = fee · BOND_RATIO`, **`1.0` in the prototype** | **D, K** | sybil cost (Demirel Lemma 1). Not yet a protocol constant: it is 1.0 in the prototype, and the production value is an F3a calibration decision, not a number this paper can assert |
 | Attack cost | **PR/2** in every regime | **C** | Pass 2606.06700 Thm; verified in §3.1 |
-| Pearl calibration `S = PR/e` | **338,707** GPUs vs **320,000** measured → **5.8%** deviation | **M** | `pass_sim_en.py`, Tullock full-payment condition; revenue/cost 1.058 vs Basu's measured 1.06 |
+| Pearl calibration `S = PR/e` | **338,707** GPU-op/block vs **320,000** physical GPUs → **5.8%** apart | **M** | `pass_sim_en.py`, Tullock full-payment condition; revenue/cost 1.058 vs Basu's measured 1.06. **Ordering check between two different magnitudes, not a calibration — the assumption spends the whole reward on compute (Fortessia) while Pearl's own θ puts it in Duplexia; see §4 for the full statement, including the unresolved 108 s vs 194 s block-time input** |
 | Fortessia security gain | **3.33×** security, utility unchanged | **M** | `1/(γ(1−1/α))`, α=γ=1.3; matches theory exactly |
 | Zero-demand outcome | `Q→0`, **`S → PR/e = 338,707`** | **M** | the chain survives as pure PoW; security Bitcoin-equal (Demirel Thm 2) |
 | Attack cost at Pearl scale | **$1,016** | **M** | heterogeneous cost b=1; total S drops 38% but PR/2 holds |
@@ -998,7 +1031,11 @@ the emission *rate*, which is the honest trade the design makes and states.
 The precise schedule and any future change are governance, and the paper does
 not pretend to have chosen them finally: the roadmap's F4 economic simulation
 is what would test a candidate schedule against the zero-demand equilibrium
-(the empty-block case, which is real and absorbing — TV-36).
+(the empty-block case, which is real — and whose precise character is stated
+honestly at §12.3: the dynamics have a **repelling** fixed point at D*, not an
+absorbing state, and "absorbing for every seed" is an overstatement this FAQ
+repeats in one word while the later section corrects it in full. The all-seed
+absorbing threshold is about 0.08–0.10 — TV-36, restated round-5 TV-85).
 
 **What no FAQ answer substitutes for.** These are design arguments grounded in
 the cited third-party results, not security proofs. The 51% answer rests on
@@ -1222,8 +1259,8 @@ which is the honest answer.
 | **F1b — Working prototype** | task lifecycle + penalty economics + difficulty retarget | **✅ `u_layer_prototype_en.py` (TV-5..TV-10), `g_layer_tests_en.py` (TV-1..TV-4, RT-1..RT-3) — all PASS** |
 | **F2 — Soundness verification** | verification of the AIR with Lean + ZEBRA-class cardinality check | Under-constrained bug = 0 (third-party audit) |
 | **F3 — Devnet** | `kok-node` (Rust), S-two/Circle STARK verifier, task market, filler tasks | 10 BPS, verify ≤2 ms/block, difficulty approaches the target in 7 days |
-| **F4 — Economic simulation** | on-chain simulation of Pass's model (3 regimes) | Controlled transition to pure-PoW mode in the zero-demand scenario. **✅ closed-form solver: `pass_sim_en.py` — Pearl calibration 5.8%, Fortessia ×3.33, zero-demand S→PR/e, tail $0.76** |
-| **F4b — Cryptographic analysis** | independent assessment of the KW conjecture | **✅ `KW_ANALIZ.md`: risk high → low-medium (Assumption 6.4 not needed; the real risk is the E-gap)** |
+| **F4 — Economic simulation** | on-chain simulation of Pass's model (3 regimes) | Controlled transition to pure-PoW mode in the zero-demand scenario. **✅ closed-form solver: `pass_sim_en.py` — Fortessia ×3.33, zero-demand S→PR/e, tail $0.76**. **The Pearl calibration is listed separately because it is an ordering check, not a validation: see §4, where the 5.8% is stated with its unit mismatch and the unresolved 108 s vs 194 s block-time input** |
+| **F4b — Cryptographic analysis** | independent assessment of the KW conjecture | **✅ `KW_ANALIZ.md`: risk high → low-medium (Assumption 6.4 not needed; the real risk is the E-gap)** — **★ read as an LLM assessment, not a completed human cryptographer's: §11.4 states what an LLM review can and cannot substitute for, and the F4b checkmark marks the LLM leg done, not the human one. The human review remains the largest schedule risk (§11.3)** |
 | **F5 — Testnet + miner** | open testnet, `kok-miner`, ecosystem task channels | 1000+ miners, demand paying for ≥1 of the real (a)/(b) tasks |
 | **F6 — Audit + mainnet** | 2 independent security audits + bug bounty | No critical findings; miner ecosystem stable for 6 months |
 
@@ -1259,9 +1296,13 @@ real AI workloads); number of verifier's-dilemma triggers (spec §A.5).
 costs (hypothetical test: **86% deviation**). Pass's own calibration rests on a $30B inference
 market and 52,560 blocks/year; F3a is outside this scale. **Therefore F3a's role is clear:**
 it measures the U layer's demand (φ>0) — **not the Pass model**. The Pass calibration is
-valid **at mainnet scale** (proven with Pearl at 5.8%), and the **expected** zero-φ result
+valid **at mainnet scale** (checked against Pearl to within 5.8%, which as §4 states is an
+ordering check between two different magnitudes resting on the Fortessia assumption Pearl
+itself does not satisfy, and on a block-time input the reference record contradicts — read
+it as agreement to within the regime mismatch, not as a measurement), and the **expected** zero-φ result
 from F3a is consistent with the model's "Bitconia" descent; it does not calibrate it. This
-was pinned with a working regression-guard in §9 of `pass_sim_en.py` (Pearl 5.8% preserved).
+was pinned with a working regression-guard in §9 of `pass_sim_en.py` (Pearl 5.8% preserved —
+preserved as an ordering check, with its own caveat in the code at lines 253-262).
 
 **★ Risk (honest):** F3a's central sequencer **limits the test's real value** — a central
 sequencer can censor, and this does not measure the U layer's **censorship resistance**.
@@ -1277,7 +1318,7 @@ is **structural**, and it shapes the design:
 
 | Item | Cost | Constraint |
 |---|---|---|
-| **F1/F1b/F4b (spec, prototypes, analysis)** | ~0 (compute time) | **Already done.** The paper, spec and 7 runnable prototypes are the entire output of this phase. |
+| **F1/F1b/F4b (spec, prototypes, analysis)** | ~0 (compute time) | **Already done.** The paper, spec and runnable prototypes are the entire output of this phase — **the prototype count grew as rounds were added: the phase's own `_en.py` scripts now number 33 working prototypes plus 2 gate scripts (`suite_gate_en.py`, `audit_turkish_en.py`), where an earlier draft said seven**; the gates are counted separately because they verify rather than demonstrate. |
 | **F3a (economy testnet)** | 1 VPS + ~200 dev-hours | Can be done **by one person** in 3–4 months. This is the cheapest decision point in the entire plan, and it is deliberately first. |
 | **Cryptographer review** | $0 — **deferred payment** | The reviewers are external academics; while the project is anonymous **compensation is hard or impossible** (no bank account, no legal entity). Payment is deferred to post-funding, which means **the review timing is not ours to control** — it is the single largest schedule risk. See §11.4 for what can be done in the meantime: **an LLM adversarial review is a real substitute for *some* of what a human reviewer provides, and a poor substitute for the rest.** |
 | **F3b (consensus devnet)** | 2–3 engineers × 6 months + test GPUs | **Not fundable today.** Requires either funding (breaks anonymity) or a grant program (requires a legal entity). This is the hard gate. |
@@ -1597,7 +1638,15 @@ at all. Three findings, each from a live source:
 - **No PoUW chain publishes compute revenue.** Qubic and Dynex — the two existing
   proof-of-useful-work chains — publish none; Dynex is winding its token down (Feb 2026).
   Bittensor's 30-day revenue of $9.85M against $76.8M paid out means **~88% of its "revenue"
-  is emission**, not sales. **So the exact combination KÖK proposes — PoW security plus
+  is emission**, not sales. **★ Provenance of those two figures, stated because they are
+  quoted as live data: neither appears in this project's reference file, its market research
+  file, or its findings file, and the only Bittensor data those files carry is a price/market-cap
+  row (TAO $264.2, $3.00B, ATH $757.6, −65.1%). The revenue-and-payout pair is therefore
+  unattributed in this paper — the ~88% conclusion does not depend on the exact pair (any
+  chain whose payout is an order of magnitude above its sales revenue gives the same shape,
+  and Bittensor's emission-funded model is not in dispute), but the two dollar figures are
+  carried forward without a citable source and should be re-verified before being repeated
+  outside this argument.** **So the exact combination KÖK proposes — PoW security plus
   compute sales — has no proven predecessor.** That is simultaneously the opportunity and
   the warning.
 - **Verified prices set the bar, and the bar moved (live-verified 2026-09-23).** H100 on-demand
@@ -1938,7 +1987,7 @@ F0b (real AIR)         ─┘
   DAGKNIGHT it suggests, and neither has been done here.
 | Difficulty | **window + median filter** (RT-1..3 verified) | **WTEMA** (per-block EMA, 7-day decay) | deterministic | "—" | classical |
 | Cryptography | **PQ suite mandatory** (TV-10) + Lean/ZEBRA + agility + emergency fallback | Plonky2 ZK (input privacy!); **XMSS reserved but disabled**; P2MR | re-exec | SNARK | hash |
-| Economy | **tail emission (R_∞ floor)** + 5% treasury + Pass simulation | S≈2.1M GPUs (Pearl's own published figure; note the project's model-implied count from the same revenue data is 338,707 GPU-op/block, so the two figures describe different quantites — the 2.1M is not reproduced by this project's code and is reported as Pearl's claim, not as a measurement here); **1/t² polynomial (no halving, R(t)→0 — NO tail)**; 24 EH/s, 1.06× revenue/cost | — | marketplace | **exhausted** (96.5%) |
+| Economy | **tail emission (R_∞ floor)** + 5% treasury + Pass simulation | S≈2.1M GPUs (Pearl's own published figure; note the project's model-implied count from the same revenue data is 338,707 GPU-op/block, so the two figures describe different quantites — the 2.1M is not reproduced by this project's code and is reported as Pearl's claim, not as a measurement here); **1/t² polynomial (no halving, R(t)→0 — NO tail)**; 24 EH/s, 1.06× revenue/cost (**input-sensitive: at the reference record's 194 s block time this recomputes to 0.589 — see §4; the 1.06 is a model output at the simulation's own 108 s input, not a measurement of Pearl**) | — | marketplace | **exhausted** (96.5%) |
 | Task market | **escrow + bond + burn + C_FEE anti-agg + VRF + W_s=100** | **NONE** — marketplace in §1 as future vision | — | exists | none |
 | **Novel** | **baking the E-gap into the architecture: security ≠ utility** | **first KW implementation; its own business model is effectively the G/U separation** (inference platform + chain) | PoI consensus | PoUW + binding | GHOSTDAG |
 
@@ -1947,7 +1996,10 @@ F0b (real AIR)         ─┘
 live PoUW chain.** But Basu (2606.04819) measured it: **24 EH/s, ~320 thousand GPUs, ~112 MW
 → zero useful AI computation**; verification accepts random matrices (44 pool-approved shares,
 NVIDIA/AMD/CPU/Apple Silicon); there is no inference code in the miner software (0/4,803
-strings); GPU rental prices +38%, a **~$600K/yr deadweight loss** to research; miners mine
+strings); GPU rental prices +38%, a **~$600K/yr deadweight loss** to research (a derived figure:
+the chain is vast.ai budget-GPU utilisation 57%→94%, +38% price, of which +23% is attributed to
+Pearl, giving the annual loss — recorded in `findings.md`, not a figure taken from a cited
+paper, and stated here because the number appears without its derivation); miners mine
 for the "call option" under >200% volatility.
 
 **How Pearl's own documents explain this (2026-09-19, important):** Pearl's §7 benchmark shows
