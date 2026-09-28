@@ -137,16 +137,53 @@ mod tests {
     /// saturating arithmetic would silently inflate or deflate.
     #[test]
     fn probe_emission_is_conserved_at_extreme_heights() {
+        use kok_ghostdag::{R_0, TAIL_EMISSION, TREASURY_BPS, EMISSION_HALVING_INTERVAL};
+        // THE HEIGHT MUST BE THE BLOCK'S BLUE_SCORE, NOT THE LOOP VARIABLE.
+        // An earlier version of this probe iterated `h` over [0, 1, 209999,
+        // 210000, 210001, 4200000, u64::MAX/2] and then called
+        // reward_split(2) inside the loop — so `h` appeared only in the
+        // failure-message strings and never entered the computation. The probe
+        // asserted the conservation property six times at ONE height, height
+        // 2, which is the "a test that cannot fail protects nothing" class
+        // this project holds itself against. reward_split takes its height
+        // from blue_score, so varying that score is what actually varies the
+        // emission curve; set_depth_for_test is this crate's sanctioned way to
+        // place a block at an arbitrary height.
         let mut g = Ghostdag::new(GHOSTDAG_K);
         g.add(Block { bid: 1, parents: vec![] });
         g.add(Block { bid: 2, parents: vec![1] });
         for h in [0u64, 1, 209_999, 210_000, 210_001, 4_200_000, u64::MAX / 2] {
+            // place block 2 at height h directly — this is what the loop
+            // variable is FOR, and what the old probe never did
+            g.blue_score.insert(2, h);
+            assert_eq!(g.blue_score[&2], h, "the probe must actually place the block at h");
             let r = g.reward_split(2);
             assert_eq!(r.treasury + r.miners, r.total, "emission broke at height {}", h);
             // the tail floor must hold at any height past the decay
             if h >= 210_000 {
                 assert!(r.total >= 1, "emission hit zero at height {}", h);
             }
+            // the treasury must be exactly TREASURY_BPS of the total, IN THE
+            // INTEGER ARITHMETIC THE NODE ACTUALLY RUNS — floor(total * BPS /
+            // 10_000). This is deliberately NOT `treasury * 10_000 == total *
+            // BPS`: at total = 50 and BPS = 500 the node computes
+            // 50 * 500 / 10_000 = 2 by integer division, and
+            // 2 * 10_000 = 20_000 != 50 * 500. An exact-rational identity
+            // would be false at the very first height. Pinning the floored
+            // product is what keeps this assertion matching the formula the
+            // node implements, and the conservation check above is the one
+            // that catches a share that stops summing back to the total.
+            assert_eq!(
+                r.treasury, (r.total * TREASURY_BPS) / 10_000,
+                "the treasury must be the floored bps share at height {} (total {})",
+                h, r.total
+            );
+            // and the total must be the published formula itself, so the probe
+            // pins the curve rather than only its internal consistency
+            let expected = R_0
+                .saturating_sub(h / EMISSION_HALVING_INTERVAL)
+                .max(TAIL_EMISSION);
+            assert_eq!(r.total, expected, "emission formula diverged at height {}", h);
         }
     }
 

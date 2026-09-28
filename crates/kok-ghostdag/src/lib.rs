@@ -126,8 +126,20 @@ impl Ghostdag {
             .map(|b| b.parents.clone())
             .unwrap_or_default();
         while let Some(p) = stack.pop() {
-            if seen.insert(p) {
-                if let Some(pb) = self.blocks.get(&p) {
+            // ONLY A BLOCK THAT EXISTS CAN BE IN THE PAST. The existence check
+            // must come before seen.insert, or an absent parent is recorded as
+            // an ancestor it never was. The private past_uncached() below
+            // already does this in this order (its own comment says so), but
+            // this public path had the order reversed — it inserted first and
+            // consulted the map second — so a phantom parent landed in the
+            // returned set. The two branches disagreed, and no test could see
+            // it: add() populates past_cache for every block that reaches it,
+            // so this branch is only reached for blocks outside add()'s flow,
+            // which the suite never constructs. past() feeds anticone,
+            // order_within_past and pay_set, so a phantom here would distort
+            // the ordering and the reward set, silently.
+            if let Some(pb) = self.blocks.get(&p) {
+                if seen.insert(p) {
                     stack.extend(pb.parents.iter().copied());
                 }
             }
@@ -855,5 +867,61 @@ mod tests {
         let early = tips[0];
         assert!(g.past(tip).contains(&early), "early must be in the tip's past");
         assert!(g.future(early).contains(&tip), "tip must then be in early's future");
+    }
+
+    /// THE PHANTOM-PARENT CLASS. `past()` has two branches: the `past_cache`
+    /// hit, populated by `add()`, and an eager fallback for blocks outside
+    /// `add()`'s flow. The fallback used to insert an absent parent into the
+    /// returned set BEFORE consulting the block map, so a parent that does not
+    /// exist was reported as an ancestor. `past_uncached()` — the private
+    /// implementation `add()` itself uses — has always checked existence
+    /// first, so the two branches DISAGREED, and every existing test reads the
+    /// cached branch because `add()` populates it for every block it sees.
+    /// `past()` feeds `anticone`, `order_within_past` and `pay_set`, so a
+    /// phantom here would distort the ordering and the reward set silently.
+    /// This test constructs the only configuration that reaches the fallback:
+    /// a block whose parent is absent from the DAG, queried through the public
+    /// API without going through `add()`.
+    #[test]
+    fn past_excludes_a_parent_that_does_not_exist() {
+        let mut g = Ghostdag::new(18);
+        // a real block 1 with no parents
+        g.add(Block { bid: 1, parents: vec![] });
+        // block 2 claims 999 as a parent; 999 is NOT in the DAG
+        g.blocks.insert(2, Block { bid: 2, parents: vec![999, 1] });
+        // 2 was inserted directly, bypassing add(), so past_cache is empty for
+        // it and the eager fallback branch runs
+        assert!(!g.past_cache.contains_key(&2), "this test must exercise the fallback branch");
+        let p2 = g.past(2);
+        assert!(
+            !p2.contains(&999),
+            "a parent that does not exist must not appear in the past set, got {:?}",
+            p2
+        );
+        assert!(p2.contains(&1), "the real parent must still be there");
+        assert_eq!(p2.len(), 1, "only the real ancestor counts, got {:?}", p2);
+    }
+
+    /// The same phantom must be absent on the CACHED branch too, and the two
+    /// branches must agree — that is the invariant the order-of-operations fix
+    /// is really about. A block reaching `add()` with a phantom parent gets its
+    /// past computed by `past_uncached()` and cached; querying `past()` on it
+    /// afterwards must give the same phantom-free set.
+    #[test]
+    fn past_cached_and_uncached_branches_agree_on_a_phantom_parent() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        // block 2 references 1 (real) and 777 (phantom)
+        g.add(Block { bid: 2, parents: vec![1, 777] });
+        let cached = g.past(2);
+        assert!(!cached.contains(&777), "the cached branch must drop the phantom");
+        assert!(cached.contains(&1));
+        // and the private implementation add() used must match the public one
+        let uncached = g.past_uncached(2);
+        assert_eq!(
+            cached, uncached,
+            "the two past() branches must agree; a divergence here would make \
+             the answer depend on whether the cache was warm"
+        );
     }
 }
