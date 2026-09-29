@@ -27,6 +27,13 @@ members = [
     # Regression probes as code — the adversarial tests rounds 1-6 wrote in
     # Python, carried into the language the node ships in.
     "crates/kok-probes",
+    # The mesh kanıt (proof) layer: a G-layer mining certificate bound to the
+    # commissioned task, signed under a W3C did:key (Ed25519) over a
+    # Sester-style recomputable sha256 receipt. `kok verify kanit.json`
+    # re-derives the MatMul tile and the signature with no secrets and no
+    # network. This is the piece that makes the useful work independently
+    # verifiable off-chain.
+    "crates/kok-proof",
 ]
 
 # The workspace root itself is not a crate; the binary lives in kok-cli.
@@ -75,6 +82,13 @@ once_cell = "1"
 # ECVRF-P256-SHA256-TAI; k256 would be a non-standard suite. ---
 p256 = "0.13"
 
+# --- Ed25519 (RFC 8032) for the mesh kanıt (proof) layer. The identifier is
+# a W3C did:key (multicodec 0xed01, base58btc), matching the Kredent
+# sibling project byte-for-byte so a KÖK mining proof is verifiable by
+# anyone who can verify a Kredent attestation: self-resolving, offline, no
+# registry. ---
+ed25519-dalek = "3.0"
+
 # --- randomness: VRF assignment and the toy matrices ---
 rand = "0.8"
 rand_core = { version = "0.6", features = ["getrandom"] }
@@ -108,6 +122,7 @@ kok-cli = { path = "crates/kok-cli" }
 kok-wasm = { path = "crates/kok-wasm" }
 kok-bench = { path = "crates/kok-bench" }
 kok-probes = { path = "crates/kok-probes" }
+kok-proof = { path = "crates/kok-proof" }
 
 [profile.release]
 opt-level = 3

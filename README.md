@@ -17,6 +17,42 @@ The E-gap (utility ≠ security) is architected exogenously rather than assumed 
 
 ---
 
+## In 30 seconds
+
+A proof-of-useful-work chain whose mining work is matrix multiplication, split into
+two layers that cannot influence each other: **layer G elects and orders blocks** on a
+MatMul proof-of-work whose hardness is structural (the noise matrices come from a
+public context, so a miner cannot shop for a friendly instance); **layer U carries
+fee-paid verifiable-compute tasks** assigned by a VRF over an epoch seed fixed 64
+blocks back — and contributes **exactly zero consensus weight**, so no one can buy
+security by buying demand for the useful work. No premine, no sale, no issuer: the
+asset is emitted to miners from genesis. It is **pre-testnet** — a paper, a spec and
+runnable prototypes, not a chain.
+
+**What "modular consensus" means here, and what it does not.** It is *not* the
+blockchain-literature meaning of separating consensus / execution / data-availability.
+KÖK separates **security from utility**: leader election depends on nothing the fee
+market can influence. That distinction is deliberate, and the honest gap is recorded
+in [`docs/arastirma/moduler_konsensus_ve_veri_2026.md`](docs/arastirma/moduler_konsensus_ve_veri_2026.md) §0 — no verified academic
+literature on "modular blockchain" consensus was found, so none is cited.
+
+### Commands that actually run
+
+```bash
+cargo test --workspace --all-targets      # 262 passed, 0 failed (verified 2026-09-29)
+
+# Mine a G-layer proof, then verify it off-chain with no secrets and no network:
+cargo run -q --bin kok -- create --ctx 20261020 --target 2 --out kanit.json
+cargo run -q --bin kok -- verify kanit.json
+```
+
+`verify` re-derives the MatMul tile, the program/input commitments, the Ed25519
+`did:key` signature and the sha256 receipt from the document's own contents — the same
+code a third party would call, which is the point: the useful work is independently
+verifiable off-chain.
+
+---
+
 ## Status
 
 **This is a pre-testnet design.** No users, no funds, no investors. The repo
@@ -28,9 +64,11 @@ contains the paper, the formal spec, and **runnable prototypes** — not a chain
 > cares about: **who is the "issuer" for a fair-launch network that never had
 > one** (Rule 400 / Form TR all assume one). Preparation — analysis and a draft
 > comment, **not filed** — is in
-> [`docs/REG_CA_COMMENT_HAZIRLIK.md`](docs/REG_CA_COMMENT_HAZIRLIK.md).
-> Whether to comment **at all** is a human decision; nothing is submitted
-> without the owner's explicit approval.
+> [`docs/REG_CA_COMMENT_HAZIRLIK.md`](docs/REG_CA_COMMENT_HAZIRLIK.md), and the
+> reviewable **draft comment itself is in
+> [`docs/REG_CA_YANIT_TASLAK.md`](docs/REG_CA_YANIT_TASLAK.md)** (with the code
+> evidence behind each architectural claim it makes). Whether to comment **at all**
+> is a human decision; nothing is submitted without the owner's explicit approval.
 
 | Artifact | Contents |
 |---|---|

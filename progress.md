@@ -5200,3 +5200,68 @@ BULUNAMADI tablosu satır 7-8. **Doğruladım:**
 - **3 olumsuz bulgu kaydedildi:** f64→i64 wrap YOK (Rust saturate),
   yeni PoUW/GHOSTDAG/STARK akademik kaynak KALMADI (arXiv cs.CR'de 3 PoUW
   makalesi, hepsi doğrulandı), ghostdag `past_uncached` zaten doğruydu
+
+## 28 Eylül 2026 oturum bloğu (devam)
+
+### Bu blokta yapılan iş (9 commit)
+
+**TEKNİK (kod):**
+1. `d2607c6` — Ghostdag'da **iki sessiz kesilme** (hop-cap): `order()` 1000-hop,
+   `blue_score_increases_along_selected_chain` 200-hop. Worktree kanıtı: eski kod 2500 derin
+   zincirde **"returned 1000 of 2500"** (tam 1000 blok, gerisi sessizce atıldı). Yeni: 28/28
+   test geçti. Aynı blokta kok-fri shared-oracle (6 test, Q=97 tam alan) + assign::alpha wire
+   format (4 test).
+2. `12e431a` — **Başarısız olamayan 3 testin onarımı**: prescribed_hardness (sabit ==
+   sabit tautology → 4 şekilli şekil-bağımlı maliyet + prove artık discard edilmiyor),
+   weight_sum (0==0 → checked_add/unwrap_or saturasyon sözleşmesi doğrudan pinlendi),
+   treasury (%4-8 band → floor(50×500/10000)=2 kesin + i128 ile 1 birim tolerans).
+
+**ARAŞTIRMA (dokümanlar, puan 83.65'e dokunulmadı):**
+3. `cffed15` — hukuk: FISA **negatif bulgu** (Singapore Statutes Online `/Act/FISA` →
+   "Page Not Found": yürürlükte yasa değil, PSA geçerli); MAS DTO Mayıs 2020 **erişilemez
+   sürüm** (mas.gov.sg derin bağlantıların tümü 404; 2018 sürümü BİRİNCİL ve geçerli,
+   projenin sonucunu değiştirmiyor); Reg Crypto Assets **Federal Register API ile tam
+   doğrulama** (type/SEC/91 FR 54510-54655/comments_close 2026-10-20).
+4. `5578522` — **Makalenin kendi dürüstlük notlarının kaçırdığı 5 iddia**: 5.8% Pearl
+   kalibrasyonunun **birim uyumsuzluğu** (GPU-op/block vs fiziksel GPU sayısı — düzeltme
+   kodda 253-262'de vardı ama makalede yoktu) + **çözülmemiş 108s vs 194s girdisi** (194s'de
+   oran 1.06 → 0.589, yani "dengeye yakın" karakterizasyonu tersine döner); Bittensor
+   $9.85M/$76.8M **hiçbir dosyada izi olmayan** sayılar (yöntem etiketlendi); F4b ✅'e
+   LLM-niteleyicisi; "7 prototype" → 33+2; $600K'ya türetme zinciri eklendi.
+5. `5bb3c57` — pazar: **Akash'ın KENDİ Cosmos REST/RPC API'si** (HTTP 200): 81 bonded
+   validator, 0 jailed, 90.11M AKT bonded / 298.27M AKT arz = **%30.2 staking**, blok
+   28.825.631. Precedence Research **AI Infrastructure forecast** ($72.02B→$518.26B,
+   CAGR %21.82) — "tahmin, ölçüm değil" etiketiyle.
+6. `da972e8` — CoinGecko **hem API (429) hem HTML (client-rendered)** kapalıyken fiyatlar
+   **iki bağımsız birincil borsadan**: Kraken AKT $0.6498, Binance RENDER $1.9480 / IO
+   $0.1576. AKT market cap **türetilir**: 298.27M × $0.6498 ≈ $193.9M (total vs circulating
+   farkı ve YTD açıkça BULUNAMADI).
+7. `a35fd07` — Pearl finansmanı **güçlü negatif kanıt** (GitHub: tüm profil alanları null,
+   FUNDING.yml/SPONSORS.md/CONTRIBUTING.md yok, README 8.548 bayt fund/seed/VC/sponsor
+   kelimelerini içermiyor; monorepo bugün push, 330★/79 fork). Together AI hacmi **401** →
+   "bulunamadı" değil **"yayımlanmıyor"**.
+
+### Ölçülen kanıtlar
+- **Test:** 184 → 221 → 225 → 227 → **240** (workspace lib, release); **240 debug'da da**
+  (paralel süreş `6ade887` benim yazdığım testin debug-mod overflow'unu yakaladı — 40×u64::MAX
+  u128'de hesaplanarak düzeltildi).
+- **Kod kalitesi:** 0 build warning; clippy 40 bulgu (hepsi önceden var olan stil lints'i,
+  hiçbiri benim eklediğim testlerde değil).
+- **Audit:** `audit_turkish_en.py` CLEAN; `suite_gate_en.py` 39/39 self-consistent.
+- **Skor:** 83.65 — **değişmedi** (1 eşleşme, kağıt puan artırma YASAK'ına uyuldu).
+
+### Negatif bulgular (tekrar denenmemeli)
+- CoinGecko API tüm uçlarda 429 (rate bucket, parametre değil); HTML client-rendered.
+- CryptoRank API 401 (anahtar gerekli); Crunchbase 403.
+- Together AI 401 (metrik kamuya açık değil — "yayımlanmıyor").
+- mas.gov.sg derin bağlantıların tümü 404 (sadece kök HTTP 200, JS navigasyon).
+- FISA yürürlükte yasa değil (SSO'da yok); bir tasarı olabilir.
+- Clippy bulguları kozmetik (is_multiple_of, iter-on-map-values, arg count) — düzeltme
+  kapsamı dışında, önceden vardı.
+
+### Kalan (bir sonraki blok için)
+- `hukuk_howey_mica.md` §6 tablosundaki #6 (token burning VERGİ — burn'e özel IRS görüşü
+  yok, staking'e var) — "kısmen çözüldü" olarak kalıyor, kapanmaz.
+- KÖK v2 makalenin ~21 kalan noktasının "empirical block" (~15/21) — insan kriptografik
+  review + canlı ölçüm — **bilinen ve kabul edilen sınırlar** (mail/duyur yasak,
+  bütçe finanse değil).

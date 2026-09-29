@@ -1,0 +1,19 @@
+[package]
+name = "kok-proof"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The mesh kanit layer: a signed, independently verifiable G-layer mining proof (did:key + sha256 receipt)"
+rust-version.workspace = true
+
+[dependencies]
+kok-poum.workspace = true
+sha2.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ed25519-dalek.workspace = true
+rand_core.workspace = true
+
+[lints.rust]
+unused = "warn"
