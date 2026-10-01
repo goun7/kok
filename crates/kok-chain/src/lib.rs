@@ -189,4 +189,111 @@ mod tests {
         // what decides, and it must pick the lower bid
         assert_eq!(select(&g1), Some(2), "the tie-break did not pick the lowest bid");
     }
+
+    /// THE FINALITY BOUNDARY IS EXACTLY THE GAP (2026-09-28).
+    ///
+    /// `is_final` uses `>=`, so a block the tip leads by EXACTLY FINALITY_GAP
+    /// is final, and one it leads by GAP-1 is not. Random-chain tests cannot
+    /// pin this — they land wherever the DAG growth put them — and the
+    /// difference is a one-block change in what a node may prune. Building the
+    /// gap by hand with known blue_scores is the only way to hold the rule to
+    /// its own boundary, and it is the test that would catch a `>` vs `>=`
+    /// regression, which no other test here distinguishes.
+    #[test]
+    fn the_finality_boundary_is_exactly_the_gap() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        // score the two blocks by hand so the gap is exact and controlled
+        g.blue_score.insert(1, 0);
+        g.blue_score.insert(2, FINALITY_GAP);
+        assert_eq!(select(&g), Some(2), "the tip must be the higher-scoring block");
+        // exactly at the gap -> final, because the rule is >=
+        assert!(
+            is_final(&g, 1),
+            "a block at exactly the gap was not final; the rule reads >= so it must be"
+        );
+        // one short of the gap -> not final
+        g.blue_score.insert(2, FINALITY_GAP - 1);
+        assert!(
+            !is_final(&g, 1),
+            "a block one below the gap was final; the rule read > instead of >="
+        );
+        // and the far side is comfortably final
+        g.blue_score.insert(2, FINALITY_GAP + 100);
+        assert!(is_final(&g, 1));
+        // a block with no gap at all is never final
+        g.blue_score.insert(2, 0);
+        assert!(!is_final(&g, 1), "a tip tied with a block made it final");
+        assert!(!is_final(&g, 2), "the tip itself is not final against itself");
+    }
+
+    /// A BLOCK ABSENT FROM THE DAG IS NEVER FINAL, EVEN UNDER A HUGE TIP.
+    ///
+    /// The module's own doc comment names this failure: the earlier code
+    /// scored a phantom block as 0 via unwrap_or(0) and then, once the tip's
+    /// score cleared the gap, returned TRUE for it — final-by-omission. A node
+    /// would prune or settle a block it never had. The probe in kok-probes
+    /// pins this at the integration level; this is the same property held
+    /// locally against the function, at the extreme where the failure shows:
+    /// a tip score far beyond the gap, and a bid that is nowhere in the DAG.
+    #[test]
+    fn a_block_absent_from_the_dag_is_never_final_under_a_huge_tip() {
+        let mut g = Ghostdag::new(18);
+        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block { bid: 2, parents: vec![1] });
+        g.blue_score.insert(1, 0);
+        g.blue_score.insert(2, 1_000_000); // far beyond any gap
+        // 999 is NOT in g.blocks
+        assert!(
+            !g.blocks.contains_key(&999),
+            "the test's premise is wrong: 999 is in the DAG"
+        );
+        assert!(
+            !is_final(&g, 999),
+            "a phantom block was final-by-omission under a tip of 1,000,000"
+        );
+        assert!(
+            !final_set(&g).contains(&999),
+            "a phantom block entered the final set"
+        );
+        // sanity: a real block at that gap IS final, so this is about absence,
+        // not about the tip being too small
+        assert!(is_final(&g, 1), "the real block at the same tip was not final");
+        // and on an empty DAG the same verdict holds for every bid
+        let empty = Ghostdag::new(18);
+        assert!(!is_final(&empty, 999_999));
+    }
+
+    /// final_set AND is_final ARE THE SAME VERDICT ON EVERY BLOCK.
+    ///
+    /// Two surfaces over one rule must agree, or a node pruning by final_set
+    /// and a node settling by is_final would diverge on the same DAG. Sweeping
+    /// a mined DAG and comparing the two directly is what catches a rule that
+    /// was edited in one place and not the other.
+    #[test]
+    fn final_set_agrees_with_is_final_for_every_block() {
+        let mut g = Ghostdag::new(18);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(88);
+        let _ = mine_chain(&mut g, 500, &mut rng, &["A", "B", "C"], 0.15);
+        let fs = final_set(&g);
+        for bid in g.blocks.keys() {
+            assert_eq!(
+                is_final(&g, *bid),
+                fs.contains(bid),
+                "block {bid}: is_final and final_set disagree"
+            );
+        }
+        // the final set only ever contains real blocks — no phantom can slip
+        // in through the filter, since it iterates g.blocks
+        assert!(fs.iter().all(|b| g.blocks.contains_key(b)));
+        // on a DAG too small for any gap, both surfaces must be empty together
+        let mut small = Ghostdag::new(18);
+        small.add(Block { bid: 1, parents: vec![] });
+        small.add(Block { bid: 2, parents: vec![1] });
+        small.blue_score.insert(1, 0);
+        small.blue_score.insert(2, 5);
+        assert!(final_set(&small).is_empty());
+        assert!(!is_final(&small, 1));
+    }
 }

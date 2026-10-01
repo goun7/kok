@@ -28,7 +28,7 @@ fn main() {
     pub_inputs[24..32].copy_from_slice(&n.to_le_bytes());
     pub_inputs[32..40].copy_from_slice(&TOY_Q.to_le_bytes());
     pub_inputs[40..48].copy_from_slice(&(TOY_R as u64).to_le_bytes());
-    let mut flat = |rows: &[Vec<u64>]| -> Vec<u8> {
+    let flat = |rows: &[Vec<u64>]| -> Vec<u8> {
         let mut v = Vec::with_capacity((n * n * 8) as usize);
         for row in rows { for x in row { v.extend_from_slice(&x.to_le_bytes()); } }
         v

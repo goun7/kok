@@ -366,4 +366,114 @@ mod tests {
         assert_eq!(p.select(100).len(), 1, "an exactly-fitting budget did not select the tx");
         assert_eq!(p.select(u64::MAX).len(), 1);
     }
+
+    /// THE FEE A Tx CARRIES SATURATES RATHER THAN WRAPS (2026-09-28).
+    ///
+    /// `Tx::new` computes `fee_per_byte * bytes` with saturating_mul. This is
+    /// the entry point every pool transaction comes through, and the choice
+    /// is load-bearing: a WRAPPING multiply on (u64::MAX, 2) yields
+    /// u64::MAX*2 mod 2^64 = u64::MAX - 1, which is a large-but-wrong fee that
+    /// would still be accepted by insert and would still be packed — a
+    /// silently mispriced transaction at the head of the leader's order. The
+    /// saturating result is u64::MAX, and the difference between the two is
+    /// exactly one unit, which is invisible to any assertion that only checks
+    /// the fee is "large". So the test pins the exact value, and pins it at
+    /// two different operand shapes to exclude a lucky coincidence.
+    #[test]
+    fn tx_new_saturates_the_fee_instead_of_wrapping() {
+        // rate * bytes where the product overflows by a factor of 2
+        let t = Tx::new(1, u64::MAX, 2);
+        assert_eq!(t.fee, u64::MAX, "the fee wrapped to {} instead of saturating", t.fee);
+        assert_eq!(t.fee_per_byte, u64::MAX);
+        assert_eq!(t.bytes, 2);
+        // the symmetric shape: a small rate and an unbounded byte count
+        let u = Tx::new(2, 2, u64::MAX);
+        assert_eq!(u.fee, u64::MAX, "the fee wrapped in the bytes-large direction");
+        // and the honest case stays exact, so saturation is not an excuse to
+        // round anything that does not need it
+        assert_eq!(Tx::new(3, 10, 100).fee, 1000);
+        assert_eq!(Tx::new(4, 0, 100).fee, 0, "a zero rate must give a zero fee");
+    }
+
+    /// REPLACE-BY-FEE TO A *LOWER* RATE MOVES THE TX DOWN THE ORDER.
+    ///
+    /// The existing replace test goes 5 -> 9, which moves a tx to an EARLIER
+    /// bucket. That path alone does not exercise the removal-from-the-old-
+    /// bucket-then-insert-into-a-later-one direction, and the failure mode it
+    /// hides is specific: if the old bucket were left in place, the tx would
+    /// appear TWICE in pack_order — once stale at the old rate, once new at
+    /// the lower one — and a leader packing from that order could include the
+    /// same id twice. This builds the move-down and checks both the position
+    /// and the count.
+    #[test]
+    fn replace_by_fee_to_a_lower_rate_moves_the_tx_down() {
+        let mut p = Mempool::new();
+        let _ = p.insert(Tx::new(1, 50, 100));
+        let _ = p.insert(Tx::new(2, 30, 100));
+        let _ = p.insert(Tx::new(3, 10, 100));
+        // replace tx 1 with a LOWER rate than tx 2 — it must fall behind 2
+        assert!(p.insert(Tx::new(1, 20, 100)));
+        assert_eq!(p.len(), 3, "a rate change duplicated the tx");
+        let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
+        // 50 gone; order is now 30, 20(the moved 1), 10
+        assert_eq!(
+            ids, vec![2, 1, 3],
+            "the lowered tx did not move down: got {ids:?}"
+        );
+        // and the stale bucket at 50 must be GONE — pack_order has no duplicate
+        assert_eq!(
+            ids.iter().filter(|&&id| id == 1).count(), 1,
+            "tx 1 appears more than once after the rate change"
+        );
+        // replacing with the SAME rate is a no-op that keeps the position
+        assert!(p.insert(Tx::new(1, 20, 100)));
+        assert_eq!(
+            p.pack_order().iter().map(|t| t.id).collect::<Vec<_>>(),
+            vec![2, 1, 3],
+            "a same-rate replace moved the tx"
+        );
+        assert_eq!(p.len(), 3);
+    }
+
+    /// SELECT IS PURE, AND total_fee IS EXACTLY THE ORDER IT SUMS.
+    ///
+    /// select() takes &self, so it must not mutate the pool; but the property
+    /// worth pinning is the stronger one a leader depends on: calling select
+    /// repeatedly does not drift, and the accounting surface total_fee()
+    /// reports is the same one pack_order exposes — not an approximation of
+    /// it. If total_fee summed over a different set than pack_order returns,
+    /// a leader's expected revenue would not match what it actually packs.
+    #[test]
+    fn select_is_pure_and_total_fee_is_exactly_the_orders_sum() {
+        let mut p = Mempool::new();
+        let _ = p.insert(Tx::new(1, 50, 100)); // 5000
+        let _ = p.insert(Tx::new(2, 30, 100)); // 3000
+        let _ = p.insert(Tx::new(3, 10, 100)); // 1000
+
+        // purity: repeated selects are identical, and the pool is untouched
+        let first = p.select(250);
+        for _ in 0..10 {
+            assert_eq!(
+                p.select(250).iter().map(|t| t.id).collect::<Vec<_>>(),
+                first.iter().map(|t| t.id).collect::<Vec<_>>(),
+                "select drifted between calls"
+            );
+        }
+        assert_eq!(p.len(), 3, "select mutated the pool");
+        assert_eq!(
+            p.pack_order().iter().map(|t| t.id).collect::<Vec<_>>(),
+            vec![1, 2, 3],
+            "the pool's order changed after selecting"
+        );
+
+        // total_fee is exactly the sum over pack_order, computed independently
+        let order = p.pack_order();
+        let manual: u64 = order.iter().map(|t| t.fee).sum();
+        assert_eq!(p.total_fee(), manual, "total_fee is not the sum of the order it owns");
+        assert_eq!(p.total_fee(), 9000);
+
+        // and total_fee is unaffected by having selected from the pool — the
+        // two surfaces are consistent, not coupled
+        assert_eq!(p.total_fee(), 9000);
+    }
 }
