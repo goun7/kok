@@ -63,44 +63,58 @@ def r5e2_slash_before_settle_still_makes_the_buyer_whole():
     made whole. Round-5b found a binding defect by asking what happens when
     the ORDER changes; the analogous question here: does the bookkeeping
     hold when the slash happens BEFORE settlement rather than after?
+
+    ROUND-6 FIX, 2026-10-07 (DERS 265): the probe grepped the module for
+    `def challenge` and, not finding one, returned True through an early
+    "CANNOT DRIVE" branch -- so a settle that pays out an undelivered task
+    was reported as a pass. The module has no standalone challenge() because
+    its challenge surface IS settle_task's verify_ok=False arm: a first
+    failed verification CHALLENGEs the task and a second one SLASHes it and
+    refunds the buyer. The corner is now driven through that arm, with the
+    slash landing before anything settles, and the books are measured
+    directly: the buyer must receive the full fee and the task must close
+    with nothing left in escrow or burned.
     """
-    print("=== R5E-2: slash before settle ===")
-    import inspect
-    src = inspect.getsource(F)
-    has_challenge = "def challenge" in src
-    has_settle = "def settle" in src
-    print("  challenge() present: %s" % has_challenge)
-    print("  settle() present   : %s" % has_settle)
-    if not (has_challenge and has_settle):
-        print("  the file does not expose both challenge and settle;")
-        print("  TV-24's slash-then-make-whole is exercised through the")
-        print("  network path, not a per-task handle. CANNOT DRIVE this")
-        print("  corner directly.")
-        return True
-    # drive it: build a network, submit, challenge before settling
-    try:
-        seqs = [F.Sequencer("A", bond=100), F.Sequencer("B", bond=100)]
-        net = F.F3aTestnet(seqs)
-        spec = F.spec("mm", fee=100, burn_rate=0.3)
-        net.submit_task("A", "t1", "buyer", spec)
-        holder = seqs[0]
-        if holder.tasks["t1"].state != "ASSIGNED":
-            print("  task was not assigned: %s; could not drive"
-                  % holder.tasks["t1"].state)
-            return True
-        # the sequencer posts a WRONG result, then the buyer challenges it
-        holder.solve_task("A", "t1", [[0]])
-        out = net.challenge_task("challenger", "A", "t1", 1) if hasattr(
-            net, "challenge_task") else "no-hook"
-        print("  challenge of a wrong result: %s" % (out,))
-        pay = net.settle_task("A", "t1") if hasattr(net, "settle_task") else \
-            "no-hook"
-        print("  settle after slash paid: %s (must be 0)" % pay)
-        return str(pay) in ("0", "0.0")
-    except Exception as e:
-        print("  could not construct the corner: %s: %s"
-              % (type(e).__name__, e))
-        return True
+    print("=== R5E-2: slash before settle makes the buyer whole ===")
+    seqs = [F.Sequencer("A", bond=100), F.Sequencer("B", bond=100)]
+    net = F.F3aTestnet(seqs)
+    spec = F.spec("mm", fee=100, burn_rate=0.3)
+    res = net.submit_task("A", "t1", "buyer", spec)
+    t = net.sequencers["A"].tasks["t1"]
+    print("  submit: %s, state: %s, escrow: %s, burned: %s"
+          % (res, t.state, t.escrow, t.burned))
+    if t.state != "ASSIGNED":
+        print("  the task was not assigned (%s); cannot drive the corner"
+              % t.state)
+        return False
+    # the sequencer posts a result, then the buyer challenges it BEFORE any
+    # settle -- the challenge arm is settle_task's verify_ok=False
+    solved = net.solve_task("A", "t1", [[0]])
+    print("  result posted: %s, state: %s" % (solved, t.state))
+    c1 = net.settle_task("A", "t1", verify_ok=False)
+    print("  first failed verification (the challenge): %s, state: %s"
+          % (c1, t.state))
+    # the SECOND failed verification is the slash: it lands here, before
+    # anything settles, and must make the buyer whole on the full fee
+    refunds_before = net.refunds
+    c2 = net.settle_task("A", "t1", verify_ok=False)
+    slash = net.sequencers["A"].slashed
+    print("  second failed verification (the slash): %s, state: %s"
+          % (c2, t.state))
+    refunded = net.refunds - refunds_before
+    print("  refunded to the buyer: %s (the full fee is %s)"
+          % (refunded, spec.fee))
+    print("  escrow left: %s, burned left: %s" % (t.escrow, t.burned))
+    print("  the sequencer is punished: slashed %s, bond %s"
+          % (slash, net.sequencers["A"].bond))
+    # a settle AFTER the slash must pay nothing more
+    pay = net.settle_task("A", "t1")
+    print("  settle after the slash paid: %s (must be False)" % pay)
+    whole = (t.state == "SLASHED" and refunded == spec.fee
+             and t.escrow == 0 and t.burned == 0
+             and slash > 0 and net.refunds == refunds_before + spec.fee)
+    print("  the buyer is whole and the books balance: %s" % whole)
+    return whole
 
 
 # ----------------------------------------------------------------- R5E-3

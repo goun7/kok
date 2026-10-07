@@ -25,43 +25,75 @@ def r5d4_mergeset_deviation_across_many_seeds_and_sizes():
     AND many generator orders, because round-3's probe used one seed and the
     deviation was generator-dependent. If the fix holds only for the seeds
     the probe tried, the 0 is a selection effect.
+
+    ROUND-6 FIX, 2026-10-07 (DERS 265): the whole per-DAG body used to sit
+    inside a bare `except Exception: pass`, and mergesets' FIRST key is the
+    genesis block, whose selected parent is None -- so _anticone(None) raised
+    KeyError on the loop's very first iteration and the swallow ate the
+    entire measurement. n_runs still incremented, so the probe counted
+    generator runs it never measured and printed its initial `worst = 0` on
+    every run, fault or no fault. The genesis-like block is now skipped
+    before _anticone is ever called, the swallow is gone (a measurement that
+    raises is counted and reported as a finding, never passed), and the
+    yardstick is TV-59's own invariant -- a mergeset member must lie in
+    past(B) -- rather than the earlier `ac(sp) & past(B)` formula, which also
+    counted members inherited from m(sp) and reported a false excess of its
+    own on forked DAGs.
     """
     print("=== R5D-4: mergeset deviation across seeds and orders ===")
     worst = 0
     n_runs = 0
+    n_members = 0
+    n_errors = 0
     for seed in list(range(30)) + [20260920, 777, 31337, 999999]:
         rg = random.Random(seed)
         for _ in range(2):
+            net = G.GHOSTDAG(k=18)
+            n = rg.randint(12, 40)
+            blocks = []
+            for b in range(n):
+                if blocks:
+                    idx = rg.randrange(min(4, len(blocks)))
+                    parents = [blocks[idx].bid]
+                    if rg.random() < 0.3 and len(blocks) > 2:
+                        parents.append(blocks[(idx + 1) % len(blocks)].bid)
+                else:
+                    parents = []
+                blk = G.Block("m%d" % b, list(parents), b, [])
+                net.add(blk)
+                blocks.append(blk)
+            n_runs += 1
+            # TV-59: the mergeset only contains work B knows, so every member
+            # must lie in past(B). Genesis-like blocks have no selected parent
+            # and an empty mergeset, so they are skipped here rather than
+            # handed to _anticone(None).
             try:
-                net = G.GHOSTDAG(k=18)
-                n = rg.randint(12, 40)
-                blocks = []
-                for b in range(n):
-                    if blocks:
-                        idx = rg.randrange(min(4, len(blocks)))
-                        parents = [blocks[idx].bid]
-                        if rg.random() < 0.3 and len(blocks) > 2:
-                            parents.append(blocks[(idx + 1) % len(blocks)].bid)
-                    else:
-                        parents = []
-                    blk = G.Block("m%d" % b, list(parents), b, [])
-                    net.add(blk)
-                    blocks.append(blk)
-                n_runs += 1
                 for bid, ms in net.mergesets.items():
-                    if bid not in net.selected:
+                    if net.selected.get(bid) is None:
                         continue
-                    sp = net.selected[bid]
-                    ac_sp = net._anticone(sp)
                     past_b = net._past(bid)
-                    excess = sum(1 for x in ms if x not in (ac_sp & past_b))
+                    excess = sum(1 for x in ms if x not in past_b)
+                    n_members += len(ms)
                     worst = max(worst, excess)
-            except Exception:
-                pass
+            except KeyError as e:
+                # the genesis block is skipped above, so a KeyError here is a
+                # defect in the DAG's own tables: a finding, counted and
+                # reported, never swallowed into a pass.
+                n_errors += 1
+                print("  FINDING at seed %s: the mergeset measurement raised "
+                      "KeyError %s" % (seed, e))
+            except Exception as e:
+                n_errors += 1
+                print("  could not measure seed %s: %s: %s"
+                      % (seed, type(e).__name__, e))
     print("  generator runs across seeds and sizes: %d" % n_runs)
-    print("  worst mergeset excess (members outside ac(sp) & past(B)): %d"
+    print("  mergeset members inspected: %d" % n_members)
+    print("  measurement errors: %d" % n_errors)
+    print("  worst mergeset excess (members outside past(B)): %d"
           % worst)
-    return n_runs > 0 and worst == 0
+    # the sweep must have built its DAGs AND actually inspected mergesets,
+    # with no measurement error, for the 0 it prints to mean "measured 0"
+    return n_runs > 0 and n_members > 0 and n_errors == 0 and worst == 0
 
 
 # ----------------------------------------------------------------- R5D-5

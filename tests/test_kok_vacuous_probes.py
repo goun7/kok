@@ -1,29 +1,44 @@
-"""The three probes that return True through a swallow path, branch-cut.
+"""The three probes DERS 265 named VACUOUS, fixed in place and pinned on
+both arms.
 
-DERS 265 named two of the remaining untested probe functions as VACUOUS:
-r5d4 (round5d_ghost) and r5d2 (round5d_ulayer) -- each wraps the measurement
-it claims to make in an `except Exception: pass` (r5d4) or a missing-hook
-fallback that returns True (r5d2), so a run that measures NOTHING is reported
-identically to a run that measured zero. Cutting them on the honest arm alone
-would certify nothing, so this file cuts the SWALLOW itself:
+r5d4 (round5d_ghost), r5d2 (round5d_ulayer) and r5e2 (round5e_f3a) each used
+to return True through a path that measured nothing: r5d4 wrapped its
+measurement in `except Exception: pass` and the loop died on its FIRST
+iteration (mergesets' first key is the genesis block, whose selected parent
+is None, so _anticone(None) raised KeyError), r5d2 fell back to "could not
+drive" and returned True when the chain exposed no books_balance hook, and
+r5e2 returned True from an early "CANNOT DRIVE" branch because the module
+has no challenge(). A run that measured NOTHING was reported identically to a
+run that measured zero.
 
-  1. the honest arm -- the probe passes on the current module;
+ROUND-6, 2026-10-07: the three probe functions were fixed where they stood.
+r5d4 skips the genesis-like block before _anticone is ever called and counts
+a measurement error as a reported finding rather than a swallowed pass, and
+its yardstick is TV-59's own (a mergeset member must lie in past(B)) instead
+of the earlier ac(sp) & past(B) formula that reported a false excess of its
+own. r5d2 reads the fee invariant from the ledger's own books -- the task's
+fee/burned/escrow fields and the burn-address balance -- so it measures
+whether or not the chain exposes a convenience hook. r5e2 drives the
+slash-before-settle corner through settle_task's verify_ok=False arm, which
+is the module's challenge surface (a first failure CHALLENGEs, a second
+SLASHes and refunds the buyer).
+
+These tests pin BOTH arms of each fix:
+
+  1. the honest arm -- the probe passes on the unbroken module BECAUSE it
+     measured, and its output proves the measurement ran (members inspected,
+     books read, the corner driven) rather than asserting the verdict alone;
   2. the claimed measurement, run DIRECTLY -- the invariant the probe names
-     is measured here without the swallow, so the coverage the probe was
-     supposed to provide actually lands; and
-  3. the swallow arm -- the measurement is broken by a scoped monkeypatch
-     in a way that CANNOT be mistaken for a legitimate zero, the fault's
-     reality is proven directly, and the probe is shown to still return
-     True. A probe that cannot distinguish "measured 0" from "measured
-     nothing" is unfalsifiable, and that is the finding these tests pin.
+     is measured here independently, so the coverage the probe was supposed
+     to provide actually lands; and
+  3. the fault arm -- the measurement is broken by a scoped monkeypatch in a
+     way that CANNOT be mistaken for a legitimate zero, the fault's reality
+     is proven directly, and the probe is shown to now REJECT it. Before the
+     fix this arm returned the identical clean bill of health; a probe that
+     could not distinguish "measured 0" from "measured nothing" was
+     unfalsifiable, and that is the class of defect these tests pin.
 
-r5e2 (round5e_f3a) turned out to be the same class: it returns True through
-an early "CANNOT DRIVE" branch because the module has no challenge(), and
-its driving arm is further guarded by `except Exception: return True`. It
-is treated the same way rather than certified on its honest arm alone.
-
-Everything here is additive: no existing test or module is modified, and the
-faults are applied as context-managed monkeypatches so the modules are
+The faults are applied as context-managed monkeypatches so the modules are
 restored before the next test. stdlib only.
 """
 
@@ -128,10 +143,15 @@ def _probe_yardstick(net):
     return worst
 
 
-# ==================================================== R5D-4: the swallow
+# ==================================================== R5D-4: the fix
 def test_r5d4_probe_passes_on_the_honest_module():
-    rv, _ = _run(probe_ghost.r5d4_mergeset_deviation_across_many_seeds_and_sizes)
-    assert rv, "R5D-4 passes on the honest module (this is the problem)"
+    rv, out = _run(probe_ghost.r5d4_mergeset_deviation_across_many_seeds_and_sizes)
+    assert rv, "R5D-4 passes on the honest module because the deviation is 0"
+    members = int(re.search(r"mergeset members inspected: (\d+)", out).group(1))
+    errors = int(re.search(r"measurement errors: (\d+)", out).group(1))
+    assert members > 0, \
+        "the pass must come from a measurement that ran, not a swallowed loop"
+    assert errors == 0
 
 
 def test_r5d4_the_claimed_deviation_is_zero_when_measured_directly():
@@ -154,10 +174,12 @@ def test_r5d4_the_claimed_deviation_is_zero_when_measured_directly():
         "outside its block's own past"
 
 
-def test_r5d4s_measurement_loop_cannot_survive_its_first_iteration():
-    # WHY the probe prints 0 on every run: its loop starts at the genesis
-    # block, whose selected parent is None, so _anticone(None) raises and
-    # the `except Exception: pass` eats the whole per-DAG measurement.
+def test_r5d4s_measurement_loop_used_to_die_on_its_first_iteration():
+    # WHY the probe USED TO print 0 on every run (DERS 265, fixed 2026-10-07):
+    # its loop started at the genesis block, whose selected parent is None,
+    # so _anticone(None) raised and the `except Exception: pass` ate the whole
+    # per-DAG measurement. The fixed probe skips the genesis-like block, so
+    # this is the mechanism the fix removed rather than a live defect.
     net = _build_dag(0)
     first = next(iter(net.mergesets))
     assert net.selected[first] is None, \
@@ -165,17 +187,19 @@ def test_r5d4s_measurement_loop_cannot_survive_its_first_iteration():
     with pytest.raises(KeyError):
         net._anticone(net.selected[first])
 
-    # and the pass criterion the probe returns is unsatisfiable by its OWN
-    # printed yardstick on these honest DAGs: the formula counts inherited
-    # mergeset members as excess, so worst would be >= 1, not the 0 the
-    # return requires. The True it returns can only come from the swallow
+    # and the pass criterion the probe USED TO return was unsatisfiable by
+    # its OWN printed yardstick on these honest DAGs: that formula counts
+    # inherited mergeset members as excess, so worst would be >= 1, not the 0
+    # the return required. The True it returned could only come from the
+    # swallow. The fixed probe therefore measures TV-59's own invariant
+    # (membership in past(B)) instead, which is why it can honestly report 0
     worst = 0
     for seed in list(range(12)) + [20260920, 777]:
         for _ in range(2):
             worst = max(worst, _probe_yardstick(_build_dag(seed)))
     assert worst >= 1, \
-        "the probe's own yardstick is non-zero on honest DAGs, so " \
-        "`worst == 0` cannot be the result of a measurement that ran"
+        "the old yardstick was non-zero on honest DAGs, which is why the " \
+        "fixed probe no longer uses it"
 
 
 class _ItemsRaiseDict(dict):
@@ -187,7 +211,7 @@ class _ItemsRaiseDict(dict):
         raise RuntimeError("measurement broken")
 
 
-def test_r5d4_swallows_a_measurement_that_raises_and_still_passes():
+def test_r5d4_now_rejects_a_measurement_that_raises():
     orig_init = ghost_mod.GHOSTDAG.__init__
 
     def patched_init(self, *a, **k):
@@ -209,26 +233,39 @@ def test_r5d4_swallows_a_measurement_that_raises_and_still_passes():
     assert fault_real == "measurement broken", \
         "the measurement path must raise while block generation still works"
 
-    # ...and the probe reports the identical clean bill of health anyway:
-    # n_runs > 0, worst 0, verdict True -- because `except Exception: pass`
-    # ate the only loop that could have produced a different number
+    # ...and the probe no longer swallows it: the sweep still builds its DAGs
+    # but inspects no mergeset member, reports every DAG as a measurement
+    # error, and FAILS. Before the 2026-10-07 fix this arm printed the
+    # identical clean bill of health (n_runs > 0, worst 0, verdict True)
+    # because `except Exception: pass` ate the only loop that could have
+    # produced a different number
     with mock.patch.object(ghost_mod.GHOSTDAG, "__init__", patched_init):
         rv, out = _run(probe_ghost.r5d4_mergeset_deviation_across_many_seeds_and_sizes)
     n_runs = int(re.search(r"generator runs across seeds and sizes: (\d+)", out).group(1))
+    members = int(re.search(r"mergeset members inspected: (\d+)", out).group(1))
+    errors = int(re.search(r"measurement errors: (\d+)", out).group(1))
     worst = int(re.search(r"worst mergeset excess.*?: (\d+)", out).group(1))
-    assert n_runs > 0, "the probe counted generator runs it never measured"
-    assert worst == 0
-    assert rv, \
-        "R5D-4 is VACUOUS: it returns True with its measurement loop broken, " \
-        "so its 0 cannot be told apart from a measurement that never ran"
+    assert n_runs > 0, "the DAGs still build; it is the measurement that broke"
+    assert members == 0, "a broken measurement must inspect nothing"
+    assert errors > 0, "the broken measurement must be reported, not swallowed"
+    assert worst == 0, "the printed 0 now means 'never measured', and the probe says so"
+    assert not rv, \
+        "R5D-4 is no longer VACUOUS: a measurement that raises now fails the " \
+        "probe instead of passing it, so its 0 can be told apart from a " \
+        "measurement that never ran"
 
 
-# ==================================================== R5D-2: the swallow
+# ==================================================== R5D-2: the fix
 def test_r5d2_probe_passes_on_the_honest_module():
     rv, out = _run(probe_ulayer.r5d2_the_fee_invariant_survives_a_slashed_settled_and_refunded_task)
-    assert rv, "R5D-2 passes on the honest module (this is the problem)"
-    assert "could not drive" in out.lower(), \
-        "it passes via the no-books_balance fallback, not by checking the books"
+    assert rv, "R5D-2 passes on the honest module because the invariant holds"
+    assert "the fee invariant holds across every terminal state: True" in out, \
+        "it passes by measuring the books, not via the could-not-drive fallback"
+    assert "could not drive" not in out.lower(), \
+        "the missing-hook fallback that returned True is gone"
+    assert not hasattr(ul_mod.Chain, "books_balance"), \
+        "the chain still exposes no books_balance hook -- the probe measures " \
+        "the invariant from the ledger's own fields, which is the fix"
 
 
 def test_r5d2_the_fee_invariant_holds_when_checked_directly():
@@ -260,7 +297,7 @@ def _settle_without_a_terminal_guard(self, tid):
     return pay
 
 
-def test_r5d2_swallows_a_broken_settle_and_still_passes():
+def test_r5d2_now_rejects_a_broken_settle():
     # the fault is REAL: with the terminal guard gone the books go negative
     with mock.patch.object(ul_mod.Chain, "settle",
                            _settle_without_a_terminal_guard):
@@ -272,37 +309,48 @@ def test_r5d2_swallows_a_broken_settle_and_still_passes():
     assert task.escrow == -90, "the escrow must be driven negative"
     assert task.state == "SETTLED"
 
-    # the chain exposes none of the hooks the invariant needs, so the probe
-    # has no way to see this -- it announces the violation in its own output
-    # and returns PASS anyway
-    assert not hasattr(ul_mod.Chain, "books_balance")
-    assert not hasattr(ul_mod.Chain, "fees_in")
+    # the probe reads the ledger's own books now, so the violation it prints
+    # is the violation it ACTS ON: the imbalance is measured and the probe
+    # fails with it. Before the 2026-10-07 fix the chain exposed no
+    # books_balance hook, so the probe announced the violation in its own
+    # output and returned PASS anyway
     with mock.patch.object(ul_mod.Chain, "settle",
                            _settle_without_a_terminal_guard):
         rv, out = _run(probe_ulayer.r5d2_the_fee_invariant_survives_a_slashed_settled_and_refunded_task)
     assert "second settle paid: 90" in out, \
-        "the probe must print the violation it then ignores"
-    assert rv, \
-        "R5D-2 is VACUOUS: it returns True while its own output shows the " \
-        "fee invariant is broken, because the missing books_balance hook " \
-        "makes the fallback return True"
+        "the probe must print the violation it now acts on"
+    assert "fee 100 == burned 10 + paid 180" in out, \
+        "the imbalance must be measured, not assumed away"
+    assert "escrow after both settles: -90" in out
+    assert not rv, \
+        "R5D-2 is no longer VACUOUS: a broken settle fails the probe instead " \
+        "of passing it, because the invariant is read from the ledger's own " \
+        "books rather than a hook the chain does not expose"
 
 
-# ==================================================== R5E-2: the same class
+# ==================================================== R5E-2: the fix
 def test_r5e2_probe_passes_on_the_honest_module():
     rv, out = _run(probe_f3a.r5e2_slash_before_settle_still_makes_the_buyer_whole)
-    assert rv, "R5E-2 passes on the honest module (this is the problem)"
-    assert "CANNOT DRIVE" in out, \
-        "it passes via the no-challenge early return, not by driving the corner"
+    assert rv, "R5E-2 passes on the honest module because the buyer is made whole"
+    assert "CANNOT DRIVE" not in out, \
+        "the no-challenge early return that passed without measuring is gone"
+    assert "refunded to the buyer: 100 (the full fee is 100)" in out, \
+        "the slash-before-settle corner is now driven and its books measured"
+    assert "the buyer is whole and the books balance: True" in out
 
 
-def test_r5e2_the_corner_cannot_be_driven_on_this_module():
+def test_r5e2s_challenge_surface_is_the_settle_arm():
+    # the module has no standalone challenge(): the challenge surface the
+    # fixed probe drives is settle_task's verify_ok=False arm (a first failure
+    # CHALLENGEs, a second SLASHes and refunds the buyer), which is why the
+    # probe drives the corner through it rather than a per-task handle
     src = inspect.getsource(f3a_mod)
     assert "def challenge" not in src, \
-        "the module has no challenge() -- the probe's short-circuit is permanent"
+        "the module has no challenge() -- the corner is driven through " \
+        "settle_task's verify_ok=False arm, not a per-task handle"
     assert not hasattr(f3a_mod.F3aTestnet, "challenge_task")
     assert hasattr(f3a_mod.F3aTestnet, "settle_task"), \
-        "the settle side exists; only the challenge side is missing"
+        "the settle arm the probe drives is the one the module does expose"
 
 
 def _settle_that_pays_an_undelivered_task(self, seq_id, tid, verify_ok=True):
@@ -316,7 +364,7 @@ def _settle_that_pays_an_undelivered_task(self, seq_id, tid, verify_ok=True):
     return 70
 
 
-def test_r5e2_swallows_a_broken_settle_and_still_passes():
+def test_r5e2_now_rejects_a_settle_that_mispays():
     seqs = [f3a_mod.Sequencer("A", bond=100)]
     net = f3a_mod.F3aTestnet(seqs)
     spec = f3a_mod.spec("mm", fee=100, burn_rate=0.3)
@@ -328,12 +376,16 @@ def test_r5e2_swallows_a_broken_settle_and_still_passes():
         pay = net.settle_task("A", "t1")
     assert pay == 70, "the fault must actually mispay the buyer"
 
-    # the probe never reaches the driving arm (no challenge() => early
-    # return True), so a broken payout is invisible to it
+    # the probe reads the books now, so the mispay is visible and fails it:
+    # the task never reaches SLASHED and nothing is refunded. Before the
+    # 2026-10-07 fix the probe never reached the driving arm (no challenge()
+    # => early return True), so a broken payout was invisible to it
     with mock.patch.object(f3a_mod.F3aTestnet, "settle_task",
                            _settle_that_pays_an_undelivered_task):
         rv, out = _run(probe_f3a.r5e2_slash_before_settle_still_makes_the_buyer_whole)
-    assert rv, \
-        "R5E-2 is the same class as R5D-2/R5D-4: it returns True while the " \
-        "books it claims to audit are broken, because the cannot-drive " \
-        "branch returns True before any measurement runs"
+    assert "refunded to the buyer: 0 (the full fee is 100)" in out, \
+        "the fault must show up in the books the probe measures"
+    assert not rv, \
+        "R5E-2 is no longer the same class as the old R5D-2/R5D-4: a settle " \
+        "that pays an undelivered task now fails the probe instead of " \
+        "passing it before any measurement ran"

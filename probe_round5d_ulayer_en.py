@@ -62,9 +62,17 @@ def r5d2_the_fee_invariant_survives_a_slashed_settled_and_refunded_task():
     """CLAIM: fees_in == fees_refunded + fees_burned + fees_paid. MEASURED:
     drive one task through each terminal state and confirm the identity holds
     exactly, including the no-op double-settle.
+
+    ROUND-6 FIX, 2026-10-07 (DERS 265): the probe asked the chain for a
+    `books_balance` hook it does not expose, and the hook's absence made it
+    print "could not drive" and return True -- so a broken settle (a second
+    payout that drives the escrow to -90) was reported as an invariant that
+    holds. The invariant is now read from the ledger's own books -- the
+    task's fee, burned and escrow fields and the burn-address balance -- so
+    the probe measures the identity whether or not the chain exposes a
+    convenience hook, and a double payout fails it.
     """
     print("=== R5D-2: the fee invariant across every terminal state ===")
-    import random
     import random
     rng = random.Random(3)
     ch = U.Chain()
@@ -86,24 +94,36 @@ def r5d2_the_fee_invariant_survives_a_slashed_settled_and_refunded_task():
     print("  block validated: %s" % vr)
     if vr != "ACCEPT":
         return False
+    # the books at submission: the burn is collected immediately and the rest
+    # sits in the payable escrow, so fee == burned + escrow from the start
+    task = ch.tasks[t.tid]
+    print("  at submit  : fee %s == burned %s + escrow %s : %s"
+          % (task.fee, task.burned, task.escrow,
+             task.fee == task.burned + task.escrow))
+    print("  the burn address holds the collected burn: %s == %s : %s"
+          % (ch.burn_address_balance, task.burned,
+             ch.burn_address_balance == task.burned))
     # settle honestly
     pay = ch.settle(t.tid)
     print("  settle paid: %s" % pay)
     # double settle must be a no-op
     pay2 = ch.settle(t.tid)
     print("  second settle paid: %s (must be 0)" % pay2)
-    # read the books
-    fees_in = getattr(ch, "fees_in", None)
-    print("  fees_in attribute: %r" % (fees_in,))
-    # the invariant check the file itself exposes
-    if hasattr(ch, "books_balance"):
-        bal = ch.books_balance()
-        print("  books_balance: %s" % bal)
-        return bool(bal) and pay2 == 0
-    # no books_balance hook: state the limit honestly
-    print("  the chain exposes no books_balance hook; this probe CANNOT DRIVE")
-    print("  the invariant directly. Reporting 'could not drive'.")
-    return True
+    # the invariant the probe names, read from the ledger's own books:
+    # fees_in == fees_burned + fees_paid, and the escrow never overdraws
+    task = ch.tasks[t.tid]
+    total_paid = pay + pay2
+    balanced = (task.fee == task.burned + total_paid
+                and task.escrow >= 0
+                and pay2 == 0)
+    print("  at settle  : fee %s == burned %s + paid %s : %s"
+          % (task.fee, task.burned, total_paid,
+             task.fee == task.burned + total_paid))
+    print("  escrow after both settles: %s (must never be negative)"
+          % task.escrow)
+    print("  the fee invariant holds across every terminal state: %s"
+          % balanced)
+    return balanced
 
 
 # ----------------------------------------------------------------- R5D-3
