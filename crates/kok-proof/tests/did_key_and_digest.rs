@@ -17,10 +17,11 @@
 
 use kok_proof::did::{
     b58_decode, b58_encode, decode_multibase_pubkey, did_from_multibase, did_from_public_key,
-    encode_multibase_pubkey, is_valid_did_key, multibase_from_did, DidError, Keypair,
-    MULTICODEC_ED25519_PUB, PUBLIC_KEY_LEN,
+    encode_multibase_pubkey, is_valid_did_key, multibase_from_did, verify_with_did, DidError,
+    Keypair, MULTICODEC_ED25519_PUB, PUBLIC_KEY_LEN, SIGNATURE_LEN,
 };
 use kok_proof::sha256_digest;
+use kok_proof::{work_canonical, MiningProof, PROOF_TYPE, PROOF_VERSION};
 
 /// Bos multibase string'i reddedilmeli (MalformedMultibase).
 #[test]
@@ -194,4 +195,88 @@ fn keypair_did_her_zaman_gecerli() {
         assert!(is_valid_did_key(&kp.did), "seed icin gecersiz did");
         assert_eq!(kp.public.len(), PUBLIC_KEY_LEN);
     }
+}
+
+// ---------------------------------------------------------------------------
+// sign_receipt — test-disi public fn (lib.rs): receipt Ed25519 imzasi
+// ---------------------------------------------------------------------------
+/// Test icin minimal, gecerli bir kanit olusturur (sayilar semboliktir;
+/// sign_receipt MatMul dogrulamasi yapmaz — yalnizca kanonik zarf uzerine
+/// imza atar).
+fn ornek_kanit(seed: &[u8; 32]) -> (Keypair, MiningProof) {
+    let kp = Keypair::from_seed(seed);
+    let proof = MiningProof {
+        proof_version: PROOF_VERSION,
+        proof_type: PROOF_TYPE.to_string(),
+        layer: "G".to_string(),
+        q: 8,
+        n: 64,
+        r: 16,
+        task_program: "kok/g-layer-matmul-toy".to_string(),
+        task_fee: 1_000,
+        task_burn_rate_per_mille: 50,
+        program_commit: "a".repeat(64),
+        matrix_a: vec![vec![1, 2], vec![3, 4]],
+        matrix_b: vec![vec![5, 6], vec![7, 8]],
+        input_commit: "b".repeat(64),
+        ctx: 7,
+        nonce: 42,
+        target: 0x00ff,
+        cert_i: 0,
+        cert_j: 0,
+        cert_value: 1234,
+        cert_m: 2,
+        miner_did: kp.did.clone(),
+        receipt_prev: "0".repeat(64),
+        receipt_hash: "c".repeat(64),
+        signature: String::new(),
+    };
+    (kp, proof)
+}
+
+/// sign_receipt 64 baytlik bir Ed25519 imzasi uretmeli ve bu imza, did'den
+/// geri kazanilan anahtar altinda kanonik zarf uzerine dogrulanmalidir.
+#[test]
+fn sign_receipt_did_altinda_dogrulanir() {
+    let (kp, proof) = ornek_kanit(&[0x7a; 32]);
+    let sig = kok_proof::sign_receipt(&kp.secret, &proof);
+    assert_eq!(sig.len(), SIGNATURE_LEN);
+
+    // receipt imzasi kanonik zarfin sha256'i uzerinedir (yeniden-hesaplanabilir)
+    let message = sha256_digest(work_canonical(&proof).as_bytes());
+    assert!(verify_with_did(&kp.did, &message, &sig).is_ok());
+}
+
+/// sign_receipt deterministiktir (ayni sir + ayni kanit → ayni imza).
+#[test]
+fn sign_receipt_deterministik() {
+    let (kp, proof) = ornek_kanit(&[0x2b; 32]);
+    let a = kok_proof::sign_receipt(&kp.secret, &proof);
+    let b = kok_proof::sign_receipt(&kp.secret, &proof);
+    assert_eq!(a, b);
+}
+
+/// Baska bir sirla atilan imza orijinal did altinda DOGRULANMAMALIDIR
+/// (kimlik baglayiciligi).
+#[test]
+fn sign_receipt_baska_sir_red_edilir() {
+    let (kp, proof) = ornek_kanit(&[0x3c; 32]);
+    let baska = Keypair::from_seed(&[0x4d; 32]);
+    let sig = kok_proof::sign_receipt(&baska.secret, &proof);
+    let message = sha256_digest(work_canonical(&proof).as_bytes());
+    assert!(verify_with_did(&kp.did, &message, &sig).is_err());
+}
+
+/// Kanonik zarfa giren bir alan (nonce) degistirilirse imza degismeli —
+/// bu, kanitin icine bagli (binding) oldugunu gosterir.
+#[test]
+fn sign_receipt_kanonik_alana_bagli() {
+    let (kp, mut proof) = ornek_kanit(&[0x5e; 32]);
+    let sig1 = kok_proof::sign_receipt(&kp.secret, &proof);
+    proof.nonce = 43;
+    let sig2 = kok_proof::sign_receipt(&kp.secret, &proof);
+    assert_ne!(sig1, sig2);
+    // eski imza yeni zarfi dogrulamaz
+    let msg2 = sha256_digest(work_canonical(&proof).as_bytes());
+    assert!(verify_with_did(&kp.did, &msg2, &sig1).is_err());
 }
