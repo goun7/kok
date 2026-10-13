@@ -437,3 +437,31 @@ alınmadı. Hiçbir kaynak sessizce düşürülmek yerine burada listeleniyor:
    [S7], [S8], [S13]). KÖK'ün "toy" dürüst limitleri bir kusur değil, bu
    alanın 2026'daki halidir; üretim ölçeğinde doğrulama çözülmemiş bir
    problem olarak kalır.
+
+---
+
+## 7. Protokol sonucu ARTIK TEST EDİLDİ (2026-10-13, bu kampanya)
+
+Yukarıdaki teorik konumlandırma artık **çalışan kodda ölçülmüştür** —
+`crates/kok-consensus/tests/madencilik_odul_testleri.rs` (12 test) ve
+`crates/kok-pvi/tests/moduler_upgrade_testleri.rs` (8 test) ile:
+
+- **AI-fayda skoru ödül dağılımını DEĞİŞTİREMEZ.** GNoME-Forge profili
+  (CHGNet/M3GNet, 10..100 atom, ~630..60300 FLOP) ile 50 yüksek-faydalı
+  kanıt hiçbir ödül dağılımını veya skalasını etkilemez.
+- `u_task_consensus_weight` her fee ve her kanıt sayısında **sıfırdır**
+  (`u_consensus_weight == 0`); `bundle()` DAG kimliğini değiştirmez.
+- **Fee kapısı (C_FEE) ödül için bir girdi değildir** — kapı dolu olsa da
+  ödül aynıdır. Ödül DAG'in her bloğunda korunur ve bloktan türetilir,
+  çağırandan değil.
+- **PVI verifier kapsamı tile'dır, tüm matrix değildir**: kernel sadece
+  strided tile konumlarını okur (`B'[l*r][j*r]`); tile DIŞINDAKI matrix
+  verisini bozmak GÖRÜNMEZ (hala kabul), tile içindeki bozuma reddedilir.
+  Bu, kanıt kapsamının özellikle sınırlı olduğu gerçeğidir — protokol
+  bunu bir hata olarak gizlemez.
+
+Bu sonuç KÖK'ün [S4] "Anti-Pearl" ekseniyle uyumludur: Pearl'ün 24 EH/s
+(~320K GPU, ~112 MW) ürettiği **sıfır faydalı AI hesabı** türünü protokol
+seviyesinde imkansız kılmak için tasarlandı. Testler bunun sadece bir
+iddia değil, çalışır kodda doğrulanmış bir özellik olduğunu gösterir:
+**faydalı iş ödülden bağımsızlaştırılmıştır**.
