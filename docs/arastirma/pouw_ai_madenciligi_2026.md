@@ -394,12 +394,18 @@ alınmadı. Hiçbir kaynak sessizce düşürülmek yerine burada listeleniyor:
   bulunamadı. Pearl hakkında her şey bu dosyada [S4] üzerinden
   bildirilir, birincil kaynak olmaksızın.
 - **"modular consensus" / "shared sequencer" üzerine 2025–2026 akademik
-  makaleler** — arXiv'te bu tam kelime öbekleriyle yapılan arama, blockchain
-  yerine "shared sequence" (ML) ile eşleşen çalışmaları getirdi; bu
-  konuda doğrulanmış birincil kaynaklar bu dosyada **yok**. KÖK'ün
-  modüler tasarımının teorik dayanağı olarak [S5] (Theorem 2) kullanılır;
-  "modular blockchain" literatür özeti bilinçli olarak **boş bırakılır**
-  çünkü doğrulanmadı.
+  makaleler** — arXiv'te bu *tam kelime öbekleriyle* yapılan arama, blockchain
+  yerine "shared sequence" (ML) ile eşleşen çalışmaları getirdi; bu dar
+  öbeklerde doğrulanmış birincil kaynak bu dosyada **yok**. Ancak "modüler
+  blockchain" literatürünün *kendisi* boş değildir ve bu dosyanın eski
+  sürümünde yanlışlıkla "boş bırakılır, çünkü doğrulanmadı" deniyordu: Xu
+  vd. survey'i (arXiv **2304.08283**) ve Al-Bassam'ın LazyLedger'ı (arXiv
+  **1905.09274**, Celestia çizgisi) doğrulanmış birincil kaynaklardır ve
+  kardeş dosya `moduler_konsensus_ve_veri_2026.md` §0'da **[D11]/[D12]**
+  olarak listelenir. KÖK'ün modüler tasarımının teorik dayanağı [S5]
+  (Theorem 2) ile [D11]/[D12] birlikte; [S4]'ün "Anti-Pearl" bağlamı (Pearl:
+  24 EH/s, ~320 bin GPU, ~112 MW, sıfır fayda) KÖK'ün güvenlik ↔ fayda
+  eksenini literatüre konumlandırır.
 
 ---
 

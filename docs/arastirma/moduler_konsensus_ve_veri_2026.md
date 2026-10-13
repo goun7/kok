@@ -9,7 +9,7 @@ edilmedi.
 
 ---
 
-## 0. "Modüler konsensus" için dürüst bir boşluk
+## 0. "Modüler konsensus" — KÖK'ün modülerliğinin literatürdeki yeri
 
 KÖK kendini "modüler iki-katmanlı konsensus" olarak tanımlar: G katmanı
 lideri seçer, U katmanı faydalı işi taşır ve **sıfır konsensus ağırlığına**
@@ -18,13 +18,87 @@ sahiptir. "Modüler" kelimesinin blockchain literatüründeki yaygın anlamı
 ayrımıyla **aynı şey değildir** — KÖK güvenliği faydadan ayırır, execution'ı
 DA'dan değil.
 
-**Bu dosya bu farkı gizlemez.** "Modüler blockchain" / "shared sequencer"
-kelime öbekleriyle arXiv'te yapılan aramalar blockchain değil de ML
-"shared sequence" çalışmaları getirdi ve doğrulanmış birincil kaynak
-vermedi; bu yüzden bu dosyada **"modüler blockchain" literatür özeti bilinçli
-olarak boş bırakılır**. KÖK'ün modülerliğinin teorik dayanağı olarak
-aşağıdaki [D1] (talep-bağımsız lider seçimi gerekliliği) ve DAG/DA
-kaynakları kullanılır.
+**Bu dosya bu farkı gizlemez — ama eski sürümü bir hatayı gizliyordu.** Bu
+dosyanın ilk halinde "modüler blockchain için doğrulanmış birincil kaynak
+vermedi" deniyor ve literatür özeti bilinçli olarak boş bırakılıyordu. **Bu
+yanlıştı**: aşağıdaki **[D11]** (Xu vd., 2023) bu terimin doğrulanmış birincil
+survey'idir ve **[D12]** (LazyLedger/Celestia) modüler veri-bulunabilirliğinin
+köken makalesidir. Her ikisi de `export.arxiv.org` üzerinden fetch edildi,
+HTTP 200 ile doğrulandı ve bu dosyaya eklendi. Hâlâ doğrulanmamış olan
+yalnızca daha dar bir aramadır: "modular consensus" / "shared sequencer" /
+"decoupled consensus execution" tam kelime öbekleriyle 2025–2026 tarihli bir
+makale bulunamadı (bu sorgular blockchain yerine ML "shared sequence"
+eşleşmeleri getirdi). Bir terimin bu dar öbeklerde makalesinin olmaması,
+"modüler blockchain" literatürünün kendisinin yok olduğu anlamına gelmez.
+KÖK'ün modülerliğinin teorik dayanağı olarak [D1] (talep-bağımsız lider
+seçimi gerekliliği), [D11]/[D12] ve aşağıdaki DAG/DA kaynakları kullanılır.
+
+### [D11] Xu, Guo, Liu, Hu, Yu, Xiong, Niyato & Cheng — *Exploring Blockchain Technology through a Modular Lens: A Survey* ★
+
+| Alan | Değer |
+|---|---|
+| Tanımlayıcı | **arXiv 2304.08283** (v1) |
+| Yazarlar | Minghui Xu, Yihao Guo, Chunchi Liu, Qin Hu, Dongxiao Yu, Zehui Xiong, Dusit Niyato, Xiuzhen Cheng |
+| Tarih | 2023-04-13 |
+| Kategori | cs.CR (birincil), cs.DC |
+| Boyut | 40 sayfa, 8 şekil |
+| URL | https://arxiv.org/abs/2304.08283 |
+
+**İddia.** Blockchain sistemlerini hem makro (popüler sistemler üzerine genel
+bir bakış) hem de mikro (genel bir framework ve bileşenleri) seviyede
+inceleyen bir survey. Merkezî katkısı, bir blockchain sistemini **etkileşen
+modüllere ayrıştıran genel bir "modüler blockchain analiz framework'ü"**
+tanıtmasıdır; bu framework network, consensus ve dağıtılmış defter
+modüllerini mikro seviyede ele alır. Yazarlar bu modüler bakışın ölçeklenebilir,
+esnek ve uygulama-uyarlamalı blockchain tasarımı için bir temel kurduğunu
+savunur.
+
+**KÖK için önemi.** Bu makale, "modüler blockchain" teriminin doğrulanmış
+birincil akademik kaynağıdır — KÖK'ün modülerlik iddiasını literatüre
+konumlandıran referans. **Dürüst sınırlar:** (a) survey'in modülleri **network
+/ consensus / distributed ledger** eksenindedir, yani literatürdeki "modüler"
+ayrımı katmanları ayırır (consensus ↔ execution ↔ DA) — KÖK'ünki ise bir
+**ağırlık** ayrımıdır (güvenlik ↔ fayda) ve ikisi aynı şey değildir (aşağıdaki
+konumlandırma paragrafı); (b) 2023 tarihli olduğu için 2025–2026 modüler
+(Celestia/Avail/Ethereum DAS) gelişmelerini kapsaz, onlar için [D12] ve §3.
+
+### [D12] Al-Bassam — *LazyLedger: A Distributed Data Availability Ledger With Client-Side Smart Contracts*
+
+| Alan | Değer |
+|---|---|
+| Tanımlayıcı | **arXiv 1905.09274** (v4) |
+| Yazar | Mustafa Al-Bassam |
+| Tarih | 2019-05-22 (v4) |
+| URL | https://arxiv.org/abs/1905.09274 |
+
+**İddia.** LazyLedger bir blockchain'i iki eksene ayırır: **veri
+bulunabilirliği** (düğümlerin yalnızca verinin yayınlandığını ve bulunabilir
+olduğunu doğrulaması) ve **yürütme** (akıllı sözleşmelerin istemci tarafında,
+defteri indirmeden yürütülmesi). Bu, sonradan **Celestia** olarak hayata geçen
+"modüler blockchain" tasarım çizgisinin köken makalesidir.
+
+**KÖK için önemi.** KÖK'ün DA'sı olmadığı için [D12] bir tasarım
+referansıdır, uygulanmış bir paralel değildir. Ama bir nokta nettir:
+LazyLedger execution'ı DA'dan ayırırken ikisi arasında hâlâ bir güvenlik bağı
+vardır — yürütmenin güvenliği DA'nın bulunabilirliğine bağlıdır. KÖK aynı
+ekseni izlemez: KÖK faydayı (U) güvenlikten (G) ayırır ve bu ayrılık bir
+katman ayrımından ziyade **konsensus ağırlığının sıfırlanmasıyla** yapılır.
+
+**KÖK'ün "faydayı güvenlikten ayırma" ekseninin konumlandırılması ("Anti-Pearl").**
+[D11]'in modülerlik ekseninde (network / consensus / ledger) KÖK'ün yeri
+yoktur; KÖK bağımsız bir eksen kurmuştur: **güvenlik ile fayda arasındaki
+bağı kesmek**. Literatürdeki modüler çalışmalar katmanları ayırırken
+aralarındaki *ekonomik* bağı koparmaz; KÖK bunu kodda yapar —
+`kok-u-layer/src/lib.rs::u_task_consensus_weight` her zaman `0` döner (bkz.
+[D1], Theorem 2). Bu eksen PoUW literatüründe "**Anti-Pearl**" olarak
+konumlanır: Basu, Pearl'in canlı cuPOW ağının **24 EH/s, ~320.000
+GPU-eşdeğeri, ~112 MW** harcayıp **sıfır faydalı AI hesabı** ürettiğini ve
+doğrulamanın **rastgele matrisleri tasarım gereği** kabul ettiğini ölçtü
+(arXiv 2606.04819; tam doğrulanmış kaynak bu dosyanın kardeşi
+`pouw_ai_madenciligi_2026.md` [S4]). Pearl'de fayda, güvenliğin bir
+yan-ürünü olarak varsayılır; KÖK tersine çevir — faydalı işin sıfır konsensus
+ağırlığı sayesinde fayda üretilirse güvenlik bozulmaz ve güvenlik, faydalı
+işe talep satın alınarak satın alınamaz.
 
 ---
 
@@ -287,13 +361,18 @@ Ayrıntılı analiz için `pouw_ai_madenciligi_2026.md` [S12].
 ## 5. Doğrulanamayan / teyit edilemeyen aramalar
 
 - **"modular consensus", "decoupled consensus execution", "shared
-  sequencer"** — arXiv'te doğrulanmış 2025–2026 birincil kaynak bulunamadı
-  (aramalar ML "shared sequence" eşleşmeleri getirdi). Bu yüzden KÖK'ün
-  modülerlik iddiası için bu dosyada **[D1]'in Theorem 2'si dışında bir
-  literatür dayanağı listelenmez**. Bu, bilinçli bir boşluk, bir
-  unutkanlık değil: "modüler" teriminin KÖK'teki anlamı (güvenlik ↔ fayda
-  ayrımı) literatürdeki yaygın anlamından (consensus ↔ execution ↔ DA
-  ayrımı) farklıdır ve ikisini aynı listeye koymak yanıltıcı olur.
+  sequencer"** — bu *dar* kelime öbekleriyle arXiv'te doğrulanmış 2025–2026
+  birincil kaynak bulunamadı (aramalar ML "shared sequence" eşleşmeleri
+  getirdi). **Ancak bu, "modüler blockchain" literatürünün yok olduğu
+  anlamına gelmez** — §0'daki **[D11]** (Xu vd. survey) ve **[D12]**
+  (LazyLedger) bu terimin doğrulanmış birincil kaynaklarıdır ve bu dosyada
+  listelenir. KÖK'ün modülerlik iddiasının literatür dayanağı artık yalnız
+  [D1]'in Theorem 2'si değildir; [D1] + [D11] + [D12] üçlüsüdür. Kalan boşluk
+  bilinçlidir: "modüler" teriminin KÖK'teki anlamı (güvenlik ↔ fayda ayrımı)
+  literatürdeki yaygın anlamından (consensus ↔ execution ↔ DA ayrımı)
+  farklıdır ve ikisini aynı listenin *aynı maddesi* gibi sunmak yanıltıcı
+  olur — bu yüzden §0'da ayrı bir konumlandırma paragrafıyla yan yana
+  dururlar.
 - **Danksharding'in kendisinin resmi bir akademik özet araması** bu
   sorgularda net bir makale getirmedi; Danksharding'a atıflar yukarıda
   [D5]/[D6] üzerinden, Ethereum'un yol haritası bağlamında yapılır.
@@ -304,9 +383,13 @@ Ayrıntılı analiz için `pouw_ai_madenciligi_2026.md` [S12].
 
 1. **KÖK'ün modülerliği literatürdeki "modüler blockchain"ten farklıdır ve
    bu farklılık gizlenmemelidir.** KÖK güvenliği faydadan ayırır (G/U),
-   execution'ı DA'dan değil. Dış dünyaya "modüler" denince genelde
-   consensus/execution/DA ayrımı anlaşılır — README bu farkı net
-   söylemelidir.
+   execution'ı DA'dan değil. Literatürün "modüler" anlamı artık doğrulanmış
+   birincil kaynaklarla sabittir: [D11] (Xu vd. survey) network / consensus /
+   ledger modüllerine, [D12] (LazyLedger/Celestia) DA ↔ execution ayrımına
+   dayanır. Ne [D11] ne de [D12] KÖK'ün eksenini karşılar; onu [D1]'in
+   Theorem 2'si ve Basu'nun Pearl ölçümü ("Anti-Pearl", arXiv 2606.04819)
+   tanımlar. Dış dünyaya "modüler" denince genelde consensus/execution/DA
+   ayrımı anlaşılır — README bu farkı net söylemelidir.
 2. **GHOSTDAG için selfish-mine analizi artık otomatik yapılabilir**
    ([D2]) — KÖK'ün koşmadığı, ama koşabileceği bir analiz. KÖK'ün
    `kok-ghostdag` sürümü hâlâ "no PoW/validity check" ile sınırlıdır.

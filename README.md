@@ -32,9 +32,17 @@ runnable prototypes, not a chain.
 **What "modular consensus" means here, and what it does not.** It is *not* the
 blockchain-literature meaning of separating consensus / execution / data-availability.
 KÖK separates **security from utility**: leader election depends on nothing the fee
-market can influence. That distinction is deliberate, and the honest gap is recorded
-in [`docs/arastirma/moduler_konsensus_ve_veri_2026.md`](docs/arastirma/moduler_konsensus_ve_veri_2026.md) §0 — no verified academic
-literature on "modular blockchain" consensus was found, so none is cited.
+market can influence. That distinction is deliberate. The literature's meaning is not
+absent — it is verified and cited: Xu et al., *Exploring Blockchain Technology through
+a Modular Lens: A Survey* (arXiv 2304.08283) and Al-Bassam, *LazyLedger*
+(arXiv 1905.09274, the Celestia line) decompose a chain into network / consensus /
+ledger and data-availability / execution modules respectively. Neither axis is KÖK's:
+the KÖK axis is a *weight* separation (`u_task_consensus_weight = 0`), positioned in
+the PoUW literature as **"Anti-Pearl"** — Basu measured Pearl's live cuPOW network at
+24 EH/s / ~320,000 GPU-equivalents / ~112 MW producing **zero useful AI computation**
+with verification accepting random matrices *by design* (arXiv 2606.04819). Full
+positioning in
+[`docs/arastirma/moduler_konsensus_ve_veri_2026.md`](docs/arastirma/moduler_konsensus_ve_veri_2026.md) §0 ([D11]/[D12]).
 
 ### Commands that actually run
 
