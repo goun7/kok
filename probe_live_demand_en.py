@@ -54,18 +54,19 @@ def main():
         print("  PEARL calibration dict not found in pass_sim_en; aborting.")
         return False
 
+    gpus = pearl.get("gpus", 0)
+    rev = pearl.get("rev_day")
+    cost = pearl.get("cost_day")
     print("Pearl's live network, as measured by Basu (arXiv 2606.04819):")
-    print("  GPUs                : %s" % f"{pearl.get('gpus', 0):,}")
-    print("  revenue/day         : $%s" % f"{pearl.get('rev_day', 0):,.0f}")
-    print("  cost/day            : $%s" % f"{pearl.get('cost_day', 0):,.0f}")
+    print("  GPUs                : %s" % f"{gpus:,}")
+    print("  revenue/day         : $%s" % (f"{rev:,.0f}" if rev is not None else "NOT AVAILABLE"))
+    print("  cost/day            : $%s" % (f"{cost:,.0f}" if cost is not None else "NOT AVAILABLE"))
     # ROUND-4 FIX, 2026-09-24 (round-4 finding #38): the guard
     # max(1e-9, cost_day) turned bad or missing data into a silent garbage
     # ratio (cost_day=0 gave 1.6e15), and the two defaults were inconsistent
     # (0 for rev_day, 1 for cost_day). A ratio computed from missing or zero
     # denominators is now reported as NOT-AVAILABLE rather than printed as a
     # confident number next to "(Basu measured 1.06)".
-    rev = pearl.get("rev_day")
-    cost = pearl.get("cost_day")
     if rev is None or cost is None or cost <= 0:
         rev_cost = None
         print("  revenue/cost ratio  : NOT AVAILABLE (rev_day=%r, cost_day=%r)"
