@@ -177,23 +177,24 @@ class TestMainDegerEksik:
         rc, _ = _main_sessiz(monkeypatch, fake_pearl=pearl)
         assert rc is False
 
-    def test_explicit_none_crashes_before_guard(self, monkeypatch):
-        # BULGU (dal-kesen testin actigi gercek gap): rev_day/cost_day
-        # anahtari var ama degeri None ise satir 58-60'taki formatlama
-        # None-guard'indan ONCE calistigi icin TypeError verir. "NOT
-        # AVAILABLE" yolu yalnizca anahtar YOKSA yurunur; None deger
-        # modulu durdurur. Kural-1: production koduna dokunulmadi —
-        # gercek davranis belgelendi (diz.
-        from pytest import raises as _r
-        with _r(TypeError):
-            _main_sessiz(monkeypatch,
-                         fake_pearl=dict(gpus=10, rev_day=None, cost_day=500.0))
+    def test_explicit_none_rev_none_elek_yolu(self, monkeypatch):
+        # ONCE BULGU (duzeltildi): rev_day/cost_day anahtari var ama degeri
+        # None ise satir 58-60'taki formatlama None-guard'indan ONCE
+        # calistigi icin TypeError veriyordu; "NOT AVAILABLE" yolu yalnizca
+        # anahtar YOKSA yurunuyordu. FIX (None-aware format + degisken
+        # yeniden-kullanimi): artik None deger icin de "NOT AVAILABLE"
+        # basilir ve modul durmaz — guard ile TUTARLI.
+        rc, out = _main_sessiz(monkeypatch,
+                               fake_pearl=dict(gpus=10, rev_day=None, cost_day=500.0))
+        assert rc is False
+        assert "NOT AVAILABLE" in out
+        assert "revenue/day" in out
 
-    def test_explicit_none_cost_crashes_before_guard(self, monkeypatch):
-        from pytest import raises as _r
-        with _r(TypeError):
-            _main_sessiz(monkeypatch,
-                         fake_pearl=dict(gpus=10, rev_day=500.0, cost_day=None))
+    def test_explicit_none_cost_none_elek_yolu(self, monkeypatch):
+        rc, out = _main_sessiz(monkeypatch,
+                               fake_pearl=dict(gpus=10, rev_day=500.0, cost_day=None))
+        assert rc is False
+        assert "NOT AVAILABLE" in out
 
     def test_not_available_mesaji(self, monkeypatch):
         _, out = _main_sessiz(monkeypatch, fake_pearl=dict(gpus=10, cost_day=5.0))
