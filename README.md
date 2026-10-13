@@ -47,12 +47,19 @@ positioning in
 ### Commands that actually run
 
 ```bash
-cargo test --workspace --all-targets      # 262 passed, 0 failed (verified 2026-09-29)
+cargo test --workspace --all-targets      # 397 passed, 0 failed (verified 2026-10-13)
+python3 -m pytest tests/ -q               # 1.079 passed, 0 failed (verified 2026-10-13)
 
 # Mine a G-layer proof, then verify it off-chain with no secrets and no network:
 cargo run -q --bin kok -- create --ctx 20261020 --target 2 --out kanit.json
 cargo run -q --bin kok -- verify kanit.json
 ```
+
+The Rust suite now includes the **verified protocol result**: the AI-utility
+score **cannot** change the mining reward distribution or scale
+(`u_task_consensus_weight == 0` at every fee and proof count), measured by
+`crates/kok-consensus/tests/madencilik_odul_testleri.rs`. See
+`docs/arastirma/pouw_ai_madenciligi_2026.md` §7.
 
 `verify` re-derives the MatMul tile, the program/input commitments, the Ed25519
 `did:key` signature and the sha256 receipt from the document's own contents — the same
