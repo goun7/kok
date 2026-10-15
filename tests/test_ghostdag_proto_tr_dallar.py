@@ -376,11 +376,12 @@ def test_every_added_block_is_marked_blue_for_itself():
     assert all(g.is_blue[b] for b in bids)
 
 
-def test_mergeset_members_are_all_blue_current_behavior_kok1():
-    """KOK-1 (bulgu, production'a dokunulmadi): _compute her eklenen blok icin
-    is_blue[bid]=True koydugu icin, mergeset sinflandirma dongusundeki
-    'if b in self.is_blue: continue' her zaman tetiklenir; 'len(anticone)<=k'
-    mavi/kirmizi karari HIC evalueasmaz. Bu test mevcut davranisi belgeler."""
+def test_mergeset_members_recolored_by_anticone_kok1():
+    """KOK-1 (DUZELTILDI): eskiden-mergeset-dongusundeki-'is_blue-bakimi'
+    yeniden-renklendirmeyi-atliyordu ( olum-kod: len(anticone)<=k-hic-
+    calismadi, k=0'da-bile-her-sey-mavi). Artik-her-ekleme-bloklari-akteri
+    mergeset-icinde-yeniden-degerlendirir — gensel-buyuk-mergeset'te
+    anticone-buyukse-kucuk-k'da-kirmizi-duser."""
     g = GHOSTDAG(k=GHOSTDAG_K)
     gen = Block(miner="A", parents=[], timestamp=0)
     g.add(gen)
@@ -391,9 +392,15 @@ def test_mergeset_members_are_all_blue_current_behavior_kok1():
     B = Block(miner="B", parents=[kids[0].bid], timestamp=99, tasks=["B"])
     g.add(B)
     ms = g.mergesets[B.bid]
-    # her ms uyessi zaten eklenmis bir blok -> is_blue True (kucuk k'da bile)
-    assert all(g.is_blue.get(b) is True for b in ms)
-    # kuralin evalue olmadiginin kaniti: k=0 olsa bile yine hepsi mavi
+    # B'nin-mergeseti-buyukse-ve-k-kucukse-artik-anticone-olculuyor:
+    # 'len(ac & ms) <= k'-ilk-gercek-uygulamadir ( artik-cakisan-olarak
+    # renksiz-new-block'lar-icin-de-yeniden-degerlendirme-var)
+    assert g.is_blue.get(B.bid) is True  # kendisi-her-zaman-mavi
+    # k=2-ve-36-uyeli-mergeset: her-uyenin-mergeset-icindeki-anticone'i
+    # cok-buyuk -> hepsi-kirmizi-duser ( eskiden-hepsi-zorunlu-maviydi).
+    assert len(ms) > 10
+    assert all(not g.is_blue.get(b, False) for b in ms)
+    # k=0'da-artik-gercek-filtre-calisir: tek-bir-anticone-bile-kirmizi.
     g2 = GHOSTDAG(k=0)
     g2.add(gen)
     for c in kids:
@@ -401,7 +408,7 @@ def test_mergeset_members_are_all_blue_current_behavior_kok1():
                      tasks=c.tasks))
     B2 = Block(miner="B", parents=[kids[0].bid], timestamp=99, tasks=["B"])
     g2.add(B2)
-    assert all(g2.is_blue.get(b) is True for b in g2.mergesets[B2.bid])
+    assert all(not g2.is_blue.get(b, False) for b in g2.mergesets[B2.bid])
 
 
 def test_k_parameter_does_not_change_marks_with_current_logic():

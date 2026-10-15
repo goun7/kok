@@ -170,9 +170,12 @@ class GHOSTDAG:
         self.mergesets[bid] = ms
 
         # 3. adim: mavi/kirmizi ayrimi - mergeset icinde anticone <= k
+        # KOK-1 (DUZELTILDI): eskiden-'if b in self.is_blue: continue'-
+        # bakimi-yeniden-renklendirmeyi-engelliyordu — bir-blok-bir-kez-mavi
+        # damgalaninca-anticone-buyumesi-asla-degerlendirilmedi ve k=0-dahi
+        # tum-bloklar-mavi-kaldi ( olum-kod). Artik-her-yeni-merge-icinde
+        # anticone-yeniden-olculur.
         for b in ms:
-            if b in self.is_blue:
-                continue
             # b'nin mergeset icindeki anticone'i
             ac_b = self._anticone(b)
             in_ms = ac_b & ms
