@@ -219,17 +219,15 @@ def test_verify_ignores_entries_outside_the_tile_corner_kok7():
     assert kw.verify(cert, A2, B2_bad, 99, nonce, 1 << 6) is True
 
 
-def test_verify_raises_on_out_of_range_tile_kok5():
-    """KOK-5 (bulgu): cert icindeki tile indeksleri kontrol edilmiyor;
-    kotu niyetli bir madenci i/j'yi disa tasarsa verify IndexError firlatir,
-    False donmez -> validate_block REJECT yerine crash."""
+def test_verify_out_of_range_tile_false_kok5():
+    """KOK-5 (DUZELTILDI): cert-icindeki-tile-indeksleri-sinir-disinda-ise
+    verify-False-doner ( IndexError-degil) -> validate_block-REJECT."""
     kw = KWKernel()
     cert, nonce = _mine_cert(kw, A2, B2, 99)
     bad = dict(cert)
     i, j, val = cert["tile"]
     bad["tile"] = (99, j, val)
-    with pytest.raises(IndexError):
-        kw.verify(bad, A2, B2, 99, nonce, 1 << 6)
+    assert kw.verify(bad, A2, B2, 99, nonce, 1 << 6) is False
 
 
 # ---------------------------------------------------------------------------
@@ -420,15 +418,13 @@ def test_assign_tasks_skips_non_committed_state():
     assert t.state == "SOLVED"  # degismedi
 
 
-def test_assign_tasks_prob_zero_crashes_kok3():
-    """KOK-3 (bulgu): w >= prob oldugunda (lotteri kaybeden task) atama
-    yapilmaz ama VRF-verify assert'i yine de calisir; vrf_out=0 ve
-    vrf_proof='' defaultlari ile kiyaslaninca AssertionError firlatir."""
+def test_assign_tasks_prob_zero_no_assignment_no_crash_kok3():
+    """KOK-3 (DUZELTILDI): lotteri'yi-kaybeden-task-icin-VRF-verify-assert'i
+    atama-bloku-icine-tasindi — prob=0.0-hic-atama-yapmaz-ve-crash-etmez."""
     ch = _chain_with_lookback()
     t = ch.submit_task("c1", TaskSpec("mm", (A2, A2), 64, DEADLINE_H), 100, 0.2)
-    with pytest.raises(AssertionError):
-        list(ch.assign_tasks("m1", [t], prob=0.0))
-    assert t.state == "COMMITTED" and t.assignee == ""
+    sonuc = list(ch.assign_tasks("m1", [t], prob=0.0))
+    assert sonuc == [] and t.state == "COMMITTED" and t.assignee == ""
 
 
 def test_assigned_task_vrf_proof_verifies():
@@ -605,14 +601,13 @@ def test_validate_block_rejects_anti_aggregation_fee_total():
     assert ch.validate_block(blk, A2, B2) == "ACCEPT"
 
 
-def test_validate_block_crashes_on_unknown_task_id_kok6():
-    """KOK-6 (bulgu): u_proof bilinmeyen bir tid icin self.tasks[p["tid"]]
-    KeyError firlatir; REJECT:unknown-task donmez."""
+def test_validate_block_unknown_task_id_rejects_kok6():
+    """KOK-6 (DUZELTILDI): u_proof-bilinmeyen-tid-KeyError-veriyordu;
+    artik-zincir-bilmedigi-is-icin-fail-closed-'REJECT:unknown-task'-doner."""
     ch = Chain()
     blk = _honest_block(ch)
     blk["u_proofs"] = [{"tid": "yok-boyle-gorev", "ps": DEFAULT_PS}]
-    with pytest.raises(KeyError):
-        ch.validate_block(blk, A2, B2)
+    assert ch.validate_block(blk, A2, B2) == "REJECT:unknown-task"
 
 
 # ---------------------------------------------------------------------------
@@ -666,27 +661,27 @@ def test_challenge_rejects_malicious_challenge_from_registered_miner():
     assert t.state == "SOLVED"
 
 
-def test_challenge_crashes_on_unregistered_challenger_kok4():
-    """KOK-4 (bulgu): kotu niyetli itiraz yolunda self.miners[challenger]
-    kayitli degilse KeyError; challengers'in onceden madencilik yapmis
-    olmasi beklenir ama bu zorunluluk kodda ifade edilmemis."""
+def test_challenge_unregistered_challenger_rejected_kok4():
+    """KOK-4 (DUZELTILDI): kayitli-olmayan-itirazci-KeyError-veriyordu;
+    artik-miner_bond-ile-guvenli-kaydedilip-kotu-niyetli-itiraz-olarak
+    reddedilir ( CHALLENGE_REJECTED, crash-yok)."""
     ch = _chain_with_lookback()
     t = _assigned_task(ch)
     ch.mine_block("m1", [t], A2, A2)
-    with pytest.raises(KeyError):
-        ch.challenge("v_never_mined", t.tid, ch.height())
+    sonuc = ch.challenge("v_never_mined", t.tid, ch.height())
+    assert sonuc[0] == "CHALLENGE_REJECTED"
 
 
-def test_settle_pays_from_solved_task_but_escrow_goes_negative_kok2():
-    """KOK-2 (bulgu): pay = fee - burned ve escrow -= (burned + pay);
-    escrow = fee - burn oldugundan sonuc -(burn) olur (burn iki kez sayilir)."""
+def test_settle_pays_remaining_escrow_no_negative_kok2():
+    """KOK-2 (DUZELTILDI): eskiden-burn-iki-kez-dusup-escrow=-burn-oluyordu;
+    artik-settle-odenebilir-escrow'un-tamamini-odar ( pay=escrow, escrow=0)."""
     ch = _chain_with_lookback()
     t = _assigned_task(ch, fee=100, burn=0.3)
     ch.mine_block("m1", [t], A2, A2)  # SOLVED
     pay = ch.settle(t.tid)
     assert pay == 70
     assert t.state == "SETTLED"
-    assert t.escrow == 70 - (30 + 70) == -30  # negatife dustu
+    assert t.escrow == 0  # burn-submit-aninda-ayrildi, negatif-yok
 
 
 def test_settle_returns_zero_for_unsolved_task():

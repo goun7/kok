@@ -113,6 +113,10 @@ class KWKernel:
         i, j, val = cert["tile"]
         q, r = self.q, self.r
         n = len(A)
+        # KOK-5 (DUZELTILDI): tilesiz-secim-denetlenmiyordu-IndexError-crash.
+        m = n // r if r else n
+        if not (0 <= i < m and 0 <= j < m):
+            return False
         E = [[(H("E", ctx, a, b) % q) for b in range(n)] for a in range(n)]
         F = [[(H("F", ctx, a, b) % q) for b in range(n)] for a in range(n)]
         # madenci iddia ettigi tile'i kesinlikle hesaplamis olmali; biz de
@@ -227,9 +231,14 @@ class Chain:
             w = (out % (1 << 64)) / (1 << 64)
             if w < prob:
                 t.assignee, t.vrf_out, t.vrf_proof, t.state = miner, out, proof, "ASSIGNED"
+                # KOK-3 (DUZELTILDI): assert-ayri-duruyordu-lottery'yi-kaybeden
+                # her-COMMITTED-task-vrf_out=0/proof=""-defaultlariyla-crash-
+                # oluyordu ( prob<1.0-hic-calismadi) — artik-sadece-atanan-
+                # task-icin-dogrulanir.
+                assert VRF.verify(pk, str(seed) + "|" + t.tid,
+                                   t.vrf_out, t.vrf_proof), \
+                    "VRF kaniti gecersiz (atama saf disi degil)"
                 yield t
-            assert VRF.verify(pk, str(seed) + "|" + t.tid, t.vrf_out, t.vrf_proof), \
-                "VRF kaniti gecersiz (atama saf disi degil)"
 
     def miner_bond(self, miner):
         return self.miners.setdefault(miner, {"bond": 0, "slashed": 0})
@@ -268,7 +277,10 @@ class Chain:
         phi = u_flops / (u_flops + G_FLOPS * nonce) if (u_flops + G_FLOPS * nonce) else 0.0
         bh = S("blk", ctx, nonce, [p["root"] for p in u_proofs], fee_total)
         self.blocks.append(bh)
-        self.miner_bond(miner)["bond"] += 0
+        # KOK-8 (DUZELTILDI): '+='-0-no-op-yazilim-bebegini-birakiyordu-
+        # ( bond-hic-postalanmiyordu-ama-challenge-kesmeye-devam-ediyordu).
+        # artik-madenci-bond'u-blok-fee'sinden-postalanir ( BOND_RATIO).
+        self.miner_bond(miner)["bond"] += int(fee_total * BOND_RATIO) if fee_total else 0
         return {"hash": bh, "ctx": ctx, "nonce": nonce, "cert": cert,
                 "u_proofs": u_proofs, "fee_total": fee_total, "miner": miner,
                 "phi": phi, "height": self.height()}
@@ -318,7 +330,11 @@ class Chain:
         if not (0.0 <= blk.get("phi", 0.0) <= 1.0):
             return "REJECT:phi-range"
         for p in blk["u_proofs"]:
-            t = self.tasks[p["tid"]]
+            # KOK-6 (DUZELTILDI): bilinmeyen-tid-KeyError-crash — fail-closed
+            # returu-reject'tir ( zincir-bilmedigi-is-Hicbir-zaman-kabul-olmaz).
+            t = self.tasks.get(p["tid"])
+            if t is None:
+                return "REJECT:unknown-task"
             if p["ps"] not in PQ_SET:
                 return "REJECT:PQ-schema"
             if t.state != "SOLVED":
@@ -337,21 +353,27 @@ class Chain:
               for j in range(len(harness_B[0]))] for i in range(len(harness_A))]
         if t.result != C:                                        # FRAUD kanitlandi
             bond = max(t.fee * BOND_RATIO, 1)
-            self.miners[t.assignee]["slashed"] += bond
+            self.miner_bond(t.assignee)["slashed"] += bond
             self.slashed_total += bond
             self.miners.setdefault(challenger, {"bond": 0, "slashed": 0})
             t.state = "SLASHED"
             return "SLASHED", FRAUD_REWARD
         # kotu niyetli itiraz
-        self.miners[challenger]["slashed"] += 1
+        # KOK-4 (DUZELTILDI): kayitli-olmayan-itirazci-KeyError-veriyordu —
+        # fail-closed-icin-setdefault-koruyucu-miner_bond-kullanilir.
+        self.miner_bond(challenger)["slashed"] += 1
         return "CHALLENGE_REJECTED", 0
 
     def settle(self, tid):
         t = self.tasks[tid]
         if t.state == "SOLVED":
             t.state = "SETTLED"
-            pay = t.fee - t.burned             # escrow'dan madenciye, burn zaten gitti
-            t.escrow -= (t.burned + pay)
+            # KOK-2 (DUZELTILDI): eskiden-'t.escrow -= (burned+pay)'-burn'u-ikinci-
+            # kez-dusuyordu-ve-escrow-negatifle-fee/gider-zincirini-bozuyordu.
+            # escrow-onceden-'fee - burn'-olarak-aciklandi ( submit_task), bu
+            # yuzden-odeme-escrow'un-tamamidir, burn-once-ayrilmistir.
+            pay = t.escrow
+            t.escrow = 0
             return pay
         return 0
 
