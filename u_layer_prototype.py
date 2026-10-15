@@ -94,6 +94,12 @@ class KWKernel:
         E, F = self._noise(ctx, n)   # gurultu (sade) — onbellegi yukarida
         Ap = [[(A[i][j] + E[i][j]) % q for j in range(n)] for i in range(n)]
         Bp = [[(B[i][j] + F[i][j]) % q for j in range(n)] for i in range(n)]
+        # KOK-7 (BELGELDONU-protokol-sadeligi-DEGISTIRILMEZ): tile-acc-yalnizca
+        # (i*r, l*r)-kose-girilerini-toplar ( r=2-icin-per-tile-r*r yerine-m-
+        # carpim). verify-ayni-ozeti-yeniden-hesapladigi-icin-protokol-DENGSIZ-
+        # degil; tile-bloklarinin-diger-girileri-bu-prototip-kapsaminda-denetimsiz
+        # ( urun-denkleminde-yok). Tam-kapsam-icin-W-sum'u-r*r-girişlerine-
+        # yaymak-gerekir-ama-o-zaman-kisit-'transcript-basitlestir'-bozulur.
         acc = [[0] * m for _ in range(m)]          # kisit: transcript'i basitlestir
         # prototip: per-tile loop (n^3 is) — gercek kernel'da bu kisma dokunulmaz
         for i in range(m):
