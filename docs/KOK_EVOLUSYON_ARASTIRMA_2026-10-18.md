@@ -530,13 +530,17 @@ SEC/MiCA hukuk bölümü (§9) ve L1'in tümü **kasten terk edilir**.
 **12 hafta (18 Ocak 2027) içinde aşağıdakilerin hepsi sağlanmazsa → kok tamamen öldürülür
 (Seçenek D), kod MESH'in başka projelerine parçalanır:**
 
-| # | Koşul | Ölçüm yöntemi |
-|---|---|---|
-| K1 | Tamga'ya bir `compute-proof` receipt scheme eklenmiş ve **en az 1 mesh projesinde kod-kanıtı ile** tüketiliyor (Sester, Ajan Borsası, GNoME-Forge veya Dümen) | PROJE-ENTEGRASYON-HARITASI'nda bir satır + AT-testi |
-| K2 | Kok'un çekirdek kanıt kodu (KW prove/verify + computation binding) bağımsız bir kütüphane olarak ayrılmış (Rust crate + Python paketi) | `git`'te yeni bir repo/klasör |
-| K3 | IACR ePrint'e (veya Zenodo'ya) yayınlanmış bir makale/artefakt | URL |
-| K4 | **x402 issue #3379'a** kok'un compute-proof önerisi yazılmış (mevcut discussion'a katkı) | GitHub yorum linki |
-| K5 | L1 dokümantasyonu (tokenomik, hukuk §9, GHOSTDAG, emisyon) ya arşivlenmiş ya da "historical" olarak işaretlenmiş | dosya durumu |
+| # | Koşul | Ölçüm yöntemi | Durum ( 2026-10-18) |
+|---|---|---|---|
+| K1 | Tamga'ya bir `compute-proof` receipt scheme eklenmiş ve **en az 1 mesh projesinde kod-kanıtı ile** tüketiliyor (Sester, Ajan Borsası, GNoME-Forge veya Dümen) | PROJE-ENTEGRASYON-HARITASI'nda bir satır + AT-testi | ✅ **TAMGA-BAĞLANDI** — RFC-011 `compute-anchor` op'u ( `tamga/tools/compute_anchor.py`), 14 AT-080-testi, tam-suit 3110/3110-rc0. **Ancak henüz başka-bir-mesh-projesinde-tüketilmiyor** — koşulun-ikinci-yarısı açık |
+| K2 | Kok'un çekirdek kanıt kodu (KW prove/verify + computation binding) bağımsız bir kütüphane olarak ayrılmış (Rust crate + Python paketi) | `git`'te yeni bir repo/klasör | ✅ `kok/receipt/` — ~400-satır bağımsız-Python-doğrulayıcı ( kok'tan-import-yok); Rust-binary→Python-verify çapraz-dil aynı-receipt |
+| K3 | IACR ePrint'e (veya Zenodo'ya) yayınlanmış bir makale/artefakt | URL | ⚠️ **PAKET-HAZIR, GÖNDERİLMEDİ** — `docs/IACR_EPRINT_PAKETI_2026-10-18.md` ( endorsement-yok-çözümü); `github.com/goun7/kok` public-repo pushlandı ( kok'un-ilk-external-artefaktı). **Gönderim-tuşu kullanıcı-sırasında** ( gerçek-yazar-adı-gerekli) |
+| K4 | **x402 issue #3379'a** kok'un compute-proof önerisi yazılmış (mevcut discussion'a katkı) | GitHub yorum linki | ✅ [yorum-6251938895](https://github.com/x402-foundation/x402/issues/3379#issuecomment-6251938895) + kamu-test-vektörü ( `docs/TEST-VEKTOR-KOK-COMPUTE-WORK.md`). **Maintainer-yanıtı bekleniyor** |
+| K5 | L1 dokümantasyonu (tokenomik, hukuk §9, GHOSTDAG, emisyon) ya arşivlenmiş ya da "historical" olarak işaretlenmiş | dosya durumu | ✅ `docs/historical_l1/` — "mezarlık-değil-mahkeme-kaydı" |
+
+**K-koşul-ölçümü ( 2026-10-18): 5/5-çalışıldı, 3-tam-yeşil ( K1-kısmi, K2, K5), 1-paket-hazır ( K3-gönderim-kullanıcıda), 1-gönderildi-yanıt-bekliyor ( K4).**
+K1'in-açık-yarısı ( başka-mesh-projesinde-tüketim) ve K3'ün-gönderim-tuşu
+2027-01-18 öncesi kapatılması-gereken-iki-boşluk.
 
 **Ek mutlak kill:** Eğer x402 maintainersu #3379'daki proof-of-done teklifini **REDDEDERLERSE**
 veya Tamga compute-proof katmanını kendisi yazarsa → K1 ölür, bu durumda kok'un
