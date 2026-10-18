@@ -1,5 +1,23 @@
 # KÖK Network v2
 
+> ## STATUS — 2026-10-18: the L1 phase ended; evolution to Option C
+>
+> **The L1 path is closed.** The kill criterion (`KOK_V2_PAPER.md:1913` —
+> "if F3a finds zero real demand, the project must stop") fired before F3a
+> ever started: F0 demand discovery closed with **0 interviews**, Demirel has
+> not answered in 4 weeks, and arXiv's 21-Jan-2026 endorsement policy shut
+> that door. **388 commits, zero external artefacts.**
+>
+> **What replaces it:** a receipt that a compute provider actually performed
+> the MatMul job it claims — independently verifiable, anchored into Tamga's
+> hash chain and x402's proof-of-done extension. **No mining, no token, no
+> L1.** Decision and the 43-URL research:
+> `docs/KOK_EVOLUSYON_ARASTIRMA_2026-10-18.md`. L1 documents:
+> `docs/historical_l1/` (not deleted — a readable court record).
+>
+> **The L1 pitch below is historical.** It still explains why the design was
+> correct; it is no longer the thing being built.
+
 **Proof-of-Useful-Work L1 with a modular two-layer consensus design.**
 
 KÖK v2 separates the two jobs that prior PoUW designs conflated:
