@@ -192,9 +192,58 @@ overhead claim for one. The verifier itself is ~400 lines and runs offline.
 *Small verifiers as a distribution strategy* is a rule this thread already
 stated; this artifact follows it.
 
+Two limits of this toy scale that a reader should not have to derive for
+himself, both surfaced by an independent replay (§7) and re-measured by us
+locally:
+
+- **Declared input is four times the participating input.** With `n=8, r=2`
+  the accumulator reads only `A′[i·r][l·r]` and `B′[l·r][j·r]`, so it touches
+  **32 of the 128 declared cells**. Zeroing the other 96 leaves all sixteen
+  tiles byte-identical and the certificate value at 68. The 96 unused cells
+  are still bound by `input_commit` (the commitment changes when they do),
+  but they are bound **by commitment, not by computation** — different
+  guarantees. At toy scale that is harmless; at a size where someone pays for
+  the work, the declared/participating ratio belongs in the vector itself,
+  because a buyer reading `matrix_a` as an 8×8 input is reading more than the
+  arithmetic used.
+- **Verifying costs what producing costs.** `check_certificate` recomputes
+  the whole accumulator to test one tile — 64 multiplications against the
+  prover's 64 — and one of sixteen tiles is ever tested against the target.
+  That is the price of the design choice this artifact exists to demonstrate
+  (the hashing work and the job are the same object): the receipt buys
+  attribution and binding, **not a cheaper verifier**. It should not be read
+  as a succinctness claim. Separately, `target=2^2` is the easiest nontrivial
+  difficulty, and the vector's `nonce=1` is the luckiest possible first draw
+  (measured per-(nonce,tile) clear rate 0.256 over 3200 trials against a
+  theoretical 0.25), so the 3.5 ms figure above sits at the easy end of the
+  range rather than being typical of a harder target.
+
+---
+
+## 7. Independent replay (2026-10-18T16:50Z)
+
+**Replayed by `holistis`** ([comment on
+#3379](https://github.com/x402-foundation/x402/issues/3379#issuecomment-6252521348)),
+who read the scheme out of `kok_receipt_verify_en.py` and **rewrote it in
+Node** with Node's own Ed25519 and hand-rolled base58, so none of our code
+executed. Eleven checks, all eleven agree with the vector;
+`receipt_hash` reproduces as `fb30f1f2…` over exactly 271 bytes; the tile
+recomputes to 68 from the strided noisy factors rather than from the declared
+value; the did:key decodes under the `0xed01` tag; the signature verifies
+over the domain string plus `sha256(envelope)`. Six mutants — cert value,
+`matrix_a[0][0]`, `ctx`, `nonce`, `task_fee`, `program_commit` — all six
+caught, failing on the stages that check them.
+
+The same replay named the two unlabeled limits now carried in §6, which we
+**re-measured locally before accepting** (see above): the 32-of-128
+participating-input ratio, and the verifier-cost-equals-producer-cost
+property. Neither refutes anything the vector claimed; both are now stated
+in the document itself.
+
 ---
 
 *Disclosure: artifact produced by the project owner; receipt mined with the
 repo's own Rust binary and verified with the independent Python verifier
-shipped alongside it. No third party has yet replayed this vector — that is
-the step this document exists to invite.*
+shipped alongside it. Independently replayed by a third party on 2026-10-18
+(§7); the standing invitation is to break it, and if any limit above turns
+out to be softer than stated, that is the useful finding.*
