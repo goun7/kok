@@ -47,8 +47,8 @@ positioning in
 ### Commands that actually run
 
 ```bash
-cargo test --workspace --all-targets      # 397 passed, 0 failed (verified 2026-10-13)
-python3 -m pytest tests/ -q               # 1.534 passed, 0 failed (verified 2026-10-16, LEED own run 94.14 s)
+cargo test --workspace --all-targets      # 397 passed, 0 failed (verified 2026-10-18)
+python3 -m pytest tests/ -q               # 1.568 passed, 0 failed (verified 2026-10-18, 223.27 s)
 
 # Mine a G-layer proof, then verify it off-chain with no secrets and no network:
 cargo run -q --bin kok -- create --ctx 20261020 --target 2 --out kanit.json

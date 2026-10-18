@@ -7,13 +7,18 @@ twice. The first sweep checked only Turkish special characters, which caught
 misspellings but nothing written in plain ASCII Turkish. The second sweep added a
 word list that was too narrow and missed 'esik', 'tek', 'dogrulanir', 'gercek'
 and 'gecmiste'. Both times the scan reported zero and both times zero was a
-property of the scan, not of the files.
+property of the scan, not of the files. A third way to be wrong is to scan
+fewer files than exist: the original hardcoded list covered 14 of 38 English
+files, so its CLEAN said nothing about the other 24. Scope is now derived
+from the filesystem, not from a list that can go stale.
 
 Run:
-    python3 audit_turkish_en.py            # all English files, exit 1 on hits
+    python3 audit_turkish_en.py            # every *_en.py in repo root
     python3 audit_turkish_en.py file.py    # one file
 
-Exit code is 1 if any unambiguous Turkish is found, so this can gate a commit.
+Exit codes: 0 CLEAN, 1 Turkish found, 2 usage/missing-file/scope error.
+A missing named file is a hard error, never a silent skip, because a skip
+reports a CLEAN that is a property of the skip.
 
 Known false positives this filter does NOT report, because they are English:
     - 'bin' in the shebang line #!/usr/bin/env python3, and the English noun bin
@@ -83,12 +88,42 @@ DEFAULT_FILES = [
     'f0_candidate_list.py',
 ]
 
+# Hint the plain file list where it is consulted, because a gate that scans
+# fewer files than exist reports a clean that is a property of the list.
+EN_GLOB = '*_en.py'
+
+# The audit script itself contains the Turkish wordlist by definition; it is
+# not an English deliverable, so it is never in its own scope.
+SELF = 'audit_turkish_en.py'
+
+# A line ending in this marker is skipped: it declares the Turkish on that
+# line intentional (an alphabet constant, a negative test fixture). The
+# marker is opt-in per line, so it cannot blanket-mute a whole file.
+INTENTIONAL_MARKER = '# TR-AUDIT: intentional'
+
+
+def english_files():
+    """Every English-language source file in the repo root.
+
+    The historical hardcoded DEFAULT_FILES covered 14 of 38 English files;
+    the other 24 were silently never scanned, and a scan that reports CLEAN
+    while skipping files reports a property of its list. Scope is therefore
+    derived from the filesystem, not from a list that can go stale.
+    """
+    globbed = {fn for fn in os.listdir('.')
+               if fn.endswith('_en.py') and fn != SELF
+               and os.path.isfile(fn)}
+    return frozenset(), globbed
+
 
 def scan(path):
     """Return a list of (line, kind, token, excerpt) for unambiguous Turkish."""
     out = []
     text = io.open(path, encoding='utf-8').read()
     for i, line in enumerate(text.split('\n'), 1):
+        # An explicitly-marked line declares its own Turkish intentional.
+        if INTENTIONAL_MARKER in line:
+            continue
         # The project name and byte-string protocol labels stay as they are.
         c = re.sub(r'KÖK|KOK|kok-f3a', 'PROJ', line)
         if any(ch in c for ch in TR_CHARS):
@@ -104,12 +139,29 @@ def scan(path):
 
 
 def main():
-    files = sys.argv[1:] or DEFAULT_FILES
+    # A gate that silently skips a missing file reports a CLEAN that is a
+    # property of the skip, not of the files: --bogus and a typo'd path both
+    # used to exit 0. Unknown options are usage errors (rc=2), and a named
+    # file that does not exist is a hard error (rc=2), never a skip.
+    args = sys.argv[1:]
+    if args and args[0].startswith('-'):
+        sys.stderr.write('usage: audit_turkish_en.py [file ...]\n')
+        sys.stderr.write('error: unknown option: %s\n' % args[0])
+        return 2
+    if args:
+        files = args
+        missing = [fn for fn in files if not os.path.exists(fn)]
+        if missing:
+            sys.stderr.write('error: no such file(s): %s\n' % ' '.join(missing))
+            return 2
+    else:
+        defaulted, globbed = english_files()
+        files = sorted(globbed)
+        if not files:
+            sys.stderr.write('error: no English (_en.py) files found\n')
+            return 2
     total = 0
     for fn in files:
-        if not os.path.exists(fn):
-            print('  skip (missing): %s' % fn)
-            continue
         for i, kind, tok, excerpt in scan(fn):
             label = 'char' if kind == 'char' else 'word[%s]' % tok
             print('  %-28s L%-5d %-14s %s' % (fn, i, label, excerpt))

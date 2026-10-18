@@ -133,7 +133,7 @@ def r6_4_no_turkish_letters_in_the_probe_files():
     a trust boundary this round should not rely on.
     """
     print("=== R6-4: no Turkish letters in the _en probe files ===")
-    tr = "çğıöşüÇĞİÖŞÜ"
+    tr = "çğıöşüÇĞİÖŞÜ"  # TR-AUDIT: intentional — the detected alphabet itself
     bad = []
     for name in PROBE_FILES:
         path = name + ".py"

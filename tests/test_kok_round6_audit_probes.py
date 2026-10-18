@@ -41,6 +41,7 @@ import contextlib
 import io
 import os
 import subprocess
+import sys
 
 import pytest
 from unittest import mock
@@ -412,6 +413,98 @@ def test_audit_turkish_scan_tolerates_a_missing_file():
     the contract so the guard is not silently removed."""
     with pytest.raises(OSError):
         audit_tr.scan(os.path.join(KOK_ROOT, "definitely_missing_zzz.py"))
+
+
+# ============================================================ audit_turkish_en CLI rc-contract
+# The audit is a commit gate, so its exit codes are a security boundary:
+# rc=0 must mean "I read the files and found nothing", never "I skipped
+# them". These tests run the real interpreter as a subprocess so the
+# measured rc is the gate's rc, not an in-process return value.
+def _run_cli(*argv):
+    proc = subprocess.run(
+        [sys.executable, "audit_turkish_en.py", *argv],
+        cwd=KOK_ROOT, capture_output=True, text=True, timeout=120)
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def test_audit_turkish_cli_default_run_is_clean_and_covers_every_en_file():
+    """rc=0 on the default run, and the default run's scope is every *_en.py
+    in the repo root -- not a hardcoded list that can go stale behind the
+    filesystem. 38 files today; the assertion is on the mechanism (glob),
+    not on the count."""
+    rc, out, err = _run_cli()
+    assert rc == 0, "clean run exited non-zero: %r %r" % (err, out)
+    assert "RESULT: CLEAN" in out
+    defaulted, globbed = audit_tr.english_files()
+    assert not (globbed - defaulted) or defaulted == frozenset(), (
+        "scope is not derived from the filesystem: list-only files exist")
+    expected = {fn for fn in os.listdir(KOK_ROOT)
+                if fn.endswith("_en.py") and fn != audit_tr.SELF
+                and os.path.isfile(os.path.join(KOK_ROOT, fn))}
+    assert globbed == expected
+
+
+def test_audit_turkish_cli_rejects_an_unknown_option_with_rc2():
+    """--bogus used to be treated as a filename, 'missing', and skipped,
+    so the gate exited 0 on a nonsense invocation. Unknown options are
+    usage errors: rc=2."""
+    rc, out, err = _run_cli("--bogus")
+    assert rc == 2, "unknown option exited %r (want 2)" % rc
+    assert "unknown option" in err
+
+
+def test_audit_turkish_cli_rejects_a_missing_named_file_with_rc2():
+    """A named-but-missing file used to print 'skip (missing)' and still
+    exit 0 -- a typo'd path in CI would gate as CLEAN. Missing is an
+    error: rc=2."""
+    rc, out, err = _run_cli("definitely_missing_zzz.py")
+    assert rc == 2, "missing file exited %r (want 2)" % rc
+    assert "no such file" in err.lower()
+
+
+def test_audit_turkish_cli_reports_a_turkish_hit_with_rc1(tmp_path):
+    """The 1-code path must still fire on a real leak, so the hardening
+    above did not mute the detector."""
+    fn = tmp_path / "leak_en.py"
+    fn.write_text("x = 'kesinti ve satir'\n", encoding="utf-8")
+    rc, out, err = _run_cli(str(fn))
+    assert rc == 1, "real leak exited %r (want 1)" % rc
+    assert "RESULT: NOT CLEAN" in out
+
+
+def test_audit_turkish_cli_respects_the_intentional_marker(tmp_path):
+    """A line ending in the intentional marker is skipped, so an alphabet
+    constant or a negative-test fixture does not trip the gate. The marker
+    is per-line and opt-in, so it cannot blanket-mute a file."""
+    fn = tmp_path / "marked_en.py"
+    fn.write_text(
+        'tr = "çğıöşüÇĞİÖŞÜ"  # TR-AUDIT: intentional\n'
+        "y = 'plain english text here'\n",
+        encoding="utf-8")
+    rc, out, err = _run_cli(str(fn))
+    assert rc == 0, "intentionally-marked line exited %r (want 0): %r" % (rc, out)
+    assert "RESULT: CLEAN" in out
+
+
+def test_audit_turkish_cli_finds_turkish_next_to_a_marker(tmp_path):
+    """The marker mutes only its own line; Turkish on any other line of the
+    same file is still a hit (rc=1)."""
+    fn = tmp_path / "mixed_en.py"
+    fn.write_text(
+        'tr = "çğıöşüÇĞİÖŞÜ"  # TR-AUDIT: intentional\n'
+        "z = 'hata ve sorun'\n",
+        encoding="utf-8")
+    rc, out, err = _run_cli(str(fn))
+    assert rc == 1, "unmarked leak under a marker exited %r (want 1)" % rc
+
+
+def test_audit_turkish_cli_self_is_not_in_its_own_scope():
+    """The audit contains the Turkish wordlist by definition; scanning it
+    would be a permanent false NOT-CLEAN. It is excluded by name, and the
+    exclusion is pinned so it cannot quietly widen to other files."""
+    assert audit_tr.SELF == "audit_turkish_en.py"
+    _, globbed = audit_tr.english_files()
+    assert audit_tr.SELF not in globbed
 
 
 # ============================================================ egap honest boundary
