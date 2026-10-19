@@ -532,15 +532,17 @@ SEC/MiCA hukuk bölümü (§9) ve L1'in tümü **kasten terk edilir**.
 
 | # | Koşul | Ölçüm yöntemi | Durum ( 2026-10-18) |
 |---|---|---|---|
-| K1 | Tamga'ya bir `compute-proof` receipt scheme eklenmiş ve **en az 1 mesh projesinde kod-kanıtı ile** tüketiliyor (Sester, Ajan Borsası, GNoME-Forge veya Dümen) | PROJE-ENTEGRASYON-HARITASI'nda bir satır + AT-testi | ✅ **TAMGA-BAĞLANDI** — RFC-011 `compute-anchor` op'u ( `tamga/tools/compute_anchor.py`), 14 AT-080-testi, tam-suit 3110/3110-rc0. **Ancak henüz başka-bir-mesh-projesinde-tüketilmiyor** — koşulun-ikinci-yarısı açık |
+| K1 | Tamga'ya bir `compute-proof` receipt scheme eklenmiş ve **en az 1 mesh projesinde kod-kanıtı ile** tüketiliyor (Sester, Ajan Borsası, GNoME-Forge veya Dümen) | PROJE-ENTEGRASYON-HARITASI'nda bir satır + AT-testi | ✅ **TAMAMEN-YEŞİL ( 2026-10-19)** — RFC-011 `compute-anchor` op'u + **DÜMEN'TE-TÜKETİLDİ**: `dumen/receipt/kok_miner.py` SAE-encode MatMul'unu G-layer proof'una çevirip tamga ledger'ına bağladı ( receipt 20eee1503686c8d5, anchor_id d3137618127681cd1b495dbcd54664abceced12326a10409a5d326064d8e9264, 8 pin-testi, 1708/1708-rc0). Kok'un bağımsız-verifier'ı dumen-üretilen kanıtı ACCEPT ( imzalı) |
 | K2 | Kok'un çekirdek kanıt kodu (KW prove/verify + computation binding) bağımsız bir kütüphane olarak ayrılmış (Rust crate + Python paketi) | `git`'te yeni bir repo/klasör | ✅ `kok/receipt/` — ~400-satır bağımsız-Python-doğrulayıcı ( kok'tan-import-yok); Rust-binary→Python-verify çapraz-dil aynı-receipt |
 | K3 | IACR ePrint'e (veya Zenodo'ya) yayınlanmış bir makale/artefakt | URL | ⚠️ **PAKET-HAZIR, GÖNDERİLMEDİ** — `docs/IACR_EPRINT_PAKETI_2026-10-18.md` ( endorsement-yok-çözümü); `github.com/goun7/kok` public-repo pushlandı ( kok'un-ilk-external-artefaktı). **Gönderim-tuşu kullanıcı-sırasında** ( gerçek-yazar-adı-gerekli) |
 | K4 | **x402 issue #3379'a** kok'un compute-proof önerisi yazılmış (mevcut discussion'a katkı) | GitHub yorum linki | ✅ [yorum-6251938895](https://github.com/x402-foundation/x402/issues/3379#issuecomment-6251938895) + kamu-test-vektörü ( `docs/TEST-VEKTOR-KOK-COMPUTE-WORK.md`). **Maintainer-yanıtı bekleniyor** |
 | K5 | L1 dokümantasyonu (tokenomik, hukuk §9, GHOSTDAG, emisyon) ya arşivlenmiş ya da "historical" olarak işaretlenmiş | dosya durumu | ✅ `docs/historical_l1/` — "mezarlık-değil-mahkeme-kaydı" |
 
-**K-koşul-ölçümü ( 2026-10-18): 5/5-çalışıldı, 3-tam-yeşil ( K1-kısmi, K2, K5), 1-paket-hazır ( K3-gönderim-kullanıcıda), 1-gönderildi-yanıt-bekliyor ( K4).**
-K1'in-açık-yarısı ( başka-mesh-projesinde-tüketim) ve K3'ün-gönderim-tuşu
-2027-01-18 öncesi kapatılması-gereken-iki-boşluk.
+**K-koşul-ölçümü ( 2026-10-19-güncelleme): 5/5-çalışıldı, 4-tam-yeşil ( K1-KAPATILDI, K2, K5), 1-paket-hazır ( K3-gönderim-kullanıcıda), 1-gönderildi-yanıt-bekliyor ( K4).**
+K1'in-açık-yarısı ( başka-mesh-projesinde-tüketim) **KAPATILDI ( 2026-10-19,
+commit ab26319)**: dumen/receipt/kok_miner.py + 8 pin-testi + ürün-kanıtı.
+Geriye-tek-boşluk: K3'ün-gönderim-tuşu ( 2027-01-18 öncesi), o da
+kullanıcı'nın-gerçek-adını-gerektirir ( fabricated-byline-yok).
 
 **Ek mutlak kill:** Eğer x402 maintainersu #3379'daki proof-of-done teklifini **REDDEDERLERSE**
 veya Tamga compute-proof katmanını kendisi yazarsa → K1 ölür, bu durumda kok'un
