@@ -26,7 +26,12 @@ fn linear_chain_blue_score_grows_by_one() {
     g.add(blk(2, vec![1]));
     g.add(blk(3, vec![2]));
     g.add(blk(4, vec![3]));
-    let scores = [g.blue_score[&1], g.blue_score[&2], g.blue_score[&3], g.blue_score[&4]];
+    let scores = [
+        g.blue_score[&1],
+        g.blue_score[&2],
+        g.blue_score[&3],
+        g.blue_score[&4],
+    ];
     for w in scores.windows(2) {
         assert!(w[1] > w[0], "blue_score azaldı: {:?}", scores);
     }
@@ -39,7 +44,7 @@ fn selected_parent_is_highest_blue_score() {
     g.add(blk(1, vec![]));
     g.add(blk(2, vec![1])); // score 2
     g.add(blk(3, vec![1])); // score 2, tie → düşük bid seçilir
-    // 4'ün ebeveynleri 2 ve 3; ikisi de score 2 → 2 seçilir (düşük bid)
+                            // 4'ün ebeveynleri 2 ve 3; ikisi de score 2 → 2 seçilir (düşük bid)
     g.add(blk(4, vec![2, 3]));
     assert_eq!(g.selected[&4], Some(2));
 }
@@ -128,10 +133,10 @@ fn mergeset_absorbs_distant_fork_sibling() {
     let mut g = Ghostdag::new(18);
     g.add(blk(1, vec![]));
     g.add(blk(2, vec![1]));
-    g.add(blk(3, vec![1]));       // fork sibling
-    g.add(blk(4, vec![2]));       // 2'nin zinciri
-    g.add(blk(5, vec![4]));       // 5 → 4 → 2 → 1
-    // 3, past(5)'te DEĞİL (5, 3'ü referans almıyor), anticone'da
+    g.add(blk(3, vec![1])); // fork sibling
+    g.add(blk(4, vec![2])); // 2'nin zinciri
+    g.add(blk(5, vec![4])); // 5 → 4 → 2 → 1
+                            // 3, past(5)'te DEĞİL (5, 3'ü referans almıyor), anticone'da
     assert!(!g.past(5).contains(&3));
     // 3'ün coloring'i yapılmış olmalı
     assert!(g.is_blue.contains_key(&3));
@@ -145,10 +150,10 @@ fn phantom_parent_not_registered_as_child() {
     let mut g = Ghostdag::new(18);
     g.add(blk(1, vec![]));
     g.add(blk(2, vec![1, 99])); // 99 henüz yok
-    // 99 eklenmeden önce 2, 99'un future'ında OLMAMALI (kenar yok)
-    // — ancak future(99) blok yoksa boş döner; dolaylı: 99 ekleyince 2 görünür
+                                // 99 eklenmeden önce 2, 99'un future'ında OLMAMALI (kenar yok)
+                                // — ancak future(99) blok yoksa boş döner; dolaylı: 99 ekleyince 2 görünür
     g.add(blk(99, vec![])); // şimdi geldi
-    // 2, 99'un future'ında olmalı (99 gerçekten eklenince kenar kurulur)
+                            // 2, 99'un future'ında olmalı (99 gerçekten eklenince kenar kurulur)
     assert!(g.future(99).contains(&2));
 }
 
@@ -160,7 +165,7 @@ fn order_starts_with_self_ends_with_genesis() {
     g.add(blk(2, vec![1]));
     g.add(blk(3, vec![2]));
     let o = g.order(3);
-    assert_eq!(o[0], 3);   // B en başta
+    assert_eq!(o[0], 3); // B en başta
     assert_eq!(o.last(), Some(&1)); // genesis en sonda
     assert_eq!(o.len(), 3);
 }

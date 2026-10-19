@@ -28,25 +28,31 @@
 //! ölçülen şey gerçek formülün kendisi olur.
 
 use kok_consensus::add_block;
-use kok_consensus::ConsensusBlock;
 use kok_consensus::kok_ghostdag::{
-    Block, Ghostdag, GHOSTDAG_K, EMISSION_HALVING_INTERVAL, R_0, TAIL_EMISSION, TREASURY_BPS,
+    Block, Ghostdag, EMISSION_HALVING_INTERVAL, GHOSTDAG_K, R_0, TAIL_EMISSION, TREASURY_BPS,
 };
 use kok_consensus::kok_u_layer::job::{JobKind, JobSpec};
-use kok_consensus::kok_u_layer::{validate_u_task, C_FEE, MAX_BURN_RATE, TaskProof, TaskSpec};
 use kok_consensus::kok_u_layer::u_task_consensus_weight;
+use kok_consensus::kok_u_layer::{validate_u_task, TaskProof, TaskSpec, C_FEE, MAX_BURN_RATE};
+use kok_consensus::ConsensusBlock;
 
 /// Çatallı bir DAG: ödeme kümelerini ve emisyonu birden fazla blokta ölçmek
 /// için düz bir zincirden daha gerçekçi.
 fn dalli_dag(n: u64) -> Ghostdag {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
     let mut sonraki_fork = 4u64;
     let mut fork_id = 1_000_000u64;
     for b in 2..=n {
         let parents = if b == sonraki_fork {
             fork_id += 1;
-            g.add(Block { bid: fork_id, parents: vec![b - 2] });
+            g.add(Block {
+                bid: fork_id,
+                parents: vec![b - 2],
+            });
             sonraki_fork += 4;
             vec![b - 1, fork_id]
         } else {
@@ -67,7 +73,10 @@ fn dalli_dag(n: u64) -> Ghostdag {
 #[test]
 fn genesis_odulu_50_hazine_yuzde_5_miner_48() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
     let r = g.reward_split(1);
     assert_eq!(r.total, R_0, "genesis emisyonu R_0 = 50 olmalı");
     assert_eq!(r.treasury, 2, "hazine 50 KOK'un %5'i = 2 KOK olmalı");
@@ -81,10 +90,23 @@ fn genesis_odulu_50_hazine_yuzde_5_miner_48() {
 #[test]
 fn hazine_payi_her_derinlikte_tam_yuzde_5() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
-    g.add(Block { bid: 2, parents: vec![1] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
+    g.add(Block {
+        bid: 2,
+        parents: vec![1],
+    });
     // derinlik, reward_split'in okuduğu public alan üzerinden ayarlanır
-    for derinlik in [0u64, 1, 2, 100, EMISSION_HALVING_INTERVAL, 3 * EMISSION_HALVING_INTERVAL] {
+    for derinlik in [
+        0u64,
+        1,
+        2,
+        100,
+        EMISSION_HALVING_INTERVAL,
+        3 * EMISSION_HALVING_INTERVAL,
+    ] {
         g.blue_score.insert(2, derinlik);
         let r = g.reward_split(2);
         assert_eq!(
@@ -98,7 +120,11 @@ fn hazine_payi_her_derinlikte_tam_yuzde_5() {
     // tam sayı bölmenin gerçekten birim düşürdüğü nokta: 39/20 = 1
     g.blue_score.insert(2, 11 * EMISSION_HALVING_INTERVAL); // total = 50 - 11 = 39
     assert_eq!(g.reward_split(2).total, 39);
-    assert_eq!(g.reward_split(2).treasury, 1, "39 * 500 / 10000 = 1 (tam sayı bölme)");
+    assert_eq!(
+        g.reward_split(2).treasury,
+        1,
+        "39 * 500 / 10000 = 1 (tam sayı bölme)"
+    );
 }
 
 /// Emisyon eğrisi aralık başına tam olarak 1 KOK düşer:
@@ -107,8 +133,14 @@ fn hazine_payi_her_derinlikte_tam_yuzde_5() {
 #[test]
 fn emisyon_egrisi_aralk_basina_bir_kok_duser() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
-    g.add(Block { bid: 2, parents: vec![1] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
+    g.add(Block {
+        bid: 2,
+        parents: vec![1],
+    });
     let derinlikler = [
         0u64,
         EMISSION_HALVING_INTERVAL,
@@ -135,8 +167,14 @@ fn emisyon_egrisi_aralk_basina_bir_kok_duser() {
 #[test]
 fn tail_emission_asla_sifir_olamaz() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
-    g.add(Block { bid: 2, parents: vec![1] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
+    g.add(Block {
+        bid: 2,
+        parents: vec![1],
+    });
     // tam zeminde
     g.blue_score.insert(2, R_0 * EMISSION_HALVING_INTERVAL);
     assert_eq!(
@@ -145,14 +183,21 @@ fn tail_emission_asla_sifir_olamaz() {
         "zeminde emisyon sıfıra düştü; tail floor çalışmıyor"
     );
     // çok ötede — saturating_sub ve .max(TAIL_EMISSION) birlikte bağlamalı
-    g.blue_score.insert(2, R_0 * EMISSION_HALVING_INTERVAL * 1_000_000);
+    g.blue_score
+        .insert(2, R_0 * EMISSION_HALVING_INTERVAL * 1_000_000);
     assert_eq!(
         g.reward_split(2).total,
         TAIL_EMISSION,
         "zeminin ötesinde emisyon hala 1 olmalı"
     );
     // ve negatif yöne: hiçbir derinlik total'i TAIL_EMISSION'nın altına düşüremez
-    for d in [0u64, 1, EMISSION_HALVING_INTERVAL, R_0 * EMISSION_HALVING_INTERVAL, u64::MAX / 2] {
+    for d in [
+        0u64,
+        1,
+        EMISSION_HALVING_INTERVAL,
+        R_0 * EMISSION_HALVING_INTERVAL,
+        u64::MAX / 2,
+    ] {
         g.blue_score.insert(2, d);
         let t = g.reward_split(2).total;
         assert!(t >= TAIL_EMISSION, "derinlik {} emisyonu {}'e düştü", d, t);
@@ -178,14 +223,28 @@ fn odul_dagin_her_bloğunda_korunur() {
             r.miners,
             r.total
         );
-        assert!(r.total >= TAIL_EMISSION, "blok {} emisyonu zeminin altında", bid);
+        assert!(
+            r.total >= TAIL_EMISSION,
+            "blok {} emisyonu zeminin altında",
+            bid
+        );
         assert!(r.total <= R_0, "blok {} emisyonu R_0'ı aştı", bid);
         // ödeme kümesi sadece DAG'de var olan blokları içerir
         for o in g.pay_set(*bid) {
-            assert!(g.blocks.contains_key(&o), "blok {} var olmayanı ödedi: {}", bid, o);
+            assert!(
+                g.blocks.contains_key(&o),
+                "blok {} var olmayanı ödedi: {}",
+                bid,
+                o
+            );
         }
         // pay_set_size raporu gerçek ödeme kümesiyle aynı
-        assert_eq!(r.pay_set_size, g.pay_set(*bid).len() as u64, "blok {} ödeme kümesi raporu yanlış", bid);
+        assert_eq!(
+            r.pay_set_size,
+            g.pay_set(*bid).len() as u64,
+            "blok {} ödeme kümesi raporu yanlış",
+            bid
+        );
         denetlenen += 1;
     }
     assert!(denetlenen > 40, "yeterli blok denetlenmedi: {}", denetlenen);
@@ -197,15 +256,24 @@ fn odul_dagin_her_bloğunda_korunur() {
 #[test]
 fn odul_bloktan_turetilir_cagirandan_degil() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
-    g.add(Block { bid: 2, parents: vec![1] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
+    g.add(Block {
+        bid: 2,
+        parents: vec![1],
+    });
     let a = g.reward_split(2);
     let b = g.reward_split(2);
     assert_eq!(a, b, "aynı blok iki farklı ödül dağılımı verdi");
     assert_eq!(a.total, R_0, "derinlik 2 hala ilk aralıktadır");
     // bilinmeyen blok → genesis-era eğrisi, panic değil
     let bilinmeyen = g.reward_split(999);
-    assert_eq!(bilinmeyen.total, R_0, "bilinmeyen blok genesis eğrisi almadı");
+    assert_eq!(
+        bilinmeyen.total, R_0,
+        "bilinmeyen blok genesis eğrisi almadı"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -221,10 +289,22 @@ fn odul_bloktan_turetilir_cagirandan_degil() {
 fn faydali_ai_isciligi_odul_dagilimini_degistirmez() {
     fn iskelet() -> Ghostdag {
         let mut g = Ghostdag::new(GHOSTDAG_K);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
-        g.add(Block { bid: 3, parents: vec![1] });
-        g.add(Block { bid: 4, parents: vec![2, 3] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
+        g.add(Block {
+            bid: 3,
+            parents: vec![1],
+        });
+        g.add(Block {
+            bid: 4,
+            parents: vec![2, 3],
+        });
         g
     }
     let mut u_ile = iskelet();
@@ -236,7 +316,10 @@ fn faydali_ai_isciligi_odul_dagilimini_degistirmez() {
     // 10 atomludan ~95 kat pahalı — ama bunların hiçbiri ödüle giremez
     let kucuk = JobKind::StructurePotential { n_atoms: 10 };
     let buyuk = JobKind::StructurePotential { n_atoms: 100 };
-    assert!(buyuk.flops() > 50 * kucuk.flops(), "büyük hücre küçüğünden pahalı değil");
+    assert!(
+        buyuk.flops() > 50 * kucuk.flops(),
+        "büyük hücre küçüğünden pahalı değil"
+    );
     let kanitlar: Vec<TaskProof> = (0..50)
         .map(|i| {
             // fayda skoru: hücre boyutu 10..100 arası değişir
@@ -255,28 +338,61 @@ fn faydali_ai_isciligi_odul_dagilimini_degistirmez() {
                 fee: 10,
                 burn_rate: 300,
             };
-            assert!(validate_u_task(&gecerli, i as u64 * 10), "geçerli görev fee kapısında reddedildi");
+            assert!(
+                validate_u_task(&gecerli, i as u64 * 10),
+                "geçerli görev fee kapısında reddedildi"
+            );
             // MAX_BURN_RATE sınırı içinde (protokolün istismar karşıtı tavanı)
             assert!(gecerli.burn_rate <= MAX_BURN_RATE);
-            TaskProof { tid: format!("task-{i}"), miner: format!("miner-{i}"), fee: 10 }
+            TaskProof {
+                tid: format!("task-{i}"),
+                miner: format!("miner-{i}"),
+                fee: 10,
+            }
         })
         .collect();
 
-    let mut zengin = ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xAA; 32]);
+    let mut zengin = ConsensusBlock::new(
+        Block {
+            bid: 5,
+            parents: vec![4],
+        },
+        [0xAA; 32],
+    );
     zengin.bundle(kanitlar);
-    assert_eq!(zengin.u_consensus_weight(), 0, "AI görev kanıtları konsensus ağırlığı bildirdi");
+    assert_eq!(
+        zengin.u_consensus_weight(),
+        0,
+        "AI görev kanıtları konsensus ağırlığı bildirdi"
+    );
     add_block(&mut u_ile, &zengin);
     add_block(
         &mut u_siz,
-        &ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xAA; 32]),
+        &ConsensusBlock::new(
+            Block {
+                bid: 5,
+                parents: vec![4],
+            },
+            [0xAA; 32],
+        ),
     );
 
     // ÖLÇÜLEN INVARIANT: ödül dağılımı fayda hacminden bağımsız
-    assert_eq!(u_ile.reward_split(5), u_siz.reward_split(5), "AI görevleri ödül dağılımını değiştirdi");
+    assert_eq!(
+        u_ile.reward_split(5),
+        u_siz.reward_split(5),
+        "AI görevleri ödül dağılımını değiştirdi"
+    );
     assert_eq!(u_ile.reward_split(5).total, u_siz.reward_split(5).total);
-    assert_eq!(u_ile.reward_split(5).treasury, u_siz.reward_split(5).treasury);
+    assert_eq!(
+        u_ile.reward_split(5).treasury,
+        u_siz.reward_split(5).treasury
+    );
     assert_eq!(u_ile.reward_split(5).miners, u_siz.reward_split(5).miners);
-    assert_eq!(u_ile.reward_split(5).pay_set_size, u_siz.reward_split(5).pay_set_size);
+    assert_eq!(
+        u_ile.reward_split(5).pay_set_size,
+        u_siz.reward_split(5).pay_set_size
+    );
     // ve DAG'in oylama çıktısı da
     assert_eq!(u_ile.blue_score[&5], u_siz.blue_score[&5]);
     assert_eq!(u_ile.pay_set(5), u_siz.pay_set(5));
@@ -289,18 +405,35 @@ fn faydali_ai_isciligi_odul_dagilimini_degistirmez() {
 fn fayda_skalasinda_odul_degismez() {
     let o_btn = |kanitlar: Vec<TaskProof>| -> (Ghostdag, u64) {
         let mut g = Ghostdag::new(GHOSTDAG_K);
-        g.add(Block { bid: 1, parents: vec![] });
-        let mut blk = ConsensusBlock::new(Block { bid: 2, parents: vec![1] }, [0xBB; 32]);
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        let mut blk = ConsensusBlock::new(
+            Block {
+                bid: 2,
+                parents: vec![1],
+            },
+            [0xBB; 32],
+        );
         blk.bundle(kanitlar);
         assert_eq!(blk.u_consensus_weight(), 0);
         add_block(&mut g, &blk);
         let r = g.reward_split(2);
         (g, r.total + r.treasury + r.miners + r.pay_set_size)
     };
-    let tek = o_btn(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: u64::MAX }]);
+    let tek = o_btn(vec![TaskProof {
+        tid: "t".into(),
+        miner: "m".into(),
+        fee: u64::MAX,
+    }]);
     let cogu = o_btn(
         (0..1000)
-            .map(|i| TaskProof { tid: format!("t{i}"), miner: format!("m{i}"), fee: 500 })
+            .map(|i| TaskProof {
+                tid: format!("t{i}"),
+                miner: format!("m{i}"),
+                fee: 500,
+            })
             .collect(),
     );
     let hic = o_btn(vec![]);
@@ -313,7 +446,12 @@ fn fayda_skalasinda_odul_degismez() {
     assert_eq!(tek.0.blue_score, hic.0.blue_score);
     assert_eq!(cogu.0.pay_set(2), hic.0.pay_set(2));
     // ve her bir kanıtın fonksiyonel ağırlığı sıfır
-    for p in &[TaskProof { tid: "x".into(), miner: "y".into(), fee: 1 }] {
+    {
+        let p = &TaskProof {
+            tid: "x".into(),
+            miner: "y".into(),
+            fee: 1,
+        };
         assert_eq!(u_task_consensus_weight(p), 0);
     }
 }
@@ -325,14 +463,34 @@ fn fayda_skalasinda_odul_degismez() {
 #[test]
 fn fee_kapisi_odul_icin_girdi_degildir() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
     // fee kapısını tam dolduran 5 görev (her biri 100, toplam 500 = C_FEE)
-    let mut dolu = ConsensusBlock::new(Block { bid: 2, parents: vec![1] }, [0; 32]);
+    let mut dolu = ConsensusBlock::new(
+        Block {
+            bid: 2,
+            parents: vec![1],
+        },
+        [0; 32],
+    );
     let kanitlar: Vec<TaskProof> = (0..5)
         .map(|i| {
-            let gecerli = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
-            assert!(validate_u_task(&gecerli, i * 100), "geçerli görev reddedildi");
-            TaskProof { tid: format!("t{i}"), miner: "m".into(), fee: 100 }
+            let gecerli = TaskSpec {
+                program: "mm8".into(),
+                fee: 100,
+                burn_rate: 300,
+            };
+            assert!(
+                validate_u_task(&gecerli, i * 100),
+                "geçerli görev reddedildi"
+            );
+            TaskProof {
+                tid: format!("t{i}"),
+                miner: "m".into(),
+                fee: 100,
+            }
         })
         .collect();
     // toplam fee 500 = C_FEE, yani kapı tam dolu
@@ -344,9 +502,19 @@ fn fee_kapisi_odul_icin_girdi_degildir() {
     assert_eq!(r.total, R_0);
     assert_eq!(r.treasury + r.miners, r.total);
     // ve fee kapısının ötesi reddedilir: 501. görev sığmaz
-    let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
-    assert!(!validate_u_task(&t, C_FEE), "fee kapısını aşan görev kabul edildi");
-    assert!(validate_u_task(&t, C_FEE - 100), "tam sığan görev reddedildi");
+    let t = TaskSpec {
+        program: "mm8".into(),
+        fee: 100,
+        burn_rate: 300,
+    };
+    assert!(
+        !validate_u_task(&t, C_FEE),
+        "fee kapısını aşan görev kabul edildi"
+    );
+    assert!(
+        validate_u_task(&t, C_FEE - 100),
+        "tam sığan görev reddedildi"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -362,12 +530,24 @@ fn fee_kapisi_odul_icin_girdi_degildir() {
 #[test]
 fn odul_forklu_dagde_dolu_odeme_kumesiyle_tutarli() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
     for b in 2..=6 {
-        g.add(Block { bid: b, parents: vec![1] }); // beş paralel kol
+        g.add(Block {
+            bid: b,
+            parents: vec![1],
+        }); // beş paralel kol
     }
-    g.add(Block { bid: 7, parents: vec![6] }); // son kolu ağır yap
-    g.add(Block { bid: 8, parents: vec![2, 3, 4, 5, 7] }); // hub
+    g.add(Block {
+        bid: 7,
+        parents: vec![6],
+    }); // son kolu ağır yap
+    g.add(Block {
+        bid: 8,
+        parents: vec![2, 3, 4, 5, 7],
+    }); // hub
     assert_eq!(g.selected[&8], Some(7));
     // mergeset(8) = {2,3,4,5}, hepsi mavi (iç anticone ≤ 3 ≤ k=18)
     let ms = g.mergesets[&8].clone();
@@ -394,33 +574,84 @@ fn odul_forklu_dagde_dolu_odeme_kumesiyle_tutarli() {
 /// aynı sıfırı verir.
 #[test]
 fn faydali_iscilik_agirligi_her_fee_ve_sayida_sifirdir() {
-    let mut blk = ConsensusBlock::new(Block { bid: 9, parents: vec![] }, [0; 32]);
+    let mut blk = ConsensusBlock::new(
+        Block {
+            bid: 9,
+            parents: vec![],
+        },
+        [0; 32],
+    );
     assert_eq!(blk.u_consensus_weight(), 0, "boş blok sıfır olmalı");
     // tek ama en pahalı kanıt
-    blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: u64::MAX }]);
-    assert_eq!(blk.u_consensus_weight(), 0, "tek bir max-fee kanıt ağırlık bildirdi");
+    blk.bundle(vec![TaskProof {
+        tid: "t".into(),
+        miner: "m".into(),
+        fee: u64::MAX,
+    }]);
+    assert_eq!(
+        blk.u_consensus_weight(),
+        0,
+        "tek bir max-fee kanıt ağırlık bildirdi"
+    );
     // ve 1000 tanesi
     blk.bundle(
         (0..1000)
-            .map(|i| TaskProof { tid: format!("t{i}"), miner: format!("m{i}"), fee: 500 })
+            .map(|i| TaskProof {
+                tid: format!("t{i}"),
+                miner: format!("m{i}"),
+                fee: 500,
+            })
             .collect(),
     );
-    assert_eq!(blk.u_consensus_weight(), 0, "1000 kanıt sıfırdan farklı ağırlık bildirdi");
+    assert_eq!(
+        blk.u_consensus_weight(),
+        0,
+        "1000 kanıt sıfırdan farklı ağırlık bildirdi"
+    );
     // her kanıtın fonksiyonel ağırlığı da sıfır
     for p in &blk.u_proofs {
-        assert_eq!(u_task_consensus_weight(p), 0, "tek bir U kanıtı ağırlık bildirdi");
+        assert_eq!(
+            u_task_consensus_weight(p),
+            0,
+            "tek bir U kanıtı ağırlık bildirdi"
+        );
     }
     // NEGATİF YÖN: fee ve burn_rate sınırlarının DIŞINDAKİ görevler protokol
     // tarafından reddedilir — bu sınır, ödül için bir girdi DEĞİL, ama
     // protokolün istismar karşıtı tavanıdır
-    let gecerli = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
+    let gecerli = TaskSpec {
+        program: "mm8".into(),
+        fee: 100,
+        burn_rate: 300,
+    };
     assert!(validate_u_task(&gecerli, 0), "geçerli görev reddedildi");
-    let sifir_fee = TaskSpec { program: "mm8".into(), fee: 0, burn_rate: 300 };
-    assert!(!validate_u_task(&sifir_fee, 0), "sıfır fee'li görev kabul edildi");
-    let asiri_burn = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: MAX_BURN_RATE + 1 };
-    assert!(!validate_u_task(&asiri_burn, 0), "MAX_BURN_RATE'i aşan görev kabul edildi");
-    let tavan = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: MAX_BURN_RATE };
-    assert!(validate_u_task(&tavan, 0), "tam tavadaki burn_rate reddedildi");
+    let sifir_fee = TaskSpec {
+        program: "mm8".into(),
+        fee: 0,
+        burn_rate: 300,
+    };
+    assert!(
+        !validate_u_task(&sifir_fee, 0),
+        "sıfır fee'li görev kabul edildi"
+    );
+    let asiri_burn = TaskSpec {
+        program: "mm8".into(),
+        fee: 100,
+        burn_rate: MAX_BURN_RATE + 1,
+    };
+    assert!(
+        !validate_u_task(&asiri_burn, 0),
+        "MAX_BURN_RATE'i aşan görev kabul edildi"
+    );
+    let tavan = TaskSpec {
+        program: "mm8".into(),
+        fee: 100,
+        burn_rate: MAX_BURN_RATE,
+    };
+    assert!(
+        validate_u_task(&tavan, 0),
+        "tam tavadaki burn_rate reddedildi"
+    );
 }
 
 /// MEVCUT DAVRANIŞIN KORUNUMU: bundle() DAG kimliğini değiştiremez — bid ve
@@ -428,10 +659,24 @@ fn faydali_iscilik_agirligi_her_fee_ve_sayida_sifirdir() {
 /// bunların dışını göremez (savunma katmanı 1).
 #[test]
 fn bundle_dag_kimligini_degistirmez() {
-    let mut blk = ConsensusBlock::new(Block { bid: 7, parents: vec![1, 2] }, [0xCC; 32]);
+    let mut blk = ConsensusBlock::new(
+        Block {
+            bid: 7,
+            parents: vec![1, 2],
+        },
+        [0xCC; 32],
+    );
     let once = (blk.dag.bid, blk.dag.parents.clone());
-    blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: 100 }]);
-    assert_eq!((blk.dag.bid, blk.dag.parents), once, "bundle DAG kimliğini değiştirdi");
+    blk.bundle(vec![TaskProof {
+        tid: "t".into(),
+        miner: "m".into(),
+        fee: 100,
+    }]);
+    assert_eq!(
+        (blk.dag.bid, blk.dag.parents),
+        once,
+        "bundle DAG kimliğini değiştirdi"
+    );
     // ve g_cert_bytes da korunur
     assert_eq!(blk.g_cert_bytes, [0xCC; 32]);
 }

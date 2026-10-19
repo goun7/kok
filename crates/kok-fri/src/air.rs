@@ -49,14 +49,22 @@ fn parent(l: &Node, r: &Node) -> Node {
 /// The layer stack of a toy Merkle tree over a list of ints.
 /// 1:1 with f0b_air_proto.py::_merkle_layers.
 pub fn merkle_layers(leaves: &[u64]) -> Vec<Vec<Node>> {
-    let mut layer: Vec<Node> = leaves.iter().enumerate().map(|(i, v)| leaf_hash(i, *v)).collect();
+    let mut layer: Vec<Node> = leaves
+        .iter()
+        .enumerate()
+        .map(|(i, v)| leaf_hash(i, *v))
+        .collect();
     let mut layers = vec![layer.clone()];
     while layer.len() > 1 {
         let mut nxt = Vec::new();
         let mut i = 0;
         while i < layer.len() {
             let l = &layer[i];
-            let r = if i + 1 < layer.len() { &layer[i + 1] } else { &layer[i] };
+            let r = if i + 1 < layer.len() {
+                &layer[i + 1]
+            } else {
+                &layer[i]
+            };
             nxt.push(parent(l, r));
             i += 2;
         }
@@ -93,7 +101,7 @@ pub fn merkle_open(leaves: &[u64], idx: usize) -> Vec<PathStep> {
     let mut path = Vec::new();
     let mut i = idx;
     for layer in &layers[..layers.len() - 1] {
-        let sib = if i % 2 == 0 { i + 1 } else { i - 1 };
+        let sib = if i.is_multiple_of(2) { i + 1 } else { i - 1 };
         if sib < layer.len() {
             if sib < i {
                 path.push(PathStep::Left(layer[sib]));
@@ -154,6 +162,7 @@ impl TileAir {
     /// only in prose here and checked it only in verify, so a caller could
     /// build a proof against a wrong acc and learn it from the verifier. The
     /// prover is the one that refuses.
+    #[allow(clippy::too_many_arguments)]
     pub fn prove(
         &self,
         a: &[Vec<u64>],
@@ -211,6 +220,7 @@ impl TileAir {
     /// WITHOUT recomputing the tile. a_commit / b_commit are Merkle roots over
     /// the flattened input matrices.
     /// 1:1 with TileAIR.verify.
+    #[allow(clippy::too_many_arguments)]
     pub fn verify(
         &self,
         proof: &TileAirProof,
@@ -236,7 +246,7 @@ impl TileAir {
             return false;
         }
         // (3) boundary: trace[m] = claimed_acc
-        if proof.trace.last() != Some(&(&(acc % self.q))) {
+        if proof.trace.last() != Some(&(acc % self.q)) {
             return false;
         }
         let n = e.len();
@@ -276,10 +286,20 @@ impl TileAir {
             }
             // bind the witness to the committed inputs: the residual the
             // prover says it used must be committed at the right position
-            if !merkle_check(a_commit, (i * self.r) * n + l * self.r, a_res, &proof.a_paths[l]) {
+            if !merkle_check(
+                a_commit,
+                (i * self.r) * n + l * self.r,
+                a_res,
+                &proof.a_paths[l],
+            ) {
                 return false;
             }
-            if !merkle_check(b_commit, (l * self.r) * n + j * self.r, b_res, &proof.b_paths[l]) {
+            if !merkle_check(
+                b_commit,
+                (l * self.r) * n + j * self.r,
+                b_res,
+                &proof.b_paths[l],
+            ) {
                 return false;
             }
             // the noisy entry must be the residual plus the public noise
@@ -297,7 +317,7 @@ impl TileAir {
         // the trace must END at the claimed accumulator — the boundary above
         // already covers this, restated because it is the property that makes
         // the proof a proof of THIS tile
-        proof.trace.last() == Some(&((acc % self.q)))
+        proof.trace.last() == Some(&(acc % self.q))
     }
 }
 
@@ -305,14 +325,18 @@ impl TileAir {
 mod tests {
     use super::*;
 
-    fn toy(seed: u64) -> (Vec<Vec<u64>>, Vec<Vec<u64>>, Vec<Vec<u64>>, Vec<Vec<u64>>) {
+    type Matrix = Vec<Vec<u64>>;
+
+    fn toy(seed: u64) -> (Matrix, Matrix, Matrix, Matrix) {
         let mut s = seed;
         let mut mk = || {
             let mut out = vec![vec![0u64; 8]; 8];
-            for i in 0..8 {
-                for j in 0..8 {
-                    s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-                    out[i][j] = s % 97;
+            for row in out.iter_mut() {
+                for cell in row.iter_mut() {
+                    s = s
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    *cell = s % 97;
                 }
             }
             out
@@ -331,7 +355,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
@@ -352,7 +377,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         // prove against the honest acc, then verify against a forged one
@@ -384,7 +410,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
@@ -408,7 +435,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
@@ -434,7 +462,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let bad = (acc + 1) % 97;
@@ -457,7 +486,11 @@ mod tests {
         ];
         // measured: f0b_air_proto._merkle_root(leaves) at random.seed(20260925)
         let python_root: u64 = 7_776_579_357_882_374_515;
-        assert_eq!(merkle_root(&leaves), python_root, "Rust Merkle root diverged from Python's");
+        assert_eq!(
+            merkle_root(&leaves),
+            python_root,
+            "Rust Merkle root diverged from Python's"
+        );
     }
 
     /// OUT-OF-RANGE TILE COORDINATES must reject, not panic. The flat-index
@@ -474,7 +507,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
@@ -513,7 +547,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
@@ -524,13 +559,19 @@ mod tests {
         assert!(air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit));
         // truncate one row of E
         e[0].truncate(1);
-        assert!(!air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit), "a ragged E verified");
+        assert!(
+            !air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit),
+            "a ragged E verified"
+        );
         // a height mismatch on F
         let (a2, b2, _e2, f2) = toy(20260925);
         let mut short_f = f2;
         short_f.pop();
         let _ = (a2, b2);
-        assert!(!air.verify(&proof, acc, &e, &short_f, i, j, a_commit, b_commit), "a short F verified");
+        assert!(
+            !air.verify(&proof, acc, &e, &short_f, i, j, a_commit, b_commit),
+            "a short F verified"
+        );
     }
 
     /// TRUNCATED MERKLE PATHS must reject. a_paths/b_paths are indexed per
@@ -546,7 +587,8 @@ mod tests {
         let mut acc = 0u64;
         for l in 0..m {
             acc = (acc
-                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+                + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2])
+                    % 97)
                 % 97;
         }
         let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
@@ -557,10 +599,16 @@ mod tests {
         assert!(air.verify(&proof, acc, &e, &f, i, j, a_commit, b_commit));
         let mut truncated = proof.clone();
         truncated.a_paths.truncate(1);
-        assert!(!air.verify(&truncated, acc, &e, &f, i, j, a_commit, b_commit), "truncated a_paths verified");
+        assert!(
+            !air.verify(&truncated, acc, &e, &f, i, j, a_commit, b_commit),
+            "truncated a_paths verified"
+        );
         let mut truncated_b = proof.clone();
-        truncated_b.b_paths.truncate(0);
-        assert!(!air.verify(&truncated_b, acc, &e, &f, i, j, a_commit, b_commit), "empty b_paths verified");
+        truncated_b.b_paths.clear();
+        assert!(
+            !air.verify(&truncated_b, acc, &e, &f, i, j, a_commit, b_commit),
+            "empty b_paths verified"
+        );
     }
 
     /// DEGENERATE kernel parameters divide by zero in the accumulator; a
@@ -575,27 +623,45 @@ mod tests {
         let zero_q = TileAir::new(0, 2);
         let zero_r = TileAir::new(97, 0);
         assert!(
-            !zero_q.verify(&TileAirProof {
-                a: vec![],
-                b: vec![],
-                trace: vec![0],
-                a_res: vec![],
-                b_res: vec![],
-                a_paths: vec![],
-                b_paths: vec![],
-            }, 0, &e, &f, 1, 2, 0, 0),
+            !zero_q.verify(
+                &TileAirProof {
+                    a: vec![],
+                    b: vec![],
+                    trace: vec![0],
+                    a_res: vec![],
+                    b_res: vec![],
+                    a_paths: vec![],
+                    b_paths: vec![],
+                },
+                0,
+                &e,
+                &f,
+                1,
+                2,
+                0,
+                0
+            ),
             "q == 0 verified"
         );
         assert!(
-            !zero_r.verify(&TileAirProof {
-                a: vec![],
-                b: vec![],
-                trace: vec![0],
-                a_res: vec![],
-                b_res: vec![],
-                a_paths: vec![],
-                b_paths: vec![],
-            }, 0, &e, &f, 1, 2, 0, 0),
+            !zero_r.verify(
+                &TileAirProof {
+                    a: vec![],
+                    b: vec![],
+                    trace: vec![0],
+                    a_res: vec![],
+                    b_res: vec![],
+                    a_paths: vec![],
+                    b_paths: vec![],
+                },
+                0,
+                &e,
+                &f,
+                1,
+                2,
+                0,
+                0
+            ),
             "r == 0 verified"
         );
     }
@@ -613,17 +679,31 @@ mod tests {
         // (parent(h,h)) that merkle_open marks with Dup.
         for leaves in [vec![3u64, 1, 4, 1], vec![5, 9, 2, 6, 5]] {
             let layers = merkle_layers(&leaves);
-            assert_eq!(layers[0].len(), leaves.len(), "the base layer is the leaves");
-            assert_eq!(layers.last().unwrap().len(), 1, "the stack must end in one root");
+            assert_eq!(
+                layers[0].len(),
+                leaves.len(),
+                "the base layer is the leaves"
+            );
+            assert_eq!(
+                layers.last().unwrap().len(),
+                1,
+                "the stack must end in one root"
+            );
             // the root is the first 8 bytes of the top node, big-endian
             let top = &layers.last().unwrap()[0];
-            assert_eq!(merkle_root(&leaves), u64::from_be_bytes(top[..8].try_into().unwrap()));
+            assert_eq!(
+                merkle_root(&leaves),
+                u64::from_be_bytes(top[..8].try_into().unwrap())
+            );
         }
         // an empty leaf list is the documented degenerate case: root 0
         assert_eq!(merkle_root(&[]), 0, "an empty leaf list must commit to 0");
         // a single leaf: the root IS that leaf's hash, no duplication needed
         let one = merkle_root(&[42]);
-        assert_eq!(one, u64::from_be_bytes(leaf_hash(0, 42)[..8].try_into().unwrap()));
+        assert_eq!(
+            one,
+            u64::from_be_bytes(leaf_hash(0, 42)[..8].try_into().unwrap())
+        );
     }
 
     #[test]
@@ -635,8 +715,10 @@ mod tests {
         let root = merkle_root(&leaves);
         for idx in 0..leaves.len() {
             let path = merkle_open(&leaves, idx);
-            assert!(merkle_check(root, idx, leaves[idx], &path),
-                    "path for index {idx} failed to verify against the root");
+            assert!(
+                merkle_check(root, idx, leaves[idx], &path),
+                "path for index {idx} failed to verify against the root"
+            );
         }
     }
 
@@ -650,17 +732,26 @@ mod tests {
         let leaves: Vec<u64> = vec![7, 7, 13, 7, 7]; // duplicate values, by design
         let root = merkle_root(&leaves);
         let path0 = merkle_open(&leaves, 0);
-        assert!(merkle_check(root, 0, leaves[0], &path0), "the honest path must verify");
+        assert!(
+            merkle_check(root, 0, leaves[0], &path0),
+            "the honest path must verify"
+        );
         // the same VALUE at a different index must NOT verify with index 0's path
-        assert!(!merkle_check(root, 2, leaves[0], &path0),
-                "a path replayed at a foreign index must fail");
+        assert!(
+            !merkle_check(root, 2, leaves[0], &path0),
+            "a path replayed at a foreign index must fail"
+        );
         // the wrong value at the right index must fail
-        assert!(!merkle_check(root, 0, 99, &path0),
-                "a wrong leaf value must fail");
+        assert!(
+            !merkle_check(root, 0, 99, &path0),
+            "a wrong leaf value must fail"
+        );
         // a path built for index 2 must not verify index 0's leaf
         let path2 = merkle_open(&leaves, 2);
-        assert!(!merkle_check(root, 0, leaves[0], &path2),
-                "a foreign path must not verify an honest leaf");
+        assert!(
+            !merkle_check(root, 0, leaves[0], &path2),
+            "a foreign path must not verify an honest leaf"
+        );
     }
 
     #[test]
@@ -673,21 +764,37 @@ mod tests {
         let root = merkle_root(&leaves);
         let path = merkle_open(&leaves, 1);
         assert!(merkle_check(root, 1, leaves[1], &path));
-        assert!(!merkle_check(root, 1, leaves[1], &path[..path.len() - 1]),
-                "a truncated path must not verify");
+        assert!(
+            !merkle_check(root, 1, leaves[1], &path[..path.len() - 1]),
+            "a truncated path must not verify"
+        );
         // an extended path: duplicate the last step, which changes the fold
         let mut extended = path.clone();
         extended.push(path.last().unwrap().clone());
-        assert!(!merkle_check(root, 1, leaves[1], &extended),
-                "an extended path must not verify");
+        assert!(
+            !merkle_check(root, 1, leaves[1], &extended),
+            "an extended path must not verify"
+        );
     }
 
     #[test]
     fn leaf_hash_is_position_and_value_sensitive() {
         // the primitive at the bottom: same value at two positions must hash
         // differently, and two values at the same position must differ.
-        assert_ne!(leaf_hash(0, 5), leaf_hash(1, 5), "leaf_hash must bind the index");
-        assert_ne!(leaf_hash(0, 5), leaf_hash(0, 6), "leaf_hash must bind the value");
-        assert_eq!(leaf_hash(0, 5), leaf_hash(0, 5), "leaf_hash must be deterministic");
+        assert_ne!(
+            leaf_hash(0, 5),
+            leaf_hash(1, 5),
+            "leaf_hash must bind the index"
+        );
+        assert_ne!(
+            leaf_hash(0, 5),
+            leaf_hash(0, 6),
+            "leaf_hash must bind the value"
+        );
+        assert_eq!(
+            leaf_hash(0, 5),
+            leaf_hash(0, 5),
+            "leaf_hash must be deterministic"
+        );
     }
 }

@@ -75,12 +75,16 @@ impl AssignmentGate {
             return Self { threshold: 0 };
         }
         if num >= den {
-            return Self { threshold: u64::MAX };
+            return Self {
+                threshold: u64::MAX,
+            };
         }
         // threshold = num * 2^64 / den, computed in u128 so it cannot wrap
         let t = ((num as u128) << 64) / (den as u128);
         // den > num >= 0 guarantees t < 2^64
-        Self { threshold: t as u64 }
+        Self {
+            threshold: t as u64,
+        }
     }
 
     /// The exact probability this gate represents, as a (num, den) pair over
@@ -113,7 +117,11 @@ pub fn prove(sk: &[u8; 32], pk: &[u8], seed: u64, tid: &str) -> Assignment {
     let a = alpha(seed, tid);
     let pi = ecvrf::prove(sk, pk, &a);
     let beta = ecvrf::proof_to_hash(&pi).expect("a proof just proved is always decodable");
-    Assignment { tid: tid.to_string(), beta, pi }
+    Assignment {
+        tid: tid.to_string(),
+        beta,
+        pi,
+    }
 }
 
 /// Verify an assignment against the public key, the seed, and the gate.
@@ -172,7 +180,11 @@ pub fn assign_tasks(
             None => continue,
         };
         if gate.passes(&beta) {
-            out.push(Assignment { tid: tid.clone(), beta, pi });
+            out.push(Assignment {
+                tid: tid.clone(),
+                beta,
+                pi,
+            });
         }
     }
     out
@@ -188,7 +200,8 @@ mod tests {
     fn key() -> VrfKeys {
         let mut sk = [0u8; 32];
         sk.copy_from_slice(
-            &hex::decode("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721").unwrap(),
+            &hex::decode("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721")
+                .unwrap(),
         );
         VrfKeys::from_secret(sk)
     }
@@ -212,16 +225,28 @@ mod tests {
     fn an_assignment_does_not_transfer_to_another_task_or_epoch() {
         let k = key();
         let a = prove(&k.sk, &k.pk, 42, "task-7");
-        assert!(verify(&k.pk, 42, "task-8", &a.pi).is_none(), "the proof moved to another task");
-        assert!(verify(&k.pk, 43, "task-7", &a.pi).is_none(), "the proof moved to another epoch");
+        assert!(
+            verify(&k.pk, 42, "task-8", &a.pi).is_none(),
+            "the proof moved to another task"
+        );
+        assert!(
+            verify(&k.pk, 43, "task-7", &a.pi).is_none(),
+            "the proof moved to another epoch"
+        );
     }
 
     /// THE GATE IS EXACT. A half-probability gate sits exactly at 2^63, and a
     /// full-probability gate admits everything. No float rounding anywhere.
     #[test]
     fn the_gate_threshold_is_exact() {
-        assert_eq!(AssignmentGate::from_probability(1, 2).threshold(), 1u64 << 63);
-        assert_eq!(AssignmentGate::from_probability(1, 4).threshold(), 1u64 << 62);
+        assert_eq!(
+            AssignmentGate::from_probability(1, 2).threshold(),
+            1u64 << 63
+        );
+        assert_eq!(
+            AssignmentGate::from_probability(1, 4).threshold(),
+            1u64 << 62
+        );
         assert_eq!(AssignmentGate::from_probability(1, 1).threshold(), u64::MAX);
         // degenerate input rejects rather than panicking
         assert_eq!(AssignmentGate::from_probability(1, 0).threshold(), 0);
@@ -281,9 +306,15 @@ mod tests {
         let won_half = betas.iter().filter(|b| half.passes(b)).count();
         let won_tenth = betas.iter().filter(|b| tenth.passes(b)).count();
         let rate = won_half as f64 / n as f64;
-        assert!((0.5 - rate).abs() < 0.04, "a half gate admitted {rate}, not ~0.5");
+        assert!(
+            (0.5 - rate).abs() < 0.04,
+            "a half gate admitted {rate}, not ~0.5"
+        );
         let rate10 = won_tenth as f64 / n as f64;
-        assert!((0.1 - rate10).abs() < 0.02, "a tenth gate admitted {rate10}, not ~0.1");
+        assert!(
+            (0.1 - rate10).abs() < 0.02,
+            "a tenth gate admitted {rate10}, not ~0.1"
+        );
     }
 
     /// EVERY assignment the loop returns is individually verifiable by a node
@@ -308,7 +339,11 @@ mod tests {
         let won = assign_tasks(&k.sk, &k.pk, 7, &tasks);
         assert!(!won.is_empty(), "the gate admitted nothing over 60 tasks");
         for a in &won {
-            assert_eq!(verify(&k.pk, 7, &a.tid, &a.pi), Some(a.beta), "an assignment did not verify");
+            assert_eq!(
+                verify(&k.pk, 7, &a.tid, &a.pi),
+                Some(a.beta),
+                "an assignment did not verify"
+            );
         }
     }
 
@@ -325,11 +360,13 @@ mod tests {
         let k1 = key();
         let mut sk2 = [0u8; 32];
         sk2.copy_from_slice(
-            &hex::decode("2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8").unwrap(),
+            &hex::decode("2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8")
+                .unwrap(),
         );
         let k2 = VrfKeys::from_secret(sk2);
         let gate = AssignmentGate::from_probability(1, 4);
-        let tasks: Vec<(String, AssignmentGate)> = (0..3000).map(|i| (format!("t{i}"), gate)).collect();
+        let tasks: Vec<(String, AssignmentGate)> =
+            (0..3000).map(|i| (format!("t{i}"), gate)).collect();
         // PROVE ONCE PER KEY. The old form called assign_tasks three times —
         // twice for k1 — which recomputed all 3,000 of k1's proofs a second
         // time to get a length that the first call already produced. Caching
@@ -359,7 +396,10 @@ mod tests {
             (2.0 - ratio).abs() < 0.25,
             "two keys won {both_len} assignments vs {one} for one (ratio {ratio}), expected ~2.0"
         );
-        assert!(both.len() > one, "a second key did not increase the win count at all");
+        assert!(
+            both.len() > one,
+            "a second key did not increase the win count at all"
+        );
     }
 
     /// REGRESSION GUARD for the 1.24x cached-y optimisation. The optimisation
@@ -413,11 +453,15 @@ mod tests {
         let k1 = key();
         let mut sk2 = [0u8; 32];
         sk2.copy_from_slice(
-            &hex::decode("2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8").unwrap(),
+            &hex::decode("2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8")
+                .unwrap(),
         );
         let k2 = VrfKeys::from_secret(sk2);
         let a = prove(&k1.sk, &k1.pk, 5, "task-1");
-        assert!(verify(&k2.pk, 5, "task-1", &a.pi).is_none(), "a proof verified under another key");
+        assert!(
+            verify(&k2.pk, 5, "task-1", &a.pi).is_none(),
+            "a proof verified under another key"
+        );
     }
 
     // =========================================================================
@@ -442,8 +486,15 @@ mod tests {
         expected.extend_from_slice(&0x0102030405060708u64.to_be_bytes());
         expected.push(b'|');
         expected.extend_from_slice(b"t7");
-        assert_eq!(a, expected, "the layout must match the documented wire format");
-        assert_eq!(a.len(), 11 + 8 + 1 + 2, "prefix 11 + seed 8 + sep 1 + tid 2");
+        assert_eq!(
+            a, expected,
+            "the layout must match the documented wire format"
+        );
+        assert_eq!(
+            a.len(),
+            11 + 8 + 1 + 2,
+            "prefix 11 + seed 8 + sep 1 + tid 2"
+        );
     }
 
     /// The seed must appear BIG-ENDIAN. An endianness flip would break no
@@ -456,7 +507,11 @@ mod tests {
         // seed 1 big-endian is 00 00 00 00 00 00 00 01; the last seed byte
         // before the separator must be 0x01
         let seed_bytes = &a[11..19];
-        assert_eq!(seed_bytes, &[0, 0, 0, 0, 0, 0, 0, 1], "seed must be big-endian");
+        assert_eq!(
+            seed_bytes,
+            &[0, 0, 0, 0, 0, 0, 0, 1],
+            "seed must be big-endian"
+        );
         assert_eq!(a[19], b'|', "the separator must follow the seed");
         assert_eq!(&a[20..], b"x", "the tid must follow the separator");
     }
@@ -475,10 +530,16 @@ mod tests {
         // different task
         assert_ne!(alpha(777, "task-10"), base, "the tid must affect the bytes");
         // a task that is a PREFIX of another must not collide
-        assert_ne!(alpha(777, "task"), alpha(777, "task-9"),
-                   "a tid prefix must not collide with the longer tid");
+        assert_ne!(
+            alpha(777, "task"),
+            alpha(777, "task-9"),
+            "a tid prefix must not collide with the longer tid"
+        );
         // different prefix would be a different protocol: pin it is present
-        assert!(base.starts_with(b"kok-assign|"), "the domain separator must be present");
+        assert!(
+            base.starts_with(b"kok-assign|"),
+            "the domain separator must be present"
+        );
     }
 
     /// The tid-length-delimiting hazard, stated rather than assumed: because
@@ -496,9 +557,17 @@ mod tests {
         // fixed-width: the tid starts at a fixed offset.
         let a1 = alpha(5, "a|b");
         // the tid starts at offset 20 always (11 prefix + 8 seed + 1 sep)
-        assert_eq!(&a1[20..], b"a|b", "the tid is the verbatim tail at a fixed offset");
+        assert_eq!(
+            &a1[20..],
+            b"a|b",
+            "the tid is the verbatim tail at a fixed offset"
+        );
         // so two different tids always differ in the tail
         assert_ne!(alpha(5, "a|b"), alpha(5, "a"), "different tids must differ");
-        assert_ne!(alpha(5, "a|b"), alpha(5, "|b"), "the tid is verbatim, not re-parsed");
+        assert_ne!(
+            alpha(5, "a|b"),
+            alpha(5, "|b"),
+            "the tid is verbatim, not re-parsed"
+        );
     }
 }

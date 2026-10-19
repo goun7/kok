@@ -10,14 +10,18 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use kok_fri::air::{merkle_root, TileAir};
 
-fn toy(seed: u64) -> (Vec<Vec<u64>>, Vec<Vec<u64>>, Vec<Vec<u64>>, Vec<Vec<u64>>) {
+type Matrix = Vec<Vec<u64>>;
+
+fn toy(seed: u64) -> (Matrix, Matrix, Matrix, Matrix) {
     let mut s = seed;
     let mut mk = || {
         let mut out = vec![vec![0u64; 8]; 8];
-        for i in 0..8 {
-            for j in 0..8 {
-                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-                out[i][j] = s % 97;
+        for row in out.iter_mut() {
+            for cell in row.iter_mut() {
+                s = s
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                *cell = s % 97;
             }
         }
         out
@@ -33,14 +37,23 @@ fn bench_air_prove(c: &mut Criterion) {
     let (i, j) = (1, 2);
     let mut acc = 0u64;
     for l in 0..m {
-        acc = (acc + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97) % 97;
+        acc = (acc
+            + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+            % 97;
     }
     c.bench_function("air prove (one tile, q=97 n=8)", |bencher| {
         bencher.iter(|| {
-            black_box(air.prove(
-                black_box(&a), black_box(&b), black_box(&e), black_box(&f),
-                777, i, j, acc,
-            ));
+            let proof = air.prove(
+                black_box(&a),
+                black_box(&b),
+                black_box(&e),
+                black_box(&f),
+                777,
+                i,
+                j,
+                acc,
+            );
+            black_box(proof.is_ok());
         })
     });
 }
@@ -53,7 +66,9 @@ fn bench_air_verify(c: &mut Criterion) {
     let (i, j) = (1, 2);
     let mut acc = 0u64;
     for l in 0..m {
-        acc = (acc + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97) % 97;
+        acc = (acc
+            + (a[i * 2][l * 2] + e[i * 2][l * 2]) % 97 * (b[l * 2][j * 2] + f[l * 2][j * 2]) % 97)
+            % 97;
     }
     let flat_a: Vec<u64> = a.iter().flatten().copied().collect();
     let flat_b: Vec<u64> = b.iter().flatten().copied().collect();
@@ -63,8 +78,14 @@ fn bench_air_verify(c: &mut Criterion) {
     c.bench_function("air verify (one tile, q=97 n=8)", |bencher| {
         bencher.iter(|| {
             black_box(air.verify(
-                black_box(&proof), acc, black_box(&e), black_box(&f),
-                i, j, a_commit, b_commit,
+                black_box(&proof),
+                acc,
+                black_box(&e),
+                black_box(&f),
+                i,
+                j,
+                a_commit,
+                b_commit,
             ));
         })
     });

@@ -34,7 +34,12 @@ pub struct Tx {
 
 impl Tx {
     pub fn new(id: u64, fee_per_byte: u64, bytes: u64) -> Self {
-        Self { id, fee_per_byte, bytes, fee: fee_per_byte.saturating_mul(bytes) }
+        Self {
+            id,
+            fee_per_byte,
+            bytes,
+            fee: fee_per_byte.saturating_mul(bytes),
+        }
     }
 }
 
@@ -53,7 +58,10 @@ pub struct Mempool {
 
 impl Mempool {
     pub fn new() -> Self {
-        Self { by_fee: BTreeMap::new(), index: BTreeMap::new() }
+        Self {
+            by_fee: BTreeMap::new(),
+            index: BTreeMap::new(),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -109,7 +117,7 @@ impl Mempool {
     /// This is a deterministic total order — same pool in, same order out.
     pub fn pack_order(&self) -> Vec<Tx> {
         let mut out = Vec::with_capacity(self.index.len());
-        for (_key, bucket) in &self.by_fee {
+        for bucket in self.by_fee.values() {
             // bucket is keyed by ascending id, which is exactly the tie-break
             out.extend(bucket.values().copied());
         }
@@ -148,7 +156,7 @@ impl Mempool {
         self.pack_order()
             .iter()
             .map(|t| t.fee)
-            .fold(0u64, |acc, f| acc.checked_add(f).unwrap_or(u64::MAX))
+            .fold(0u64, |acc, f| acc.saturating_add(f))
     }
 }
 
@@ -171,7 +179,11 @@ mod tests {
         let _ = p.insert(Tx::new(2, 50, 100));
         let _ = p.insert(Tx::new(3, 20, 100));
         let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
-        assert_eq!(ids, vec![2, 3, 1], "the pool did not return descending fee-per-byte");
+        assert_eq!(
+            ids,
+            vec![2, 3, 1],
+            "the pool did not return descending fee-per-byte"
+        );
     }
 
     /// TIES BREAK BY ASCENDING ID — determinism. Two honest nodes with the
@@ -184,7 +196,11 @@ mod tests {
             let _ = p.insert(Tx::new(id, 10, 100));
         }
         let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
-        assert_eq!(ids, vec![3, 5, 7, 11], "ties were not broken by ascending id");
+        assert_eq!(
+            ids,
+            vec![3, 5, 7, 11],
+            "ties were not broken by ascending id"
+        );
         // re-packing the SAME pool must give the SAME order, every time
         for _ in 0..20 {
             assert_eq!(
@@ -242,12 +258,21 @@ mod tests {
         let _ = p.insert(Tx::new(1, 1, u64::MAX));
         let _ = p.insert(Tx::new(2, 1, u64::MAX));
         let t = p.total_fee();
-        assert_eq!(t, u64::MAX, "the overflowed fee total wrapped to {} instead of reporting itself", t);
+        assert_eq!(
+            t,
+            u64::MAX,
+            "the overflowed fee total wrapped to {} instead of reporting itself",
+            t
+        );
         // the honest case still behaves: a small pool reports its exact sum
         let mut q = Mempool::new();
         let _ = q.insert(Tx::new(1, 10, 100)); // fee 1000
         let _ = q.insert(Tx::new(2, 10, 100)); // fee 1000
-        assert_eq!(q.total_fee(), 2000, "an honest pool did not report its exact total");
+        assert_eq!(
+            q.total_fee(),
+            2000,
+            "an honest pool did not report its exact total"
+        );
     }
 
     /// REMOVAL: taking a tx out of the pool drops it from BOTH the order and
@@ -287,20 +312,28 @@ mod tests {
             let mut best = 0u64;
             for mask in 0u32..(1 << n) {
                 let (mut bytes, mut fee) = (0u64, 0u64);
-                for i in 0..n {
+                for (i, item) in all.iter().enumerate().take(n) {
                     if mask >> i & 1 == 1 {
-                        bytes += all[i].bytes;
-                        fee += all[i].fee;
+                        bytes += item.bytes;
+                        fee += item.fee;
                     }
                 }
                 if bytes <= budget {
                     best = best.max(fee);
                 }
             }
-            assert!(packed <= best, "budget {}: the pool packed MORE than the optimum", budget);
+            assert!(
+                packed <= best,
+                "budget {}: the pool packed MORE than the optimum",
+                budget
+            );
             // the pool is greedy-by-density; it must match the optimum on
             // these instances, which is the property worth pinning
-            assert_eq!(packed, best, "budget {}: the pool order was not fee-maximal", budget);
+            assert_eq!(
+                packed, best,
+                "budget {}: the pool order was not fee-maximal",
+                budget
+            );
         }
     }
 
@@ -323,19 +356,32 @@ mod tests {
         let mut p = Mempool::new();
         // zero bytes with a high declared rate: must refuse, must not sort
         // ahead of the honest 100-byte transactions below
-        assert!(!p.insert(Tx::new(1, 1_000_000, 0)), "a zero-byte tx was accepted");
+        assert!(
+            !p.insert(Tx::new(1, 1_000_000, 0)),
+            "a zero-byte tx was accepted"
+        );
         // zero fee (zero rate)
         assert!(!p.insert(Tx::new(2, 0, 100)), "a zero-fee tx was accepted");
         // both
-        assert!(!p.insert(Tx::new(3, 0, 0)), "a zero-byte zero-fee tx was accepted");
-        assert!(p.is_empty(), "refused transactions left residue in the pool");
+        assert!(
+            !p.insert(Tx::new(3, 0, 0)),
+            "a zero-byte zero-fee tx was accepted"
+        );
+        assert!(
+            p.is_empty(),
+            "refused transactions left residue in the pool"
+        );
 
         // the honest ones are still accepted
         assert!(p.insert(Tx::new(10, 50, 100)));
         assert!(p.insert(Tx::new(11, 30, 100)));
         assert_eq!(p.len(), 2);
         let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
-        assert_eq!(ids, vec![10, 11], "the pack order was polluted by refused txs");
+        assert_eq!(
+            ids,
+            vec![10, 11],
+            "the pack order was polluted by refused txs"
+        );
     }
 
     /// A refused replacement must not evict the existing entry — the spam
@@ -359,11 +405,21 @@ mod tests {
     #[test]
     fn empty_and_zero_budget_corners_select_nothing() {
         let mut p = Mempool::new();
-        assert!(p.select(0).is_empty(), "an empty pool selected something at budget 0");
+        assert!(
+            p.select(0).is_empty(),
+            "an empty pool selected something at budget 0"
+        );
         let _ = p.insert(Tx::new(1, 50, 100));
-        assert!(p.select(0).is_empty(), "a zero budget selected a nonzero-byte tx");
+        assert!(
+            p.select(0).is_empty(),
+            "a zero budget selected a nonzero-byte tx"
+        );
         assert!(p.select(99).is_empty(), "a sub-tx budget selected the tx");
-        assert_eq!(p.select(100).len(), 1, "an exactly-fitting budget did not select the tx");
+        assert_eq!(
+            p.select(100).len(),
+            1,
+            "an exactly-fitting budget did not select the tx"
+        );
         assert_eq!(p.select(u64::MAX).len(), 1);
     }
 
@@ -383,16 +439,29 @@ mod tests {
     fn tx_new_saturates_the_fee_instead_of_wrapping() {
         // rate * bytes where the product overflows by a factor of 2
         let t = Tx::new(1, u64::MAX, 2);
-        assert_eq!(t.fee, u64::MAX, "the fee wrapped to {} instead of saturating", t.fee);
+        assert_eq!(
+            t.fee,
+            u64::MAX,
+            "the fee wrapped to {} instead of saturating",
+            t.fee
+        );
         assert_eq!(t.fee_per_byte, u64::MAX);
         assert_eq!(t.bytes, 2);
         // the symmetric shape: a small rate and an unbounded byte count
         let u = Tx::new(2, 2, u64::MAX);
-        assert_eq!(u.fee, u64::MAX, "the fee wrapped in the bytes-large direction");
+        assert_eq!(
+            u.fee,
+            u64::MAX,
+            "the fee wrapped in the bytes-large direction"
+        );
         // and the honest case stays exact, so saturation is not an excuse to
         // round anything that does not need it
         assert_eq!(Tx::new(3, 10, 100).fee, 1000);
-        assert_eq!(Tx::new(4, 0, 100).fee, 0, "a zero rate must give a zero fee");
+        assert_eq!(
+            Tx::new(4, 0, 100).fee,
+            0,
+            "a zero rate must give a zero fee"
+        );
     }
 
     /// REPLACE-BY-FEE TO A *LOWER* RATE MOVES THE TX DOWN THE ORDER.
@@ -417,12 +486,14 @@ mod tests {
         let ids: Vec<u64> = p.pack_order().iter().map(|t| t.id).collect();
         // 50 gone; order is now 30, 20(the moved 1), 10
         assert_eq!(
-            ids, vec![2, 1, 3],
+            ids,
+            vec![2, 1, 3],
             "the lowered tx did not move down: got {ids:?}"
         );
         // and the stale bucket at 50 must be GONE — pack_order has no duplicate
         assert_eq!(
-            ids.iter().filter(|&&id| id == 1).count(), 1,
+            ids.iter().filter(|&&id| id == 1).count(),
+            1,
             "tx 1 appears more than once after the rate change"
         );
         // replacing with the SAME rate is a no-op that keeps the position
@@ -469,7 +540,11 @@ mod tests {
         // total_fee is exactly the sum over pack_order, computed independently
         let order = p.pack_order();
         let manual: u64 = order.iter().map(|t| t.fee).sum();
-        assert_eq!(p.total_fee(), manual, "total_fee is not the sum of the order it owns");
+        assert_eq!(
+            p.total_fee(),
+            manual,
+            "total_fee is not the sum of the order it owns"
+        );
         assert_eq!(p.total_fee(), 9000);
 
         // and total_fee is unaffected by having selected from the pool — the

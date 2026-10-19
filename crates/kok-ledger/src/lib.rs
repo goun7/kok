@@ -143,7 +143,11 @@ impl Ledger {
         // the key present. Held by .expect rather than .unwrap so the safety
         // rests on a stated reason instead of on the reader reconstructing it,
         // and so a future edit that breaks the ordering fails loudly here.
-        *self.balances.get_mut(&poster).expect("bal >= fee > 0 was checked above, so the poster has a balance entry") = bal - fee;
+        *self
+            .balances
+            .get_mut(&poster)
+            .expect("bal >= fee > 0 was checked above, so the poster has a balance entry") =
+            bal - fee;
         self.total_escrowed = self
             .total_escrowed
             .checked_add(fee)
@@ -216,7 +220,10 @@ impl Ledger {
             .ok_or(LedgerError::Overflow)?;
         let bal = self.balances.entry(miner).or_insert(0);
         *bal = bal.checked_add(pay).ok_or(LedgerError::Overflow)?;
-        self.total_paid = self.total_paid.checked_add(pay).ok_or(LedgerError::Overflow)?;
+        self.total_paid = self
+            .total_paid
+            .checked_add(pay)
+            .ok_or(LedgerError::Overflow)?;
         self.total_burned = self
             .total_burned
             .checked_add(burn)
@@ -225,7 +232,10 @@ impl Ledger {
         // The task entry exists because it was looked up at the top of this
         // function; nothing between there and here removes it. .expect rather
         // than .unwrap so the reason is at the point of use, not inferred.
-        let t = self.tasks.get_mut(&tid).expect("the task was looked up above and is not removed in this function");
+        let t = self
+            .tasks
+            .get_mut(&tid)
+            .expect("the task was looked up above and is not removed in this function");
         t.status = TaskStatus::Settled;
         Ok(Settlement { pay, burn })
     }
@@ -250,7 +260,10 @@ impl Ledger {
         // function; nothing between there and here removes it. Same reasoning
         // as the settle path — the invariant is real but it was held only by
         // a comment, so it is now stated at the point of use.
-        self.tasks.get_mut(&tid).expect("the task was looked up above and is not removed in this function").status = TaskStatus::Refunded;
+        self.tasks
+            .get_mut(&tid)
+            .expect("the task was looked up above and is not removed in this function")
+            .status = TaskStatus::Refunded;
         Ok(())
     }
 
@@ -278,7 +291,11 @@ impl Ledger {
     /// panic in debug and silently wrap in release, which would make the
     /// guard itself unreliable exactly when it is needed most.
     pub fn conserved(&self) -> bool {
-        let balances: u64 = self.balances.values().copied().fold(0u64, u64::saturating_add);
+        let balances: u64 = self
+            .balances
+            .values()
+            .copied()
+            .fold(0u64, u64::saturating_add);
         let held = balances.saturating_add(self.total_escrowed);
         // paid-out funds came from escrow and now sit in balances, so they
         // must not be double-counted: the identity is balances+escrow
@@ -331,7 +348,10 @@ mod tests {
         let mut l = Ledger::new();
         l.deposit(1, 1000).unwrap();
         l.post_task(1, 10, 600, 100).unwrap();
-        assert!(l.post_task(1, 11, 600, 100).is_err(), "the second task over-drew the balance");
+        assert!(
+            l.post_task(1, 11, 600, 100).is_err(),
+            "the second task over-drew the balance"
+        );
         assert_eq!(l.balance(1), 400);
         assert_eq!(l.total_escrowed(), 600);
         assert!(l.conserved());
@@ -395,7 +415,11 @@ mod tests {
         );
         // the wrong payee's balance did not grow, and the task is still open
         assert_eq!(l.balance(3), 0, "the wrong payee was credited");
-        assert_eq!(l.task_status(11), Some(TaskStatus::Escrowed), "the task was closed by a wrong payee");
+        assert_eq!(
+            l.task_status(11),
+            Some(TaskStatus::Escrowed),
+            "the task was closed by a wrong payee"
+        );
         assert!(l.conserved());
         // the real assignee still can
         assert!(l.settle(11, 4).is_ok());
@@ -453,7 +477,11 @@ mod tests {
         l.post_task(1, 10, 400, 250).unwrap();
         l.refund(10).unwrap();
         assert_eq!(l.balance(1), 1000);
-        assert_eq!(l.total_burned(), 0, "a refund burned value for work that never happened");
+        assert_eq!(
+            l.total_burned(),
+            0,
+            "a refund burned value for work that never happened"
+        );
         assert_eq!(l.total_escrowed(), 0);
         assert!(l.conserved());
     }
@@ -479,10 +507,22 @@ mod tests {
     fn degenerate_task_parameters_are_refused() {
         let mut l = Ledger::new();
         l.deposit(1, 10_000).unwrap();
-        assert!(l.post_task(1, 1, 0, 100).is_err(), "a zero fee was accepted");
-        assert!(l.post_task(1, 2, 100, 0).is_err(), "a zero burn rate was accepted");
-        assert!(l.post_task(1, 3, 100, 501).is_err(), "a burn rate above the ceiling was accepted");
-        assert!(l.post_task(1, 4, 100, MAX_BURN_RATE).is_ok(), "the ceiling itself must be accepted");
+        assert!(
+            l.post_task(1, 1, 0, 100).is_err(),
+            "a zero fee was accepted"
+        );
+        assert!(
+            l.post_task(1, 2, 100, 0).is_err(),
+            "a zero burn rate was accepted"
+        );
+        assert!(
+            l.post_task(1, 3, 100, 501).is_err(),
+            "a burn rate above the ceiling was accepted"
+        );
+        assert!(
+            l.post_task(1, 4, 100, MAX_BURN_RATE).is_ok(),
+            "the ceiling itself must be accepted"
+        );
     }
 
     /// UNKNOWN TASKS: operations on a task id that was never posted must
@@ -541,7 +581,7 @@ mod tests {
                         let op = (r >> 8) % 2;
                         let _ = if op == 0 {
                             let miner = (r >> 16) % 8;
-                            if (r >> 24) % 2 == 0 {
+                            if (r >> 24).is_multiple_of(2) {
                                 let _ = l.assign(tid, miner);
                             }
                             l.settle(tid, miner).map(|_| ())
@@ -579,6 +619,7 @@ mod tests {
     ///     a task fee may burn (an anti-abuse bound, not a policy target);
     ///   * TREASURY_BPS = 500 BASIS POINTS = 5% — the treasury's share of
     ///     the G-layer block reward, an entirely different quantity.
+    ///
     /// Same digits, different units, different layers. The burn at the
     /// ceiling of a 1000-fee task is 500, not 50.
     #[test]
@@ -589,7 +630,10 @@ mod tests {
         l.post_task(1, 1, 1000, MAX_BURN_RATE).unwrap();
         l.assign(1, 2).unwrap();
         let s = l.settle(1, 2).unwrap();
-        assert_eq!(s.burn, 500, "the ceiling burn was not exactly MAX_BURN_RATE per mille");
+        assert_eq!(
+            s.burn, 500,
+            "the ceiling burn was not exactly MAX_BURN_RATE per mille"
+        );
         assert_eq!(s.pay, 500);
         // a rate that does not divide evenly: 333 per mille of 1000
         l.post_task(1, 2, 1000, 333).unwrap();
@@ -611,7 +655,11 @@ mod tests {
         l.post_task(1, 1, fee, MAX_BURN_RATE).unwrap();
         l.assign(1, 2).unwrap();
         let s = l.settle(1, 2).unwrap();
-        assert_eq!(s.burn, fee * MAX_BURN_RATE / 1000, "the burn wrapped or mis-computed");
+        assert_eq!(
+            s.burn,
+            fee * MAX_BURN_RATE / 1000,
+            "the burn wrapped or mis-computed"
+        );
         assert_eq!(s.pay, fee - s.burn);
         assert!(l.conserved());
     }

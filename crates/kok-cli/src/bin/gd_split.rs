@@ -14,7 +14,18 @@ fn main() {
     let t1 = Instant::now();
     let o = g.order(tip);
     let order_ms = t1.elapsed().as_secs_f64() * 1000.0;
-    println!("add (600 blocks): {:.2} ms | order: {:.2} ms ({} entries)", add_ms, order_ms, o.len());
-    println!("per-block add: {:.1} us (must be << 100 ms = T_b at 10 BPS)", add_ms / (g.blocks.len() as f64) * 1000.0);
-    println!("order: {:.1} us (the latency a block pays when it arrives)", order_ms * 1000.0);
+    println!(
+        "add (600 blocks): {:.2} ms | order: {:.2} ms ({} entries)",
+        add_ms,
+        order_ms,
+        o.len()
+    );
+    println!(
+        "per-block add: {:.1} us (must be << 100 ms = T_b at 10 BPS)",
+        add_ms / (g.blocks.len() as f64) * 1000.0
+    );
+    println!(
+        "order: {:.1} us (the latency a block pays when it arrives)",
+        order_ms * 1000.0
+    );
 }

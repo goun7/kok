@@ -1,9 +1,7 @@
 //! air.rs Merkle yolu testleri (core-final, LEAD).
 //! Kural-1: mevcut dosyalara DOKUNULMADI, SADECE bu yeni dosya eklendi.
 
-use kok_fri::air::{
-    leaf_hash, merkle_check, merkle_layers, merkle_open, merkle_root, PathStep,
-};
+use kok_fri::air::{leaf_hash, merkle_check, merkle_layers, merkle_open, merkle_root, PathStep};
 
 #[test]
 fn merkle_layers_single_leaf_one_layer() {
@@ -32,7 +30,10 @@ fn merkle_open_and_check_roundtrip_even() {
     let root = merkle_root(&leaves);
     for idx in 0..leaves.len() {
         let path = merkle_open(&leaves, idx);
-        assert!(merkle_check(root, idx, leaves[idx], &path), "idx {idx} doğrulanmadı");
+        assert!(
+            merkle_check(root, idx, leaves[idx], &path),
+            "idx {idx} doğrulanmadı"
+        );
     }
 }
 
@@ -43,7 +44,10 @@ fn merkle_open_and_check_roundtrip_odd() {
     let root = merkle_root(&leaves);
     for idx in 0..leaves.len() {
         let path = merkle_open(&leaves, idx);
-        assert!(merkle_check(root, idx, leaves[idx], &path), "idx {idx} (odd) doğrulanmadı");
+        assert!(
+            merkle_check(root, idx, leaves[idx], &path),
+            "idx {idx} (odd) doğrulanmadı"
+        );
     }
 }
 

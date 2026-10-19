@@ -29,10 +29,11 @@
 //!      yakalanır — sessiz bir kabul değil, nedeni taşıyan bir reddir.
 
 use kok_poum::canonical;
-use kok_poum::{KwKernel, Certificate, TOY_Q, TOY_R};
+use kok_poum::{Certificate, KwKernel, TOY_Q, TOY_R};
 use kok_pvi::{pack, verify_raw, Verdict, VerifierInput};
 
 /// Matrisleri + kanıtı kablo baytlarına encode et (paket düzeninin ta kendisi).
+#[allow(clippy::too_many_arguments)]
 fn encode(
     a: &[Vec<u64>],
     b: &[Vec<u64>],
@@ -64,7 +65,12 @@ fn encode(
     pub_inputs[24..32].copy_from_slice(&(n as u64).to_le_bytes());
     pub_inputs[32..40].copy_from_slice(&q.to_le_bytes());
     pub_inputs[40..48].copy_from_slice(&(r as u64).to_le_bytes());
-    VerifierInput { cert_bytes, flat_a: flat, flat_b, pub_inputs }
+    VerifierInput {
+        cert_bytes,
+        flat_a: flat,
+        flat_b,
+        pub_inputs,
+    }
 }
 
 /// Canonical matrisler üzerinden dürüst bir kanıt madenle (tek bir nonce).
@@ -107,27 +113,80 @@ fn her_bozuk_girdi_reddeder_asla_panic_yapmaz() {
     let sifir_hedef = encode(&a, &b, &cert, 777, nonce, 0, TOY_Q, TOY_R);
     // sıfır hedefle 512 byte beklendi (n=8) — encode zaten doğru boyutta
 
-    let n_sifir = pack(cert.i as u64, cert.j as u64, cert.value, cert.m as u64, 777, nonce, target, 0, TOY_Q, TOY_R as u64);
+    let n_sifir = pack(
+        cert.i as u64,
+        cert.j as u64,
+        cert.value,
+        cert.m as u64,
+        777,
+        nonce,
+        target,
+        0,
+        TOY_Q,
+        TOY_R as u64,
+    );
 
     // r, n'yi bölmüyor (n=7, r=2 → 7%2=1) — 7*7*8=392 byte
     let mut r_bolmuyor = pack(
-        cert.i as u64, cert.j as u64, cert.value, cert.m as u64, 777, nonce, target, 7, TOY_Q, 2,
+        cert.i as u64,
+        cert.j as u64,
+        cert.value,
+        cert.m as u64,
+        777,
+        nonce,
+        target,
+        7,
+        TOY_Q,
+        2,
     );
     r_bolmuyor.flat_a = vec![0u8; 49 * 8];
     r_bolmuyor.flat_b = vec![0u8; 49 * 8];
 
     // gridin dışında tile (n=8, r=2 → grid 4x4; (9,9) dışarıda)
-    let mut disarida = pack(9, 9, cert.value, cert.m as u64, 777, nonce, target, 8, TOY_Q, 2);
+    let mut disarida = pack(
+        9,
+        9,
+        cert.value,
+        cert.m as u64,
+        777,
+        nonce,
+        target,
+        8,
+        TOY_Q,
+        2,
+    );
     disarida.flat_a = vec![0u8; 512];
     disarida.flat_b = vec![0u8; 512];
 
     // m, n/r ile tutarsız (n=8, r=2 → grid 4; m=99 yanlış)
-    let mut m_yanlis = pack(cert.i as u64, cert.j as u64, cert.value, 99, 777, nonce, target, 8, TOY_Q, 2);
+    let mut m_yanlis = pack(
+        cert.i as u64,
+        cert.j as u64,
+        cert.value,
+        99,
+        777,
+        nonce,
+        target,
+        8,
+        TOY_Q,
+        2,
+    );
     m_yanlis.flat_a = vec![0u8; 512];
     m_yanlis.flat_b = vec![0u8; 512];
 
     // q sıfır — dejenere alan
-    let mut q_sifir = pack(cert.i as u64, cert.j as u64, cert.value, cert.m as u64, 777, nonce, target, 8, 0, 2);
+    let mut q_sifir = pack(
+        cert.i as u64,
+        cert.j as u64,
+        cert.value,
+        cert.m as u64,
+        777,
+        nonce,
+        target,
+        8,
+        0,
+        2,
+    );
     q_sifir.flat_a = vec![0u8; 512];
     q_sifir.flat_b = vec![0u8; 512];
 
@@ -170,7 +229,7 @@ fn her_bozuk_girdi_reddeder_asla_panic_yapmaz() {
     for (ad, girdi) in &girdiler {
         // TOPLAMLIK: panic yok, her zaman bir karar
         let sonuc = std::panic::catch_unwind(|| verify_raw(girdi));
-        let sonuc = sonuc.expect(&format!("'{ad}' panic yaptı — toplamlık bozuldu"));
+        let sonuc = sonuc.unwrap_or_else(|_| panic!("'{ad}' panic yaptı — toplamlık bozuldu"));
         assert!(!sonuc.accepted(), "'{ad}' kabul edildi — bozuk girdi geçti");
         assert!(
             matches!(sonuc, Verdict::Reject(_)),
@@ -178,7 +237,11 @@ fn her_bozuk_girdi_reddeder_asla_panic_yapmaz() {
         );
         reddedildi += 1;
     }
-    assert_eq!(reddedildi, girdiler.len(), "bazı bozuk girdiler denetlenmedi");
+    assert_eq!(
+        reddedildi,
+        girdiler.len(),
+        "bazı bozuk girdiler denetlenmedi"
+    );
     // ve sağlıklı girdi hala kabul görüyor (bozukluk paraziti yok)
     let saglikli = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
     assert!(matches!(verify_raw(&saglikli), Verdict::Accept));
@@ -197,7 +260,10 @@ fn ayni_degerler_iki_kez_encode_bayt_bayt_aynidir() {
     let (a, b, cert, nonce, target) = madenle();
     let p1 = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
     let p2 = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
-    assert_eq!(p1, p2, "aynı değerler farklı paketler üretti — wire kontratı deterministik değil");
+    assert_eq!(
+        p1, p2,
+        "aynı değerler farklı paketler üretti — wire kontratı deterministik değil"
+    );
     // iki farklı nonce iki farklı paket vermelidir (kanıt nonce'a bağlı)
     let p3 = encode(&a, &b, &cert, 778, nonce, target, TOY_Q, TOY_R);
     assert_ne!(p1, p3, "farklı ctx aynı paketi üretti — bağlayıcılık yok");
@@ -213,7 +279,10 @@ fn pack_decode_geri_donusu_tutarlidir() {
     // kanıt doğrulanmaz, ama REDDETMELİDİR — toplamlığın kanıtı)
     let v = verify_raw(&input);
     assert!(!v.accepted(), "sıfır matrislerle paket kabul edilemez");
-    assert!(matches!(v, Verdict::Reject(_)), "pack paketi bir karara ulaşmadı");
+    assert!(
+        matches!(v, Verdict::Reject(_)),
+        "pack paketi bir karara ulaşmadı"
+    );
     // ve karark karar metni "doğrulamadı" demeli, "yapısal hata" değil
     if let Verdict::Reject(neden) = v {
         assert!(
@@ -242,10 +311,16 @@ fn kanit_baska_ctx_altinda_replay_edilince_reddedilir() {
     assert!(matches!(verify_raw(&dogru), Verdict::Accept));
     // yanlış sistem kimliğinde reddet
     let replay = encode(&a, &b, &cert, 778, nonce, target, TOY_Q, TOY_R);
-    assert!(!verify_raw(&replay).accepted(), "ctx replay kabul edildi — upgrade güvenliği yok");
+    assert!(
+        !verify_raw(&replay).accepted(),
+        "ctx replay kabul edildi — upgrade güvenliği yok"
+    );
     // ve 0 (varsayılan) ctx altında da reddet
     let sifir = encode(&a, &b, &cert, 0, nonce, target, TOY_Q, TOY_R);
-    assert!(!verify_raw(&sifir).accepted(), "ctx 0 altında replay kabul edildi");
+    assert!(
+        !verify_raw(&sifir).accepted(),
+        "ctx 0 altında replay kabul edildi"
+    );
 }
 
 /// SAHTELENMİŞ değer reddedilir: paketin iddia ettiği akümülatör, tile'ın
@@ -257,7 +332,10 @@ fn sahtelenmis_deger_reddedilir() {
     let mut sahte = cert.clone();
     sahte.value = (cert.value + 1) % TOY_Q;
     let input = encode(&a, &b, &sahte, 777, nonce, target, TOY_Q, TOY_R);
-    assert!(!verify_raw(&input).accepted(), "sahtelenmiş tile değeri kabul edildi");
+    assert!(
+        !verify_raw(&input).accepted(),
+        "sahtelenmiş tile değeri kabul edildi"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -281,14 +359,20 @@ fn kernel_parametreleri_paketten_gelir_sabit_degildir() {
     let mut yeni_alan = encode(&a, &b, &cert, 777, nonce, target, 89, TOY_R);
     // pack/encode zaten doğru boyutta flat_a üretti; sadece q'yu değiştirelim
     yeni_alan.pub_inputs[32..40].copy_from_slice(&89u64.to_le_bytes());
-    assert!(!verify_raw(&yeni_alan).accepted(), "yeni alan altında eski kanıt kabul edildi");
+    assert!(
+        !verify_raw(&yeni_alan).accepted(),
+        "yeni alan altında eski kanıt kabul edildi"
+    );
 
     // YENİ TILE ADIMI (r = 4): n=8, r=4 → grid 2x2, ama cert.m = 4 →
     // decode "m is 4 but n/r is 2" ile reddeder (width binding)
     let mut yeni_adim = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, 4);
     yeni_adim.pub_inputs[40..48].copy_from_slice(&4u64.to_le_bytes());
     let v = verify_raw(&yeni_adim);
-    assert!(!v.accepted(), "yeni tile adımı altında eski kanıt kabul edildi");
+    assert!(
+        !v.accepted(),
+        "yeni tile adımı altında eski kanıt kabul edildi"
+    );
     // ve ret sebebi yapısal olmalı (m/n/r bağlaması), "doğrulamadı" değil
     if let Verdict::Reject(neden) = v {
         assert!(
@@ -315,11 +399,17 @@ fn ayni_paket_500_kez_ayni_karari_verir() {
     for _ in 0..500 {
         let v = verify_raw(&saglikli);
         if let Some(ref onceki) = karne {
-            assert_eq!(v, *onceki, "aynı paket farklı kararlar verdi — determinizm bozuldu");
+            assert_eq!(
+                v, *onceki,
+                "aynı paket farklı kararlar verdi — determinizm bozuldu"
+            );
         }
         karne = Some(v);
     }
-    assert!(karne.unwrap().accepted(), "sağlıklı paket 500 denemeden sonra hala kabul edilmeli");
+    assert!(
+        karne.unwrap().accepted(),
+        "sağlıklı paket 500 denemeden sonra hala kabul edilmeli"
+    );
 
     // ve sahte bir paket de 500 kez aynı şekilde reddedilir.
     //
@@ -328,7 +418,7 @@ fn ayni_paket_500_kez_ayni_karari_verir() {
     // edilir). Doğru sahtecilik, kanıtın tile'ının içinde olmalıdır:
     // b[0][cert.j * r], l=0 için okunan strided konum.
     let mut sahte = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
-    let tile_sutun = (cert.j as usize * TOY_R) * 8;
+    let tile_sutun = (cert.j * TOY_R) * 8;
     sahte.flat_b[tile_sutun] = sahte.flat_b[tile_sutun].wrapping_add(1);
     let mut k_sahte = None;
     for _ in 0..500 {
@@ -338,13 +428,16 @@ fn ayni_paket_500_kez_ayni_karari_verir() {
         }
         k_sahte = Some(v);
     }
-    assert!(!k_sahte.unwrap().accepted(), "tile içindeki matrix içeriği bozmak kabul edildi");
+    assert!(
+        !k_sahte.unwrap().accepted(),
+        "tile içindeki matrix içeriği bozmak kabul edildi"
+    );
 
     // ve KAPSAM DIŞI bir bozma (kanıtın okumadığı sütun) hala KABUL edilir —
     // bu, verifier'ın kanıt tile'ının dışındaki matrix verisine kayıtsız
     // kaldığını gösterir (kapsam = tile, tüm matrix DEĞİL)
     let mut disinda = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
-    let dis_sutun = ((cert.j as usize + 1) % 8) * 8;
+    let dis_sutun = ((cert.j + 1) % 8) * 8;
     if dis_sutun != tile_sutun {
         disinda.flat_b[dis_sutun] = disinda.flat_b[dis_sutun].wrapping_add(1);
         assert!(
@@ -364,7 +457,14 @@ fn farkli_gecerli_parametreler_tutarli_kararlar_verir() {
     // TOY_Q=97, TOY_R=2 ile maden edilen bir kanıt: kendi parametreleriyle
     // kabul, diğer tüm kombinasyonlarla reddet
     let (a, b, cert, nonce, target) = madenle();
-    for (q, r) in [(97u64, 2usize), (97, 4), (89, 2), (89, 4), (113, 2), (97, 8)] {
+    for (q, r) in [
+        (97u64, 2usize),
+        (97, 4),
+        (89, 2),
+        (89, 4),
+        (113, 2),
+        (97, 8),
+    ] {
         let p = encode(&a, &b, &cert, 777, nonce, target, q, r);
         // encode zaten n'i a.len()=8 olarak yazar; manuel olarak q/r'yı teyit et
         assert_eq!(p.pub_inputs[32..40], q.to_le_bytes());

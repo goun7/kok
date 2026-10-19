@@ -19,7 +19,7 @@
 //! provides the total C ABI they will wrap; it does not pretend to be the
 //! browser package.
 
-use kok_pvi::{VerifierInput, Verdict};
+use kok_pvi::{Verdict, VerifierInput};
 
 /// The raw wire layout this boundary parses:
 ///   bytes [  0 ..  32]  the certificate (i, j, value, m), little-endian u64s
@@ -50,9 +50,10 @@ pub fn parse_packet(bytes: &[u8]) -> Result<VerifierInput, &'static str> {
     if n % r != 0 {
         return Err("r does not divide n");
     }
-    let per_matrix = n.checked_mul(n).and_then(|sq| sq.checked_mul(8)).ok_or(
-        "the claimed matrix size overflows u64",
-    )?;
+    let per_matrix = n
+        .checked_mul(n)
+        .and_then(|sq| sq.checked_mul(8))
+        .ok_or("the claimed matrix size overflows u64")?;
     let total = 80usize
         .checked_add(per_matrix as usize)
         .and_then(|t| t.checked_add(per_matrix as usize))
@@ -104,6 +105,7 @@ pub fn verify_packet(bytes: &[u8]) -> u8 {
 /// should place packets at an offset past the module's reserved area (or use
 /// the exported allocator); offset 0 is not safe for payload data.
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn kok_verify_packet(ptr: *const u8, len: usize) -> u8 {
     if ptr.is_null() || len == 0 {
         return 0;
@@ -120,7 +122,14 @@ mod tests {
     use kok_poum::canonical;
     use kok_poum::{KwKernel, TOY_Q, TOY_R};
 
-    fn encode_wire(a: &[Vec<u64>], b: &[Vec<u64>], cert: &kok_poum::Certificate, ctx: u64, nonce: u64, target: u64) -> Vec<u8> {
+    fn encode_wire(
+        a: &[Vec<u64>],
+        b: &[Vec<u64>],
+        cert: &kok_poum::Certificate,
+        ctx: u64,
+        nonce: u64,
+        target: u64,
+    ) -> Vec<u8> {
         let mut out = Vec::with_capacity(80 + 2 * a.len() * a.len() * 8);
         out.extend_from_slice(&(cert.i as u64).to_le_bytes());
         out.extend_from_slice(&(cert.j as u64).to_le_bytes());
@@ -163,25 +172,41 @@ mod tests {
         // empty
         assert_eq!(verify_packet(&[]), 0, "an empty packet was not rejected");
         // truncated header
-        assert_eq!(verify_packet(&[0u8; 40]), 0, "a truncated header was not rejected");
+        assert_eq!(
+            verify_packet(&[0u8; 40]),
+            0,
+            "a truncated header was not rejected"
+        );
         // header only, no matrix payload
         let mut hdr = vec![0u8; 80];
         // n=8, r=2, q=97 -> needs 2*512 bytes of payload, absent
         hdr[24..32].copy_from_slice(&8u64.to_le_bytes());
         hdr[32..40].copy_from_slice(&97u64.to_le_bytes());
         hdr[40..48].copy_from_slice(&2u64.to_le_bytes());
-        assert_eq!(verify_packet(&hdr), 0, "a header with no payload was not rejected");
+        assert_eq!(
+            verify_packet(&hdr),
+            0,
+            "a header with no payload was not rejected"
+        );
         // the overflow attack: claim n = u64::MAX so n*n*8 wraps; a naive
         // length check would then accept a tiny packet
         let mut overflow = vec![0u8; 80];
         overflow[24..32].copy_from_slice(&u64::MAX.to_le_bytes());
         overflow[40..48].copy_from_slice(&2u64.to_le_bytes());
-        assert_eq!(verify_packet(&overflow), 0, "an overflow-length packet was not rejected");
+        assert_eq!(
+            verify_packet(&overflow),
+            0,
+            "an overflow-length packet was not rejected"
+        );
         // r does not divide n
         let mut bad_r = vec![0u8; 80];
         bad_r[24..32].copy_from_slice(&9u64.to_le_bytes());
         bad_r[40..48].copy_from_slice(&2u64.to_le_bytes());
-        assert_eq!(verify_packet(&bad_r), 0, "a non-integral tile grid was not rejected");
+        assert_eq!(
+            verify_packet(&bad_r),
+            0,
+            "a non-integral tile grid was not rejected"
+        );
     }
 
     /// THE END-TO-END PATH: a certificate mined over the canonical matrices
@@ -189,7 +214,11 @@ mod tests {
     #[test]
     fn an_honestly_mined_packet_accepts_over_the_wire() {
         let (wire, _cert) = mine_real();
-        assert_eq!(verify_packet(&wire), 1, "an honestly mined packet was rejected");
+        assert_eq!(
+            verify_packet(&wire),
+            1,
+            "an honestly mined packet was rejected"
+        );
     }
 
     /// A FORGED VALUE rejects over the wire, so the forgery the boundary
@@ -210,10 +239,22 @@ mod tests {
     fn the_c_abi_matches_the_safe_entry_and_rejects_null() {
         let (wire, _) = mine_real();
         assert_eq!(kok_verify_packet(wire.as_ptr(), wire.len()), 1);
-        assert_eq!(kok_verify_packet(wire.as_ptr(), 0), 0, "a zero length was not a rejection");
-        assert_eq!(kok_verify_packet(core::ptr::null(), 0), 0, "a null pointer was not a rejection");
+        assert_eq!(
+            kok_verify_packet(wire.as_ptr(), 0),
+            0,
+            "a zero length was not a rejection"
+        );
+        assert_eq!(
+            kok_verify_packet(core::ptr::null(), 0),
+            0,
+            "a null pointer was not a rejection"
+        );
         // a short length must reject, not read out of bounds
-        assert_eq!(kok_verify_packet(wire.as_ptr(), 5), 0, "a truncated length was not a rejection");
+        assert_eq!(
+            kok_verify_packet(wire.as_ptr(), 5),
+            0,
+            "a truncated length was not a rejection"
+        );
     }
 
     /// THE ABI TAKES THE CALLER'S POINTER AT FACE VALUE (2026-09-26).
@@ -241,8 +282,14 @@ mod tests {
         buf[wire.len()..].copy_from_slice(&wire);
         let at_front = kok_verify_packet(buf.as_ptr(), wire.len());
         let at_offset = kok_verify_packet(unsafe { buf.as_ptr().add(wire.len()) }, wire.len());
-        assert_eq!(at_front, 1, "the packet was rejected at the front of the buffer");
-        assert_eq!(at_offset, 1, "the packet was rejected at the back of the buffer");
+        assert_eq!(
+            at_front, 1,
+            "the packet was rejected at the front of the buffer"
+        );
+        assert_eq!(
+            at_offset, 1,
+            "the packet was rejected at the back of the buffer"
+        );
         // and both agree with the safe entry point
         assert_eq!(verify_packet(&wire), 1);
     }
@@ -283,7 +330,10 @@ mod tests {
         let e = parse_packet(&[]).unwrap_err();
         assert!(e.contains("80"), "the error must name the header size: {e}");
         let e = parse_packet(&[0u8; 79]).unwrap_err();
-        assert!(e.contains("80"), "a 79-byte packet must still be a header error: {e}");
+        assert!(
+            e.contains("80"),
+            "a 79-byte packet must still be a header error: {e}"
+        );
     }
 
     #[test]
@@ -292,9 +342,15 @@ mod tests {
         // self-consistent at 80 bytes — the guard exists so a degenerate grid
         // cannot pass as a well-formed packet with no matrices at all
         let e = parse_packet(&header(0, 97, 2)).unwrap_err();
-        assert!(e.contains("zero"), "n == 0 must be rejected as a zero dimension: {e}");
+        assert!(
+            e.contains("zero"),
+            "n == 0 must be rejected as a zero dimension: {e}"
+        );
         let e = parse_packet(&header(8, 97, 0)).unwrap_err();
-        assert!(e.contains("zero"), "r == 0 must be rejected as a zero dimension: {e}");
+        assert!(
+            e.contains("zero"),
+            "r == 0 must be rejected as a zero dimension: {e}"
+        );
     }
 
     #[test]
@@ -302,7 +358,10 @@ mod tests {
         // n must be divisible by r, or the flat matrices do not decompose into
         // a rectangular grid and the verifier would read garbage at the seam
         let e = parse_packet(&header(9, 97, 2)).unwrap_err();
-        assert!(e.contains("divide"), "n=9 r=2 must fail the divisibility check: {e}");
+        assert!(
+            e.contains("divide"),
+            "n=9 r=2 must fail the divisibility check: {e}"
+        );
     }
 
     #[test]
@@ -321,10 +380,16 @@ mod tests {
         let even_max = u64::MAX - 1; // even, so r=2 divides it
         assert_eq!(even_max % 2, 0);
         let e = parse_packet(&header(even_max, 97, 2)).unwrap_err();
-        assert!(e.contains("overflow"), "an overflowing n must be rejected as overflow: {e}");
+        assert!(
+            e.contains("overflow"),
+            "an overflowing n must be rejected as overflow: {e}"
+        );
         // the odd maximum is caught one guard earlier, still rejected
         let e2 = parse_packet(&header(u64::MAX, 97, 2)).unwrap_err();
-        assert!(e2.contains("divide"), "an odd n is caught by divisibility before overflow: {e2}");
+        assert!(
+            e2.contains("divide"),
+            "an odd n is caught by divisibility before overflow: {e2}"
+        );
     }
 
     #[test]
@@ -333,13 +398,19 @@ mod tests {
         // payload: the lengths disagree, which is the check that a truncated
         // packet cannot pass as complete
         let e = parse_packet(&header(8, 97, 2)).unwrap_err();
-        assert!(e.contains("match"), "a missing payload must be a length mismatch: {e}");
+        assert!(
+            e.contains("match"),
+            "a missing payload must be a length mismatch: {e}"
+        );
         // one matrix's worth of payload is not enough either — the check is on
         // the TOTAL, so a half-filled packet is still wrong
         let mut half = header(8, 97, 2);
         half.extend_from_slice(&vec![0u8; 512]);
         let e = parse_packet(&half).unwrap_err();
-        assert!(e.contains("match"), "a half-length payload must be a length mismatch: {e}");
+        assert!(
+            e.contains("match"),
+            "a half-length payload must be a length mismatch: {e}"
+        );
     }
 
     #[test]
@@ -360,7 +431,10 @@ mod tests {
         assert_eq!(got.flat_a.len(), per);
         assert_eq!(got.flat_b.len(), per);
         // the declared field must be carried through to the verifier input
-        assert_eq!(u64::from_le_bytes(got.pub_inputs[24..32].try_into().unwrap()), n,
-                   "the declared n must survive into the parsed verifier input");
+        assert_eq!(
+            u64::from_le_bytes(got.pub_inputs[24..32].try_into().unwrap()),
+            n,
+            "the declared n must survive into the parsed verifier input"
+        );
     }
 }

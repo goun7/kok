@@ -151,7 +151,11 @@ mod tests {
 
     #[test]
     fn matmul_shape_and_cost() {
-        let mm = JobKind::MatMul { rows: 8, inner: 8, cols: 8 };
+        let mm = JobKind::MatMul {
+            rows: 8,
+            inner: 8,
+            cols: 8,
+        };
         assert_eq!(mm.flops(), 2 * 8 * 8 * 8);
         assert_eq!(mm.output_shape(), vec![8, 8]);
     }
@@ -169,11 +173,14 @@ mod tests {
         // the FLOPs are real and large...
         assert!(job.kind.flops() > 1_000_000);
         // ...and they contribute exactly zero to consensus weight
-        assert_eq!(crate::u_task_consensus_weight(&crate::TaskProof {
-            tid: "job-1".into(),
-            miner: "m".into(),
-            fee: job.fee,
-        }), 0);
+        assert_eq!(
+            crate::u_task_consensus_weight(&crate::TaskProof {
+                tid: "job-1".into(),
+                miner: "m".into(),
+                fee: job.fee,
+            }),
+            0
+        );
     }
 
     #[test]
@@ -181,13 +188,19 @@ mod tests {
         // a custom job cannot claim a shape without a cost, because the
         // network would have to take the cost on faith
         let zero_cost = JobSpec {
-            kind: JobKind::Custom { flops: 0, output_shape: vec![4, 4] },
+            kind: JobKind::Custom {
+                flops: 0,
+                output_shape: vec![4, 4],
+            },
             input_commit: 9,
             fee: 10,
         };
         assert!(!validate_job(&zero_cost));
         let ok = JobSpec {
-            kind: JobKind::Custom { flops: 1024, output_shape: vec![4, 4] },
+            kind: JobKind::Custom {
+                flops: 1024,
+                output_shape: vec![4, 4],
+            },
             input_commit: 9,
             fee: 10,
         };

@@ -108,7 +108,7 @@ impl Retargetor {
         let w = self.params.window;
         let t_b = self.params.target_block_time;
         let n = self.times.len() - 1;
-        if n == 0 || n % w != 0 {
+        if n == 0 || !n.is_multiple_of(w) {
             return None;
         }
         let t_act = self.times[self.times.len() - 1] - self.times[self.times.len() - 1 - w];
@@ -328,7 +328,10 @@ mod tests {
         r.record_time(1.0);
         assert!(r.retarget().is_none(), "one block in, no window has closed");
         r.record_time(1.0);
-        assert!(r.retarget().is_none(), "two blocks in, no window has closed");
+        assert!(
+            r.retarget().is_none(),
+            "two blocks in, no window has closed"
+        );
         assert_eq!(r.d, 100, "D must be unchanged before a window closes");
     }
 
@@ -342,7 +345,9 @@ mod tests {
         for _ in 0..4 {
             r.record_time(20.0);
         }
-        let s = r.retarget().expect("exactly one window closed, so an adjustment must happen");
+        let s = r
+            .retarget()
+            .expect("exactly one window closed, so an adjustment must happen");
         assert_eq!(s.d, 500, "D must halve when blocks arrive 2x too slow");
         assert_eq!(r.d, 500);
         // the estimate must be recorded in history for the median filter
@@ -358,17 +363,27 @@ mod tests {
         // the reported D_new differs (both converge toward lam*T_b).
         let mut a = Retargetor::new(small_params(1), 1000);
         let mut b = Retargetor::new(small_params(1), 4000); // 4x higher D
-        // same true hashrate: at D=1000 blocks take 10 s, at D=4000 they take 40
+                                                            // same true hashrate: at D=1000 blocks take 10 s, at D=4000 they take 40
         for _ in 0..4 {
             a.record_time(10.0);
             b.record_time(40.0);
         }
         let sa = a.retarget().unwrap();
         let sb = b.retarget().unwrap();
-        assert!((sa.lam_hat - sb.lam_hat).abs() < 1e-6,
-                "Lambda_hat must be D-independent: {} vs {}", sa.lam_hat, sb.lam_hat);
-        assert_eq!(sa.d, 1000, "a 2x-too-slow window halves D toward equilibrium");
-        assert_eq!(sb.d, 1000, "a 2x-too-fast window quarters D toward equilibrium");
+        assert!(
+            (sa.lam_hat - sb.lam_hat).abs() < 1e-6,
+            "Lambda_hat must be D-independent: {} vs {}",
+            sa.lam_hat,
+            sb.lam_hat
+        );
+        assert_eq!(
+            sa.d, 1000,
+            "a 2x-too-slow window halves D toward equilibrium"
+        );
+        assert_eq!(
+            sb.d, 1000,
+            "a 2x-too-fast window quarters D toward equilibrium"
+        );
     }
 
     #[test]
@@ -383,7 +398,10 @@ mod tests {
         }
         let s = r.retarget().unwrap();
         assert_eq!(s.d, 400, "a 400x implied jump must clip to 4x");
-        assert!(s.ratio <= 4.0 + 1e-9, "the reported ratio must respect the clip");
+        assert!(
+            s.ratio <= 4.0 + 1e-9,
+            "the reported ratio must respect the clip"
+        );
     }
 
     #[test]
@@ -413,10 +431,16 @@ mod tests {
         // lam_hat = D*W/T_act computed in f64: 1000*4/0.04 is 100000 only up to
         // floating-point representation, so the assertion is a tolerance on the
         // recorded estimate rather than exact equality with the integer
-        assert!((s3.lam_hat - 100000.0).abs() < 1e-6,
-                "the outlier window's estimate must be ~100000, got {}", s3.lam_hat);
+        assert!(
+            (s3.lam_hat - 100000.0).abs() < 1e-6,
+            "the outlier window's estimate must be ~100000, got {}",
+            s3.lam_hat
+        );
         // but the SMOOTHED estimate used for D must be the median of (100,100,100000)
-        assert_eq!(s3.lam_smooth, 100.0, "the median filter must ignore the single outlier");
+        assert_eq!(
+            s3.lam_smooth, 100.0,
+            "the median filter must ignore the single outlier"
+        );
     }
 
     #[test]
@@ -428,9 +452,15 @@ mod tests {
         for _ in 0..4 {
             r.record_time(0.0);
         }
-        assert!(r.retarget().is_none(), "a zero-duration window must not retarget");
+        assert!(
+            r.retarget().is_none(),
+            "a zero-duration window must not retarget"
+        );
         assert_eq!(r.d, 1000, "D must be untouched on an unmeasurable window");
-        assert!(r.window_history.is_empty(), "an unmeasurable window must not enter history");
+        assert!(
+            r.window_history.is_empty(),
+            "an unmeasurable window must not enter history"
+        );
     }
 
     #[test]
@@ -461,9 +491,15 @@ mod tests {
             r.record_time(f64::NAN);
         }
         // must NOT panic, must decline, and must leave D and history clean
-        assert!(r.retarget().is_none(), "a NaN window must be rejected, not averaged");
+        assert!(
+            r.retarget().is_none(),
+            "a NaN window must be rejected, not averaged"
+        );
         assert_eq!(r.d, 1000, "D must be untouched on a NaN window");
-        assert!(r.window_history.is_empty(), "a NaN window must not enter the history");
+        assert!(
+            r.window_history.is_empty(),
+            "a NaN window must not enter the history"
+        );
     }
 
     /// Infinity is the same hazard one step removed: it does not panic, but it
@@ -476,8 +512,14 @@ mod tests {
         for _ in 0..4 {
             r.record_time(f64::INFINITY);
         }
-        assert!(r.retarget().is_none(), "an infinite window must be rejected");
-        assert!(r.window_history.is_empty(), "an infinite window must not enter history");
+        assert!(
+            r.retarget().is_none(),
+            "an infinite window must be rejected"
+        );
+        assert!(
+            r.window_history.is_empty(),
+            "an infinite window must not enter history"
+        );
     }
 
     /// A negative timestamp difference is arithmetically reachable if the
@@ -555,10 +597,18 @@ mod tests {
         r.record_time(10.0);
         r.record_time(-5.0);
         r.record_time(10.0);
-        assert_eq!(r.times, vec![0.0, 10.0, 20.0], "the negative delta was dropped");
+        assert_eq!(
+            r.times,
+            vec![0.0, 10.0, 20.0],
+            "the negative delta was dropped"
+        );
         // monotone, which is what makes a negative span unreachable via the API
         for w in r.times.windows(2) {
-            assert!(w[0] <= w[1], "times must stay non-decreasing: {:?}", r.times);
+            assert!(
+                w[0] <= w[1],
+                "times must stay non-decreasing: {:?}",
+                r.times
+            );
         }
     }
 

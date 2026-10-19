@@ -11,10 +11,13 @@
 //!   * task assignment is seeded by an ECVRF (RFC 9381) rather than a
 //!     hash, so the assignment is verifiably a function of the epoch.
 
-//! **LAYER U HAS ZERO CONSENSUS WEIGHT.** A U-task proof never enters leader
-//! election and never contributes to a block's weight. The G layer alone
-//! chooses leaders. This is why "useful work" cannot be captured: an attacker
-//! cannot buy security by buying inference demand (paper §B, PR/2).
+//! ## LAYER U HAS ZERO CONSENSUS WEIGHT
+//!
+//! A U-task proof never enters leader election and never contributes to a
+//! block's weight. The G layer alone chooses leaders. This is why "useful
+//! work" cannot be captured: an attacker cannot buy security by buying
+//! inference demand (paper §B, PR/2).
+//!
 //!
 //! VRF note, kept honest: the Python prototype's VRF is HMAC-based, not
 //! ECVRF — verify() there is a STRUCTURAL check, and the real guarantee (a
@@ -26,8 +29,8 @@
 //! (determinism) is subsumed; the properties it could not have — uniqueness
 //! and pseudorandomness — are now provided by the construction.
 
-pub mod ecvrf;
 pub mod assign;
+pub mod ecvrf;
 
 use sha2::{Digest, Sha256};
 
@@ -138,22 +141,38 @@ mod tests {
 
     #[test]
     fn honest_task_validates() {
-        let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
+        let t = TaskSpec {
+            program: "mm8".into(),
+            fee: 100,
+            burn_rate: 300,
+        };
         assert!(validate_u_task(&t, 0));
         assert!(validate_u_task(&t, 400)); // 400 + 100 <= 500
     }
 
     #[test]
     fn zero_fee_rejected() {
-        let t = TaskSpec { program: "mm8".into(), fee: 0, burn_rate: 300 };
+        let t = TaskSpec {
+            program: "mm8".into(),
+            fee: 0,
+            burn_rate: 300,
+        };
         assert!(!validate_u_task(&t, 0));
     }
 
     #[test]
     fn burn_rate_bounds() {
-        let t0 = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 0 };
+        let t0 = TaskSpec {
+            program: "mm8".into(),
+            fee: 100,
+            burn_rate: 0,
+        };
         assert!(!validate_u_task(&t0, 0));
-        let t501 = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 501 };
+        let t501 = TaskSpec {
+            program: "mm8".into(),
+            fee: 100,
+            burn_rate: 501,
+        };
         assert!(!validate_u_task(&t501, 0));
     }
 
@@ -161,7 +180,11 @@ mod tests {
     fn anti_aggregation_cap_rejects_overflow() {
         // round-3 [15]: a block claiming 0 validated when the total was
         // read verbatim; the cap is now enforced against the running total
-        let t = TaskSpec { program: "mm8".into(), fee: 100, burn_rate: 300 };
+        let t = TaskSpec {
+            program: "mm8".into(),
+            fee: 100,
+            burn_rate: 300,
+        };
         assert!(!validate_u_task(&t, 450)); // 450 + 100 > 500
     }
 
@@ -177,13 +200,23 @@ mod tests {
     /// when one particular caller screens its inputs is not a gate.
     #[test]
     fn a_wrapping_carried_total_cannot_bypass_the_fee_cap() {
-        let t = TaskSpec { program: "mm8".into(), fee: 10, burn_rate: 100 };
+        let t = TaskSpec {
+            program: "mm8".into(),
+            fee: 10,
+            burn_rate: 100,
+        };
         // the honest case: fits with room to spare
-        assert!(validate_u_task(&t, C_FEE - 10), "a task that fits the cap was rejected");
+        assert!(
+            validate_u_task(&t, C_FEE - 10),
+            "a task that fits the cap was rejected"
+        );
         // exactly at the cap
         assert!(validate_u_task(&t, C_FEE - 10));
         // one over: rejected
-        assert!(!validate_u_task(&t, C_FEE - 9), "a task past the cap was accepted");
+        assert!(
+            !validate_u_task(&t, C_FEE - 9),
+            "a task past the cap was accepted"
+        );
         // THE WRAP: carried at u64::MAX, fee 10 — the naive sum wraps to 9
         // and would pass. It must not.
         assert!(
@@ -196,7 +229,11 @@ mod tests {
             "a carried total already past the cap was accepted"
         );
         // the wrap at the other end: carried small, fee huge
-        let big = TaskSpec { program: "mm8".into(), fee: u64::MAX, burn_rate: 100 };
+        let big = TaskSpec {
+            program: "mm8".into(),
+            fee: u64::MAX,
+            burn_rate: 100,
+        };
         assert!(!validate_u_task(&big, 1), "a huge fee wrapped into the cap");
     }
 
@@ -204,7 +241,11 @@ mod tests {
     fn u_task_weight_is_always_zero() {
         // THE design invariant: a U proof never contributes consensus weight.
         // If this ever becomes nonzero, KÖK stops being demand-independent.
-        let p = TaskProof { tid: "t1".into(), miner: "m1".into(), fee: 100 };
+        let p = TaskProof {
+            tid: "t1".into(),
+            miner: "m1".into(),
+            fee: 100,
+        };
         assert_eq!(u_task_consensus_weight(&p), 0);
     }
 
@@ -215,9 +256,19 @@ mod tests {
         assert!(epoch_seed(&hashes, 10).is_none());
         // height 64: the seed is the DOMAIN-SEPARATED hash of block 0, not
         // the block hash itself (spec A.10.3)
-        assert_eq!(epoch_seed(&hashes, 64), Some(h(&["seed", &hashes[0].to_string()])));
-        assert_ne!(epoch_seed(&hashes, 64), Some(hashes[0]), "the seed leaked the raw block hash");
-        assert_eq!(epoch_seed(&hashes, 128), Some(h(&["seed", &hashes[64].to_string()])));
+        assert_eq!(
+            epoch_seed(&hashes, 64),
+            Some(h(&["seed", &hashes[0].to_string()]))
+        );
+        assert_ne!(
+            epoch_seed(&hashes, 64),
+            Some(hashes[0]),
+            "the seed leaked the raw block hash"
+        );
+        assert_eq!(
+            epoch_seed(&hashes, 128),
+            Some(h(&["seed", &hashes[64].to_string()]))
+        );
     }
 
     /// GRINDING RESISTANCE, the property the lookback exists for: a miner who

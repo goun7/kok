@@ -365,6 +365,9 @@ mod tests {
     fn the_verification_method_id_is_the_did_plus_itself() {
         let kp = Keypair::from_seed(&[3; 32]);
         let vm = verification_method_id(&kp.did).unwrap();
-        assert_eq!(vm, format!("{}#{}", kp.did, multibase_from_did(&kp.did).unwrap()));
+        assert_eq!(
+            vm,
+            format!("{}#{}", kp.did, multibase_from_did(&kp.did).unwrap())
+        );
     }
 }

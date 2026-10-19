@@ -21,9 +21,12 @@ use std::sync::Mutex;
 pub mod canonical;
 pub mod retarget;
 
+type NoisePair = (Vec<Vec<u64>>, Vec<Vec<u64>>);
+
 /// Noise-pair cache keyed by (ctx, n, q). See `KwKernel::noise`.
-static NOISE_CACHE: once_cell::sync::Lazy<Mutex<HashMap<(u64, usize, u64), (Vec<Vec<u64>>, Vec<Vec<u64>>)>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
+type NoiseCache = once_cell::sync::Lazy<Mutex<HashMap<(u64, usize, u64), NoisePair>>>;
+
+static NOISE_CACHE: NoiseCache = once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Toy field modulus (production is P256 = 2^256 - 2^32 - 977).
 pub const TOY_Q: u64 = 97;
@@ -164,10 +167,7 @@ impl KwKernel {
             }
         }
         let pair = (e, f);
-        NOISE_CACHE
-            .lock()
-            .unwrap()
-            .insert(key, pair.clone());
+        NOISE_CACHE.lock().unwrap().insert(key, pair.clone());
         pair
     }
 
@@ -199,7 +199,7 @@ impl KwKernel {
         if self.q == 0 || self.r == 0 {
             return None;
         }
-        if n == 0 || n % self.r != 0 {
+        if n == 0 || !n.is_multiple_of(self.r) {
             return None;
         }
         // target == 0 is the division-by-zero of the difficulty sense: it
@@ -234,20 +234,16 @@ impl KwKernel {
         for i in 0..m {
             for j in 0..m {
                 for l in 0..m {
-                    acc[i][j] = (acc[i][j] + ap[i * self.r][l * self.r] * bp[l * self.r][j * self.r])
+                    acc[i][j] = (acc[i][j]
+                        + ap[i * self.r][l * self.r] * bp[l * self.r][j * self.r])
                         % self.q;
                 }
             }
         }
-        for i in 0..m {
-            for j in 0..m {
-                if h_num("tile", &[ctx, nonce, i as u64, j as u64, acc[i][j]]) % target == 0 {
-                    return Some(Certificate {
-                        i,
-                        j,
-                        value: acc[i][j],
-                        m,
-                    });
+        for (i, row) in acc.iter().enumerate().take(m) {
+            for (j, &v) in row.iter().enumerate().take(m) {
+                if h_num("tile", &[ctx, nonce, i as u64, j as u64, v]).is_multiple_of(target) {
+                    return Some(Certificate { i, j, value: v, m });
                 }
             }
         }
@@ -313,7 +309,11 @@ impl KwKernel {
         }
         // zero-allocation hash (byte-identical to the Python H(); the
         // h_num_matches_h test pins that equivalence)
-        h_num("tile", &[ctx, nonce, cert.i as u64, cert.j as u64, cert.value]) % target == 0
+        h_num(
+            "tile",
+            &[ctx, nonce, cert.i as u64, cert.j as u64, cert.value],
+        )
+        .is_multiple_of(target)
     }
 
     /// G-layer leader selection: mine a block over the given task matrices.
@@ -372,9 +372,13 @@ mod tests {
         let mut s = seed;
         for i in 0..TOY_N {
             for j in 0..TOY_N {
-                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                s = s
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 a[i][j] = s % TOY_Q;
-                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                s = s
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 b[i][j] = s % TOY_Q;
             }
         }
@@ -436,7 +440,10 @@ mod tests {
         // ...must still REJECT (not panic) when one row is truncated
         let last = a.len() - 1;
         a[last].truncate(1);
-        assert!(!k.verify(&cert, &a, &b, 777, nonce, 1 << 1), "a ragged matrix verified");
+        assert!(
+            !k.verify(&cert, &a, &b, 777, nonce, 1 << 1),
+            "a ragged matrix verified"
+        );
     }
 
     /// Same class on the second operand: a short row of B.
@@ -453,7 +460,10 @@ mod tests {
         };
         assert!(k.verify(&cert, &a, &b, 777, nonce, 1 << 1));
         b[0].truncate(1);
-        assert!(!k.verify(&cert, &a, &b, 777, nonce, 1 << 1), "a ragged B verified");
+        assert!(
+            !k.verify(&cert, &a, &b, 777, nonce, 1 << 1),
+            "a ragged B verified"
+        );
     }
 
     /// A row COUNT mismatch already rejected; the dimension must agree in
@@ -485,12 +495,26 @@ mod tests {
     #[test]
     fn degenerate_kernel_parameters_reject_instead_of_panicking() {
         let (a, b) = toy_matrices(20260919);
-        let cert = Certificate { i: 0, j: 0, value: 0, m: a.len() / TOY_R };
+        let cert = Certificate {
+            i: 0,
+            j: 0,
+            value: 0,
+            m: a.len() / TOY_R,
+        };
         let zero_q = KwKernel::new(0, TOY_R);
-        assert!(!zero_q.verify(&cert, &a, &b, 777, 1, 1 << 1), "q == 0 verified");
+        assert!(
+            !zero_q.verify(&cert, &a, &b, 777, 1, 1 << 1),
+            "q == 0 verified"
+        );
         let zero_r = KwKernel::new(TOY_Q, 0);
-        assert!(!zero_r.verify(&cert, &a, &b, 777, 1, 1 << 1), "r == 0 verified");
-        assert!(!zero_r.verify(&cert, &[], &[], 777, 1, 1 << 1), "r == 0 verified on empty input");
+        assert!(
+            !zero_r.verify(&cert, &a, &b, 777, 1, 1 << 1),
+            "r == 0 verified"
+        );
+        assert!(
+            !zero_r.verify(&cert, &[], &[], 777, 1, 1 << 1),
+            "r == 0 verified on empty input"
+        );
     }
 
     #[test]
@@ -573,9 +597,18 @@ mod tests {
                     break c;
                 }
             };
-            assert_eq!(nonce, want_nonce, "nonce diverged from Python at target 2^{}", target.trailing_zeros());
-            assert_eq!((cert.i, cert.j, cert.value), (want_i, want_j, want_value),
-                "tile diverged from Python at target 2^{}", target.trailing_zeros());
+            assert_eq!(
+                nonce,
+                want_nonce,
+                "nonce diverged from Python at target 2^{}",
+                target.trailing_zeros()
+            );
+            assert_eq!(
+                (cert.i, cert.j, cert.value),
+                (want_i, want_j, want_value),
+                "tile diverged from Python at target 2^{}",
+                target.trailing_zeros()
+            );
             assert!(k.verify(&cert, &a, &b, 777, nonce, target));
         }
     }
@@ -595,244 +628,304 @@ mod tests {
     }
 }
 
-    /// Deterministic verification (the orchestrator's explicit requirement):
-    /// the same matrices under the same ctx and nonce must yield ONE result.
-    /// Any nondeterminism here means two honest nodes disagree on a block and
-    /// the chain forks without any attacker present.
-    #[test]
-    fn verification_is_deterministic() {
-        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
-        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
-        let k = KwKernel::new(TOY_Q, TOY_R);
-        let (nonce, cert) = k.mine(&a, &b, 777, 1 << 8);
-        let cert = cert.unwrap();
-        // verify 2000 times: every call must agree
-        let mut results = std::collections::HashSet::new();
-        for _ in 0..2000 {
-            results.insert(k.verify(&cert, &a, &b, 777, nonce, 1 << 8));
-        }
-        assert_eq!(results.len(), 1, "verify is not deterministic: got {:?}", results);
-        // and the acc grid must be identical across runs
-        let mut grids = std::collections::HashSet::new();
-        for _ in 0..50 {
-            let (e, f) = k.noise(777, a.len());
-            grids.insert((e, f));
-        }
-        assert_eq!(grids.len(), 1, "noise is not deterministic across calls");
+/// Deterministic verification (the orchestrator's explicit requirement):
+/// the same matrices under the same ctx and nonce must yield ONE result.
+/// Any nondeterminism here means two honest nodes disagree on a block and
+/// the chain forks without any attacker present.
+#[test]
+fn verification_is_deterministic() {
+    let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+    let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+    let k = KwKernel::new(TOY_Q, TOY_R);
+    let (nonce, cert) = k.mine(&a, &b, 777, 1 << 8);
+    let cert = cert.unwrap();
+    // verify 2000 times: every call must agree
+    let mut results = std::collections::HashSet::new();
+    for _ in 0..2000 {
+        results.insert(k.verify(&cert, &a, &b, 777, nonce, 1 << 8));
     }
-
-    /// The hardness is PRESCRIBED: the same work for every input (the property
-    /// plain Freivalds lacks — the A=0 attack). Measured in Python: 704 ops
-    /// for dense-random, sparse, permutation, all-zeros and identity, with
-    /// mean attempts within 6.5% across all of them. This test asserts the
-    /// structural half: the attempt COST is input-independent, because the
-    /// noise is derived from the public ctx and not from the matrices.
-    #[test]
-    fn prescribed_hardness_attempt_cost_is_input_independent() {
-        // THE COST MUST BE MEASURED ACROSS SHAPES, NOT ASSERTED AS A CONSTANT.
-        // An earlier version of this test wrote
-        // `assert_eq!(ops, 2 * 8 * 8 + 4 * 4 * 4)` inside a loop whose `n` and
-        // `r` were both fixed at (TOY_N, TOY_R). The expression was a
-        // tautology against itself — it compared a computed value with the
-        // same computation written out — so it could not fail, and the
-        // `prove` result was discarded with `let _ =`. That is this project's
-        // own standard, "a test that cannot fail protects nothing", applied
-        // to one of its own tests. The claim this test is actually making is
-        // that the attempt cost is a function of the matrix SHAPE alone and
-        // never of the matrix VALUES, and that requires the shape to vary.
-        let k = KwKernel::new(TOY_Q, TOY_R);
-        let zeros = vec![vec![0u64; TOY_N]; TOY_N];
-        let mut identity = vec![vec![0u64; TOY_N]; TOY_N];
-        for i in 0..TOY_N { identity[i][i] = 1; }
-        let dense: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
-
-        // Part 1: the cost formula tracks the shape. Two shapes with the same
-        // (n, r) must agree; two shapes that differ must differ in cost, which
-        // is the half that fails if the loop bounds ever start reading the
-        // matrix values instead of the dimensions.
-        let mut costs: Vec<(usize, usize, usize)> = vec![];
-        for (n, r) in [(TOY_N, TOY_R), (4, 2), (6, 2), (8, 4)] {
-            assert!(r > 0 && n % r == 0, "the shape must be valid for the kernel");
-            let m = n / r;
-            // each attempt: 2n^2 additions for A'/B' + m^3 multiply-adds
-            let ops = 2 * n * n + m * m * m;
-            assert_ne!(ops, 0, "an attempt must cost something at shape ({}, {})", n, r);
-            assert_eq!(
-                ops, 2 * n * n + (n / r).pow(3),
-                "the cost diverged from the shape formula at ({}, {})", n, r
-            );
-            costs.push((n, r, ops));
-        }
-        // the shapes really are distinct in cost where they should be: (8,2)
-        // and (8,4) share n but differ in r, so their costs must differ
-        let c_8_2 = costs.iter().find(|&&(n, r, _)| n == 8 && r == 2).unwrap().2;
-        let c_8_4 = costs.iter().find(|&&(n, r, _)| n == 8 && r == 4).unwrap().2;
-        assert_ne!(c_8_2, c_8_4,
-                   "two shapes with different r must have different attempt cost");
-
-        // Part 2: the VALUES must not affect the cost either, which is what
-        // the old test's discarded `prove` call was supposed to demonstrate.
-        // Target 1 accepts the first tile, so each call performs exactly one
-        // attempt and returns a certificate — the work is one attempt's worth
-        // regardless of whether the matrices are zero, identity or dense.
-        for matrices in [&zeros, &identity, &dense] {
-            let cert = k.prove(matrices, matrices, 999, 1, 1);
-            assert!(cert.is_some(), "an easy target must find a certificate for {}",
-                    if matrices[0][0] == 0 && matrices[1][0] == 0 { "the zero matrices" }
-                    else if matrices[0][0] == 1 { "the identity" } else { "the dense matrices" });
-        }
+    assert_eq!(
+        results.len(),
+        1,
+        "verify is not deterministic: got {:?}",
+        results
+    );
+    // and the acc grid must be identical across runs
+    let mut grids = std::collections::HashSet::new();
+    for _ in 0..50 {
+        let (e, f) = k.noise(777, a.len());
+        grids.insert((e, f));
     }
+    assert_eq!(grids.len(), 1, "noise is not deterministic across calls");
+}
 
-    // ---- adversarial: h_num is pub, so its stack buffer is a public
-    // boundary. The buffer is 160 bytes and each numeric part costs up to
-    // 21 bytes (1 separator + 20 digits for u64::MAX), so the array holds 7
-    // wide parts. Every caller in this crate passes 3 or 5 — the overflow was
-    // unreachable from inside, exactly like kok-fri's field helpers, and
-    // exactly like that one this fixes the boundary rather than the leak.
-
-    /// The production-sized calls must be unchanged: 3 parts ("E"/"F") and
-    /// 5 parts ("tile") with the largest possible values, plus a long prefix,
-    /// all fit and digest. This is the "the guard must not break the working
-    /// path" pin — a guard that rejects legitimate input is a regression
-    /// wearing a fix's clothes.
-    #[test]
-    fn h_num_accepts_the_production_shapes_at_their_worst_case() {
-        // 3 parts of u64::MAX under a 1-byte prefix: 1 + 3*21 = 64 <= 160
-        let _ = h_num("E", &[u64::MAX, u64::MAX, u64::MAX]);
-        // 5 parts of u64::MAX under a 4-byte prefix: 4 + 5*21 = 109 <= 160
-        let _ = h_num("tile", &[u64::MAX; 5]);
-        // the real production inputs must still digest byte-identically:
-        // this is the cross-language parity path, so the guard cannot have
-        // altered the output for the inputs the protocol actually uses
-        assert_eq!(h_num("E", &[1, 2, 3]), h_num("E", &[1, 2, 3]));
+/// The hardness is PRESCRIBED: the same work for every input (the property
+/// plain Freivalds lacks — the A=0 attack). Measured in Python: 704 ops
+/// for dense-random, sparse, permutation, all-zeros and identity, with
+/// mean attempts within 6.5% across all of them. This test asserts the
+/// structural half: the attempt COST is input-independent, because the
+/// noise is derived from the public ctx and not from the matrices.
+#[test]
+fn prescribed_hardness_attempt_cost_is_input_independent() {
+    // THE COST MUST BE MEASURED ACROSS SHAPES, NOT ASSERTED AS A CONSTANT.
+    // An earlier version of this test wrote
+    // `assert_eq!(ops, 2 * 8 * 8 + 4 * 4 * 4)` inside a loop whose `n` and
+    // `r` were both fixed at (TOY_N, TOY_R). The expression was a
+    // tautology against itself — it compared a computed value with the
+    // same computation written out — so it could not fail, and the
+    // `prove` result was discarded with `let _ =`. That is this project's
+    // own standard, "a test that cannot fail protects nothing", applied
+    // to one of its own tests. The claim this test is actually making is
+    // that the attempt cost is a function of the matrix SHAPE alone and
+    // never of the matrix VALUES, and that requires the shape to vary.
+    let k = KwKernel::new(TOY_Q, TOY_R);
+    let zeros = vec![vec![0u64; TOY_N]; TOY_N];
+    let mut identity = vec![vec![0u64; TOY_N]; TOY_N];
+    for (i, row) in identity.iter_mut().enumerate() {
+        row[i] = 1;
     }
+    let dense: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
 
-    /// The guard's arithmetic must itself be total — the check is computed in
-    /// u64 so that a caller passing a slice long enough to make
-    /// `nums.len() * 21` overflow cannot turn the guard into a second hazard.
-    /// usize on a 64-bit target is u64, so the product is u64 and cannot wrap
-    /// below this test's inputs; the pin is that a large-but-non-overflowing
-    /// slice is REJECTED rather than crashing the arithmetic.
-    #[test]
-    fn h_num_rejects_a_slice_that_would_overflow_the_buffer() {
-        // 8 parts of u64::MAX need 8*21 = 168 > 160: rejected by the guard,
-        // not by a copy_from_slice panic. The message names the arithmetic.
-        let big = vec![u64::MAX; 8];
-        let res = std::panic::catch_unwind(|| h_num("E", &big));
-        assert!(res.is_err(), "an overflowing slice was accepted");
-        // and the same rejection is stable at the exact boundary: 7 parts fit
-        // (7*21 = 147 <= 160 with a 1-byte prefix), 8 does not
-        let _ = h_num("E", &[u64::MAX; 7]);
+    // Part 1: the cost formula tracks the shape. Two shapes with the same
+    // (n, r) must agree; two shapes that differ must differ in cost, which
+    // is the half that fails if the loop bounds ever start reading the
+    // matrix values instead of the dimensions.
+    let mut costs: Vec<(usize, usize, usize)> = vec![];
+    for (n, r) in [(TOY_N, TOY_R), (4, 2), (6, 2), (8, 4)] {
+        assert!(
+            r > 0 && n % r == 0,
+            "the shape must be valid for the kernel"
+        );
+        let m = n / r;
+        // each attempt: 2n^2 additions for A'/B' + m^3 multiply-adds
+        let ops = 2 * n * n + m * m * m;
+        assert_ne!(
+            ops, 0,
+            "an attempt must cost something at shape ({}, {})",
+            n, r
+        );
+        assert_eq!(
+            ops,
+            2 * n * n + (n / r).pow(3),
+            "the cost diverged from the shape formula at ({}, {})",
+            n,
+            r
+        );
+        costs.push((n, r, ops));
     }
+    // the shapes really are distinct in cost where they should be: (8,2)
+    // and (8,4) share n but differ in r, so their costs must differ
+    let c_8_2 = costs.iter().find(|&&(n, r, _)| n == 8 && r == 2).unwrap().2;
+    let c_8_4 = costs.iter().find(|&&(n, r, _)| n == 8 && r == 4).unwrap().2;
+    assert_ne!(
+        c_8_2, c_8_4,
+        "two shapes with different r must have different attempt cost"
+    );
 
-    /// A long prefix is the other axis: a prefix alone can exceed the buffer
-    /// with zero numeric parts, and the guard must catch that too rather than
-    /// indexing past the array at `buf[..prefix.len()]`.
-    #[test]
-    fn h_num_rejects_a_prefix_longer_than_the_buffer() {
-        let long = "x".repeat(200);
-        let res = std::panic::catch_unwind(|| h_num(&long, &[]));
-        assert!(res.is_err(), "a 200-byte prefix was accepted into a 160-byte buffer");
-        // an empty input is fine: the digest of a 1-byte prefix is defined
-        let _ = h_num("E", &[]);
+    // Part 2: the VALUES must not affect the cost either, which is what
+    // the old test's discarded `prove` call was supposed to demonstrate.
+    // Target 1 accepts the first tile, so each call performs exactly one
+    // attempt and returns a certificate — the work is one attempt's worth
+    // regardless of whether the matrices are zero, identity or dense.
+    for matrices in [&zeros, &identity, &dense] {
+        let cert = k.prove(matrices, matrices, 999, 1, 1);
+        assert!(
+            cert.is_some(),
+            "an easy target must find a certificate for {}",
+            if matrices[0][0] == 0 && matrices[1][0] == 0 {
+                "the zero matrices"
+            } else if matrices[0][0] == 1 {
+                "the identity"
+            } else {
+                "the dense matrices"
+            }
+        );
     }
+}
 
-    /// h_num and h must AGREE on the same logical parts, or the two entry
-    /// points are two different hash functions and a certificate built by one
-    /// is unverifiable by the other. This is the cross-language parity path
-    /// in microcosm: Python's "|".join(str(p) for p in parts).
-    #[test]
-    fn h_num_and_h_agree_on_the_same_parts() {
-        // h("tile", "1", "2", "3") vs h_num("tile", [1, 2, 3])
-        let a = h(&["tile", "1", "2", "3"]);
-        let b = h_num("tile", &[1, 2, 3]);
-        assert_eq!(a, b, "h and h_num diverged on identical parts");
-        // zero renders as "0", not as an empty field
-        let c = h(&["tile", "0"]);
-        let d = h_num("tile", &[0]);
-        assert_eq!(c, d, "h_num rendered 0 differently from h");
-    }
+// ---- adversarial: h_num is pub, so its stack buffer is a public
+// boundary. The buffer is 160 bytes and each numeric part costs up to
+// 21 bytes (1 separator + 20 digits for u64::MAX), so the array holds 7
+// wide parts. Every caller in this crate passes 3 or 5 — the overflow was
+// unreachable from inside, exactly like kok-fri's field helpers, and
+// exactly like that one this fixes the boundary rather than the leak.
 
-    /// `validate` is the peer-facing name for `verify`. It is a one-line
-    /// delegator, so no existing test calls it directly — but it is the
-    /// function a full node actually runs on a received block, so a
-    /// divergence between the two entry points would be exactly the bug that
-    /// a miner accepts and a peer rejects. Pin the alias here: same answer as
-    /// verify, on an accept and on a forgery.
-    #[test]
-    fn validate_agrees_with_verify_on_an_accept_and_a_forgery() {
-        let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
-        let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
-        let k = KwKernel::new(TOY_Q, TOY_R);
-        let target = 1u64 << 8;
-        let (nonce, cert) = k.mine(&a, &b, 777, target);
-        let cert = cert.unwrap();
-        // the honest case: both entry points accept
-        assert_eq!(k.validate(&cert, &a, &b, 777, nonce, target),
-                   k.verify(&cert, &a, &b, 777, nonce, target),
-                   "validate and verify disagreed on an honest certificate");
-        assert!(k.validate(&cert, &a, &b, 777, nonce, target),
-                "an honestly mined certificate failed the peer-facing check");
-        // a foreign ctx: both must reject (the TV-1 replay guard)
-        assert_eq!(k.validate(&cert, &a, &b, 778, nonce, target),
-                   k.verify(&cert, &a, &b, 778, nonce, target),
-                   "validate and verify disagreed on a replayed certificate");
-        assert!(!k.validate(&cert, &a, &b, 778, nonce, target),
-                "a replayed certificate passed the peer-facing check");
-    }
+/// The production-sized calls must be unchanged: 3 parts ("E"/"F") and
+/// 5 parts ("tile") with the largest possible values, plus a long prefix,
+/// all fit and digest. This is the "the guard must not break the working
+/// path" pin — a guard that rejects legitimate input is a regression
+/// wearing a fix's clothes.
+#[test]
+fn h_num_accepts_the_production_shapes_at_their_worst_case() {
+    // 3 parts of u64::MAX under a 1-byte prefix: 1 + 3*21 = 64 <= 160
+    let _ = h_num("E", &[u64::MAX, u64::MAX, u64::MAX]);
+    // 5 parts of u64::MAX under a 4-byte prefix: 4 + 5*21 = 109 <= 160
+    let _ = h_num("tile", &[u64::MAX; 5]);
+    // the real production inputs must still digest byte-identically:
+    // this is the cross-language parity path, so the guard cannot have
+    // altered the output for the inputs the protocol actually uses
+    assert_eq!(h_num("E", &[1, 2, 3]), h_num("E", &[1, 2, 3]));
+}
 
-    /// `prove` must be total on the same input domain `verify` is total on.
-    /// Before this fix `prove` guarded NOTHING: `verify` rejected q==0, r==0,
-    /// ragged matrices and target==0, and because the two are reached through
-    /// `PVI::decode` — which screens all four upstream — the WASM suite never
-    /// handed `prove` the values that break it. A caller building `KwKernel`
-    /// directly got a panic where `verify` returned `None`.
-    #[test]
-    fn prove_is_total_where_verify_is_total() {
-        let a = vec![vec![1u64, 2], vec![3, 4]];
-        let b = vec![vec![5u64, 6], vec![7, 8]];
-        // q == 0
-        assert!(KwKernel::new(0, 2).prove(&a, &b, 1, 1, 1 << 16).is_none(),
-                "q == 0 must be rejected, not used as a modulus");
-        // target == 0: the division-by-zero of the difficulty sense. `mine` is
-        // an unbounded loop over `prove`, so this would crash a miner on its
-        // first iteration before this guard existed.
-        assert!(KwKernel::new(97, 2).prove(&a, &b, 1, 1, 0).is_none(),
-                "target == 0 must be rejected, not used as a modulo");
-        // r == 0
-        assert!(KwKernel::new(97, 0).prove(&a, &b, 1, 1, 1 << 16).is_none(),
-                "r == 0 must be rejected");
-        // r does not divide n
-        assert!(KwKernel::new(97, 3).prove(&a, &b, 1, 1, 1 << 16).is_none(),
-                "r not dividing n must be rejected");
-        // ragged rows
-        let ragged = vec![vec![1u64, 2], vec![3]];
-        assert!(KwKernel::new(97, 2).prove(&ragged, &b, 1, 1, 1 << 16).is_none(),
-                "a ragged matrix must be rejected, not indexed out of bounds");
-        assert!(KwKernel::new(97, 2).prove(&a, &ragged, 1, 1, 1 << 16).is_none(),
-                "a ragged B must be rejected");
-        // empty input
-        let empty: Vec<Vec<u64>> = vec![];
-        assert!(KwKernel::new(97, 2).prove(&empty, &empty, 1, 1, 1 << 16).is_none(),
-                "n == 0 must be rejected");
-    }
+/// The guard's arithmetic must itself be total — the check is computed in
+/// u64 so that a caller passing a slice long enough to make
+/// `nums.len() * 21` overflow cannot turn the guard into a second hazard.
+/// usize on a 64-bit target is u64, so the product is u64 and cannot wrap
+/// below this test's inputs; the pin is that a large-but-non-overflowing
+/// slice is REJECTED rather than crashing the arithmetic.
+#[test]
+fn h_num_rejects_a_slice_that_would_overflow_the_buffer() {
+    // 8 parts of u64::MAX need 8*21 = 168 > 160: rejected by the guard,
+    // not by a copy_from_slice panic. The message names the arithmetic.
+    let big = vec![u64::MAX; 8];
+    let res = std::panic::catch_unwind(|| h_num("E", &big));
+    assert!(res.is_err(), "an overflowing slice was accepted");
+    // and the same rejection is stable at the exact boundary: 7 parts fit
+    // (7*21 = 147 <= 160 with a 1-byte prefix), 8 does not
+    let _ = h_num("E", &[u64::MAX; 7]);
+}
 
-    /// The zero-target path specifically, pinned as a mining-loop crash. The
-    /// old code reached `h_num("tile", ...) % target` with target 0 and
-    /// divided by zero; `mine` would abort on its first iteration.
-    #[test]
-    fn mine_with_a_zero_target_does_not_crash() {
-        // mine is unbounded over prove; with the guard, prove returns None on
-        // every iteration and the loop exits via its attempt cap or a found
-        // certificate — never via a panic. Cap the attempts so the test is
-        // finite either way.
-        let k = KwKernel::new(97, 2);
-        let a = vec![vec![1u64, 2], vec![3, 4]];
-        let b = vec![vec![5u64, 6], vec![7, 8]];
-        // If mine loops forever without the guard this test would hang rather
-        // than fail; the prove guard makes each iteration return None, so mine
-        // terminates. Run it with a bounded mine if one exists, else assert
-        // the precondition directly.
-        assert!(k.prove(&a, &b, 1, 1, 0).is_none(),
-                "target 0 must short-circuit prove before any modulo");
-    }
+/// A long prefix is the other axis: a prefix alone can exceed the buffer
+/// with zero numeric parts, and the guard must catch that too rather than
+/// indexing past the array at `buf[..prefix.len()]`.
+#[test]
+fn h_num_rejects_a_prefix_longer_than_the_buffer() {
+    let long = "x".repeat(200);
+    let res = std::panic::catch_unwind(|| h_num(&long, &[]));
+    assert!(
+        res.is_err(),
+        "a 200-byte prefix was accepted into a 160-byte buffer"
+    );
+    // an empty input is fine: the digest of a 1-byte prefix is defined
+    let _ = h_num("E", &[]);
+}
+
+/// h_num and h must AGREE on the same logical parts, or the two entry
+/// points are two different hash functions and a certificate built by one
+/// is unverifiable by the other. This is the cross-language parity path
+/// in microcosm: Python's "|".join(str(p) for p in parts).
+#[test]
+fn h_num_and_h_agree_on_the_same_parts() {
+    // h("tile", "1", "2", "3") vs h_num("tile", [1, 2, 3])
+    let a = h(&["tile", "1", "2", "3"]);
+    let b = h_num("tile", &[1, 2, 3]);
+    assert_eq!(a, b, "h and h_num diverged on identical parts");
+    // zero renders as "0", not as an empty field
+    let c = h(&["tile", "0"]);
+    let d = h_num("tile", &[0]);
+    assert_eq!(c, d, "h_num rendered 0 differently from h");
+}
+
+/// `validate` is the peer-facing name for `verify`. It is a one-line
+/// delegator, so no existing test calls it directly — but it is the
+/// function a full node actually runs on a received block, so a
+/// divergence between the two entry points would be exactly the bug that
+/// a miner accepts and a peer rejects. Pin the alias here: same answer as
+/// verify, on an accept and on a forgery.
+#[test]
+fn validate_agrees_with_verify_on_an_accept_and_a_forgery() {
+    let a: Vec<Vec<u64>> = canonical::CANON_A.iter().map(|r| r.to_vec()).collect();
+    let b: Vec<Vec<u64>> = canonical::CANON_B.iter().map(|r| r.to_vec()).collect();
+    let k = KwKernel::new(TOY_Q, TOY_R);
+    let target = 1u64 << 8;
+    let (nonce, cert) = k.mine(&a, &b, 777, target);
+    let cert = cert.unwrap();
+    // the honest case: both entry points accept
+    assert_eq!(
+        k.validate(&cert, &a, &b, 777, nonce, target),
+        k.verify(&cert, &a, &b, 777, nonce, target),
+        "validate and verify disagreed on an honest certificate"
+    );
+    assert!(
+        k.validate(&cert, &a, &b, 777, nonce, target),
+        "an honestly mined certificate failed the peer-facing check"
+    );
+    // a foreign ctx: both must reject (the TV-1 replay guard)
+    assert_eq!(
+        k.validate(&cert, &a, &b, 778, nonce, target),
+        k.verify(&cert, &a, &b, 778, nonce, target),
+        "validate and verify disagreed on a replayed certificate"
+    );
+    assert!(
+        !k.validate(&cert, &a, &b, 778, nonce, target),
+        "a replayed certificate passed the peer-facing check"
+    );
+}
+
+/// `prove` must be total on the same input domain `verify` is total on.
+/// Before this fix `prove` guarded NOTHING: `verify` rejected q==0, r==0,
+/// ragged matrices and target==0, and because the two are reached through
+/// `PVI::decode` — which screens all four upstream — the WASM suite never
+/// handed `prove` the values that break it. A caller building `KwKernel`
+/// directly got a panic where `verify` returned `None`.
+#[test]
+fn prove_is_total_where_verify_is_total() {
+    let a = vec![vec![1u64, 2], vec![3, 4]];
+    let b = vec![vec![5u64, 6], vec![7, 8]];
+    // q == 0
+    assert!(
+        KwKernel::new(0, 2).prove(&a, &b, 1, 1, 1 << 16).is_none(),
+        "q == 0 must be rejected, not used as a modulus"
+    );
+    // target == 0: the division-by-zero of the difficulty sense. `mine` is
+    // an unbounded loop over `prove`, so this would crash a miner on its
+    // first iteration before this guard existed.
+    assert!(
+        KwKernel::new(97, 2).prove(&a, &b, 1, 1, 0).is_none(),
+        "target == 0 must be rejected, not used as a modulo"
+    );
+    // r == 0
+    assert!(
+        KwKernel::new(97, 0).prove(&a, &b, 1, 1, 1 << 16).is_none(),
+        "r == 0 must be rejected"
+    );
+    // r does not divide n
+    assert!(
+        KwKernel::new(97, 3).prove(&a, &b, 1, 1, 1 << 16).is_none(),
+        "r not dividing n must be rejected"
+    );
+    // ragged rows
+    let ragged = vec![vec![1u64, 2], vec![3]];
+    assert!(
+        KwKernel::new(97, 2)
+            .prove(&ragged, &b, 1, 1, 1 << 16)
+            .is_none(),
+        "a ragged matrix must be rejected, not indexed out of bounds"
+    );
+    assert!(
+        KwKernel::new(97, 2)
+            .prove(&a, &ragged, 1, 1, 1 << 16)
+            .is_none(),
+        "a ragged B must be rejected"
+    );
+    // empty input
+    let empty: Vec<Vec<u64>> = vec![];
+    assert!(
+        KwKernel::new(97, 2)
+            .prove(&empty, &empty, 1, 1, 1 << 16)
+            .is_none(),
+        "n == 0 must be rejected"
+    );
+}
+
+/// The zero-target path specifically, pinned as a mining-loop crash. The
+/// old code reached `h_num("tile", ...) % target` with target 0 and
+/// divided by zero; `mine` would abort on its first iteration.
+#[test]
+fn mine_with_a_zero_target_does_not_crash() {
+    // mine is unbounded over prove; with the guard, prove returns None on
+    // every iteration and the loop exits via its attempt cap or a found
+    // certificate — never via a panic. Cap the attempts so the test is
+    // finite either way.
+    let k = KwKernel::new(97, 2);
+    let a = vec![vec![1u64, 2], vec![3, 4]];
+    let b = vec![vec![5u64, 6], vec![7, 8]];
+    // If mine loops forever without the guard this test would hang rather
+    // than fail; the prove guard makes each iteration return None, so mine
+    // terminates. Run it with a bounded mine if one exists, else assert
+    // the precondition directly.
+    assert!(
+        k.prove(&a, &b, 1, 1, 0).is_none(),
+        "target 0 must short-circuit prove before any modulo"
+    );
+}

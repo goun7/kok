@@ -53,9 +53,22 @@ fn u64_le(b: &[u8]) -> Option<u64> {
 
 /// Decode the packet, rejecting any structurally-invalid input BEFORE the
 /// matrices are indexed. Every failure here is a Reject, never a panic.
+#[allow(clippy::type_complexity)]
 fn decode(
     input: &VerifierInput,
-) -> Result<(Certificate, u64, u64, u64, u64, u64, Vec<Vec<u64>>, Vec<Vec<u64>>), String> {
+) -> Result<
+    (
+        Certificate,
+        u64,
+        u64,
+        u64,
+        u64,
+        u64,
+        Vec<Vec<u64>>,
+        Vec<Vec<u64>>,
+    ),
+    String,
+> {
     let i = u64_le(&input.cert_bytes[0..8]).ok_or("cert too short: i")?;
     let j = u64_le(&input.cert_bytes[8..16]).ok_or("cert too short: j")?;
     let value = u64_le(&input.cert_bytes[16..24]).ok_or("cert too short: value")?;
@@ -139,12 +152,20 @@ fn decode(
     // indexing site where a bad value would panic
     let grid = n / r;
     if i >= grid || j >= grid {
-        return Err(format!("tile ({},{}) is outside the {}x{} grid", i, j, grid, grid));
+        return Err(format!(
+            "tile ({},{}) is outside the {}x{} grid",
+            i, j, grid, grid
+        ));
     }
     if m != grid {
         return Err(format!("m is {} but n/r is {}", m, grid));
     }
-    let cert = Certificate { i: i as usize, j: j as usize, value, m: m as usize };
+    let cert = Certificate {
+        i: i as usize,
+        j: j as usize,
+        value,
+        m: m as usize,
+    };
     Ok((cert, ctx, nonce, target, n, q, a, b))
 }
 
@@ -175,9 +196,18 @@ pub fn verify_raw(input: &VerifierInput) -> Verdict {
 
 /// A constructor for well-formed input, for tests and for callers that
 /// already hold the typed values.
+#[allow(clippy::too_many_arguments)]
 pub fn pack(
-    i: u64, j: u64, value: u64, m: u64, ctx: u64, nonce: u64, target: u64,
-    n: u64, q: u64, r: u64,
+    i: u64,
+    j: u64,
+    value: u64,
+    m: u64,
+    ctx: u64,
+    nonce: u64,
+    target: u64,
+    n: u64,
+    q: u64,
+    r: u64,
 ) -> VerifierInput {
     let mut cert_bytes = [0u8; 32];
     cert_bytes[0..8].copy_from_slice(&i.to_le_bytes());
@@ -192,7 +222,12 @@ pub fn pack(
     pub_inputs[32..40].copy_from_slice(&q.to_le_bytes());
     pub_inputs[40..48].copy_from_slice(&r.to_le_bytes());
     let bytes = (n * n) as usize * 8;
-    VerifierInput { cert_bytes, flat_a: vec![0u8; bytes], flat_b: vec![0u8; bytes], pub_inputs }
+    VerifierInput {
+        cert_bytes,
+        flat_a: vec![0u8; bytes],
+        flat_b: vec![0u8; bytes],
+        pub_inputs,
+    }
 }
 
 #[cfg(test)]
@@ -207,7 +242,10 @@ mod tests {
         // truncated matrices
         let mut bad = pack(1, 2, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
         bad.flat_a.truncate(4);
-        assert!(!verify_raw(&bad).accepted(), "truncated matrix A was accepted");
+        assert!(
+            !verify_raw(&bad).accepted(),
+            "truncated matrix A was accepted"
+        );
         // empty matrices
         let mut e = pack(1, 2, 3, 4, 777, 1, 1 << 16, 8, 97, 2);
         e.flat_a.clear();
@@ -239,14 +277,27 @@ mod tests {
         let mut mm = pack(1, 2, 3, 99, 777, 1, 1 << 16, 8, 97, 2);
         mm.flat_a = vec![0u8; 512];
         mm.flat_b = vec![0u8; 512];
-        assert!(!verify_raw(&mm).accepted(), "an inconsistent m was accepted");
+        assert!(
+            !verify_raw(&mm).accepted(),
+            "an inconsistent m was accepted"
+        );
     }
 
     /// THE END-TO-END PATH: a certificate mined honestly over real matrices
     /// must ACCEPT through the byte boundary, and every forgery must REJECT.
     /// Before this the boundary rejected everything with an F3+ marker —
     /// honest about being unimplemented, but not a verifier.
-    fn encode(a: &[Vec<u64>], b: &[Vec<u64>], cert: &Certificate, ctx: u64, nonce: u64, target: u64, q: u64, r: usize) -> VerifierInput {
+    #[allow(clippy::too_many_arguments)]
+    fn encode(
+        a: &[Vec<u64>],
+        b: &[Vec<u64>],
+        cert: &Certificate,
+        ctx: u64,
+        nonce: u64,
+        target: u64,
+        q: u64,
+        r: usize,
+    ) -> VerifierInput {
         let n = a.len();
         let mut flat_a = Vec::with_capacity(n * n * 8 * 2);
         for row in a.iter().chain(b.iter()) {
@@ -269,7 +320,12 @@ mod tests {
         pub_inputs[24..32].copy_from_slice(&(n as u64).to_le_bytes());
         pub_inputs[32..40].copy_from_slice(&q.to_le_bytes());
         pub_inputs[40..48].copy_from_slice(&r.to_le_bytes());
-        VerifierInput { cert_bytes, flat_a, flat_b, pub_inputs }
+        VerifierInput {
+            cert_bytes,
+            flat_a,
+            flat_b,
+            pub_inputs,
+        }
     }
 
     /// Mine a real certificate over the canonical matrices and drive it
@@ -291,7 +347,10 @@ mod tests {
             }
         };
         let input = encode(&a, &b, &cert, 777, nonce, target, TOY_Q, TOY_R);
-        assert!(matches!(verify_raw(&input), Verdict::Accept), "an honestly mined certificate was rejected");
+        assert!(
+            matches!(verify_raw(&input), Verdict::Accept),
+            "an honestly mined certificate was rejected"
+        );
     }
 
     /// A FORGED VALUE must reject — the accumulator the packet claims is not
@@ -316,7 +375,10 @@ mod tests {
         let mut forged = cert.clone();
         forged.value = (cert.value + 1) % TOY_Q;
         let input = encode(&a, &b, &forged, 777, nonce, target, TOY_Q, TOY_R);
-        assert!(!verify_raw(&input).accepted(), "a forged tile value was accepted");
+        assert!(
+            !verify_raw(&input).accepted(),
+            "a forged tile value was accepted"
+        );
     }
 
     /// A REPLAYED CTX must reject: a certificate mined under one block

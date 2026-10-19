@@ -95,7 +95,11 @@ fn blue_score_gercek_dagda_secili_zincirde_artar() {
             cur = *sp;
         }
     }
-    assert!(kenarlar > 100, "yürüyüş yeterli kenar incelemedi: {}", kenarlar);
+    assert!(
+        kenarlar > 100,
+        "yürüyüş yeterli kenar incelemedi: {}",
+        kenarlar
+    );
 }
 
 /// blue_score her zaman ≥ 1'dir (genesis = 1). Üst sınır: her seçili-zincir
@@ -108,7 +112,12 @@ fn blue_score_sinirlar_icerisinde() {
     let ust_sinir = g.blocks.len() as u64 * (MERGESET_SIZE_LIMIT as u64 + 1);
     for (bid, skor) in &g.blue_score {
         assert!(*skor >= 1, "blok {}'nin skoru 1'den küçük: {}", bid, skor);
-        assert!(*skor <= ust_sinir, "blok {}'nin skoru makul üst sınırı aştı: {}", bid, skor);
+        assert!(
+            *skor <= ust_sinir,
+            "blok {}'nin skoru makul üst sınırı aştı: {}",
+            bid,
+            skor
+        );
     }
 }
 
@@ -126,7 +135,10 @@ fn blue_score_ozyineli_formulu_topolojiden_dogru() {
         let Some(sp) = sp else { continue };
         let ms = g.mergesets.get(bid).cloned().unwrap_or_default();
         // mavi üye sayısı KURALDAN hesaplanır: |anticone(m) ∩ ms| ≤ k
-        let mavi = ms.iter().filter(|m| ic_anticone_sayisi(&g, **m, &ms) <= g.k).count();
+        let mavi = ms
+            .iter()
+            .filter(|m| ic_anticone_sayisi(&g, **m, &ms) <= g.k)
+            .count();
         let beklenen = g.blue_score[sp] + 1 + mavi as u64;
         assert_eq!(
             g.blue_score[bid], beklenen,
@@ -135,7 +147,11 @@ fn blue_score_ozyineli_formulu_topolojiden_dogru() {
         );
         denetlenen += 1;
     }
-    assert!(denetlenen > 40, "formül yeterli blokta denenmedi: {}", denetlenen);
+    assert!(
+        denetlenen > 40,
+        "formül yeterli blokta denenmedi: {}",
+        denetlenen
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +182,11 @@ fn mergeset_mavi_kurali_son_yazan_ile_tutarli() {
                 .filter(|(_, diger)| diger.contains(m))
                 .map(|(b, _)| *b)
                 .collect();
-            let son_yazan = sahip_olanlar.iter().copied().max().expect("en az bir sahip var");
+            let son_yazan = sahip_olanlar
+                .iter()
+                .copied()
+                .max()
+                .expect("en az bir sahip var");
             let son_ms = &g.mergesets[&son_yazan];
             let kural_mavi = ic_anticone_sayisi(&g, *m, son_ms) <= g.k;
             assert_eq!(
@@ -183,14 +203,25 @@ fn mergeset_mavi_kurali_son_yazan_ile_tutarli() {
                 assert!(
                     !g.is_blue.get(m).copied().unwrap_or(false),
                     "blok {} mergeset {} içinde {} karşılıklı anticone'a sahip ama mavi (k = {})",
-                    m, bid, ic_anticone_sayisi(&g, *m, ms), g.k
+                    m,
+                    bid,
+                    ic_anticone_sayisi(&g, *m, ms),
+                    g.k
                 );
             }
             denetlenen += 1;
         }
     }
-    assert!(dolu_ms > 10, "DAG yeterli dolu mergeset üretmedi: {}", dolu_ms);
-    assert!(denetlenen > 50, "kural yeterli üyede denenmedi: {}", denetlenen);
+    assert!(
+        dolu_ms > 10,
+        "DAG yeterli dolu mergeset üretmedi: {}",
+        dolu_ms
+    );
+    assert!(
+        denetlenen > 50,
+        "kural yeterli üyede denenmedi: {}",
+        denetlenen
+    );
 }
 
 /// MERGESET BOYUT SINIRI: hiçbir mergeset 2k'dan fazla üye içeremez. Bu
@@ -234,7 +265,11 @@ fn anticone_future_kumesini_icermez() {
         );
         // ve anticone ∩ past da boş olmalı
         let past = g.past(*bid);
-        assert_eq!(ac.intersection(&past).count(), 0, "anticone past'ı içeriyor");
+        assert_eq!(
+            ac.intersection(&past).count(),
+            0,
+            "anticone past'ı içeriyor"
+        );
         // özünü de içeremez
         assert!(!ac.contains(bid));
         toplam_anticone += ac.len();
@@ -245,8 +280,14 @@ fn anticone_future_kumesini_icermez() {
     // aralıkta). Bu bir iddia değil, parametrenin varoluş gerekçesinin
     // ölçümüdür.
     let ort = toplam_anticone as f64 / g.blocks.len() as f64;
-    assert!(ort < 20.0, "anticone ortalaması çok yüksek: {ort:.1} (round-6 öncesi 64.9)");
-    assert!(maks_anticone < 40, "maksimum anticone çok yüksek: {maks_anticone}");
+    assert!(
+        ort < 20.0,
+        "anticone ortalaması çok yüksek: {ort:.1} (round-6 öncesi 64.9)"
+    );
+    assert!(
+        maks_anticone < 40,
+        "maksimum anticone çok yüksek: {maks_anticone}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -266,8 +307,18 @@ fn odeme_kumesi_tekrarsiz_mergeset_yesidi_ve_mavidir() {
         let ms = g.mergesets.get(bid).cloned().unwrap_or_default();
         let mut gorulen = std::collections::BTreeSet::new();
         for o in &pay {
-            assert!(gorulen.insert(*o), "blok {} ödeme kümesinde tekrarladı: {}", bid, o);
-            assert!(ms.contains(o), "blok {} mergeset üyesi olmayanı ödedi: {}", bid, o);
+            assert!(
+                gorulen.insert(*o),
+                "blok {} ödeme kümesinde tekrarladı: {}",
+                bid,
+                o
+            );
+            assert!(
+                ms.contains(o),
+                "blok {} mergeset üyesi olmayanı ödedi: {}",
+                bid,
+                o
+            );
             // ödenen blok mavi olmalı (kırmızıya ödeme = sonlandırılmamışa ödeme)
             assert!(
                 g.is_blue.get(o).copied().unwrap_or(false),
@@ -281,7 +332,11 @@ fn odeme_kumesi_tekrarsiz_mergeset_yesidi_ve_mavidir() {
         }
         odemeler += pay.len();
     }
-    assert!(bos_olmayan > 5, "DAG hiç dolu ödeme kümesi üretmedi: {}", bos_olmayan);
+    assert!(
+        bos_olmayan > 5,
+        "DAG hiç dolu ödeme kümesi üretmedi: {}",
+        bos_olmayan
+    );
     assert!(odemeler > 20, "DAG yeterli ödeme yapmadı: {}", odemeler);
 }
 
@@ -295,7 +350,10 @@ fn odeme_kumesi_tekrarsiz_mergeset_yesidi_ve_mavidir() {
 #[test]
 fn siralama_past_kumesi_disina_cikmaz() {
     let g = olcu_dag(60, 0.25, 7);
-    assert!(g.order_within_past(), "order(B) past(B) dışına çıktı (TV-59)");
+    assert!(
+        g.order_within_past(),
+        "order(B) past(B) dışına çıktı (TV-59)"
+    );
     // DOĞRUDAN DENETİM
     for bid in g.blocks.keys() {
         let past_b = g.past(*bid);
@@ -324,7 +382,12 @@ fn siralama_kendisiyle_baslar_secili_zincir_genesisle_biter() {
             continue;
         }
         // (1) B en başta
-        assert_eq!(*o.first().unwrap(), *bid, "blok {} sıralaması kendisiyle başlamıyor", bid);
+        assert_eq!(
+            *o.first().unwrap(),
+            *bid,
+            "blok {} sıralaması kendisiyle başlamıyor",
+            bid
+        );
         // (2) seçili-parent zincirini elle yürü: order'ın ön eki olmalı
         let mut zincir = Vec::new();
         let mut cur = *bid;
@@ -336,7 +399,11 @@ fn siralama_kendisiyle_baslar_secili_zincir_genesisle_biter() {
                 _ => break,
             };
         }
-        assert!(o.starts_with(&zincir), "blok {}: seçili zincir order'ın ön eki değil", bid);
+        assert!(
+            o.starts_with(&zincir),
+            "blok {}: seçili zincir order'ın ön eki değil",
+            bid
+        );
         // zincir genesis'te (parents == []) bitmeli
         let son = *zincir.last().expect("zincir boş olamaz");
         assert!(
@@ -396,10 +463,18 @@ fn secili_parent_dagin_tamaminda_en_yuksek_skorlu_parenttir() {
             .copied()
             .collect();
         if esit_skorlu.len() > 1 {
-            assert_eq!(*sp, *esit_skorlu.iter().min().unwrap(), "tie'da en küçük bid seçilmedi");
+            assert_eq!(
+                *sp,
+                *esit_skorlu.iter().min().unwrap(),
+                "tie'da en küçük bid seçilmedi"
+            );
         }
     }
-    assert!(cok_parentli > 5, "DAG yeterli çok-parentlı blok üretmedi: {}", cok_parentli);
+    assert!(
+        cok_parentli > 5,
+        "DAG yeterli çok-parentlı blok üretmedi: {}",
+        cok_parentli
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -412,18 +487,31 @@ fn secili_parent_dagin_tamaminda_en_yuksek_skorlu_parenttir() {
 /// Üyelerin mergeset-içi karşılıklı anticone'ları 0,1,2,3 olduğundan:
 ///   * k=1 → 2 ve 3 mavi, 4 ve 5 KIRMIZI (eşik ayırıcı)
 ///   * k=3 → hepsi mavi
+///
 /// Sadece "hepsi mavi" diyen bir test, eşiğin varlığını kanıtlamaz.
 #[test]
 fn oylama_k_esigi_her_yonde_ayiricidir() {
     fn yildiz(k: usize) -> Ghostdag {
         let mut g = Ghostdag::new(k);
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         for b in 2..=6 {
-            g.add(Block { bid: b, parents: vec![1] }); // beş paralel kol
+            g.add(Block {
+                bid: b,
+                parents: vec![1],
+            }); // beş paralel kol
         }
-        g.add(Block { bid: 7, parents: vec![6] }); // son kolu ağır yap (skor 3)
-        // hub: beş kolu da parent alır; en yüksek skorlu parent 7 → sp = 7
-        g.add(Block { bid: 8, parents: vec![2, 3, 4, 5, 7] });
+        g.add(Block {
+            bid: 7,
+            parents: vec![6],
+        }); // son kolu ağır yap (skor 3)
+            // hub: beş kolu da parent alır; en yüksek skorlu parent 7 → sp = 7
+        g.add(Block {
+            bid: 8,
+            parents: vec![2, 3, 4, 5, 7],
+        });
         g
     }
 
@@ -431,23 +519,42 @@ fn oylama_k_esigi_her_yonde_ayiricidir() {
     let onizleme = yildiz(GHOSTDAG_K);
     assert_eq!(onizleme.selected[&8], Some(7), "hub en ağır kolu seçmeli");
     let ms = onizleme.mergesets[&8].clone();
-    assert_eq!(ms, [2, 3, 4, 5].into_iter().collect::<std::collections::BTreeSet<_>>());
+    assert_eq!(
+        ms,
+        [2, 3, 4, 5]
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>()
+    );
 
     // K=1: eşik ayırır. 2 (iç anticone 0) ve 3 (1) mavi; 4 (2) ve 5 (3) kırmızı.
     let g1 = yildiz(1);
     assert!(g1.is_blue[&2], "k=1: iç anticone 0 olan blok mavi olmalı");
     assert!(g1.is_blue[&3], "k=1: iç anticone 1 olan blok mavi olmalı");
-    assert!(!g1.is_blue[&4], "k=1: iç anticone 2 > k olan blok KIRMIZI olmalı (eşik ayırmadı)");
-    assert!(!g1.is_blue[&5], "k=1: iç anticone 3 > k olan blok KIRMIZI olmalı");
+    assert!(
+        !g1.is_blue[&4],
+        "k=1: iç anticone 2 > k olan blok KIRMIZI olmalı (eşik ayırmadı)"
+    );
+    assert!(
+        !g1.is_blue[&5],
+        "k=1: iç anticone 3 > k olan blok KIRMIZI olmalı"
+    );
     // ödeme kümesi sadece mavi üyelere öder: {2, 3}
-    assert_eq!(g1.pay_set(8), vec![2, 3], "k=1'de ödeme kümesi sadece mavi blokları içermeli");
+    assert_eq!(
+        g1.pay_set(8),
+        vec![2, 3],
+        "k=1'de ödeme kümesi sadece mavi blokları içermeli"
+    );
     // blue_score = sp(3) + 1 + 2 mavi = 6
     assert_eq!(g1.blue_score[&8], 6);
 
     // K=3: eşiğin altında, hepsi mavi (4. üyenin iç anticone'u 3 ≤ 3)
     let g3 = yildiz(3);
     for m in [2, 3, 4, 5] {
-        assert!(g3.is_blue[&m], "k=3: iç anticone ≤ 3 olan blok {} mavi olmalı", m);
+        assert!(
+            g3.is_blue[&m],
+            "k=3: iç anticone ≤ 3 olan blok {} mavi olmalı",
+            m
+        );
     }
     assert_eq!(g3.pay_set(8), vec![2, 3, 4, 5]);
     assert_eq!(g3.blue_score[&8], 3 + 1 + 4);
@@ -467,13 +574,31 @@ fn ayni_seed_iki_dag_bayt_bayt_ayni_konsensus_durumu() {
     let b = olcu_dag(60, 0.25, 42);
     assert_eq!(a.blocks.len(), b.blocks.len());
     assert_eq!(a.blue_score, b.blue_score, "blue_score deterministik değil");
-    assert_eq!(a.selected, b.selected, "selected parent deterministik değil");
+    assert_eq!(
+        a.selected, b.selected,
+        "selected parent deterministik değil"
+    );
     assert_eq!(a.is_blue, b.is_blue, "coloring deterministik değil");
     assert_eq!(a.mergesets, b.mergesets, "mergesets deterministik değil");
     for bid in a.blocks.keys() {
-        assert_eq!(a.order(*bid), b.order(*bid), "blok {} sıralaması farklı", bid);
-        assert_eq!(a.pay_set(*bid), b.pay_set(*bid), "blok {} ödeme kümesi farklı", bid);
-        assert_eq!(a.reward_split(*bid), b.reward_split(*bid), "blok {} ödülü farklı", bid);
+        assert_eq!(
+            a.order(*bid),
+            b.order(*bid),
+            "blok {} sıralaması farklı",
+            bid
+        );
+        assert_eq!(
+            a.pay_set(*bid),
+            b.pay_set(*bid),
+            "blok {} ödeme kümesi farklı",
+            bid
+        );
+        assert_eq!(
+            a.reward_split(*bid),
+            b.reward_split(*bid),
+            "blok {} ödülü farklı",
+            bid
+        );
     }
 }
 
@@ -506,12 +631,25 @@ fn farkli_seedler_farkli_dagler_uretir() {
 fn bilinmeyen_blok_icin_her_erisim_guvenlidir() {
     let g = olcu_dag(40, 0.25, 7);
     let bilinmeyen: Bid = 999_999;
-    assert!(g.order(bilinmeyen).is_empty(), "bilinmeyen blok sıralaması boş olmalı");
-    assert!(g.past(bilinmeyen).is_empty(), "bilinmeyen blok past'ı boş olmalı");
-    assert!(g.future(bilinmeyen).is_empty(), "bilinmeyen blok future'ı boş olmalı");
+    assert!(
+        g.order(bilinmeyen).is_empty(),
+        "bilinmeyen blok sıralaması boş olmalı"
+    );
+    assert!(
+        g.past(bilinmeyen).is_empty(),
+        "bilinmeyen blok past'ı boş olmalı"
+    );
+    assert!(
+        g.future(bilinmeyen).is_empty(),
+        "bilinmeyen blok future'ı boş olmalı"
+    );
     // anticone: past ∅, future ∅, kendisi listede yok → tüm bilinen bloklar
     let ac = g.anticone(bilinmeyen);
-    assert_eq!(ac.len(), g.blocks.len(), "bilinmeyen blok anticone'ı tanımdan farklı");
+    assert_eq!(
+        ac.len(),
+        g.blocks.len(),
+        "bilinmeyen blok anticone'ı tanımdan farklı"
+    );
     assert!(!ac.contains(&bilinmeyen));
     // pay_set: mergeset kaydı yok → [B] varsayımı (tek mavi blok)
     assert_eq!(g.pay_set(bilinmeyen), vec![bilinmeyen]);
@@ -527,8 +665,14 @@ fn bilinmeyen_blok_icin_her_erisim_guvenlidir() {
 #[test]
 fn phantom_parent_toleransi_dag_i_bozmaz() {
     let mut g = Ghostdag::new(GHOSTDAG_K);
-    g.add(Block { bid: 1, parents: vec![] });
-    g.add(Block { bid: 2, parents: vec![1, 777] }); // 777 henüz yok
+    g.add(Block {
+        bid: 1,
+        parents: vec![],
+    });
+    g.add(Block {
+        bid: 2,
+        parents: vec![1, 777],
+    }); // 777 henüz yok
     assert!(g.blocks.contains_key(&2));
     // phantom parent past'ta değil
     assert!(!g.past(2).contains(&777));

@@ -431,7 +431,6 @@ impl Ghostdag {
         true
     }
 
-
     /// The pay set: the blue blocks of mergeset(B) not already paid by an
     /// earlier block in the ordering.
     ///
@@ -570,7 +569,7 @@ mod tests {
         add_line(&mut g, 2, &[1]); // A
         add_line(&mut g, 3, &[1]); // X, a sibling fork of A
         add_line(&mut g, 4, &[2]); // B references A only, NOT X
-        // X must not be in B's mergeset or its order
+                                   // X must not be in B's mergeset or its order
         let ms = g.mergesets.get(&4).cloned().unwrap_or_default();
         assert!(!ms.contains(&3));
         assert!(!g.order(4).contains(&3));
@@ -586,7 +585,11 @@ mod tests {
             add_line(&mut g, i, &[1]);
         }
         let hub = MERGESET_SIZE_LIMIT as u64 + 20;
-        add_line(&mut g, hub, &(2..(MERGESET_SIZE_LIMIT as u64 + 9)).collect::<Vec<_>>());
+        add_line(
+            &mut g,
+            hub,
+            &(2..(MERGESET_SIZE_LIMIT as u64 + 9)).collect::<Vec<_>>(),
+        );
         let ms = g.mergesets.get(&hub).cloned().unwrap_or_default();
         assert!(ms.len() <= MERGESET_SIZE_LIMIT);
     }
@@ -617,10 +620,22 @@ mod tests {
         // b1 <- (b2a, b2b) <- b3 : b2a and b2b are both blue and both in b3's
         // mergeset; only one of them may be paid by b3
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
-        g.add(Block { bid: 3, parents: vec![1] });
-        g.add(Block { bid: 4, parents: vec![2, 3] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
+        g.add(Block {
+            bid: 3,
+            parents: vec![1],
+        });
+        g.add(Block {
+            bid: 4,
+            parents: vec![2, 3],
+        });
         let paid = g.pay_set(4);
         // the tip itself has an empty mergeset pay path, so check the
         // invariant on the mergeset members actually paid
@@ -640,15 +655,30 @@ mod tests {
     fn reward_split_conserves_emission() {
         let mut g = Ghostdag::new(18);
         let mut chain = vec![1u64];
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         for b in 2..8 {
-            g.add(Block { bid: b, parents: vec![chain.last().copied().unwrap()] });
+            g.add(Block {
+                bid: b,
+                parents: vec![chain.last().copied().unwrap()],
+            });
             chain.push(b);
         }
         for &b in &chain {
             let r = g.reward_split(b);
-            assert_eq!(r.treasury + r.miners, r.total, "emission not conserved for block {}", b);
-            assert!(r.miners > 0, "the pay set must receive something, block {}", b);
+            assert_eq!(
+                r.treasury + r.miners,
+                r.total,
+                "emission not conserved for block {}",
+                b
+            );
+            assert!(
+                r.miners > 0,
+                "the pay set must receive something, block {}",
+                b
+            );
         }
     }
 
@@ -657,7 +687,10 @@ mod tests {
     #[test]
     fn treasury_is_five_percent_of_emission() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         let r = g.reward_split(1);
         assert_eq!(r.total, 50);
         assert_eq!(r.treasury, 2, "5% of 50 KOK is 2 KOK");
@@ -679,17 +712,32 @@ mod tests {
     #[test]
     fn tail_emission_never_hits_zero() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         // mid-curve: one interval consumed, 49 to go — the curve is linear
         // in the interval count, so this pins the shape
         g.set_depth_for_test(1, EMISSION_HALVING_INTERVAL);
-        assert_eq!(g.reward_split(1).total, 49, "the curve did not decay by one per interval");
+        assert_eq!(
+            g.reward_split(1).total,
+            49,
+            "the curve did not decay by one per interval"
+        );
         // exactly at the floor: R_0 intervals consumed
         g.set_depth_for_test(1, R_0 * EMISSION_HALVING_INTERVAL);
-        assert_eq!(g.reward_split(1).total, 1, "emission hit zero; the tail floor failed");
+        assert_eq!(
+            g.reward_split(1).total,
+            1,
+            "emission hit zero; the tail floor failed"
+        );
         // far beyond the floor: the tail binds and the answer stays 1
         g.set_depth_for_test(1, R_0 * EMISSION_HALVING_INTERVAL * 100);
-        assert_eq!(g.reward_split(1).total, 1, "the tail floor did not bind past the decay");
+        assert_eq!(
+            g.reward_split(1).total,
+            1,
+            "the tail floor did not bind past the decay"
+        );
     }
 
     /// THE EMISSION IS A FUNCTION OF THE DAG, NOT OF THE CALLER (2026-09-26).
@@ -701,16 +749,28 @@ mod tests {
     #[test]
     fn the_emission_is_derived_from_the_block_not_the_caller() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         let a = g.reward_split(2);
         let b = g.reward_split(2);
         assert_eq!(a, b, "the same block gave two different reward splits");
         // block 2's blue_score is 2, so its emission follows from depth 2
-        assert_eq!(a.total, 50, "depth 2 is still in the first halving interval");
+        assert_eq!(
+            a.total, 50,
+            "depth 2 is still in the first halving interval"
+        );
         // an unknown block gets the genesis-era curve, never a panic
         let unknown = g.reward_split(999);
-        assert_eq!(unknown.total, 50, "an unknown block did not get the genesis curve");
+        assert_eq!(
+            unknown.total, 50,
+            "an unknown block did not get the genesis curve"
+        );
     }
 
     /// THE U-AYER ZERO-WEIGHT CONSTRAINT, at the consensus boundary: the
@@ -720,8 +780,14 @@ mod tests {
     #[test]
     fn no_u_input_can_change_the_reward_split() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         // the signature has no U parameter: the only way to change the split
         // is height, and a U task cannot change height either
         let a = g.reward_split(2);
@@ -749,7 +815,12 @@ mod tests {
         // definition all of them were "anticone". Under the correct one the
         // genesis has no past and no future-excluded anticone beyond the
         // small set the forks create.
-        let max_ac = g.blocks.keys().map(|b| g.anticone(*b).len()).max().unwrap_or(0);
+        let max_ac = g
+            .blocks
+            .keys()
+            .map(|b| g.anticone(*b).len())
+            .max()
+            .unwrap_or(0);
         assert!(
             max_ac <= 2 * g.k + 1,
             "max anticone {} exceeded the regime k=18 binds (naive bug: ~123)",
@@ -783,13 +854,33 @@ mod tests {
     fn a_block_with_absent_parents_behaves_like_a_genesis() {
         let mut g = Ghostdag::new(18);
         // block 2 cites parent 999, which was never added
-        g.add(Block { bid: 2, parents: vec![999] });
-        assert_eq!(g.blue_score.get(&2), Some(&1), "an absent-parent block was not scored as a genesis");
-        assert_eq!(g.selected.get(&2), Some(&None), "an absent-parent block got a selected parent from nowhere");
-        assert!(g.mergesets.get(&2).map_or(false, |ms| ms.is_empty()), "an absent-parent block inherited a mergeset from nowhere");
-        assert!(g.is_blue.get(&2).copied().unwrap_or(false), "an absent-parent block was not marked blue");
+        g.add(Block {
+            bid: 2,
+            parents: vec![999],
+        });
+        assert_eq!(
+            g.blue_score.get(&2),
+            Some(&1),
+            "an absent-parent block was not scored as a genesis"
+        );
+        assert_eq!(
+            g.selected.get(&2),
+            Some(&None),
+            "an absent-parent block got a selected parent from nowhere"
+        );
+        assert!(
+            g.mergesets.get(&2).is_some_and(|ms| ms.is_empty()),
+            "an absent-parent block inherited a mergeset from nowhere"
+        );
+        assert!(
+            g.is_blue.get(&2).copied().unwrap_or(false),
+            "an absent-parent block was not marked blue"
+        );
         // and it is NOT counted as a child of the absent parent
-        assert!(g.children.get(&999).map_or(true, |c| c.is_empty()), "an absent parent gained a child");
+        assert!(
+            g.children.get(&999).is_none_or(|c| c.is_empty()),
+            "an absent parent gained a child"
+        );
     }
 
     /// THE MIXED CASE: some parents present, some absent. The present ones
@@ -800,15 +891,38 @@ mod tests {
     #[test]
     fn mixed_present_and_absent_parents_select_on_the_present_one_only() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         // 2 now has blue_score 2. Block 3 cites 2 (present) and 998 (absent)
-        g.add(Block { bid: 3, parents: vec![2, 998] });
-        assert_eq!(g.selected.get(&3), Some(&Some(2)), "the absent parent was selected over the present one");
-        assert_eq!(g.blue_score.get(&3), Some(&3), "the score did not follow the present parent's chain");
+        g.add(Block {
+            bid: 3,
+            parents: vec![2, 998],
+        });
+        assert_eq!(
+            g.selected.get(&3),
+            Some(&Some(2)),
+            "the absent parent was selected over the present one"
+        );
+        assert_eq!(
+            g.blue_score.get(&3),
+            Some(&3),
+            "the score did not follow the present parent's chain"
+        );
         // the absent parent must not appear anywhere in 3's ancestry
-        assert!(g.past(3).contains(&2), "the present parent is missing from the past");
-        assert!(!g.past(3).contains(&998), "the absent parent appeared in the past");
+        assert!(
+            g.past(3).contains(&2),
+            "the present parent is missing from the past"
+        );
+        assert!(
+            !g.past(3).contains(&998),
+            "the absent parent appeared in the past"
+        );
     }
 
     /// THE PAY SET CANNOT LOSE A BLOCK TO A MISSING is_blue ENTRY (2026-09-26).
@@ -837,19 +951,39 @@ mod tests {
     #[test]
     fn phantom_parents_do_not_eat_a_pay_slot() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         // 3 cites 2 (present) and 997 (absent)
-        g.add(Block { bid: 3, parents: vec![2, 997] });
+        g.add(Block {
+            bid: 3,
+            parents: vec![2, 997],
+        });
         for bid in g.blocks.keys() {
             for paid in g.pay_set(*bid) {
-                assert!(g.blocks.contains_key(&paid), "pay_set of {} returned a block not in the DAG: {}", bid, paid);
+                assert!(
+                    g.blocks.contains_key(&paid),
+                    "pay_set of {} returned a block not in the DAG: {}",
+                    bid,
+                    paid
+                );
             }
         }
         // the absent parent must not appear in the past the pay walk uses,
         // which is what makes the slot safe
-        assert!(!g.past(3).contains(&997), "the absent parent is in the past the pay set walks");
-        assert!(!g.pay_set(3).contains(&997), "the absent parent is in a pay set");
+        assert!(
+            !g.past(3).contains(&997),
+            "the absent parent is in the past the pay set walks"
+        );
+        assert!(
+            !g.pay_set(3).contains(&997),
+            "the absent parent is in a pay set"
+        );
     }
 
     #[test]
@@ -860,11 +994,19 @@ mod tests {
         let mut checked = 0usize;
         for (bid, ms) in &g.mergesets {
             for m in ms {
-                assert!(g.is_blue.contains_key(m), "mergeset member {} of block {} has no is_blue entry", m, bid);
+                assert!(
+                    g.is_blue.contains_key(m),
+                    "mergeset member {} of block {} has no is_blue entry",
+                    m,
+                    bid
+                );
                 checked += 1;
             }
         }
-        assert!(checked > 0, "the DAG produced no mergeset members, so the invariant was not exercised");
+        assert!(
+            checked > 0,
+            "the DAG produced no mergeset members, so the invariant was not exercised"
+        );
     }
 
     /// future() is reflexively consistent with past(): if X is in past(Y)
@@ -877,8 +1019,14 @@ mod tests {
         let tips = mine_chain(&mut g, 80, &mut rng, &["A", "B", "C"], 0.25);
         let tip = *tips.last().unwrap();
         let early = tips[0];
-        assert!(g.past(tip).contains(&early), "early must be in the tip's past");
-        assert!(g.future(early).contains(&tip), "tip must then be in early's future");
+        assert!(
+            g.past(tip).contains(&early),
+            "early must be in the tip's past"
+        );
+        assert!(
+            g.future(early).contains(&tip),
+            "tip must then be in early's future"
+        );
     }
 
     /// THE PHANTOM-PARENT CLASS. `past()` has two branches: the `past_cache`
@@ -898,12 +1046,24 @@ mod tests {
     fn past_excludes_a_parent_that_does_not_exist() {
         let mut g = Ghostdag::new(18);
         // a real block 1 with no parents
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         // block 2 claims 999 as a parent; 999 is NOT in the DAG
-        g.blocks.insert(2, Block { bid: 2, parents: vec![999, 1] });
+        g.blocks.insert(
+            2,
+            Block {
+                bid: 2,
+                parents: vec![999, 1],
+            },
+        );
         // 2 was inserted directly, bypassing add(), so past_cache is empty for
         // it and the eager fallback branch runs
-        assert!(!g.past_cache.contains_key(&2), "this test must exercise the fallback branch");
+        assert!(
+            !g.past_cache.contains_key(&2),
+            "this test must exercise the fallback branch"
+        );
         let p2 = g.past(2);
         assert!(
             !p2.contains(&999),
@@ -928,9 +1088,15 @@ mod tests {
         let mut g = Ghostdag::new(18);
         // a single chain 0 <- 1 <- 2 <- ... <- 2499: each block's selected
         // parent is the previous one, so the selected chain is 2,500 deep
-        g.add(Block { bid: 0, parents: vec![] });
+        g.add(Block {
+            bid: 0,
+            parents: vec![],
+        });
         for b in 1..2500 {
-            g.add(Block { bid: b, parents: vec![b - 1] });
+            g.add(Block {
+                bid: b,
+                parents: vec![b - 1],
+            });
         }
         let o = g.order(2499);
         // the backbone must contain ALL 2,500 blocks, not the first 1,000
@@ -942,10 +1108,18 @@ mod tests {
         );
         // and it must be the full chain from the tip back to genesis
         assert_eq!(o[0], 2499, "the walk starts at the queried block");
-        assert_eq!(o[2499], 0, "the walk must reach genesis, not stop at hop 1000");
+        assert_eq!(
+            o[2499], 0,
+            "the walk must reach genesis, not stop at hop 1000"
+        );
         // every intermediate block must appear exactly once, in chain order
-        for i in 0..2500 {
-            assert_eq!(o[i], 2499 - i as u64, "the backbone must be in selected-chain order at {}", i);
+        for (i, v) in o.iter().enumerate() {
+            assert_eq!(
+                *v,
+                2499 - i as u64,
+                "the backbone must be in selected-chain order at {}",
+                i
+            );
         }
     }
 
@@ -958,16 +1132,25 @@ mod tests {
     #[test]
     fn order_terminates_on_a_chain_far_past_the_old_cap_without_hanging() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 0, parents: vec![] });
+        g.add(Block {
+            bid: 0,
+            parents: vec![],
+        });
         for b in 1..3000 {
-            g.add(Block { bid: b, parents: vec![b - 1] });
+            g.add(Block {
+                bid: b,
+                parents: vec![b - 1],
+            });
         }
         // if the loop did not terminate this test hangs rather than fails;
         // the DAG's acyclicity is what terminates it, and `seen` is the
         // backstop for any cycle the construction could not express
         let o = g.order(2999);
         assert_eq!(o.len(), 3000);
-        assert!(o.iter().all(|&b| b < 3000), "no block outside the chain may appear");
+        assert!(
+            o.iter().all(|&b| b < 3000),
+            "no block outside the chain may appear"
+        );
     }
 
     /// THE VERIFIER'S CAP WAS THE SAME CLASS. `blue_score_increases_along_selected_chain`
@@ -978,14 +1161,22 @@ mod tests {
     #[test]
     fn blue_score_verifier_finds_a_violation_past_the_old_hop_cap() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 0, parents: vec![] });
+        g.add(Block {
+            bid: 0,
+            parents: vec![],
+        });
         for b in 1..500 {
-            g.add(Block { bid: b, parents: vec![b - 1] });
+            g.add(Block {
+                bid: b,
+                parents: vec![b - 1],
+            });
         }
         // every blue_score is 0..499 increasing by construction (add() sets
         // sp_score + 1), so the chain is honest. Confirm it verifies.
-        assert!(g.blue_score_increases_along_selected_chain(),
-                "an honest 500-deep chain must verify");
+        assert!(
+            g.blue_score_increases_along_selected_chain(),
+            "an honest 500-deep chain must verify"
+        );
         // now plant a violation at depth 400, far past the old 200-hop cap:
         // set block 400's score BELOW its selected parent's
         let parent_score = g.blue_score[&399];
@@ -1004,11 +1195,20 @@ mod tests {
     #[test]
     fn past_cached_and_uncached_branches_agree_on_a_phantom_parent() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         // block 2 references 1 (real) and 777 (phantom)
-        g.add(Block { bid: 2, parents: vec![1, 777] });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1, 777],
+        });
         let cached = g.past(2);
-        assert!(!cached.contains(&777), "the cached branch must drop the phantom");
+        assert!(
+            !cached.contains(&777),
+            "the cached branch must drop the phantom"
+        );
         assert!(cached.contains(&1));
         // and the private implementation add() used must match the public one
         let uncached = g.past_uncached(2);

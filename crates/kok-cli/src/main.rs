@@ -3,8 +3,8 @@
 //! Round-6 / F3 (2026-09-24). The workspace crate that owns the entry point;
 //! the consensus lives in kok-consensus, the benchmarks in kok-bench.
 
-use std::time::Instant;
 use kok_consensus::kok_poum::{Certificate, KwKernel, TOY_N, TOY_Q, TOY_R};
+use std::time::Instant;
 
 fn toy_matrices(seed: u64) -> (Vec<Vec<u64>>, Vec<Vec<u64>>) {
     let mut a = vec![vec![0u64; TOY_N]; TOY_N];
@@ -12,9 +12,13 @@ fn toy_matrices(seed: u64) -> (Vec<Vec<u64>>, Vec<Vec<u64>>) {
     let mut s = seed;
     for i in 0..TOY_N {
         for j in 0..TOY_N {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             a[i][j] = s % TOY_Q;
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             b[i][j] = s % TOY_Q;
         }
     }
@@ -26,7 +30,10 @@ fn main() {
     println!("KOK NETWORK v2 — sovereign L1 node (Rust workspace, F3 2026-09-24)");
     println!("============================================================================");
     println!();
-    println!("  Layer G : MatMul PoW certificate (KwKernel, q={} n={} r={})", TOY_Q, TOY_N, TOY_R);
+    println!(
+        "  Layer G : MatMul PoW certificate (KwKernel, q={} n={} r={})",
+        TOY_Q, TOY_N, TOY_R
+    );
     println!("  Layer U : fee-paid verifiable compute — zero consensus weight (skeleton)");
     println!();
 
@@ -50,7 +57,10 @@ fn main() {
     let verify_us = t1.elapsed().as_micros();
 
     println!("  honest certificate ground at nonce {}", nonce);
-    println!("  tile (i={}, j={}) accumulator = {}", cert.i, cert.j, cert.value);
+    println!(
+        "  tile (i={}, j={}) accumulator = {}",
+        cert.i, cert.j, cert.value
+    );
     println!();
     println!("  MEASURED  prove : {:.3} ms", prove_us as f64 / 1000.0);
     println!("  MEASURED  verify: {:.3} ms", verify_us as f64 / 1000.0);
@@ -65,7 +75,10 @@ fn main() {
     };
     let forged_ok = k.verify(&forged, &a, &b, ctx, nonce, target);
     let replay_ok = k.verify(&cert, &a, &b, ctx + 1, nonce, target);
-    let width_cert = Certificate { m: cert.m + 1, ..cert.clone() };
+    let width_cert = Certificate {
+        m: cert.m + 1,
+        ..cert.clone()
+    };
     let width_ok = k.verify(&width_cert, &a, &b, ctx, nonce, target);
 
     println!("  forged tile value rejected         : {}", !forged_ok);
@@ -100,8 +113,14 @@ mod tests {
     fn toy_matrices_is_deterministic_for_a_fixed_seed() {
         let (a1, b1) = toy_matrices(20260919);
         let (a2, b2) = toy_matrices(20260919);
-        assert_eq!(a1, a2, "toy_matrices was not deterministic for the same seed");
-        assert_eq!(b1, b2, "toy_matrices was not deterministic for the same seed");
+        assert_eq!(
+            a1, a2,
+            "toy_matrices was not deterministic for the same seed"
+        );
+        assert_eq!(
+            b1, b2,
+            "toy_matrices was not deterministic for the same seed"
+        );
     }
 
     /// Every generated entry must lie in the field. An entry at or above TOY_Q
@@ -112,12 +131,22 @@ mod tests {
         let (a, b) = toy_matrices(42);
         for row in &a {
             for &v in row {
-                assert!(v < TOY_Q, "a matrix entry {} was not reduced below q={}", v, TOY_Q);
+                assert!(
+                    v < TOY_Q,
+                    "a matrix entry {} was not reduced below q={}",
+                    v,
+                    TOY_Q
+                );
             }
         }
         for row in &b {
             for &v in row {
-                assert!(v < TOY_Q, "b matrix entry {} was not reduced below q={}", v, TOY_Q);
+                assert!(
+                    v < TOY_Q,
+                    "b matrix entry {} was not reduced below q={}",
+                    v,
+                    TOY_Q
+                );
             }
         }
     }
@@ -150,7 +179,10 @@ mod tests {
             }
         };
 
-        assert!(k.verify(&cert, &a, &b, ctx, nonce, target), "the honest certificate was rejected");
+        assert!(
+            k.verify(&cert, &a, &b, ctx, nonce, target),
+            "the honest certificate was rejected"
+        );
 
         let forged = Certificate {
             i: cert.i,
@@ -158,12 +190,23 @@ mod tests {
             value: (cert.value + 1) % TOY_Q,
             m: cert.m,
         };
-        assert!(!k.verify(&forged, &a, &b, ctx, nonce, target), "a forged tile value was accepted");
+        assert!(
+            !k.verify(&forged, &a, &b, ctx, nonce, target),
+            "a forged tile value was accepted"
+        );
 
-        assert!(!k.verify(&cert, &a, &b, ctx + 1, nonce, target), "the certificate replayed under a foreign ctx was accepted");
+        assert!(
+            !k.verify(&cert, &a, &b, ctx + 1, nonce, target),
+            "the certificate replayed under a foreign ctx was accepted"
+        );
 
-        let width_cert = Certificate { m: cert.m + 1, ..cert.clone() };
-        assert!(!k.verify(&width_cert, &a, &b, ctx, nonce, target), "a certificate with a wrong width was accepted");
+        let width_cert = Certificate {
+            m: cert.m + 1,
+            ..cert.clone()
+        };
+        assert!(
+            !k.verify(&width_cert, &a, &b, ctx, nonce, target),
+            "a certificate with a wrong width was accepted"
+        );
     }
 }
-

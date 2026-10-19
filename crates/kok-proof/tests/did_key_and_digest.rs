@@ -66,7 +66,12 @@ fn decode_multibase_pubkey_yanlis_multicodec_reddedilir() {
 /// (round-trip) ayni 32 bayta cozulmeli.
 #[test]
 fn encode_decode_multibase_roundtrip_tutarli() {
-    for seed in [[0x42; 32], [0x01; 32], [0xff; 32], *b"kok-mesh-kanit-seed-0123456789ab"] {
+    for seed in [
+        [0x42; 32],
+        [0x01; 32],
+        [0xff; 32],
+        *b"kok-mesh-kanit-seed-0123456789ab",
+    ] {
         let kp = Keypair::from_seed(&seed);
         let mb = encode_multibase_pubkey(&kp.public);
         assert_eq!(decode_multibase_pubkey(&mb).unwrap(), kp.public);
@@ -140,7 +145,10 @@ fn is_valid_did_key_gecerli_ve_gecersiz() {
     // yanlis multicodec (P-256)
     let mut yanlis = vec![0x12, 0x00];
     yanlis.extend_from_slice(&[0u8; PUBLIC_KEY_LEN]);
-    assert!(!is_valid_did_key(&format!("did:key:z{}", b58_encode(&yanlis))));
+    assert!(!is_valid_did_key(&format!(
+        "did:key:z{}",
+        b58_encode(&yanlis)
+    )));
     // base58 disi karakter
     assert!(!is_valid_did_key("did:key:z0/O+l"));
     // uzunluk yanlis

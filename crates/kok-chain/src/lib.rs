@@ -44,7 +44,10 @@ pub fn select(g: &Ghostdag) -> Option<Bid> {
     g.blocks
         .keys()
         .max_by_key(|&&bid| {
-            (g.blue_score.get(&bid).copied().unwrap_or(0), std::cmp::Reverse(bid))
+            (
+                g.blue_score.get(&bid).copied().unwrap_or(0),
+                std::cmp::Reverse(bid),
+            )
         })
         .copied()
 }
@@ -73,7 +76,11 @@ pub fn is_final(g: &Ghostdag, bid: Bid) -> bool {
 
 /// Everything the tip leaves behind by more than the gap.
 pub fn final_set(g: &Ghostdag) -> Vec<Bid> {
-    g.blocks.keys().copied().filter(|b| is_final(g, *b)).collect()
+    g.blocks
+        .keys()
+        .copied()
+        .filter(|b| is_final(g, *b))
+        .collect()
 }
 
 #[cfg(test)]
@@ -119,9 +126,15 @@ mod tests {
     #[test]
     fn a_single_block_dag_selects_genesis_and_nothing_is_final() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
         assert_eq!(select(&g), Some(1));
-        assert!(!is_final(&g, 1), "genesis cannot be final: no gap is crossed");
+        assert!(
+            !is_final(&g, 1),
+            "genesis cannot be final: no gap is crossed"
+        );
     }
 
     /// Once the tip pulls far enough ahead the early blocks become final —
@@ -162,7 +175,10 @@ mod tests {
         assert!(select(&g).is_none(), "an empty DAG selected a tip");
         // and finality on that empty DAG is false for every bid
         assert!(!is_final(&g, 1), "finality was claimed on an empty DAG");
-        assert!(final_set(&g).is_empty(), "the final set of an empty DAG is not empty");
+        assert!(
+            final_set(&g).is_empty(),
+            "the final set of an empty DAG is not empty"
+        );
     }
 
     /// THE TIE-BREAK IS DETERMINISTIC AND IT IS THE LOWEST BID. Two blocks
@@ -177,17 +193,34 @@ mod tests {
             // two forks off genesis with equal scores, then a block merging
             // neither — so the two forks stay tied
             let mut g = Ghostdag::new(18);
-            g.add(Block { bid: 1, parents: vec![] });
-            g.add(Block { bid: 2, parents: vec![1] });
-            g.add(Block { bid: 3, parents: vec![1] }); // the fork
+            g.add(Block {
+                bid: 1,
+                parents: vec![],
+            });
+            g.add(Block {
+                bid: 2,
+                parents: vec![1],
+            });
+            g.add(Block {
+                bid: 3,
+                parents: vec![1],
+            }); // the fork
             g
         }
         let g1 = build();
         let g2 = build();
-        assert_eq!(select(&g1), select(&g2), "the tie-break is not deterministic");
+        assert_eq!(
+            select(&g1),
+            select(&g2),
+            "the tie-break is not deterministic"
+        );
         // the two forks: 2 and 3 have equal blue_score, so the tie-break is
         // what decides, and it must pick the lower bid
-        assert_eq!(select(&g1), Some(2), "the tie-break did not pick the lowest bid");
+        assert_eq!(
+            select(&g1),
+            Some(2),
+            "the tie-break did not pick the lowest bid"
+        );
     }
 
     /// THE FINALITY BOUNDARY IS EXACTLY THE GAP (2026-09-28).
@@ -202,12 +235,22 @@ mod tests {
     #[test]
     fn the_finality_boundary_is_exactly_the_gap() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         // score the two blocks by hand so the gap is exact and controlled
         g.blue_score.insert(1, 0);
         g.blue_score.insert(2, FINALITY_GAP);
-        assert_eq!(select(&g), Some(2), "the tip must be the higher-scoring block");
+        assert_eq!(
+            select(&g),
+            Some(2),
+            "the tip must be the higher-scoring block"
+        );
         // exactly at the gap -> final, because the rule is >=
         assert!(
             is_final(&g, 1),
@@ -225,7 +268,10 @@ mod tests {
         // a block with no gap at all is never final
         g.blue_score.insert(2, 0);
         assert!(!is_final(&g, 1), "a tip tied with a block made it final");
-        assert!(!is_final(&g, 2), "the tip itself is not final against itself");
+        assert!(
+            !is_final(&g, 2),
+            "the tip itself is not final against itself"
+        );
     }
 
     /// A BLOCK ABSENT FROM THE DAG IS NEVER FINAL, EVEN UNDER A HUGE TIP.
@@ -240,11 +286,17 @@ mod tests {
     #[test]
     fn a_block_absent_from_the_dag_is_never_final_under_a_huge_tip() {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         g.blue_score.insert(1, 0);
         g.blue_score.insert(2, 1_000_000); // far beyond any gap
-        // 999 is NOT in g.blocks
+                                           // 999 is NOT in g.blocks
         assert!(
             !g.blocks.contains_key(&999),
             "the test's premise is wrong: 999 is in the DAG"
@@ -259,7 +311,10 @@ mod tests {
         );
         // sanity: a real block at that gap IS final, so this is about absence,
         // not about the tip being too small
-        assert!(is_final(&g, 1), "the real block at the same tip was not final");
+        assert!(
+            is_final(&g, 1),
+            "the real block at the same tip was not final"
+        );
         // and on an empty DAG the same verdict holds for every bid
         let empty = Ghostdag::new(18);
         assert!(!is_final(&empty, 999_999));
@@ -289,8 +344,14 @@ mod tests {
         assert!(fs.iter().all(|b| g.blocks.contains_key(b)));
         // on a DAG too small for any gap, both surfaces must be empty together
         let mut small = Ghostdag::new(18);
-        small.add(Block { bid: 1, parents: vec![] });
-        small.add(Block { bid: 2, parents: vec![1] });
+        small.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        small.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
         small.blue_score.insert(1, 0);
         small.blue_score.insert(2, 5);
         assert!(final_set(&small).is_empty());

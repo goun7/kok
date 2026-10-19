@@ -30,8 +30,7 @@ fn main() {
     // 1. Copy the compiled module into the package if the release build
     // exists. A missing build is a packaging problem, not a panic-worthy
     // one — the fixtures alone are useful, and the message says what to run.
-    let wasm_src = manifest_dir
-        .join("../../target/wasm32-unknown-unknown/release/kok_wasm.wasm");
+    let wasm_src = manifest_dir.join("../../target/wasm32-unknown-unknown/release/kok_wasm.wasm");
     if wasm_src.exists() {
         fs::copy(&wasm_src, npm_dir.join("kok_wasm_bg.wasm"))
             .expect("could not copy the wasm module into npm/");
@@ -55,12 +54,20 @@ fn main() {
     let mut v = u64::from_le_bytes(forged[16..24].try_into().unwrap());
     v = (v + 1) % TOY_Q;
     forged[16..24].copy_from_slice(&v.to_le_bytes());
-    assert_eq!(verify_packet(&forged), 0, "the forged fixture unexpectedly verified");
+    assert_eq!(
+        verify_packet(&forged),
+        0,
+        "the forged fixture unexpectedly verified"
+    );
 
     // 4. A short packet — shorter than the 80-byte header — for the
     // malformed-input probe.
     let short = vec![0u8; 40];
-    assert_eq!(verify_packet(&short), 0, "the short fixture was not rejected");
+    assert_eq!(
+        verify_packet(&short),
+        0,
+        "the short fixture was not rejected"
+    );
 
     write_bin(&fix_dir.join("honest.bin"), &wire);
     write_bin(&fix_dir.join("forged.bin"), &forged);
@@ -85,7 +92,14 @@ fn write_bin(path: &std::path::Path, bytes: &[u8]) {
 // because they are private. Keeping the two in sync is the point of this
 // example: if the encoding drifts, the fixtures stop verifying and the npm
 // tests fail loudly rather than silently.
-fn encode_wire(a: &[Vec<u64>], b: &[Vec<u64>], cert: &kok_poum::Certificate, ctx: u64, nonce: u64, target: u64) -> Vec<u8> {
+fn encode_wire(
+    a: &[Vec<u64>],
+    b: &[Vec<u64>],
+    cert: &kok_poum::Certificate,
+    ctx: u64,
+    nonce: u64,
+    target: u64,
+) -> Vec<u8> {
     // The 88-byte header: cert (32) + ctx/nonce/target (24) + n + q + r (24).
     // Every field is a little-endian u64 and the order matters — this is a
     // byte-exact copy of the encoder the crate's lib tests use, because the

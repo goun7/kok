@@ -76,7 +76,9 @@ pub struct AdmissionGate {
 
 impl AdmissionGate {
     pub fn new(known_parents: impl IntoIterator<Item = u64>) -> Self {
-        Self { known: known_parents.into_iter().collect() }
+        Self {
+            known: known_parents.into_iter().collect(),
+        }
     }
 
     /// Every parent must be known. A block with no parents (a genesis-style
@@ -110,7 +112,13 @@ pub struct Rng {
 impl Rng {
     pub fn new(seed: u64) -> Self {
         // a zero state would lock xorshift at 0; perturb any degenerate seed
-        Self { state: if seed == 0 { 0x9E37_79B9_7F4A_7C15 } else { seed } }
+        Self {
+            state: if seed == 0 {
+                0x9E37_79B9_7F4A_7C15
+            } else {
+                seed
+            },
+        }
     }
 
     /// xorshift64*: a long period, one multiplication, no allocation.
@@ -135,7 +143,10 @@ impl Rng {
     /// message, so the failure is diagnosable rather than mysterious. A zero
     /// bound is a caller bug; this function's job is to make it loud and local.
     pub fn below(&mut self, n: usize) -> usize {
-        assert!(n > 0, "below(0) is a violated contract: the bound must be positive");
+        assert!(
+            n > 0,
+            "below(0) is a violated contract: the bound must be positive"
+        );
         (self.next_u64() % n as u64) as usize
     }
 }
@@ -286,8 +297,14 @@ mod tests {
     #[test]
     fn the_seen_set_relays_exactly_once() {
         let mut s = SeenSet::new();
-        assert!(s.first_sight(7), "the first sight must be reported as first");
-        assert!(!s.first_sight(7), "the second sight must not be reported as first");
+        assert!(
+            s.first_sight(7),
+            "the first sight must be reported as first"
+        );
+        assert!(
+            !s.first_sight(7),
+            "the second sight must not be reported as first"
+        );
         assert!(s.contains(7));
         assert_eq!(s.len(), 1);
         // a different block is still a first sight
@@ -298,9 +315,18 @@ mod tests {
     #[test]
     fn the_admission_gate_rejects_blocks_with_unknown_parents() {
         let mut g = AdmissionGate::new([1, 2]);
-        assert!(g.admits(&[1, 2]), "a block with known parents must be admitted");
-        assert!(!g.admits(&[1, 9]), "a block with an unknown parent must be rejected");
-        assert!(g.admits(&[]), "a parentless header is admitted on its own terms");
+        assert!(
+            g.admits(&[1, 2]),
+            "a block with known parents must be admitted"
+        );
+        assert!(
+            !g.admits(&[1, 9]),
+            "a block with an unknown parent must be rejected"
+        );
+        assert!(
+            g.admits(&[]),
+            "a parentless header is admitted on its own terms"
+        );
         // after validation, the child becomes admissible
         g.admit(9);
         assert!(g.admits(&[1, 9]));
@@ -315,11 +341,17 @@ mod tests {
     fn a_behind_node_rejects_a_well_formed_block_until_it_catches_up() {
         let mut g = AdmissionGate::new([1]);
         // block 5 builds on 2, which this node has not seen
-        assert!(!g.admits(&[2]), "a behind node admitted a block it cannot validate");
+        assert!(
+            !g.admits(&[2]),
+            "a behind node admitted a block it cannot validate"
+        );
         assert!(!g.knows(2));
         // the node downloads block 2 through the sync path
         g.admit(2);
-        assert!(g.admits(&[2]), "after catching up the same block is admissible");
+        assert!(
+            g.admits(&[2]),
+            "after catching up the same block is admissible"
+        );
     }
 
     /// DELIVERY IS COMPLETE on a well-connected graph: every node sees the
@@ -329,10 +361,13 @@ mod tests {
         let net = GossipNet::new(64, 8, 20260925);
         assert_eq!(net.node_count(), 64);
         for src in 0..64 {
-            let d = net
-                .broadcast_rounds(src)
-                .unwrap_or_else(|| panic!("node {src} could not reach everyone on a fanout-8 graph"));
-            assert!(d <= 5, "node {src} took {d} rounds, more than expected at this fanout");
+            let d = net.broadcast_rounds(src).unwrap_or_else(|| {
+                panic!("node {src} could not reach everyone on a fanout-8 graph")
+            });
+            assert!(
+                d <= 5,
+                "node {src} took {d} rounds, more than expected at this fanout"
+            );
         }
     }
 
@@ -348,7 +383,9 @@ mod tests {
         let mut depths = Vec::new();
         for n in [16, 64, 256, 1024] {
             let net = GossipNet::new(n, fanout, 20260925);
-            let depth = net.broadcast_rounds(0).expect("the graph must be connected at this fanout");
+            let depth = net
+                .broadcast_rounds(0)
+                .expect("the graph must be connected at this fanout");
             let log_bound = (n as f64).log(fanout as f64).ceil() as usize + 4;
             assert!(
                 depth <= log_bound,
@@ -375,10 +412,19 @@ mod tests {
         let n = 512usize;
         let d8 = GossipNet::new(n, 8, 20260925).broadcast_rounds(0);
         let d16 = GossipNet::new(n, 16, 20260925).broadcast_rounds(0);
-        assert!(d8.is_some() && d16.is_some(), "fanout 8 and 16 must be connected at n={n}");
+        assert!(
+            d8.is_some() && d16.is_some(),
+            "fanout 8 and 16 must be connected at n={n}"
+        );
         let (d8, d16) = (d8.unwrap(), d16.unwrap());
-        assert!(d8 >= d16, "more fanout must not increase depth: d8={d8} d16={d16}");
-        assert!(d8 - d16 <= 3, "the fanout trade collapsed: d8={d8} d16={d16}");
+        assert!(
+            d8 >= d16,
+            "more fanout must not increase depth: d8={d8} d16={d16}"
+        );
+        assert!(
+            d8 - d16 <= 3,
+            "the fanout trade collapsed: d8={d8} d16={d16}"
+        );
     }
 
     /// THE CONNECTIVITY THRESHOLD, MEASURED AGAINST THEORY. In a random
@@ -397,17 +443,28 @@ mod tests {
         // random-graph model predicts
         let thin = GossipNet::new(n, 4, 20260925);
         let unreach = thin.unreachable_from(0);
-        assert!(unreach > 0, "fanout 4 at n={n} was unexpectedly fully connected");
+        assert!(
+            unreach > 0,
+            "fanout 4 at n={n} was unexpectedly fully connected"
+        );
         assert!(
             unreach <= 40,
             "fanout 4 left {unreach} nodes unreachable, far more than the ~9.4 the model predicts"
         );
-        assert_eq!(thin.broadcast_rounds(0), None, "a partitioned graph must report None, not a depth");
+        assert_eq!(
+            thin.broadcast_rounds(0),
+            None,
+            "a partitioned graph must report None, not a depth"
+        );
         // F=8: connected from EVERY source, which is what a relay graph
         // must be before any depth measurement means anything
         let ok = GossipNet::new(n, 8, 20260925);
         for src in [0, 1, 7, 256, 511] {
-            assert_eq!(ok.unreachable_from(src), 0, "source {src} could not reach all nodes at fanout 8");
+            assert_eq!(
+                ok.unreachable_from(src),
+                0,
+                "source {src} could not reach all nodes at fanout 8"
+            );
         }
     }
 
@@ -419,8 +476,13 @@ mod tests {
     #[test]
     fn a_too_thin_graph_is_partitioned_and_that_is_reported_not_hidden() {
         let net = GossipNet::new(64, 1, 20260925);
-        let stalled = (0..64).filter(|&s| net.broadcast_rounds(s).is_none()).count();
-        assert!(stalled > 0, "a fanout-1 graph was unexpectedly fully connected");
+        let stalled = (0..64)
+            .filter(|&s| net.broadcast_rounds(s).is_none())
+            .count();
+        assert!(
+            stalled > 0,
+            "a fanout-1 graph was unexpectedly fully connected"
+        );
         // and within a small budget, delivery is visibly incomplete
         let frac = net.delivery_fraction(0, 3);
         assert!(frac < 1.0, "delivery was complete on a partitioned graph");
@@ -450,7 +512,11 @@ mod tests {
         // a zero seed must not lock the generator
         let mut z = Rng::new(0);
         let first = z.next_u64();
-        assert_ne!(z.next_u64(), first, "a zero-seeded generator produced a constant stream");
+        assert_ne!(
+            z.next_u64(),
+            first,
+            "a zero-seeded generator produced a constant stream"
+        );
     }
 
     /// OUT-OF-RANGE NODE ID: the three graph queries must answer rather than
@@ -469,7 +535,11 @@ mod tests {
             None,
             "a phantom node broadcast a block — and `n` is the first out-of-range id"
         );
-        assert_eq!(g.broadcast_rounds(usize::MAX), None, "a far out-of-range id broadcast");
+        assert_eq!(
+            g.broadcast_rounds(usize::MAX),
+            None,
+            "a far out-of-range id broadcast"
+        );
         // delivery: zero of the network is reached
         assert_eq!(
             g.delivery_fraction(n, 10),
@@ -484,7 +554,10 @@ mod tests {
         );
         // the honest queries still work on the same graph, so the guards are
         // not a blanket refusal
-        assert!(g.broadcast_rounds(0).is_some(), "node 0 cannot broadcast on a live graph");
+        assert!(
+            g.broadcast_rounds(0).is_some(),
+            "node 0 cannot broadcast on a live graph"
+        );
         assert!(g.unreachable_from(0) < n, "node 0 cannot reach any peer");
     }
 
@@ -493,9 +566,17 @@ mod tests {
     #[test]
     fn an_empty_network_answers_every_query_without_panicking() {
         let g = GossipNet::new(0, 4, 20260919);
-        assert_eq!(g.broadcast_rounds(0), None, "a node broadcast on an empty network");
+        assert_eq!(
+            g.broadcast_rounds(0),
+            None,
+            "a node broadcast on an empty network"
+        );
         assert_eq!(g.delivery_fraction(0, 10), 0.0);
-        assert_eq!(g.unreachable_from(0), 0, "an empty network has unreachable nodes");
+        assert_eq!(
+            g.unreachable_from(0),
+            0,
+            "an empty network has unreachable nodes"
+        );
     }
 
     /// A SINGLE NODE network is the other end of the degenerate range: one
@@ -504,8 +585,16 @@ mod tests {
     #[test]
     fn a_single_node_network_broadcasts_to_itself() {
         let g = GossipNet::new(1, 4, 20260919);
-        assert_eq!(g.broadcast_rounds(0), Some(1), "a lone node did not broadcast in one round");
-        assert_eq!(g.delivery_fraction(0, 1), 1.0, "a lone node did not reach itself");
+        assert_eq!(
+            g.broadcast_rounds(0),
+            Some(1),
+            "a lone node did not broadcast in one round"
+        );
+        assert_eq!(
+            g.delivery_fraction(0, 1),
+            1.0,
+            "a lone node did not reach itself"
+        );
         assert_eq!(g.unreachable_from(0), 0);
     }
 
@@ -543,7 +632,10 @@ mod tests {
         let mut rp = Rng::new(PERTURB);
         let s0: Vec<u64> = (0..8).map(|_| r0.next_u64()).collect();
         let sp: Vec<u64> = (0..8).map(|_| rp.next_u64()).collect();
-        assert_eq!(s0, sp, "the perturbation constant must reproduce seed 0's stream");
+        assert_eq!(
+            s0, sp,
+            "the perturbation constant must reproduce seed 0's stream"
+        );
         // and the perturbation constant is itself nonzero (guard on the guard)
         assert_ne!(PERTURB, 0);
     }
@@ -572,7 +664,10 @@ mod tests {
         for _ in 0..6000 {
             saw3[r.below(3)] = true;
         }
-        assert!(saw3.iter().all(|&x| x), "below(3) did not cover all three values");
+        assert!(
+            saw3.iter().all(|&x| x),
+            "below(3) did not cover all three values"
+        );
     }
 
     /// `below(0)` must fail loudly and locally rather than dividing by zero.
@@ -606,8 +701,16 @@ mod tests {
         let mut g = AdmissionGate::new([1, 2]);
         assert_eq!(g.known_count(), 2, "the seeded parents must be counted");
         g.admit(9);
-        assert_eq!(g.known_count(), 3, "a newly validated block must be counted");
+        assert_eq!(
+            g.known_count(),
+            3,
+            "a newly validated block must be counted"
+        );
         g.admit(9); // idempotent: a set, not a counter
-        assert_eq!(g.known_count(), 3, "admitting the same block twice must not double-count");
+        assert_eq!(
+            g.known_count(),
+            3,
+            "admitting the same block twice must not double-count"
+        );
     }
 }

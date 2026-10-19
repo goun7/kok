@@ -49,7 +49,11 @@ pub struct ConsensusBlock {
 
 impl ConsensusBlock {
     pub fn new(dag: Block, g_cert_bytes: [u8; 32]) -> Self {
-        Self { dag, g_cert_bytes, u_proofs: Vec::new() }
+        Self {
+            dag,
+            g_cert_bytes,
+            u_proofs: Vec::new(),
+        }
     }
 
     /// Bundle U proofs into the block. This is the ONLY way proofs enter a
@@ -78,7 +82,7 @@ impl ConsensusBlock {
         self.u_proofs
             .iter()
             .map(kok_u_layer::u_task_consensus_weight)
-            .fold(0u64, |acc, w| acc.checked_add(w).unwrap_or(u64::MAX))
+            .fold(0u64, |acc, w| acc.saturating_add(w))
     }
 }
 
@@ -99,10 +103,22 @@ mod tests {
     /// at depth 2 compete for the selected-parent chain.
     fn skeleton() -> Ghostdag {
         let mut g = Ghostdag::new(18);
-        g.add(Block { bid: 1, parents: vec![] });
-        g.add(Block { bid: 2, parents: vec![1] });
-        g.add(Block { bid: 3, parents: vec![1] }); // the fork
-        g.add(Block { bid: 4, parents: vec![2, 3] });
+        g.add(Block {
+            bid: 1,
+            parents: vec![],
+        });
+        g.add(Block {
+            bid: 2,
+            parents: vec![1],
+        });
+        g.add(Block {
+            bid: 3,
+            parents: vec![1],
+        }); // the fork
+        g.add(Block {
+            bid: 4,
+            parents: vec![2, 3],
+        });
         g
     }
 
@@ -117,7 +133,13 @@ mod tests {
         let mut without_u = skeleton();
 
         // a block carrying 50 high-fee U proofs
-        let mut rich = ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xAA; 32]);
+        let mut rich = ConsensusBlock::new(
+            Block {
+                bid: 5,
+                parents: vec![4],
+            },
+            [0xAA; 32],
+        );
         let proofs: Vec<TaskProof> = (0..50)
             .map(|i| TaskProof {
                 tid: format!("task-{i}"),
@@ -126,11 +148,21 @@ mod tests {
             })
             .collect();
         rich.bundle(proofs);
-        assert_eq!(rich.u_consensus_weight(), 0, "the U proofs reported nonzero weight");
+        assert_eq!(
+            rich.u_consensus_weight(),
+            0,
+            "the U proofs reported nonzero weight"
+        );
         add_block(&mut with_u, &rich);
 
         // the identical DAG block carrying nothing
-        let bare = ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xAA; 32]);
+        let bare = ConsensusBlock::new(
+            Block {
+                bid: 5,
+                parents: vec![4],
+            },
+            [0xAA; 32],
+        );
         add_block(&mut without_u, &bare);
 
         assert_eq!(
@@ -154,11 +186,25 @@ mod tests {
     /// measurement is not "zero at one convenient point".
     #[test]
     fn the_u_weight_is_zero_at_every_fee_level_and_count() {
-        let mut blk = ConsensusBlock::new(Block { bid: 9, parents: vec![] }, [0; 32]);
+        let mut blk = ConsensusBlock::new(
+            Block {
+                bid: 9,
+                parents: vec![],
+            },
+            [0; 32],
+        );
         assert_eq!(blk.u_consensus_weight(), 0);
         // one expensive proof
-        blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: u64::MAX }]);
-        assert_eq!(blk.u_consensus_weight(), 0, "a single max-fee proof reported weight");
+        blk.bundle(vec![TaskProof {
+            tid: "t".into(),
+            miner: "m".into(),
+            fee: u64::MAX,
+        }]);
+        assert_eq!(
+            blk.u_consensus_weight(),
+            0,
+            "a single max-fee proof reported weight"
+        );
         // and many
         let many: Vec<TaskProof> = (0..1000)
             .map(|i| TaskProof {
@@ -168,7 +214,11 @@ mod tests {
             })
             .collect();
         blk.bundle(many);
-        assert_eq!(blk.u_consensus_weight(), 0, "1000 proofs reported nonzero weight");
+        assert_eq!(
+            blk.u_consensus_weight(),
+            0,
+            "1000 proofs reported nonzero weight"
+        );
     }
 
     /// The reward split ignores the U market entirely: the same DAG block
@@ -180,14 +230,29 @@ mod tests {
         let mut with_u = skeleton();
         let mut without_u = skeleton();
 
-        let mut rich = ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xBB; 32]);
+        let mut rich = ConsensusBlock::new(
+            Block {
+                bid: 5,
+                parents: vec![4],
+            },
+            [0xBB; 32],
+        );
         rich.bundle(vec![TaskProof {
             tid: "t".into(),
             miner: "m".into(),
             fee: u64::MAX,
         }]);
         add_block(&mut with_u, &rich);
-        add_block(&mut without_u, &ConsensusBlock::new(Block { bid: 5, parents: vec![4] }, [0xBB; 32]));
+        add_block(
+            &mut without_u,
+            &ConsensusBlock::new(
+                Block {
+                    bid: 5,
+                    parents: vec![4],
+                },
+                [0xBB; 32],
+            ),
+        );
 
         assert_eq!(
             with_u.reward_split(5),
@@ -200,9 +265,19 @@ mod tests {
     /// parents are what the DAG sees, and they are fixed at assembly time.
     #[test]
     fn bundling_leaves_the_dag_identity_alone() {
-        let mut blk = ConsensusBlock::new(Block { bid: 7, parents: vec![1, 2] }, [0xCC; 32]);
+        let mut blk = ConsensusBlock::new(
+            Block {
+                bid: 7,
+                parents: vec![1, 2],
+            },
+            [0xCC; 32],
+        );
         let id_before = (blk.dag.bid, blk.dag.parents.clone());
-        blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: 100 }]);
+        blk.bundle(vec![TaskProof {
+            tid: "t".into(),
+            miner: "m".into(),
+            fee: 100,
+        }]);
         assert_eq!((blk.dag.bid, blk.dag.parents), id_before);
     }
 
@@ -223,22 +298,62 @@ mod tests {
     /// function's contract allows even if the current kernel does not.
     #[test]
     fn the_weight_sum_cannot_wrap_into_looking_small() {
-        let mut blk = ConsensusBlock::new(Block { bid: 9, parents: vec![1] }, [0xDD; 32]);
+        let mut blk = ConsensusBlock::new(
+            Block {
+                bid: 9,
+                parents: vec![1],
+            },
+            [0xDD; 32],
+        );
         // the current kernel returns 0 per proof, so first prove the honest
         // case: a bundled block reports exactly zero, not a wrapped value
-        blk.bundle(vec![TaskProof { tid: "t".into(), miner: "m".into(), fee: u64::MAX }]);
-        assert_eq!(blk.u_consensus_weight(), 0, "a nonzero weight was reported where the kernel returns zero");
+        blk.bundle(vec![TaskProof {
+            tid: "t".into(),
+            miner: "m".into(),
+            fee: u64::MAX,
+        }]);
+        assert_eq!(
+            blk.u_consensus_weight(),
+            0,
+            "a nonzero weight was reported where the kernel returns zero"
+        );
         // and the sum is total over its terms, not a single term
-        let mut many = ConsensusBlock::new(Block { bid: 10, parents: vec![1] }, [0xEE; 32]);
+        let mut many = ConsensusBlock::new(
+            Block {
+                bid: 10,
+                parents: vec![1],
+            },
+            [0xEE; 32],
+        );
         many.bundle(vec![
-            TaskProof { tid: "a".into(), miner: "m".into(), fee: 1 },
-            TaskProof { tid: "b".into(), miner: "m".into(), fee: 2 },
-            TaskProof { tid: "c".into(), miner: "m".into(), fee: 3 },
+            TaskProof {
+                tid: "a".into(),
+                miner: "m".into(),
+                fee: 1,
+            },
+            TaskProof {
+                tid: "b".into(),
+                miner: "m".into(),
+                fee: 2,
+            },
+            TaskProof {
+                tid: "c".into(),
+                miner: "m".into(),
+                fee: 3,
+            },
         ]);
         // terms are all zero today; the property that matters is that the
         // accumulation is additive and checked, so pin the additive shape
-        let per: Vec<u64> = many.u_proofs.iter().map(kok_u_layer::u_task_consensus_weight).collect();
-        assert_eq!(per.iter().sum::<u64>(), many.u_consensus_weight(), "the weight is not the sum of its terms");
+        let per: Vec<u64> = many
+            .u_proofs
+            .iter()
+            .map(kok_u_layer::u_task_consensus_weight)
+            .collect();
+        assert_eq!(
+            per.iter().sum::<u64>(),
+            many.u_consensus_weight(),
+            "the weight is not the sum of its terms"
+        );
 
         // THE WRAP HALF WAS UNTESTED, AND THIS IS WHY IT MATTERS. Every term
         // is zero today, so the assertions above are 0 == 0 and pass whatever
@@ -252,7 +367,7 @@ mod tests {
         // runs at. This constructs the two-term case the fold is written for
         // and pins the saturation contract directly.
         assert_eq!(
-            u64::MAX.checked_add(u64::MAX).unwrap_or(u64::MAX),
+            u64::MAX.saturating_add(u64::MAX),
             u64::MAX,
             "the saturating accumulator is what u_consensus_weight relies on; \
              a wrapping `+` would give 2^64 - 2 here, one below saturation"
@@ -260,8 +375,12 @@ mod tests {
         // and the fold's own behaviour over a saturating sequence: many MAX
         // terms must saturate at MAX, never wrap back down
         let weights: Vec<u64> = vec![u64::MAX; 40];
-        let folded = weights.iter().fold(0u64, |acc, w| acc.checked_add(*w).unwrap_or(u64::MAX));
-        assert_eq!(folded, u64::MAX, "forty u64::MAX terms must saturate, not wrap");
+        let folded = weights.iter().fold(0u64, |acc, w| acc.saturating_add(*w));
+        assert_eq!(
+            folded,
+            u64::MAX,
+            "forty u64::MAX terms must saturate, not wrap"
+        );
         // the difference from a naive sum is the whole point: a naive `+`
         // would produce 40 * u64::MAX mod 2^64, which is a specific wrong
         // number.
@@ -281,7 +400,8 @@ mod tests {
         const N_NAIVE: u64 = 40;
         let naive_wrapped: u128 = (u64::MAX as u128 * N_NAIVE as u128) % (1u128 << 64);
         assert_eq!(
-            naive_wrapped as u64, u64::MAX - N_NAIVE + 1,
+            naive_wrapped as u64,
+            u64::MAX - N_NAIVE + 1,
             "the naive wrapping sum of {N_NAIVE} u64::MAX terms is 2^64 - 40, which is \
              nearly saturated and would pass a reader who only checked that the \
              total was large — the wrap is a lie about the sum, not always a \
@@ -292,7 +412,8 @@ mod tests {
         // rather than wrap to −2, i.e. 2^64 − 2
         let two_wrapped: u128 = (u64::MAX as u128 * 2) % (1u128 << 64);
         assert_eq!(
-            two_wrapped as u64, u64::MAX - 1,
+            two_wrapped as u64,
+            u64::MAX - 1,
             "two u64::MAX terms wrap to 2^64 - 2, so a sum that should report \
              saturation instead reports one less than the maximum"
         );

@@ -11,7 +11,9 @@ fn main() {
         let mut s = q.wrapping_mul(0x9E3779B97F4A7C15).wrapping_add(1);
         let mut poly = Vec::with_capacity(8);
         for _ in 0..8 {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             poly.push(s % q);
         }
         let (tr, alphas) = recursive_prove(&poly, 3, q).expect("fold must succeed");

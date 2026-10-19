@@ -33,7 +33,7 @@ fn deposit_accumulates() {
 fn post_task_escrows_and_debits() {
     let mut l = funded(1, 1000);
     l.post_task(1, 10, 400, 100).unwrap();
-    assert_eq!(l.balance(1), 600);       // fee çekildi
+    assert_eq!(l.balance(1), 600); // fee çekildi
     assert_eq!(l.total_escrowed(), 400); // escrow'da
     assert!(l.conserved());
     assert_eq!(l.task_status(10), Some(TaskStatus::Escrowed));
@@ -42,19 +42,28 @@ fn post_task_escrows_and_debits() {
 #[test]
 fn post_task_rejects_zero_fee() {
     let mut l = funded(1, 1000);
-    assert_eq!(l.post_task(1, 1, 0, 100), Err(LedgerError::BurnRateOutOfRange));
+    assert_eq!(
+        l.post_task(1, 1, 0, 100),
+        Err(LedgerError::BurnRateOutOfRange)
+    );
 }
 
 #[test]
 fn post_task_rejects_zero_burn_rate() {
     let mut l = funded(1, 1000);
-    assert_eq!(l.post_task(1, 1, 100, 0), Err(LedgerError::BurnRateOutOfRange));
+    assert_eq!(
+        l.post_task(1, 1, 100, 0),
+        Err(LedgerError::BurnRateOutOfRange)
+    );
 }
 
 #[test]
 fn post_task_rejects_burn_rate_over_max() {
     let mut l = funded(1, 1000);
-    assert_eq!(l.post_task(1, 1, 100, MAX_BURN_RATE + 1), Err(LedgerError::BurnRateOutOfRange));
+    assert_eq!(
+        l.post_task(1, 1, 100, MAX_BURN_RATE + 1),
+        Err(LedgerError::BurnRateOutOfRange)
+    );
 }
 
 #[test]
@@ -74,14 +83,20 @@ fn post_task_rejects_duplicate() {
 #[test]
 fn post_task_rejects_insufficient_balance() {
     let mut l = funded(1, 100);
-    assert_eq!(l.post_task(1, 1, 101, 100), Err(LedgerError::InsufficientBalance));
+    assert_eq!(
+        l.post_task(1, 1, 101, 100),
+        Err(LedgerError::InsufficientBalance)
+    );
     assert_eq!(l.total_escrowed(), 0); // escrow'a bir şey gitmedi
 }
 
 #[test]
 fn post_task_zero_balance_rejected() {
     let mut l = Ledger::new(); // hiç deposit yok
-    assert_eq!(l.post_task(1, 1, 1, 100), Err(LedgerError::InsufficientBalance));
+    assert_eq!(
+        l.post_task(1, 1, 1, 100),
+        Err(LedgerError::InsufficientBalance)
+    );
 }
 
 #[test]
@@ -90,8 +105,8 @@ fn settle_pays_miner_and_burns() {
     l.post_task(1, 10, 1000, 100).unwrap(); // %10 burn
     l.assign(10, 2).unwrap();
     let s = l.settle(10, 2).unwrap();
-    assert_eq!(s.burn, 100);   // 1000 * 100 / 1000
-    assert_eq!(s.pay, 900);    // 1000 - 100
+    assert_eq!(s.burn, 100); // 1000 * 100 / 1000
+    assert_eq!(s.pay, 900); // 1000 - 100
     assert_eq!(l.balance(2), 900);
     assert_eq!(l.total_burned(), 100);
     assert_eq!(l.total_paid(), 900);
@@ -164,9 +179,9 @@ fn refund_returns_to_poster_no_burn() {
     let mut l = funded(1, 1000);
     l.post_task(1, 10, 400, 100).unwrap();
     l.refund(10).unwrap();
-    assert_eq!(l.balance(1), 1000);      // geri döndü
+    assert_eq!(l.balance(1), 1000); // geri döndü
     assert_eq!(l.total_escrowed(), 0);
-    assert_eq!(l.total_burned(), 0);     // iş olmadı, yakılmadı
+    assert_eq!(l.total_burned(), 0); // iş olmadı, yakılmadı
     assert_eq!(l.total_paid(), 0);
     assert!(l.conserved());
     assert_eq!(l.task_status(10), Some(TaskStatus::Refunded));
@@ -206,7 +221,7 @@ fn assign_requires_escrowed() {
     l.assign(10, 2).unwrap();
     // tekrar assign — hala Escrowed, üzerine yazar (bookkeeping)
     l.assign(10, 3).unwrap();
-    assert_eq!(l.settle(10, 3).is_ok(), true);
+    assert!(l.settle(10, 3).is_ok());
 }
 
 #[test]
@@ -222,9 +237,9 @@ fn full_lifecycle_two_tasks_conserved() {
     let s1 = l.settle(100, 2).unwrap();
     let s2 = l.settle(200, 2).unwrap();
     assert!(l.conserved());
-    assert_eq!(s1.burn, 50);   // 1000*50/1000
+    assert_eq!(s1.burn, 50); // 1000*50/1000
     assert_eq!(s1.pay, 950);
-    assert_eq!(s2.burn, 400);  // 2000*200/1000
+    assert_eq!(s2.burn, 400); // 2000*200/1000
     assert_eq!(s2.pay, 1600);
     assert_eq!(l.balance(2), 950 + 1600);
     assert_eq!(l.total_burned(), 50 + 400);

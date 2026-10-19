@@ -154,7 +154,9 @@ fn cmd_create(args: CreateArgs) -> Result<(), String> {
     // The target is 2^exp in the 'hash % target == 0' sense, so exp==0 would be
     // trivially satisfiable and is rejected as meaningless rather than allowed.
     let target = if args.target_exp == 0 {
-        return Err("--target 0 means every tile clears; refusing to mint a worthless kanıt".into());
+        return Err(
+            "--target 0 means every tile clears; refusing to mint a worthless kanıt".into(),
+        );
     } else {
         1u64 << args.target_exp
     };
@@ -166,8 +168,10 @@ fn cmd_create(args: CreateArgs) -> Result<(), String> {
         ));
     }
 
-    eprintln!("kok: mining G-layer kanıt (q={TOY_Q} n={TOY_N} r={TOY_R}, ctx={}, target=2^{})",
-        args.ctx, args.target_exp);
+    eprintln!(
+        "kok: mining G-layer kanıt (q={TOY_Q} n={TOY_N} r={TOY_R}, ctx={}, target=2^{})",
+        args.ctx, args.target_exp
+    );
     let started = std::time::Instant::now();
     let proof = mine(
         &kernel,
@@ -212,7 +216,8 @@ fn cmd_create(args: CreateArgs) -> Result<(), String> {
 
 /// Verify one file, printing a one-line verdict with the reason on failure.
 fn verify_file(path: &PathBuf) -> Result<bool, String> {
-    let text = std::fs::read_to_string(path).map_err(|e| format!("reading {}: {e}", path.display()))?;
+    let text =
+        std::fs::read_to_string(path).map_err(|e| format!("reading {}: {e}", path.display()))?;
     let proof: MiningProof =
         from_json(&text).map_err(|e| format!("parsing {}: {e}", path.display()))?;
     match verify(&proof) {
@@ -319,10 +324,7 @@ fn main() {
     let result = match args[0].as_str() {
         "create" => parse_create_args(&args[1..]).and_then(cmd_create),
         "verify" => {
-            let paths = args[1..]
-                .iter()
-                .map(PathBuf::from)
-                .collect::<Vec<_>>();
+            let paths = args[1..].iter().map(PathBuf::from).collect::<Vec<_>>();
             cmd_verify(&paths)
         }
         "selftest" => cmd_selftest(),

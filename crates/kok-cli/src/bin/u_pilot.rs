@@ -21,13 +21,20 @@ fn main() {
     //    tensor in, per-atom forces (n x 3) + energy + stress out
     for n_atoms in [64usize, 256, 1000] {
         let kind = JobKind::StructurePotential { n_atoms };
-        let spec = JobSpec { kind: kind.clone(), input_commit: 0, fee: 100 };
+        let spec = JobSpec {
+            kind: kind.clone(),
+            input_commit: 0,
+            fee: 100,
+        };
         let f = kind.flops();
         let shape = kind.output_shape();
         let valid = validate_job(&spec);
         println!(
             "  {:>5} atoms | flops {:>10} | output {:<28} | valid {}",
-            n_atoms, f, format!("{:?}", shape), valid
+            n_atoms,
+            f,
+            format!("{:?}", shape),
+            valid
         );
     }
 
@@ -46,7 +53,11 @@ fn main() {
         fee: priced_fee,
         burn_rate: 70, // 7% burn, within the (0, 500] per-mille bound
     };
-    println!("\n  priced fee: {} (flops {} x 1e-6 + 1)", priced_fee, job.kind.flops());
+    println!(
+        "\n  priced fee: {} (flops {} x 1e-6 + 1)",
+        priced_fee,
+        job.kind.flops()
+    );
     println!("  burn rate:  70 per mille (7%)");
     println!(
         "  validate_u_task (within C_FEE={}): {}",
@@ -84,7 +95,9 @@ fn main() {
     let mut hashes = vec![0u64; 200];
     let mut s = 0x9e3779b97f4a7c15u64;
     for h in hashes.iter_mut() {
-        s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        s = s
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         *h = s;
     }
     let seed = epoch_seed(&hashes, 150);
@@ -110,7 +123,10 @@ fn main() {
     }
     let us = t0.elapsed().as_nanos() as f64 / 100_000.0 / 1000.0;
     println!("  validate_job pricing: {:.3} us/call (x100k)", us);
-    println!("  => {:.4}% of the 100 ms T_b budget", us / 100_000.0 * 100.0);
+    println!(
+        "  => {:.4}% of the 100 ms T_b budget",
+        us / 100_000.0 * 100.0
+    );
 
     println!("\nPILOT VERDICT: the interface prices, caps, burns, and stays at");
     println!("zero consensus weight. The real potential is GNoME-Forge's, not KOK's.");

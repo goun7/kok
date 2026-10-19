@@ -35,12 +35,12 @@
 //! Rust, with a measured constant-factor deviation that a production port
 //! would address by streaming residues instead of building the set.
 
+pub mod air;
 /// Canonical polynomial for cross-language measurement: emitted by
 /// f0b_fri_en.py under random.seed(20260925). The Rust benchmark and the
 /// Python measurement must run the SAME polynomial or the ms comparison
 /// compares two different computations (the Mersenne/PCG trap again).
 pub mod canonical;
-pub mod air;
 
 /// Field arithmetic helpers over the prime q.
 ///
@@ -165,11 +165,11 @@ pub fn interpolate(points: &[(u64, u64)], q: u64) -> Vec<u64> {
         // basis = product over j != i of (x - x_j)/(x_i - x_j)
         let mut basis = vec![1u64];
         let xi = points[i].0;
-        for j in 0..k {
+        for (j, (xj, _)) in points.iter().take(k).enumerate() {
             if i == j {
                 continue;
             }
-            let xj = points[j].0;
+            let xj = *xj;
             // multiply basis by (x - x_j)
             let mut nb = vec![0u64; basis.len() + 1];
             for (t, &c) in basis.iter().enumerate() {
@@ -180,9 +180,9 @@ pub fn interpolate(points: &[(u64, u64)], q: u64) -> Vec<u64> {
         }
         let denom = {
             let mut d = 1u64;
-            for j in 0..k {
+            for (j, (xj, _)) in points.iter().take(k).enumerate() {
                 if i != j {
-                    d = fp_mul(d, fp_sub(xi, points[j].0, q), q);
+                    d = fp_mul(d, fp_sub(xi, *xj, q), q);
                 }
             }
             fp_inv(d, q)
@@ -267,7 +267,11 @@ pub fn challenge(p: &[u64], q: u64) -> u64 {
 /// 1:1 with f0b_fri_en.py::FriRecursive::recursive_prove. The challenge is
 /// Fiat-Shamir (round-5 fix): the rng argument is kept for API compatibility
 /// and no longer supplies the challenge.
-pub fn recursive_prove(p: &[u64], rounds: usize, q: u64) -> Result<(Vec<Vec<u64>>, Vec<u64>), String> {
+pub fn recursive_prove(
+    p: &[u64],
+    rounds: usize,
+    q: u64,
+) -> Result<(Vec<Vec<u64>>, Vec<u64>), String> {
     let mut transcript = vec![p.to_vec()];
     let mut alphas = Vec::new();
     let mut cur = p.to_vec();
@@ -312,16 +316,15 @@ mod tests {
     fn interpolate(pts: &[(u64, u64)], q: u64) -> Vec<u64> {
         let n = pts.len();
         let mut res = vec![0u64; n];
-        for i in 0..n {
+        for (i, (xi, _)) in pts.iter().enumerate().take(n) {
             let mut li = vec![1u64];
-            let xi = pts[i].0;
-            for j in 0..n {
+            for (j, (xj, _)) in pts.iter().enumerate().take(n) {
                 if i == j {
                     continue;
                 }
-                let xj = pts[j].0;
+                let xj = *xj;
                 // multiply li by (x - xj) / (xi - xj)
-                let denom = fp_inv(fp_sub(xi, xj, q), q);
+                let denom = fp_inv(fp_sub(*xi, xj, q), q);
                 let mut prod = vec![0u64; li.len() + 1];
                 for (k, &c) in li.iter().enumerate() {
                     prod[k] = fp_add(prod[k], fp_mul(c, q - xj % q, q), q);
@@ -368,8 +371,8 @@ mod tests {
         let p: Vec<u64> = vec![3, 1, 4, 1, 5];
         let mut f = make_fold(&p, 42);
         f[0] = (f[0] + 1) % Q; // break the relation at u=0 coverage
-        // u=0 is not a quadratic residue for x in 1..q, so break a residue
-        // point instead
+                               // u=0 is not a quadratic residue for x in 1..q, so break a residue
+                               // point instead
         let mut f2 = make_fold(&p, 42);
         f2[1] = (f2[1] + 1) % Q;
         assert!(!verify_round(&p, 42, &f2, Q));
@@ -382,7 +385,11 @@ mod tests {
         let f1 = make_fold(&p, 42);
         let f2 = make_fold(&f1, 7);
         // f2 has degree 1, not constant — the recursion needs one more fold
-        assert!(!verify_transcript(&[p.clone(), f1.clone(), f2.clone()], &[42, 7], Q));
+        assert!(!verify_transcript(
+            &[p.clone(), f1.clone(), f2.clone()],
+            &[42, 7],
+            Q
+        ));
         // completing the recursion to a constant passes
         let f3 = make_fold(&f2, 3);
         assert_eq!(deg(&f3), 0);
@@ -401,7 +408,11 @@ mod tests {
         let (tr, alphas) = recursive_prove(&p, 3, Q).expect("fold must succeed at q=97");
         // alphas are Fiat-Shamir over the polynomial, so they are deterministic
         assert_eq!(alphas, vec![73, 22, 82], "challenge diverged from Python");
-        assert_eq!(tr[1], vec![46, 93, 73, 18], "fold round 1 diverged from Python");
+        assert_eq!(
+            tr[1],
+            vec![46, 93, 73, 18],
+            "fold round 1 diverged from Python"
+        );
         assert_eq!(tr[2], vec![55, 81], "fold round 2 diverged from Python");
         assert_eq!(tr[3], vec![4], "terminal constant diverged from Python");
         assert!(verify_transcript(&tr, &alphas, Q));
@@ -444,7 +455,11 @@ mod tests {
         assert_eq!(got, (a % q + b % q) % q);
         assert!(got < q);
         // the specific trap: a+b must never be computed as the raw sum
-        assert_eq!(got, (a % q + b % q) % q, "reduction must happen per operand");
+        assert_eq!(
+            got,
+            (a % q + b % q) % q,
+            "reduction must happen per operand"
+        );
     }
 
     #[test]
@@ -477,8 +492,16 @@ mod tests {
             for &b in inputs.iter() {
                 let ra = a % q;
                 let rb = b % q;
-                assert_eq!(fp_add(a, b, q), (ra + rb) % q, "fp_add unreduced at {a},{b}");
-                assert_eq!(fp_sub(a, b, q), (ra + q - rb) % q, "fp_sub unreduced at {a},{b}");
+                assert_eq!(
+                    fp_add(a, b, q),
+                    (ra + rb) % q,
+                    "fp_add unreduced at {a},{b}"
+                );
+                assert_eq!(
+                    fp_sub(a, b, q),
+                    (ra + q - rb) % q,
+                    "fp_sub unreduced at {a},{b}"
+                );
                 assert_eq!(fp_mul(a, b, q), ra * rb % q, "fp_mul unreduced at {a},{b}");
                 // fp_pow only for small exponents — the loop is fine, but the
                 // huge ones are not a meaningful exponent domain
@@ -509,13 +532,18 @@ mod tests {
         let f = fold(&p, 42, Q).expect("fold over F_97 with a degree-4 poly must succeed");
         assert_eq!(deg(&f), 2, "fold must halve the degree");
         // the relation must hold at every residue, checked directly
-        assert!(verify_round(&p, 42, &f, Q), "fold must satisfy the round relation");
+        assert!(
+            verify_round(&p, 42, &f, Q),
+            "fold must satisfy the round relation"
+        );
         // the relation must FAIL on a broken fold, which is the check that
         // makes the one above meaningful rather than vacuous
         let mut wrong = f.clone();
         wrong[1] = (wrong[1] + 1) % Q;
-        assert!(!verify_round(&p, 42, &wrong, Q),
-                "a fold that breaks the relation must be rejected");
+        assert!(
+            !verify_round(&p, 42, &wrong, Q),
+            "a fold that breaks the relation must be rejected"
+        );
     }
 
     #[test]
@@ -530,9 +558,15 @@ mod tests {
         let f = fold(&p, 42, Q).expect("fold must succeed");
         let full = make_fold(&p, 42);
         assert_eq!(f.len(), 3, "a degree-4 fold yields a degree-2 polynomial");
-        assert!(!full.is_empty(), "the interpolation builder must produce output");
-        assert_eq!(&f[..], &full[..f.len()],
-                   "fold's coefficients diverged from the interpolation builder's");
+        assert!(
+            !full.is_empty(),
+            "the interpolation builder must produce output"
+        );
+        assert_eq!(
+            &f[..],
+            &full[..f.len()],
+            "fold's coefficients diverged from the interpolation builder's"
+        );
     }
 
     #[test]
@@ -544,11 +578,17 @@ mod tests {
         // lower-degree polynomial that is not the true fold and still verifies.
         let p: Vec<u64> = vec![1, 2, 3, 4, 5, 6, 7]; // degree 6
         let err = fold(&p, 1, 5).expect_err("q=5 must be too small for a degree-6 fold");
-        assert!(err.contains("field too small"), "the error must name the cause: {err}");
+        assert!(
+            err.contains("field too small"),
+            "the error must name the cause: {err}"
+        );
         // the useful half of the guard: a small polynomial over the same tiny
         // field DOES succeed, so this is a size check, not a blanket rejection
         let small: Vec<u64> = vec![2, 1]; // degree 1 -> needs 1 square
-        assert!(fold(&small, 1, 5).is_ok(), "a degree-1 fold over q=5 must succeed");
+        assert!(
+            fold(&small, 1, 5).is_ok(),
+            "a degree-1 fold over q=5 must succeed"
+        );
     }
 
     #[test]
@@ -562,8 +602,11 @@ mod tests {
         let a = fold(&p, 42, Q).unwrap();
         let b = fold(&p, 42, Q).unwrap();
         assert_eq!(a, b, "fold must be deterministic in (p, alpha)");
-        assert_eq!(a, fold(&vec![3, 1, 4, 1, 5], 42, Q).unwrap(),
-                   "trailing zeros must not change the fold");
+        assert_eq!(
+            a,
+            fold(&[3, 1, 4, 1, 5], 42, Q).unwrap(),
+            "trailing zeros must not change the fold"
+        );
         // different alpha must (almost surely) give a different fold
         let c = fold(&p, 7, Q).unwrap();
         assert_ne!(a, c, "a different challenge must change the fold");
@@ -577,15 +620,27 @@ mod tests {
         let p: Vec<u64> = vec![3, 1, 4, 1, 5];
         let a1 = challenge(&p, Q);
         let a2 = challenge(&p, Q);
-        assert_eq!(a1, a2, "challenge must be deterministic — it is Fiat-Shamir");
-        assert!(a1 >= 1 && a1 < Q, "challenge must lie in [1, q), got {a1}");
+        assert_eq!(
+            a1, a2,
+            "challenge must be deterministic — it is Fiat-Shamir"
+        );
+        assert!(
+            (1..Q).contains(&a1),
+            "challenge must lie in [1, q), got {a1}"
+        );
         // different polynomial must (almost surely) give a different challenge
-        assert_ne!(a1, challenge(&vec![3, 1, 4, 1, 6], Q),
-                   "challenge must depend on the polynomial");
+        assert_ne!(
+            a1,
+            challenge(&[3, 1, 4, 1, 6], Q),
+            "challenge must depend on the polynomial"
+        );
         // the canonical parity anchor: this is the exact value the Python
         // prototype produces, so a change here breaks cross-language parity
-        assert_eq!(challenge(&canonical::CANON_POLY, Q), 73,
-                   "the canonical challenge diverged from Python");
+        assert_eq!(
+            challenge(&canonical::CANON_POLY, Q),
+            73,
+            "the canonical challenge diverged from Python"
+        );
     }
 
     #[test]
@@ -600,7 +655,10 @@ mod tests {
         let alpha2 = challenge(&f, Q);
         // the real recursion's second alpha, reproduced by hand
         assert_eq!(alpha, 73, "first challenge is the canonical value");
-        assert_eq!(alpha2, 22, "second challenge is taken over the FOLDED polynomial");
+        assert_eq!(
+            alpha2, 22,
+            "second challenge is taken over the FOLDED polynomial"
+        );
         assert!(verify_round(&p, alpha, &f, Q));
     }
 
@@ -629,9 +687,17 @@ mod tests {
         // p(2) = 3 + 2 + 16 = 21
         assert_eq!(eval(&p, 2, Q), 21, "p(2) = 3 + 2 + 16 = 21");
         // the zero polynomial evaluates to 0 everywhere
-        assert_eq!(eval(&[], 7, Q), 0, "an empty polynomial is the constant zero");
+        assert_eq!(
+            eval(&[], 7, Q),
+            0,
+            "an empty polynomial is the constant zero"
+        );
         // a constant polynomial ignores x
-        assert_eq!(eval(&[42], 999_999, Q), 42, "a constant must not depend on x");
+        assert_eq!(
+            eval(&[42], 999_999, Q),
+            42,
+            "a constant must not depend on x"
+        );
     }
 
     /// `eval` must equal the naive power-of-x sum for a degree where the two
@@ -652,8 +718,10 @@ mod tests {
                 pow = (pow * x) % Q;
             }
             assert_eq!(
-                eval(&p, x, Q), naive,
-                "Horner and the naive power sum disagree at x = {}", x
+                eval(&p, x, Q),
+                naive,
+                "Horner and the naive power sum disagree at x = {}",
+                x
             );
         }
     }
@@ -666,10 +734,7 @@ mod tests {
     fn fp_inv_satisfies_the_defining_identity_on_the_whole_field() {
         for a in 1..Q {
             let inv = fp_inv(a, Q);
-            assert_eq!(
-                fp_mul(a, inv, Q), 1,
-                "a * a^-1 must be 1 for a = {}", a
-            );
+            assert_eq!(fp_mul(a, inv, Q), 1, "a * a^-1 must be 1 for a = {}", a);
         }
         // the Fermat exponent is q-2, so the inverse of 1 is 1 and the
         // inverse of q-1 is q-1 (since (q-1)^2 = 1 mod q for prime q)
@@ -688,12 +753,19 @@ mod tests {
     fn interpolate_passes_through_every_given_point() {
         let pts: Vec<(u64, u64)> = vec![(1, 5), (2, 17), (3, 41), (4, 77), (5, 2)];
         let p = interpolate(&pts, Q);
-        assert_eq!(p.len(), pts.len(), "the interpolant has one coefficient per point");
+        assert_eq!(
+            p.len(),
+            pts.len(),
+            "the interpolant has one coefficient per point"
+        );
         for &(x, y) in &pts {
             assert_eq!(
-                eval(&p, x, Q), y,
+                eval(&p, x, Q),
+                y,
                 "the interpolant must pass through ({}, {}) but evaluates to {}",
-                x, y, eval(&p, x, Q)
+                x,
+                y,
+                eval(&p, x, Q)
             );
         }
     }
@@ -717,7 +789,11 @@ mod tests {
         // PANIC (it divides by x_i - x_j = 0 internally, which is 0^-1 = 0 by
         // Fermat) and returns a vector of the right length, so a caller can
         // detect the degeneracy rather than crash.
-        assert_eq!(p.len(), 2, "the output shape must be predictable even on bad input");
+        assert_eq!(
+            p.len(),
+            2,
+            "the output shape must be predictable even on bad input"
+        );
         // the honest statement: this is a caller-contract limit, not a
         // guarantee. Distinct x's are required; duplicates are UB-ish.
     }
@@ -740,9 +816,14 @@ mod tests {
             transcript.push(p.clone());
         }
         // the terminal claim: after enough folds the polynomial is constant
-        assert_eq!(transcript.last().unwrap().len(), 1,
-                   "the recursion must terminate on a constant");
-        assert!(verify_transcript(&transcript, &alphas, Q),
-                "a transcript built from the pinned primitives must verify");
+        assert_eq!(
+            transcript.last().unwrap().len(),
+            1,
+            "the recursion must terminate on a constant"
+        );
+        assert!(
+            verify_transcript(&transcript, &alphas, Q),
+            "a transcript built from the pinned primitives must verify"
+        );
     }
 }

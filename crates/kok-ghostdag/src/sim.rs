@@ -163,7 +163,11 @@ fn min_blue_score_delta(g: &Ghostdag) -> i64 {
             found = true;
         }
     }
-    if found { min } else { 0 }
+    if found {
+        min
+    } else {
+        0
+    }
 }
 
 #[cfg(test)]
@@ -261,7 +265,10 @@ mod tests {
         let mut g = Ghostdag::new(18);
         let mut rng = rand::rngs::StdRng::seed_from_u64(99);
         mine_chain(&mut g, 150, &mut rng, &["A", "B", "C", "D"], 0.35);
-        assert!(g.order_within_past(), "TV-59 regressed: order escaped past(B)");
+        assert!(
+            g.order_within_past(),
+            "TV-59 regressed: order escaped past(B)"
+        );
     }
 
     /// blue_score must strictly increase along the selected chain (TV-58).

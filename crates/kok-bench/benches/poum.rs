@@ -14,9 +14,13 @@ fn toy_matrices(seed: u64) -> (Vec<Vec<u64>>, Vec<Vec<u64>>) {
     let mut s = seed;
     for i in 0..TOY_N {
         for j in 0..TOY_N {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             a[i][j] = s % TOY_Q;
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             b[i][j] = s % TOY_Q;
         }
     }
@@ -51,7 +55,14 @@ fn bench_verify(c: &mut Criterion) {
     };
     c.bench_function("g_layer verify (q=97 n=8)", |bencher| {
         bencher.iter(|| {
-            black_box(k.verify(black_box(&cert), black_box(&a), black_box(&b), 777, nonce, 1 << 1));
+            black_box(k.verify(
+                black_box(&cert),
+                black_box(&a),
+                black_box(&b),
+                777,
+                nonce,
+                1 << 1,
+            ));
         })
     });
 }

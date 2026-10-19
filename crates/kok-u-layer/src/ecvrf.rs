@@ -32,8 +32,8 @@
 
 use hmac::{Hmac, Mac};
 use p256::elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
-use p256::{AffinePoint, EncodedPoint, FieldBytes, ProjectivePoint, Scalar};
 use p256::elliptic_curve::PrimeField;
+use p256::{AffinePoint, EncodedPoint, FieldBytes, ProjectivePoint, Scalar};
 use sha2::{Digest, Sha256};
 
 // TEST-ONLY PROVE COUNTER. `prove()` costs about 0.87 ms under this build
@@ -109,7 +109,10 @@ fn string_to_int(s: &[u8]) -> u128 {
 
 /// I2OSP: a non-negative integer to a fixed-length big-endian octet string.
 fn int_to_string(a: u128, len: usize) -> Vec<u8> {
-    assert!(len <= 16, "int_to_string is only used for the 16-byte challenge");
+    assert!(
+        len <= 16,
+        "int_to_string is only used for the 16-byte challenge"
+    );
     let mut out = vec![0u8; len];
     let mut v = a;
     for i in (0..len).rev() {
@@ -124,7 +127,7 @@ fn int_to_string(a: u128, len: usize) -> Vec<u8> {
 /// over 2^255 and h1 is at most 2^256-1, h1 < 2q always, so a single
 /// compare-and-subtract suffices — no big-integer library needed.
 fn mod_q(bytes: &[u8; 32]) -> [u8; 32] {
-    if &bytes[..] < &Q[..] {
+    if *bytes < Q {
         return *bytes;
     }
     // h1 - q, big-endian, where h1 < 2q guarantees no second borrow
@@ -330,12 +333,12 @@ pub fn prove(sk: &[u8; 32], pk_string: &[u8], alpha: &[u8]) -> Vec<u8> {
     let y_affine = y.to_affine();
     let h = encode_to_curve(pk_string, alpha);
     let h_string = point_to_string(&h);
-    let gamma = (ProjectivePoint::from(h) * &x).to_affine();
+    let gamma = (ProjectivePoint::from(h) * x).to_affine();
     let k = nonce_generation(sk, &h_string);
     let u = gen_mult(&k).to_affine();
-    let v = (ProjectivePoint::from(h) * &k).to_affine();
+    let v = (ProjectivePoint::from(h) * k).to_affine();
     let c = challenge_generation(&y_affine, &h, &gamma, &u, &v);
-    let s = k + scalar_from_int(c) * &x;
+    let s = k + scalar_from_int(c) * x;
     let s_bytes = s.to_bytes();
     let mut out = Vec::with_capacity(PTLEN + CLEN + QLEN);
     out.extend_from_slice(&point_to_string(&gamma));
@@ -393,12 +396,12 @@ pub fn prove_with_public_key(
     let y_affine = *y;
     let h = encode_to_curve(pk_string, alpha);
     let h_string = point_to_string(&h);
-    let gamma = (ProjectivePoint::from(h) * &x).to_affine();
+    let gamma = (ProjectivePoint::from(h) * x).to_affine();
     let k = nonce_generation(sk, &h_string);
     let u = gen_mult(&k).to_affine();
-    let v = (ProjectivePoint::from(h) * &k).to_affine();
+    let v = (ProjectivePoint::from(h) * k).to_affine();
     let c = challenge_generation(&y_affine, &h, &gamma, &u, &v);
-    let s = k + scalar_from_int(c) * &x;
+    let s = k + scalar_from_int(c) * x;
     let s_bytes = s.to_bytes();
     let mut out = Vec::with_capacity(PTLEN + CLEN + QLEN);
     out.extend_from_slice(&point_to_string(&gamma));
@@ -429,10 +432,10 @@ pub fn verify(pk_string: &[u8], alpha: &[u8], pi: &[u8]) -> Option<[u8; 32]> {
     // U = s*B - c*Y ; V = s*H - c*Gamma (RFC 9381 writes it this way; the
     // prover computed U = k*B and V = k*H, and s = k + c*x makes them equal)
     let s_b = gen_mult(&s);
-    let c_y = y * &scalar_from_int(c);
+    let c_y = y * scalar_from_int(c);
     let u = (s_b - c_y).to_affine();
-    let s_h = ProjectivePoint::from(h) * &s;
-    let c_gamma = ProjectivePoint::from(gamma) * &scalar_from_int(c);
+    let s_h = ProjectivePoint::from(h) * s;
+    let c_gamma = ProjectivePoint::from(gamma) * scalar_from_int(c);
     let v = (s_h - c_gamma).to_affine();
     let c_prime = challenge_generation(&y_affine, &h, &gamma, &u, &v);
     if c == c_prime {
@@ -460,10 +463,14 @@ mod tests {
     #[test]
     fn rfc9381_example_10_matches_byte_for_byte() {
         let sk = hex_to_32("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721");
-        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6").unwrap();
+        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6")
+            .unwrap();
         let alpha = b"sample";
         let keys = VrfKeys::from_secret(sk);
-        assert_eq!(keys.pk, pk, "the derived public key does not match the vector");
+        assert_eq!(
+            keys.pk, pk,
+            "the derived public key does not match the vector"
+        );
         let pi = prove(&sk, &pk, alpha);
         assert_eq!(
             hex::encode(&pi),
@@ -476,14 +483,19 @@ mod tests {
             "a3ad7b0ef73d8fc6655053ea22f9bede8c743f08bbed3d38821f0e16474b505e",
             "beta does not match RFC 9381 Example 10"
         );
-        assert_eq!(verify(&pk, alpha, &pi), Some(beta), "a valid proof did not verify");
+        assert_eq!(
+            verify(&pk, alpha, &pi),
+            Some(beta),
+            "a valid proof did not verify"
+        );
     }
 
     /// RFC 9381 Appendix B.1, Example 11 (alpha = "test").
     #[test]
     fn rfc9381_example_11_matches_byte_for_byte() {
         let sk = hex_to_32("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721");
-        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6").unwrap();
+        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6")
+            .unwrap();
         let pi = prove(&sk, &pk, b"test");
         assert_eq!(
             hex::encode(&pi),
@@ -503,7 +515,8 @@ mod tests {
     #[test]
     fn rfc9381_example_12_matches_byte_for_byte() {
         let sk = hex_to_32("2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8");
-        let pk = hex::decode("03596375e6ce57e0f20294fc46bdfcfd19a39f8161b58695b3ec5b3d16427c274d").unwrap();
+        let pk = hex::decode("03596375e6ce57e0f20294fc46bdfcfd19a39f8161b58695b3ec5b3d16427c274d")
+            .unwrap();
         let alpha = b"Example using ECDSA key from Appendix L.4.2 of ANSI.X9-62-2005";
         let pi = prove(&sk, &pk, alpha);
         assert_eq!(
@@ -527,42 +540,60 @@ mod tests {
     #[test]
     fn a_tampered_proof_does_not_verify() {
         let sk = hex_to_32("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721");
-        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6").unwrap();
+        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6")
+            .unwrap();
         let pi = prove(&sk, &pk, b"sample");
         assert!(verify(&pk, b"sample", &pi).is_some());
         // flip one bit of the challenge
         let mut bad = pi.clone();
         bad[PTLEN] ^= 0x01;
-        assert!(verify(&pk, b"sample", &bad).is_none(), "a tampered challenge verified");
+        assert!(
+            verify(&pk, b"sample", &bad).is_none(),
+            "a tampered challenge verified"
+        );
         // flip one bit of the scalar
         let mut bad2 = pi.clone();
         bad2[PTLEN + CLEN] ^= 0x01;
-        assert!(verify(&pk, b"sample", &bad2).is_none(), "a tampered scalar verified");
+        assert!(
+            verify(&pk, b"sample", &bad2).is_none(),
+            "a tampered scalar verified"
+        );
         // flip one bit of Gamma
         let mut bad3 = pi.clone();
         bad3[10] ^= 0x01;
-        assert!(verify(&pk, b"sample", &bad3).is_none(), "a tampered Gamma verified");
+        assert!(
+            verify(&pk, b"sample", &bad3).is_none(),
+            "a tampered Gamma verified"
+        );
     }
 
     /// INPUT BINDING: the proof for one input does not verify for another.
     #[test]
     fn a_proof_is_bound_to_its_input() {
         let sk = hex_to_32("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721");
-        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6").unwrap();
+        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6")
+            .unwrap();
         let pi = prove(&sk, &pk, b"sample");
-        assert!(verify(&pk, b"different", &pi).is_none(), "a proof verified under the wrong input");
+        assert!(
+            verify(&pk, b"different", &pi).is_none(),
+            "a proof verified under the wrong input"
+        );
     }
 
     /// KEY BINDING: a proof does not verify under the wrong public key.
     #[test]
     fn a_proof_is_bound_to_its_public_key() {
         let sk = hex_to_32("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721");
-        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6").unwrap();
+        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6")
+            .unwrap();
         let pi = prove(&sk, &pk, b"sample");
         let other = VrfKeys::from_secret(hex_to_32(
             "2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8",
         ));
-        assert!(verify(&other.pk, b"sample", &pi).is_none(), "a proof verified under the wrong key");
+        assert!(
+            verify(&other.pk, b"sample", &pi).is_none(),
+            "a proof verified under the wrong key"
+        );
     }
 
     /// TOTALITY ON ADVERSARIAL INPUT: malformed proofs and keys reject
@@ -570,16 +601,32 @@ mod tests {
     /// boundaries owe their callers.
     #[test]
     fn malformed_input_rejects_never_panics() {
-        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6").unwrap();
-        assert!(verify(&pk, b"sample", &[]).is_none(), "an empty proof verified");
-        assert!(verify(&pk, b"sample", &[0u8; 80]).is_none(), "a short proof verified");
-        assert!(verify(&pk, b"sample", &[0u8; 81]).is_none(), "a zeroed proof verified");
+        let pk = hex::decode("0360fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6")
+            .unwrap();
+        assert!(
+            verify(&pk, b"sample", &[]).is_none(),
+            "an empty proof verified"
+        );
+        assert!(
+            verify(&pk, b"sample", &[0u8; 80]).is_none(),
+            "a short proof verified"
+        );
+        assert!(
+            verify(&pk, b"sample", &[0u8; 81]).is_none(),
+            "a zeroed proof verified"
+        );
         // a garbage Gamma that is not a curve point
         let mut bad = vec![0xFFu8; 81];
         bad[0] = 0x02;
-        assert!(verify(&pk, b"sample", &bad).is_none(), "a garbage Gamma verified");
+        assert!(
+            verify(&pk, b"sample", &bad).is_none(),
+            "a garbage Gamma verified"
+        );
         // a garbage public key
-        assert!(verify(&[0xFFu8; 33], b"sample", &[0u8; 81]).is_none(), "a garbage key verified");
+        assert!(
+            verify(&[0xFFu8; 33], b"sample", &[0u8; 81]).is_none(),
+            "a garbage key verified"
+        );
     }
 
     /// DETERMINISM plus output separation across inputs — the seed property
@@ -632,7 +679,10 @@ mod tests {
         // and the honest proof must still verify — the rejection is not a
         // blanket refusal of everything
         let honest = prove(&keys.sk, &keys.pk, b"sample");
-        assert!(verify(&keys.pk, b"sample", &honest).is_some(), "an honest proof was rejected");
+        assert!(
+            verify(&keys.pk, b"sample", &honest).is_some(),
+            "an honest proof was rejected"
+        );
     }
 
     /// A proof TRANSPLANTED to another public key must fail: the proof binds
@@ -730,7 +780,10 @@ mod tests {
         // s = q exactly
         let mut at_q = pi.clone();
         at_q[PTLEN + CLEN..].copy_from_slice(&Q);
-        assert!(decode_proof(&at_q).is_none(), "s == q was accepted as canonical");
+        assert!(
+            decode_proof(&at_q).is_none(),
+            "s == q was accepted as canonical"
+        );
         // s = q + 1, computed as a big-endian increment-with-carry over Q
         let mut over = Q;
         for i in (0..QLEN).rev() {
@@ -742,12 +795,21 @@ mod tests {
         }
         let mut over_q = pi.clone();
         over_q[PTLEN + CLEN..].copy_from_slice(&over);
-        assert!(decode_proof(&over_q).is_none(), "s = q+1 was accepted as canonical");
+        assert!(
+            decode_proof(&over_q).is_none(),
+            "s = q+1 was accepted as canonical"
+        );
         // s = 2^256 - 1
         let mut max_s = pi.clone();
         max_s[PTLEN + CLEN..].copy_from_slice(&[0xFFu8; QLEN]);
-        assert!(decode_proof(&max_s).is_none(), "s = 2^256-1 was accepted as canonical");
+        assert!(
+            decode_proof(&max_s).is_none(),
+            "s = 2^256-1 was accepted as canonical"
+        );
         // the honest proof's s is canonical and decodes
-        assert!(decode_proof(&pi).is_some(), "the honest s was rejected as non-canonical");
+        assert!(
+            decode_proof(&pi).is_some(),
+            "the honest s was rejected as non-canonical"
+        );
     }
 }

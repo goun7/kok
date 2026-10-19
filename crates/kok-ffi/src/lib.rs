@@ -29,7 +29,7 @@
 pub use kok_consensus;
 
 use kok_consensus::kok_u_layer::{
-    validate_u_task, u_task_consensus_weight, TaskProof, TaskSpec, C_FEE, EPOCH_LOOKBACK,
+    u_task_consensus_weight, validate_u_task, TaskProof, TaskSpec, C_FEE, EPOCH_LOOKBACK,
     MAX_BURN_RATE,
 };
 
@@ -163,7 +163,11 @@ mod tests {
             (0, 100, 0),
             (100, 0, 0),
         ] {
-            let task = TaskSpec { program: String::new(), fee, burn_rate: burn };
+            let task = TaskSpec {
+                program: String::new(),
+                fee,
+                burn_rate: burn,
+            };
             let expected = validate_u_task(&task, carried);
             let got = kok_validate_u_task(fee, burn, carried) == KOK_OK;
             assert_eq!(
@@ -192,12 +196,25 @@ mod tests {
     /// rather than not-yet-needed.
     #[test]
     fn the_status_codes_are_distinct_and_ok_is_zero() {
-        let codes = [KOK_OK, KOK_REJECTED, KOK_NULL_POINTER, KOK_BAD_LENGTH, KOK_OVERFLOW];
-        assert_eq!(KOK_OK, 0, "a C caller's `if (rc)` idiom breaks unless OK is 0");
+        let codes = [
+            KOK_OK,
+            KOK_REJECTED,
+            KOK_NULL_POINTER,
+            KOK_BAD_LENGTH,
+            KOK_OVERFLOW,
+        ];
+        assert_eq!(
+            KOK_OK, 0,
+            "a C caller's `if (rc)` idiom breaks unless OK is 0"
+        );
         // pairwise distinct
         for i in 0..codes.len() {
             for j in (i + 1)..codes.len() {
-                assert_ne!(codes[i], codes[j], "status codes {i} and {j} share the value {}", codes[i]);
+                assert_ne!(
+                    codes[i], codes[j],
+                    "status codes {i} and {j} share the value {}",
+                    codes[i]
+                );
             }
         }
         // they are all plain u8s small enough to fit a C enum
@@ -222,7 +239,11 @@ mod tests {
         // the protocol's, not the boundary's
         assert_eq!(kok_validate_u_task(1, 100, u64::MAX - 1), KOK_REJECTED);
         assert_eq!(kok_validate_u_task(u64::MAX, 100, 0), KOK_REJECTED);
-        assert_eq!(kok_validate_u_task(0, 100, u64::MAX), KOK_REJECTED, "a zero fee is still rejected, not overflowed");
+        assert_eq!(
+            kok_validate_u_task(0, 100, u64::MAX),
+            KOK_REJECTED,
+            "a zero fee is still rejected, not overflowed"
+        );
         // sums going PAST u64::MAX by the smallest possible amount: overflow
         assert_eq!(kok_validate_u_task(2, 100, u64::MAX - 1), KOK_OVERFLOW);
         assert_eq!(kok_validate_u_task(1, 100, u64::MAX), KOK_OVERFLOW);
@@ -232,11 +253,17 @@ mod tests {
             for fee in [1u64, 2, 3, 4] {
                 let rc = kok_validate_u_task(fee, 100, carried);
                 if carried.checked_add(fee).is_none() {
-                    assert_eq!(rc, KOK_OVERFLOW, "sum {carried}+{fee} overflowed but rc was {rc}");
+                    assert_eq!(
+                        rc, KOK_OVERFLOW,
+                        "sum {carried}+{fee} overflowed but rc was {rc}"
+                    );
                 } else {
                     // the non-overflow path is the protocol's verdict, which
                     // rejects every one of these because the fees exceed the cap
-                    assert_ne!(rc, KOK_OVERFLOW, "sum {carried}+{fee} did not overflow but reported OVERFLOW");
+                    assert_ne!(
+                        rc, KOK_OVERFLOW,
+                        "sum {carried}+{fee} did not overflow but reported OVERFLOW"
+                    );
                 }
             }
         }
@@ -253,7 +280,19 @@ mod tests {
         let reachable = [KOK_OK, KOK_REJECTED, KOK_OVERFLOW];
         let mut seen = std::collections::HashSet::new();
         // a deliberately awkward mix: extremes, boundaries, and ordinary values
-        let vals = [0u64, 1, 2, 100, C_FEE, C_FEE - 1, C_FEE + 1, MAX_BURN_RATE, MAX_BURN_RATE + 1, u64::MAX, u64::MAX - 1];
+        let vals = [
+            0u64,
+            1,
+            2,
+            100,
+            C_FEE,
+            C_FEE - 1,
+            C_FEE + 1,
+            MAX_BURN_RATE,
+            MAX_BURN_RATE + 1,
+            u64::MAX,
+            u64::MAX - 1,
+        ];
         for fee in vals {
             for burn in vals {
                 for carried in vals {
@@ -268,7 +307,12 @@ mod tests {
         }
         // the honest completeness statement: all three reachable codes really
         // are produced by this input set, so none of them is dead
-        assert_eq!(seen, reachable.into_iter().collect::<std::collections::HashSet<_>>(),
-                   "some reachable status code was never produced by the sweep");
+        assert_eq!(
+            seen,
+            reachable
+                .into_iter()
+                .collect::<std::collections::HashSet<_>>(),
+            "some reachable status code was never produced by the sweep"
+        );
     }
 }

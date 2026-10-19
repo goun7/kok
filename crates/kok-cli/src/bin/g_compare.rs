@@ -83,14 +83,25 @@ mod tests {
         assert_eq!(a.len(), 8, "matrix A is not 8 rows");
         assert_eq!(b.len(), 8, "matrix B is not 8 rows");
         for (i, row) in a.iter().enumerate() {
-            assert_eq!(row.len(), 8, "matrix A row {i} is not 8 wide — the fixture is ragged");
+            assert_eq!(
+                row.len(),
+                8,
+                "matrix A row {i} is not 8 wide — the fixture is ragged"
+            );
         }
         for (i, row) in b.iter().enumerate() {
-            assert_eq!(row.len(), 8, "matrix B row {i} is not 8 wide — the fixture is ragged");
+            assert_eq!(
+                row.len(),
+                8,
+                "matrix B row {i} is not 8 wide — the fixture is ragged"
+            );
         }
         // the two operands must be conformable for the kernel's multiply
         assert_eq!(a.len(), b.len());
-        assert!(a.len() % TOY_R == 0, "the fixture width is not divisible by r={TOY_R}");
+        assert!(
+            a.len() % TOY_R == 0,
+            "the fixture width is not divisible by r={TOY_R}"
+        );
     }
 
     /// EVERY FIXTURE ENTRY IS A FIELD ELEMENT. The kernel's verify compares

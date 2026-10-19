@@ -134,7 +134,10 @@ impl std::fmt::Display for ProofError {
                 write!(f, "useful work rejected: {w}")
             }
             ProofError::ReceiptHashMismatch => {
-                write!(f, "receipt hash is not sha256 of the canonical work envelope")
+                write!(
+                    f,
+                    "receipt hash is not sha256 of the canonical work envelope"
+                )
             }
             ProofError::SignatureRejected(e) => {
                 write!(f, "signature rejected: {e}")
@@ -207,10 +210,7 @@ pub fn work_canonical(p: &MiningProof) -> String {
 /// The commitment over the commissioned program and the chain dimensions.
 /// Domain-separated so it cannot collide with the input commitment.
 pub fn program_commit(program: &str, q: u64, n: u64, r: u64) -> String {
-    sha256_hex(&format!(
-        "kok.program.v1|{program}|{q}|{n}|{r}"
-    )
-    .as_bytes())
+    sha256_hex(format!("kok.program.v1|{program}|{q}|{n}|{r}").as_bytes())
 }
 
 /// The commitment over the exact input matrices, row-major and flattened with
@@ -251,6 +251,7 @@ pub fn sign_receipt(secret: &[u8; 32], p: &MiningProof) -> [u8; 64] {
 /// target clears, then bind and sign it. This is the honest path — the same
 /// `KwKernel::prove` the node uses, so a kanıt and a block are produced by the
 /// same code, not by two implementations that could drift.
+#[allow(clippy::too_many_arguments)]
 pub fn mine(
     kernel: &KwKernel,
     a: &[Vec<u64>],
@@ -265,12 +266,14 @@ pub fn mine(
 ) -> Result<MiningProof, ProofError> {
     let n = a.len();
     if n == 0 || b.len() != n {
-        return Err(ProofError::Malformed("matrices must be square and equal".into()));
+        return Err(ProofError::Malformed(
+            "matrices must be square and equal".into(),
+        ));
     }
     if a.iter().any(|row| row.len() != n) || b.iter().any(|row| row.len() != n) {
         return Err(ProofError::Malformed("ragged matrix rows".into()));
     }
-    if kernel.r == 0 || n % kernel.r != 0 {
+    if kernel.r == 0 || !n.is_multiple_of(kernel.r) {
         return Err(ProofError::Malformed(format!(
             "n={n} is not divisible by r={}",
             kernel.r
@@ -374,12 +377,10 @@ pub fn verify(p: &MiningProof) -> Result<(), ProofError> {
             p.matrix_b.len()
         )));
     }
-    if p.matrix_a.iter().any(|row| row.len() != n)
-        || p.matrix_b.iter().any(|row| row.len() != n)
-    {
+    if p.matrix_a.iter().any(|row| row.len() != n) || p.matrix_b.iter().any(|row| row.len() != n) {
         return Err(ProofError::Malformed("ragged matrix rows".into()));
     }
-    if p.r == 0 || n % p.r as usize != 0 {
+    if p.r == 0 || !n.is_multiple_of(p.r as usize) {
         return Err(ProofError::Malformed(format!(
             "n={n} is not divisible by r={}",
             p.r
@@ -443,9 +444,8 @@ pub fn verify(p: &MiningProof) -> Result<(), ProofError> {
 
     // 6. THE SIGNATURE — recover the public key from the did and verify. The
     // did is self-resolving, so no registry, no network, no trusted key list.
-    let sig_bytes = hex::decode(&p.signature).map_err(|e| {
-        ProofError::Encoding(format!("signature is not hex: {e}"))
-    })?;
+    let sig_bytes = hex::decode(&p.signature)
+        .map_err(|e| ProofError::Encoding(format!("signature is not hex: {e}")))?;
     if sig_bytes.len() != 64 {
         return Err(ProofError::Encoding(format!(
             "signature is {} bytes, expected 64 (Ed25519)",
@@ -454,8 +454,12 @@ pub fn verify(p: &MiningProof) -> Result<(), ProofError> {
     }
     let mut sig = [0u8; 64];
     sig.copy_from_slice(&sig_bytes);
-    did::verify_with_did(&p.miner_did, &sha256_digest(work_canonical(p).as_bytes()), &sig)
-        .map_err(ProofError::SignatureRejected)?;
+    did::verify_with_did(
+        &p.miner_did,
+        &sha256_digest(work_canonical(p).as_bytes()),
+        &sig,
+    )
+    .map_err(ProofError::SignatureRejected)?;
 
     Ok(())
 }
@@ -484,9 +488,13 @@ mod tests {
         let mut s = seed;
         for i in 0..TOY_N {
             for j in 0..TOY_N {
-                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                s = s
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 a[i][j] = s % TOY_Q;
-                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                s = s
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 b[i][j] = s % TOY_Q;
             }
         }
@@ -556,7 +564,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[1; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         proof.cert_value = (proof.cert_value + 1) % TOY_Q;
@@ -577,7 +594,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[2; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         // miner serves a different B while keeping every declared commitment
@@ -597,7 +623,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[3; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         proof.ctx += 1;
@@ -615,7 +650,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[4; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         proof.receipt_hash = "f".repeat(64);
@@ -630,7 +674,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[5; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         let other = Keypair::from_seed(&[6; 32]);
@@ -650,7 +703,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[7; 32]);
         let parent = mine(
-            &kernel, &a, &b, 100, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            100,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         assert!(verify(&parent).is_ok());
@@ -685,7 +747,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[8; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         proof.cert_m += 1;
@@ -700,7 +771,16 @@ mod tests {
         let (a, b) = toy(20260929);
         let miner = Keypair::from_seed(&[10; 32]);
         let mut proof = mine(
-            &kernel, &a, &b, 777, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            777,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         proof.proof_version = 2;
@@ -719,7 +799,16 @@ mod tests {
         let (a, b) = toy(1);
         let miner = Keypair::from_seed(&[12; 32]);
         let proof = mine(
-            &kernel, &a, &b, 5, 1u64 << 1, DEFAULT_PROGRAM, 0, 0, &miner, &genesis_prev(),
+            &kernel,
+            &a,
+            &b,
+            5,
+            1u64 << 1,
+            DEFAULT_PROGRAM,
+            0,
+            0,
+            &miner,
+            &genesis_prev(),
         )
         .unwrap();
         let canon = work_canonical(&proof);
@@ -738,6 +827,9 @@ mod tests {
         let pc = program_commit(DEFAULT_PROGRAM, TOY_Q, TOY_N as u64, TOY_R as u64);
         let ic = input_commit(&a, &b);
         assert_ne!(pc, ic);
-        assert_ne!(pc, sha256_hex(format!("{}|{}|{}|{}", DEFAULT_PROGRAM, TOY_Q, TOY_N, TOY_R).as_bytes()));
+        assert_ne!(
+            pc,
+            sha256_hex(format!("{}|{}|{}|{}", DEFAULT_PROGRAM, TOY_Q, TOY_N, TOY_R).as_bytes())
+        );
     }
 }
