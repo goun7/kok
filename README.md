@@ -66,7 +66,7 @@ positioning in
 
 ```bash
 cargo test --workspace --all-targets      # 397 passed, 0 failed (verified 2026-10-18)
-python3 -m pytest tests/ -q               # 1.569 passed, 0 failed (verified 2026-10-20; README-pin +1)
+python3 -m pytest tests/ -q               # 1.574 passed, 0 failed (verified 2026-10-20; MCP-server +5-testi-ile)
 
 # Mine a G-layer proof, then verify it off-chain with no secrets and no network:
 cargo run -q --bin kok -- create --ctx 20261020 --target 2 --out kanit.json
