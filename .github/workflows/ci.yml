@@ -11,10 +11,11 @@ jobs:
       matrix:
         # G48-2026-10-22: eski pin "1.82". zeroize-1.9 (transitif bagimlilik)
         # edition2024 gerektirir -> bu ozellik Rust-1.85'ten once stabilized
-        # degildi, yani 1.82'de manifest-parse patlar ( cargo 101). MSRV
-        # zaten workspace'te 1.98.0 ( rust-version); alt-uç olarak 1.85
-        # birakiyoruz ( edition2024-alt-siniri).
-        rust-version: ["stable", "1.85"]
+        # degildi, yani 1.82'de manifest-parse patlar ( cargo 101). Ayrica
+        # workspace-MSRV ( rust-version=1.98.0) 1.85'ten-YUKSEK oldugu-icin
+        # kendi-crate'lerimiz-icin-de-desteklenmiyor -> 1.85-bacagi-anlamsiz.
+        # Alt-uc-MSRV-ile-hoplayalim.
+        rust-version: ["stable", "1.98"]
     steps:
       - uses: actions/checkout@v4
       - name: Rust kurulumu
