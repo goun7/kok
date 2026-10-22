@@ -30,3 +30,23 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Testler
         run: cargo test --all --quiet
+  wasm:
+    name: kok-wasm light-client boundary ( wasm32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust kurulumu
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: kok-wasm wasm32-unknown-unknown build
+        # G51-6- ( 2026-10-23): light-client-verifier-boundary'in her-
+        # giriste-trap-imkansiz-iddiasi-yalnizca-gercek-wasm-derlemesiyle
+        # olculur- ( cdylib-hedefi-native-build'lerde-gorunmez).
+        run: cargo build --release -p kok-wasm --target wasm32-unknown-unknown
+      - name: kok-wasm npm-package-paketleme-ornegi
+        run: cargo run -p kok-wasm --example package_npm
+      - name: kok-wasm-examples-derleniyor- ( trap-free-iddiasi)
+        run: cargo build -p kok-wasm --examples
